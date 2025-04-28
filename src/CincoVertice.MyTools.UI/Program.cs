@@ -1,13 +1,22 @@
+using CincoVertice.Common.WinApi.Helpers;
+
 namespace CincoVertice.MyTools.UI;
 
 internal static class Program
 {
     /// <summary>
-    ///  The main entry point for the application.
+    ///     The main entry point for the application.
     /// </summary>
     [STAThread]
     static void Main()
     {
+        if (ProcessHelper.IsProcessCurrentlyRunning())
+        {
+            Application.Exit();
+
+            return;
+        }
+
         // To customize application configuration such as set high DPI settings or default font,
         // see https://aka.ms/applicationconfiguration.
         ApplicationConfiguration.Initialize();
