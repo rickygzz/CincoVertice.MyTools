@@ -1,0 +1,10 @@
+**node_modules
+
+
+# Visual Studio
+.vs/
+**bin/
+**obj/
+
+# Visual Studio Code
+.vscode/
