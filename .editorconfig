@@ -1,0 +1,47 @@
+# https://learn.microsoft.com/en-us/visualstudio/ide/create-portable-custom-editor-options?view=vs-2022
+# https://learn.microsoft.com/es-es/dotnet/fundamentals/code-analysis/code-style-rule-options?view=vs-2022
+# https://editorconfig.org/#supported-properties
+# Special property that should be specified at the top of the file outside of any sections.
+# Set to true to stop .editorconfig files search on current file.
+root = true
+
+# All files
+[*]
+indent_style = space
+end_of_line = crlf
+charset = utf-8-bom
+insert_final_newline = true
+trim_trailing_whitespace = true
+# For VS 2022 need to install Editor Guidelines extension by Paul Harrington
+guidelines = 80, 120
+
+# XML project files
+[*.{csproj,vbproj,vcxproj,vcxproj.filters,proj,projitems,shproj}]
+indent_size = 2
+
+# XML config files
+[*.{props,targets,ruleset,config,nuspec,resx,vsixmanifest,vsct}]
+indent_size = 2
+
+[*.{json}]
+indent_size = 2
+
+# Code files
+[*.{cs,csx,vb,vbx}]
+indent_size = 4
+insert_final_newline = true
+
+###############################
+# .NET Coding Conventions     #
+###############################
+[*.{cs,vb}]
+# Organize usings
+dotnet_sort_system_directives_first = true
+csharp_style_namespace_declarations = file_scoped:error
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
+csharp_space_between_method_name_and_opening_parenthesis = false
+csharp_space_after_keywords_in_control_flow_statements = true
+dotnet_style_require_public_classes = true:error
+dotnet_diagnostic.IDE0290.severity = none

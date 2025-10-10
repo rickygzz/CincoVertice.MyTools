@@ -6,7 +6,7 @@ namespace CincoVertice.MyTools.UI;
 
 internal static class Program
 {
-    public static IServiceProvider? ServiceProvider { get; private set; }
+    private static IServiceProvider? ServiceProvider { get; set; }
 
     /// <summary>
     ///     The main entry point for the application.
