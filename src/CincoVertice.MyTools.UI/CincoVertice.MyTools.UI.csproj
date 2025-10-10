@@ -21,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\common\src\CincoVertice.Common.Win.Controls\CincoVertice.Common.Win.Controls.csproj" />
     <ProjectReference Include="..\..\common\src\CincoVertice.Common.WinApi\CincoVertice.Common.WinApi.csproj" />
   </ItemGroup>
 
