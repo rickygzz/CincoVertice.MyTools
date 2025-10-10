@@ -1,5 +1,6 @@
-using CincoVertice.Common.WinApi.Helpers;
+﻿using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.MyTools.UI.Configuration;
+using CincoVertice.MyTools.UI.Main;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CincoVertice.MyTools.UI;

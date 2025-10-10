@@ -1,4 +1,4 @@
-﻿namespace CincoVertice.MyTools
+﻿namespace CincoVertice.MyTools.UI.Main
 {
     partial class MainForm
     {
@@ -46,23 +46,25 @@
             // 
             // NotifyContextMenu
             // 
+            NotifyContextMenu.ImageScalingSize = new Size(24, 24);
             NotifyContextMenu.Items.AddRange(new ToolStripItem[] { ExitNotifyContextMenu });
             NotifyContextMenu.Name = "NotifyContextMenu";
-            NotifyContextMenu.Size = new Size(181, 48);
+            NotifyContextMenu.Size = new Size(112, 36);
             // 
             // ExitNotifyContextMenu
             // 
             ExitNotifyContextMenu.Name = "ExitNotifyContextMenu";
-            ExitNotifyContextMenu.Size = new Size(180, 22);
+            ExitNotifyContextMenu.Size = new Size(111, 32);
             ExitNotifyContextMenu.Text = "&Exit";
             ExitNotifyContextMenu.Click += ExitNotifyContextMenu_Click;
             // 
             // MainForm
             // 
-            AutoScaleDimensions = new SizeF(7F, 15F);
+            AutoScaleDimensions = new SizeF(10F, 25F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(800, 450);
+            ClientSize = new Size(1329, 750);
             Icon = UI.Resources.Resources.RGIcon;
+            Margin = new Padding(4, 5, 4, 5);
             Name = "MainForm";
             Text = "My Tools";
             NotifyContextMenu.ResumeLayout(false);

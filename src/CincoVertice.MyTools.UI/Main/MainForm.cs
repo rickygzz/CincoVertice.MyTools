@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools;
+﻿namespace CincoVertice.MyTools.UI.Main;
 
 public partial class MainForm : Form
 {
