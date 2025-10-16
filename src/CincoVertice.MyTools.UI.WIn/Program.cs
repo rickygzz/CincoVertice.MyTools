@@ -1,9 +1,9 @@
 ﻿using CincoVertice.Common.WinApi.Helpers;
-using CincoVertice.MyTools.UI.Configuration;
-using CincoVertice.MyTools.UI.Main;
+using CincoVertice.MyTools.UI.Win.Main;
+using CincoVertice.MyTools.UI.Win.Setup;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace CincoVertice.MyTools.UI;
+namespace CincoVertice.MyTools.UI.Win;
 
 internal static class Program
 {
@@ -23,7 +23,7 @@ internal static class Program
         }
 
         var serviceCollection = new ServiceCollection();
-        ServicesConfigurator.Configure(serviceCollection);
+        UiWinSetupExtensions.AddMyToolsUiLayer(serviceCollection);
         ServiceProvider = serviceCollection.BuildServiceProvider();
 
         // To customize application configuration such as set high DPI settings or default font,

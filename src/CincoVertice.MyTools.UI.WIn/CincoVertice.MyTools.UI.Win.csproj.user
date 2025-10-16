@@ -9,6 +9,9 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Update="Main\MainForm.resx">
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
     <EmbeddedResource Update="Resources\Resources.resx">
       <SubType>Designer</SubType>
     </EmbeddedResource>

@@ -1,4 +1,4 @@
-﻿namespace CincoVertice.MyTools.UI.Main
+﻿namespace CincoVertice.MyTools.UI.Win.Main
 {
     partial class MainForm
     {
@@ -32,7 +32,11 @@
             NotifyIconControl = new NotifyIcon(components);
             NotifyContextMenu = new ContextMenuStrip(components);
             ExitNotifyContextMenu = new ToolStripMenuItem();
+            MainMenu = new MenuStrip();
+            FileMenu = new ToolStripMenuItem();
+            CodeReviewMenu = new ToolStripMenuItem();
             NotifyContextMenu.SuspendLayout();
+            MainMenu.SuspendLayout();
             SuspendLayout();
             // 
             // NotifyIconControl
@@ -40,7 +44,7 @@
             NotifyIconControl.BalloonTipText = "Info";
             NotifyIconControl.BalloonTipTitle = "My Tools";
             NotifyIconControl.ContextMenuStrip = NotifyContextMenu;
-            NotifyIconControl.Icon = UI.Resources.Resources.RGIcon;
+            NotifyIconControl.Icon = Resources.Resources.RGIcon;
             NotifyIconControl.Text = "My Tools";
             NotifyIconControl.Visible = true;
             // 
@@ -49,26 +53,54 @@
             NotifyContextMenu.ImageScalingSize = new Size(24, 24);
             NotifyContextMenu.Items.AddRange(new ToolStripItem[] { ExitNotifyContextMenu });
             NotifyContextMenu.Name = "NotifyContextMenu";
-            NotifyContextMenu.Size = new Size(112, 36);
+            NotifyContextMenu.Size = new Size(93, 26);
             // 
             // ExitNotifyContextMenu
             // 
             ExitNotifyContextMenu.Name = "ExitNotifyContextMenu";
-            ExitNotifyContextMenu.Size = new Size(111, 32);
+            ExitNotifyContextMenu.Size = new Size(92, 22);
             ExitNotifyContextMenu.Text = "&Exit";
             ExitNotifyContextMenu.Click += ExitNotifyContextMenu_Click;
             // 
+            // MainMenu
+            // 
+            MainMenu.Items.AddRange(new ToolStripItem[] { FileMenu });
+            MainMenu.Location = new Point(0, 0);
+            MainMenu.Name = "MainMenu";
+            MainMenu.Size = new Size(930, 24);
+            MainMenu.TabIndex = 1;
+            MainMenu.Text = "menuStrip1";
+            // 
+            // FileMenu
+            // 
+            FileMenu.DropDownItems.AddRange(new ToolStripItem[] { CodeReviewMenu });
+            FileMenu.Name = "FileMenu";
+            FileMenu.Size = new Size(37, 20);
+            FileMenu.Text = "&File";
+            // 
+            // CodeReviewMenu
+            // 
+            CodeReviewMenu.Name = "CodeReviewMenu";
+            CodeReviewMenu.Size = new Size(139, 22);
+            CodeReviewMenu.Text = "Code review";
+            CodeReviewMenu.Click += CodeReviewMenu_Click;
+            // 
             // MainForm
             // 
-            AutoScaleDimensions = new SizeF(10F, 25F);
+            AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1329, 750);
-            Icon = UI.Resources.Resources.RGIcon;
-            Margin = new Padding(4, 5, 4, 5);
+            ClientSize = new Size(930, 450);
+            Controls.Add(MainMenu);
+            Icon = Resources.Resources.RGIcon;
+            MainMenuStrip = MainMenu;
             Name = "MainForm";
             Text = "My Tools";
+            Load += MainForm_Load;
             NotifyContextMenu.ResumeLayout(false);
+            MainMenu.ResumeLayout(false);
+            MainMenu.PerformLayout();
             ResumeLayout(false);
+            PerformLayout();
         }
 
         #endregion
@@ -76,5 +108,8 @@
         private NotifyIcon NotifyIconControl;
         private ContextMenuStrip NotifyContextMenu;
         private ToolStripMenuItem ExitNotifyContextMenu;
+        private MenuStrip MainMenu;
+        private ToolStripMenuItem FileMenu;
+        private ToolStripMenuItem CodeReviewMenu;
     }
 }

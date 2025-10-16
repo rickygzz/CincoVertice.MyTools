@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace CincoVertice.MyTools.UI.Resources {
+namespace CincoVertice.MyTools.UI.Win.Resources {
     using System;
     
     
@@ -39,7 +39,7 @@ namespace CincoVertice.MyTools.UI.Resources {
         internal static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("CincoVertice.MyTools.UI.Resources.Resources", typeof(Resources).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("CincoVertice.MyTools.UI.Win.Resources.Resources", typeof(Resources).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;
