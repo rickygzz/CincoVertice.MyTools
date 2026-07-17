@@ -1,4 +1,5 @@
-﻿using CincoVertice.MyTools.Ui.CodeReview.Views;
+﻿using System.Runtime.Versioning;
+using CincoVertice.MyTools.Ui.CodeReview.Views;
 using CincoVertice.MyTools.Ui.Setup;
 using CincoVertice.MyTools.Ui.Win.CodeReview;
 using CincoVertice.MyTools.Ui.Win.Main;
@@ -7,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace CincoVertice.MyTools.Ui.Win.Setup;
 
+[SupportedOSPlatform("windows10.0")]
 public static class UiWinSetupExtensions
 {
     public static IServiceCollection AddMyToolsUiWinLayer(this IServiceCollection services)

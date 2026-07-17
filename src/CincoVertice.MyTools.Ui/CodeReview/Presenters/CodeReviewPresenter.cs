@@ -15,6 +15,7 @@ public class CodeReviewPresenter
 
     private void OnLoadCodeReview(object? sender, EventArgs e)
     {
-        // _view.DisplayMessage("Code Review Loaded.");
+        _view.InitializeConsoleOutput();
+        // This: _view.DisplayMessage("Code Review Loaded."); .
     }
 }

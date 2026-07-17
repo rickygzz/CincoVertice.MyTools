@@ -1,4 +1,5 @@
-﻿using CincoVertice.Common.WinApi.Helpers;
+﻿using System.Runtime.Versioning;
+using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.MyTools.Ui.Win.Main;
 using CincoVertice.MyTools.Ui.Win.Setup;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,6 +13,7 @@ internal static class Program
     ///     The main entry point for the application.
     /// </summary>
     [STAThread]
+    [SupportedOSPlatform("windows10.0")]
     static void Main()
     {
         if (ProcessHelper.IsProcessCurrentlyRunning())
