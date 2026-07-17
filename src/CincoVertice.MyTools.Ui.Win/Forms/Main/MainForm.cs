@@ -5,6 +5,7 @@ using CincoVertice.Common.WinApi.Libs.Enums;
 using CincoVertice.MyTools.Ui.CodeReview.Presenters;
 using CincoVertice.MyTools.Ui.CodeReview.Views;
 using CincoVertice.MyTools.Ui.Win.CodeReview;
+using CincoVertice.MyTools.Ui.Win.Forms.Calculator;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CincoVertice.MyTools.Ui.Win.Main;
@@ -47,7 +48,9 @@ public partial class MainForm : Form
         {
             if (key.Key == KeyCode.A)
             {
-                System.Media.SystemSounds.Beep.Play();
+                var calculatorForm = new CalculatorForm();
+
+                calculatorForm.Show();
             }
         }
     }

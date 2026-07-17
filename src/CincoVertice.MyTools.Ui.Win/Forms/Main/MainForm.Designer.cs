@@ -94,6 +94,7 @@
             Icon = Resources.Resources.RGIcon;
             MainMenuStrip = MainMenu;
             Name = "MainForm";
+            StartPosition = FormStartPosition.CenterScreen;
             Text = "My Tools";
             Load += MainForm_Load;
             NotifyContextMenu.ResumeLayout(false);
