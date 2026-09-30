@@ -8,12 +8,13 @@ root = true
 # All files
 [*]
 indent_style = space
-end_of_line = crlf
+end_of_line = lf
 charset = utf-8-bom
 insert_final_newline = true
 trim_trailing_whitespace = true
 # For VS 2022 need to install Editor Guidelines extension by Paul Harrington
 guidelines = 80, 120
+spelling_exclusion_path = exclusion.dic
 
 # XML project files
 [*.{csproj,vbproj,vcxproj,vcxproj.filters,proj,projitems,shproj}]
@@ -38,10 +39,18 @@ insert_final_newline = true
 # Organize usings
 dotnet_sort_system_directives_first = true
 csharp_style_namespace_declarations = file_scoped:error
-csharp_new_line_before_else = true
-csharp_new_line_before_catch = true
-csharp_new_line_before_finally = true
-csharp_space_between_method_name_and_opening_parenthesis = false
-csharp_space_after_keywords_in_control_flow_statements = true
+csharp_new_line_before_else = true:error
+csharp_new_line_before_catch = true:error
+csharp_new_line_before_finally = true:error
+csharp_space_between_method_name_and_opening_parenthesis = false:error
+csharp_space_after_keywords_in_control_flow_statements = true:error
 dotnet_style_require_public_classes = true:error
 dotnet_diagnostic.IDE0290.severity = none
+# .NET Roslyn rule: Elevates formatting deviations to a Build Error
+dotnet_diagnostic.IDE0055.severity = error
+# Parameter has no matching param tag in the XML comment (but others do)
+dotnet_diagnostic.CS1573.severity = error
+# Remove unnecessary imports (usings)
+dotnet_diagnostic.IDE0005.severity = error
+# Enforce curly braces for code blocks (such as if/else statements)
+dotnet_diagnostic.IDE011.severity = error
