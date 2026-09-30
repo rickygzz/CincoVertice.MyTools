@@ -21,24 +21,31 @@ public static class Program
             return;
         }
 
-        Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
-        Application.ThreadException += (_, e) => HandleUnhandledException(e.Exception);
-        AppDomain.CurrentDomain.UnhandledException += (_, e) => HandleUnhandledException(e.ExceptionObject as Exception);
+        try
+        {
+            Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+            Application.ThreadException += (_, e) => HandleUnhandledException(e.Exception);
+            AppDomain.CurrentDomain.UnhandledException += (_, e) => HandleUnhandledException(e.ExceptionObject as Exception);
 
-        // To customize application configuration such as set high DPI settings or default font,
-        // see https://aka.ms/applicationconfiguration.
-        ApplicationConfiguration.Initialize();
+            // To customize application configuration such as set high DPI settings or default font,
+            // see https://aka.ms/applicationconfiguration.
+            ApplicationConfiguration.Initialize();
 
-        var builder = Host.CreateApplicationBuilder();
+            var builder = Host.CreateApplicationBuilder();
 
-        builder.Configuration.AddMyToolsConfigurationProviders();
-        builder.Services.AddMyToolsUiWinLayer();
+            builder.Configuration.AddMyToolsConfigurationProviders();
+            builder.Services.AddMyToolsUiWinLayer();
 
-        using var host = builder.Build();
+            using var host = builder.Build();
 
-        var mainForm = host.Services.GetRequiredService<MainForm>();
+            var mainForm = host.Services.GetRequiredService<MainForm>();
 
-        Application.Run(mainForm);
+            Application.Run(mainForm);
+        }
+        catch (Exception ex)
+        {
+            HandleUnhandledException(ex);
+        }
     }
 
     private static void HandleUnhandledException(Exception? ex)
