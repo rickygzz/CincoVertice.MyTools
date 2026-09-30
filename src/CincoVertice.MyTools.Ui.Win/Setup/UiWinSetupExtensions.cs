@@ -1,5 +1,4 @@
-﻿using System.Runtime.Versioning;
-using CincoVertice.MyTools.Ui.CodeReview.Views;
+﻿using CincoVertice.MyTools.Ui.CodeReview.Views;
 using CincoVertice.MyTools.Ui.Setup;
 using CincoVertice.MyTools.Ui.Win.CodeReview;
 using CincoVertice.MyTools.Ui.Win.Main;
@@ -8,7 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace CincoVertice.MyTools.Ui.Win.Setup;
 
-[SupportedOSPlatform("windows10.0")]
 public static class UiWinSetupExtensions
 {
     public static IServiceCollection AddMyToolsUiWinLayer(this IServiceCollection services)
@@ -26,7 +24,9 @@ public static class UiWinSetupExtensions
     public static IConfigurationBuilder AddMyToolsConfigurationProviders(
         this IConfigurationBuilder configurationBuilder)
     {
-        configurationBuilder.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+        configurationBuilder
+            .SetBasePath(AppContext.BaseDirectory)
+            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
 
         return configurationBuilder;
     }

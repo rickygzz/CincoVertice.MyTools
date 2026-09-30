@@ -1,12 +1,10 @@
-﻿using System.Runtime.Versioning;
-using CincoVertice.Common.Ui.Rtf.Models;
+﻿using CincoVertice.Common.Ui.Rtf.Models;
 using CincoVertice.Common.Ui.Rtf.Themes;
 using CincoVertice.Common.Ui.Win.Controls.Rtf;
 using CincoVertice.MyTools.Ui.CodeReview.Views;
 
 namespace CincoVertice.MyTools.Ui.Win.CodeReview.Views;
 
-[SupportedOSPlatform("windows10.0")]
 public class ConsoleOutputView : IConsoleOutputView
 {
     public readonly ConsoleOutputControl ConsoleOutput;

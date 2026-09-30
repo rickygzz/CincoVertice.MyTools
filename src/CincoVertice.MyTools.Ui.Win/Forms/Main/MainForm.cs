@@ -1,5 +1,4 @@
-﻿using System.Runtime.Versioning;
-using CincoVertice.Common.WinApi.Hotkey;
+﻿using CincoVertice.Common.WinApi.Hotkey;
 using CincoVertice.Common.WinApi.Hotkey.Window;
 using CincoVertice.Common.WinApi.Libs.Enums;
 using CincoVertice.MyTools.Ui.CodeReview.Presenters;
@@ -10,7 +9,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace CincoVertice.MyTools.Ui.Win.Main;
 
-[SupportedOSPlatform("windows10.0")]
 public partial class MainForm : Form
 {
     private readonly IServiceProvider _serviceProvider;
