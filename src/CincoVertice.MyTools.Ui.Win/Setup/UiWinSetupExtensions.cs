@@ -1,7 +1,9 @@
 ﻿using CincoVertice.MyTools.Ui.CodeReview.Views;
 using CincoVertice.MyTools.Ui.Setup;
 using CincoVertice.MyTools.Ui.Win.CodeReview;
+using CincoVertice.MyTools.Ui.Win.Hotkeys;
 using CincoVertice.MyTools.Ui.Win.Main;
+using CincoVertice.MyTools.Ui.Win.Tray;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -11,7 +13,9 @@ public static class UiWinSetupExtensions
 {
     public static IServiceCollection AddMyToolsUiWinLayer(this IServiceCollection services)
     {
+        services.AddSingleton<TrayApplicationContext>();
         services.AddSingleton<MainForm>();
+        services.AddSingleton<GlobalHotkeyService>();
 
         services.AddScoped<CodeReviewForm>();
         services.AddScoped<ICodeReviewView>(sp => sp.GetRequiredService<CodeReviewForm>());

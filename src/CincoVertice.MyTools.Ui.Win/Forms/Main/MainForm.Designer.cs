@@ -29,39 +29,12 @@
         private void InitializeComponent()
         {
             components = new System.ComponentModel.Container();
-            NotifyIconControl = new NotifyIcon(components);
-            NotifyContextMenu = new ContextMenuStrip(components);
-            ExitNotifyContextMenu = new ToolStripMenuItem();
             MainMenu = new MenuStrip();
             FileMenu = new ToolStripMenuItem();
             CodeReviewMenu = new ToolStripMenuItem();
-            NotifyContextMenu.SuspendLayout();
             MainMenu.SuspendLayout();
             SuspendLayout();
-            // 
-            // NotifyIconControl
-            // 
-            NotifyIconControl.BalloonTipText = "Info";
-            NotifyIconControl.BalloonTipTitle = "My Tools";
-            NotifyIconControl.ContextMenuStrip = NotifyContextMenu;
-            NotifyIconControl.Icon = Resources.Resources.RGIcon;
-            NotifyIconControl.Text = "My Tools";
-            NotifyIconControl.Visible = true;
-            // 
-            // NotifyContextMenu
-            // 
-            NotifyContextMenu.ImageScalingSize = new Size(24, 24);
-            NotifyContextMenu.Items.AddRange(new ToolStripItem[] { ExitNotifyContextMenu });
-            NotifyContextMenu.Name = "NotifyContextMenu";
-            NotifyContextMenu.Size = new Size(93, 26);
-            // 
-            // ExitNotifyContextMenu
-            // 
-            ExitNotifyContextMenu.Name = "ExitNotifyContextMenu";
-            ExitNotifyContextMenu.Size = new Size(92, 22);
-            ExitNotifyContextMenu.Text = "&Exit";
-            ExitNotifyContextMenu.Click += ExitNotifyContextMenu_Click;
-            // 
+            //
             // MainMenu
             // 
             MainMenu.Items.AddRange(new ToolStripItem[] { FileMenu });
@@ -97,7 +70,6 @@
             StartPosition = FormStartPosition.CenterScreen;
             Text = "My Tools";
             Load += MainForm_Load;
-            NotifyContextMenu.ResumeLayout(false);
             MainMenu.ResumeLayout(false);
             MainMenu.PerformLayout();
             ResumeLayout(false);
@@ -106,9 +78,6 @@
 
         #endregion
 
-        private NotifyIcon NotifyIconControl;
-        private ContextMenuStrip NotifyContextMenu;
-        private ToolStripMenuItem ExitNotifyContextMenu;
         private MenuStrip MainMenu;
         private ToolStripMenuItem FileMenu;
         private ToolStripMenuItem CodeReviewMenu;

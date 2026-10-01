@@ -1,10 +1,6 @@
-﻿using CincoVertice.Common.WinApi.Hotkey;
-using CincoVertice.Common.WinApi.Hotkey.Window;
-using CincoVertice.Common.WinApi.Libs.Enums;
 using CincoVertice.MyTools.Ui.CodeReview.Presenters;
 using CincoVertice.MyTools.Ui.CodeReview.Views;
 using CincoVertice.MyTools.Ui.Win.CodeReview;
-using CincoVertice.MyTools.Ui.Win.Forms.Calculator;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CincoVertice.MyTools.Ui.Win.Main;
@@ -13,8 +9,6 @@ public partial class MainForm : Form
 {
     private readonly IServiceProvider _serviceProvider;
 
-    private readonly Hotkey _hotkeys = new();
-
     public MainForm(IServiceProvider serviceProvider)
     {
         InitializeComponent();
@@ -22,35 +16,9 @@ public partial class MainForm : Form
         _serviceProvider = serviceProvider;
     }
 
-    private void ExitNotifyContextMenu_Click(object sender, EventArgs e)
-    {
-        Dispose();
-        Application.Exit();
-    }
-
     private void MainForm_Load(object sender, EventArgs e)
     {
-        HotkeyData hkCalculator = new(
-            FSModifiers.MOD_CONTROL | FSModifiers.MOD_ALT,
-            KeyCode.A,
-            HotKeyDispatcher_HotKeyPressed);
-
-        _hotkeys.RegisterHotKey(hkCalculator);
         // CodeReviewMenu_Click(sender, e);
-    }
-
-    private void HotKeyDispatcher_HotKeyPressed(object? sender, HotkeyKeyPressedEventArgs key)
-    {
-        // Check if modifier is CTL + ALT
-        if (key.Modifier == (FSModifiers.MOD_CONTROL | FSModifiers.MOD_ALT))
-        {
-            if (key.Key == KeyCode.A)
-            {
-                var calculatorForm = new CalculatorForm();
-
-                calculatorForm.Show();
-            }
-        }
     }
 
     private void CodeReviewMenu_Click(object sender, EventArgs e)

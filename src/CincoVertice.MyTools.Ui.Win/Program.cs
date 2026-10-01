@@ -1,6 +1,6 @@
 ﻿using CincoVertice.Common.WinApi.Helpers;
-using CincoVertice.MyTools.Ui.Win.Main;
 using CincoVertice.MyTools.Ui.Win.Setup;
+using CincoVertice.MyTools.Ui.Win.Tray;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -38,9 +38,9 @@ public static class Program
 
             using var host = builder.Build();
 
-            var mainForm = host.Services.GetRequiredService<MainForm>();
+            var trayContext = host.Services.GetRequiredService<TrayApplicationContext>();
 
-            Application.Run(mainForm);
+            Application.Run(trayContext);
         }
         catch (Exception ex)
         {
