@@ -11,9 +11,6 @@ public partial class CalculatorForm : Form
     public CalculatorForm()
     {
         InitializeComponent();
-
-        // Center on current screen
-        CenterOnCurrentScreen();
     }
 
     private void CenterOnCurrentScreen()
@@ -28,10 +25,33 @@ public partial class CalculatorForm : Form
         Location = new Point(x, y);
     }
 
-    private void CalculatorForm_Shown(object sender, EventArgs e)
+    // The form is a singleton reused on every hotkey press, so this runs on each show (Shown only fires once).
+    private void CalculatorForm_VisibleChanged(object? sender, EventArgs e)
     {
-        CalculatorTextBox.Focus();
+        if (!Visible)
+        {
+            return;
+        }
+
+        // Center on current screen
+        CenterOnCurrentScreen();
+
+        // Not Focus(): the form is not active yet, and on activation WinForms restores ActiveControl,
+        // which would otherwise be the control that had focus when the form was last hidden.
+        ActiveControl = CalculatorTextBox;
         CalculatorTextBox.SelectAll();
+    }
+
+    // Safety net for Alt+F4 (still works with ControlBox = false) or any future Close() call.
+    private void CalculatorForm_FormClosing(object? sender, FormClosingEventArgs e)
+    {
+        // Hide instead of closing, so the singleton is not disposed. 
+        // Windows shutdown, etc. still close normally.
+        if (e.CloseReason == CloseReason.UserClosing)
+        {
+            e.Cancel = true;
+            Hide();
+        }
     }
 
     private void CalculatorForm_KeyDown(object sender, KeyEventArgs e)
@@ -69,10 +89,9 @@ public partial class CalculatorForm : Form
             }
         }
 
-        // Close on Escape
         if (e.KeyCode == Keys.Escape)
         {
-            Close();
+            Hide();
         }
         else if (e.KeyCode == Keys.Enter)
         {
@@ -100,7 +119,7 @@ public partial class CalculatorForm : Form
 
     private void CalculatorForm_Deactivate(object sender, EventArgs e)
     {
-        Close();
+        Hide();
     }
 
     private void Calculator_MouseDown(object sender, MouseEventArgs e)

@@ -74,7 +74,8 @@ partial class CalculatorForm
         StartPosition = FormStartPosition.Manual;
         TopMost = true;
         Deactivate += CalculatorForm_Deactivate;
-        Shown += CalculatorForm_Shown;
+        FormClosing += CalculatorForm_FormClosing;
+        VisibleChanged += CalculatorForm_VisibleChanged;
         KeyDown += CalculatorForm_KeyDown;
         MouseDown += Calculator_MouseDown;
         MouseMove += Calculator_MouseMove;

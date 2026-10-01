@@ -1,7 +1,7 @@
-using CincoVertice.MyTools.Ui.Win.Hotkeys;
 using CincoVertice.MyTools.Ui.Win.Main;
+using CincoVertice.MyTools.Ui.Win.Services;
 
-namespace CincoVertice.MyTools.Ui.Win.Tray;
+namespace CincoVertice.MyTools.Ui.Win;
 
 /// <summary>
 ///     Root of the application. Lives in the systray, starts the global hotkeys
