@@ -1,16 +1,25 @@
-﻿namespace CincoVertice.MyTools.Ui.Win.Forms.Calculator;
+﻿using CincoVertice.Common.Application.Calculator;
+
+namespace CincoVertice.MyTools.Ui.Win.Forms.Calculator;
 
 public partial class CalculatorForm : Form
 {
+    private readonly ExpressionCalculator _calculator;
+    private readonly Color _resultColor;
+    private readonly Color _errorColor = Color.LightCoral;
+
     private bool _dragging = false;
     private Point _dragCursorPoint;
     private Point _dragFormPoint;
 
     private const int MOVE_STEP = 10; // Number of pixels to move the window with each arrow key press
 
-    public CalculatorForm()
+    public CalculatorForm(ExpressionCalculator calculator)
     {
         InitializeComponent();
+
+        _calculator = calculator;
+        _resultColor = ResultOutputControl.ForeColor;
     }
 
     private void CenterOnCurrentScreen()
@@ -103,8 +112,6 @@ public partial class CalculatorForm : Form
 
     private void EvaluateExpression()
     {
-        // TODO: Implement expression parser later
-        // For now, just show a placeholder
         string expression = CalculatorTextBox.Text;
 
         if (string.IsNullOrWhiteSpace(expression))
@@ -112,8 +119,22 @@ public partial class CalculatorForm : Form
             return;
         }
 
-        // Placeholder - will implement parser later
-        ResultOutputControl.Text = $"Result: (parser to be implemented)";
+        try
+        {
+            decimal result = _calculator.Evaluate(expression);
+
+            ResultOutputControl.ForeColor = _resultColor;
+            ResultOutputControl.Text = ExpressionCalculator.Format(result, groupThousands: true);
+        }
+        catch (ExpressionException ex)
+        {
+            ResultOutputControl.ForeColor = _errorColor;
+            ResultOutputControl.Text = ex.Message;
+
+            // Put the caret on the error, so it can be fixed right away
+            CalculatorTextBox.Select(Math.Min(ex.Position, expression.Length), ex.Position < expression.Length ? 1 : 0);
+        }
+
         ResultOutputControl.Visible = true;
     }
 

@@ -1,4 +1,5 @@
-﻿using CincoVertice.MyTools.Ui.CodeReview.Views;
+﻿using CincoVertice.Common.Application.Calculator.Setup;
+using CincoVertice.MyTools.Ui.CodeReview.Views;
 using CincoVertice.MyTools.Ui.Setup;
 using CincoVertice.MyTools.Ui.Win.CodeReview;
 using CincoVertice.MyTools.Ui.Win.Forms.Calculator;
@@ -24,6 +25,7 @@ public static class UiWinSetupExtensions
         services.AddScoped<ICodeReviewView>(sp => sp.GetRequiredService<CodeReviewForm>());
 
         UiSetupExtensions.AddMyToolsUiLayer(services);
+        CalculatorSetup.AddApplcationCalculatorLayer(services);
 
         return services;
     }
