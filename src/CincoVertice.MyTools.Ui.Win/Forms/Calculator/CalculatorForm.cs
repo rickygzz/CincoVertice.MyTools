@@ -1,12 +1,11 @@
 ﻿using CincoVertice.Common.Application.Calculator;
+using CincoVertice.Common.Ui.Rtf.Constants;
 
 namespace CincoVertice.MyTools.Ui.Win.Forms.Calculator;
 
 public partial class CalculatorForm : Form
 {
     private readonly ExpressionCalculator _calculator;
-    private readonly Color _resultColor;
-    private readonly Color _errorColor = Color.LightCoral;
 
     private bool _dragging = false;
     private Point _dragCursorPoint;
@@ -19,7 +18,6 @@ public partial class CalculatorForm : Form
         InitializeComponent();
 
         _calculator = calculator;
-        _resultColor = ResultOutputControl.ForeColor;
     }
 
     private void CenterOnCurrentScreen()
@@ -123,12 +121,11 @@ public partial class CalculatorForm : Form
         {
             decimal result = _calculator.Evaluate(expression);
 
-            ResultOutputControl.ForeColor = _resultColor;
-            ResultOutputControl.Text = ExpressionCalculator.Format(result, groupThousands: true);
+            var output = ExpressionCalculator.Format(result, groupThousands: true);
+            ResultOutputControl.AddText(output, RtfConstants.Normal, true);
         }
         catch (ExpressionException ex)
         {
-            ResultOutputControl.ForeColor = _errorColor;
             ResultOutputControl.Text = ex.Message;
 
             // Put the caret on the error, so it can be fixed right away

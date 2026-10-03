@@ -47,8 +47,10 @@ partial class CalculatorForm
         // 
         // ResultOutputControl
         // 
-        ResultOutputControl.BackColor = SystemColors.ControlDarkDark;
+        ResultOutputControl.BackColor = Color.FromArgb(64, 64, 64);
         ResultOutputControl.DetectUrls = false;
+        ResultOutputControl.Font = new Font("Segoe UI", 18F, FontStyle.Regular, GraphicsUnit.Point, 0);
+        ResultOutputControl.ForeColor = SystemColors.Info;
         ResultOutputControl.Location = new Point(5, 47);
         ResultOutputControl.Name = "ResultOutputControl";
         ResultOutputControl.ReadOnly = true;

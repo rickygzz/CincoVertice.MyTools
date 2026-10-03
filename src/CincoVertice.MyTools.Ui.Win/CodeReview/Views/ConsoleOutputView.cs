@@ -50,42 +50,42 @@ public class ConsoleOutputView : IConsoleOutputView
     {
         DisplayMessage("abc", new RtfFormat()
         {
-            Bold = 1,
+            Bold = true,
             ForeColorIndex = ModernConsole.ColorIndex("Accent1Lighter"),
             HighlightColorIndex = ModernConsole.ColorIndex("Accent1Base"),
         });
 
         DisplayMessage("abc", new RtfFormat()
         {
-            Bold = 1,
+            Bold = true,
             ForeColorIndex = ModernConsole.ColorIndex("Accent1Lighter"),
             HighlightColorIndex = ModernConsole.ColorIndex("Accent1Lightest"),
         });
 
         DisplayMessage("abc", new RtfFormat()
         {
-            Bold = 1,
+            Bold = true,
             ForeColorIndex = ModernConsole.ColorIndex("Accent1Lighter"),
             HighlightColorIndex = ModernConsole.ColorIndex("Accent1Lighter"),
         });
 
         DisplayMessage("abc", new RtfFormat()
         {
-            Bold = 1,
+            Bold = true,
             ForeColorIndex = ModernConsole.ColorIndex("Accent1Lighter"),
             HighlightColorIndex = ModernConsole.ColorIndex("Accent1Light"),
         });
 
         DisplayMessage("abc", new RtfFormat()
         {
-            Bold = 1,
+            Bold = true,
             ForeColorIndex = ModernConsole.ColorIndex("Accent1Lighter"),
             HighlightColorIndex = ModernConsole.ColorIndex("Accent1Dark"),
         });
 
         DisplayMessage("abc", new RtfFormat()
         {
-            Bold = 1,
+            Bold = true,
             ForeColorIndex = ModernConsole.ColorIndex("Accent1Lighter"),
             HighlightColorIndex = ModernConsole.ColorIndex("Accent1Darker"),
         });
