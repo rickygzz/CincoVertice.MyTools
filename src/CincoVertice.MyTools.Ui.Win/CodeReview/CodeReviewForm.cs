@@ -16,24 +16,25 @@ public partial class CodeReviewForm : Form, ICodeReviewView
 
     public event EventHandler? LoadCodeReview;
 
-    // public readonly ConsoleOutputView _consoleOutput;
-
     public CodeReviewForm()
     {
         InitializeComponent();
-
-        // _consoleOutput = new ConsoleOutputView(ConsoleOutput);
     }
 
     private void CodeReviewForm_Load(object sender, EventArgs e)
     {
+        // The presenter answers with InitializeConsoleOutput
         LoadCodeReview?.Invoke(this, EventArgs.Empty);
-        // _consoleOutput.OnLoadConsoleOuput(this, EventArgs.Empty);
     }
 
+    /// <summary>
+    ///     Applies the theme: background, default font and color table. Without it the output is black on white,
+    ///     because the color indexes from <see cref="ColorFormat"/> point to an empty color table.
+    /// </summary>
     public void InitializeConsoleOutput()
     {
-        // throw new NotImplementedException();
+        // Same instance ColorFormat looks indexes up in, so they always match the control's color table
+        ConsoleOutput.SetTheme(_theme);
     }
 
     public void ShowCheckingFolder(string folderPath)
