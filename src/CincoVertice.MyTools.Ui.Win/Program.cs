@@ -1,5 +1,6 @@
 ﻿using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.MyTools.Ui.Win.Setup;
+using CincoVertice.MyTools.Ui.Win.Shell;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 

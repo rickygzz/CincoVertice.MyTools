@@ -1,4 +1,4 @@
-﻿namespace CincoVertice.MyTools.Ui.Win.Forms.Calculator;
+﻿namespace CincoVertice.MyTools.Ui.Win.Calculator;
 
 partial class CalculatorForm
 {
@@ -41,9 +41,6 @@ partial class CalculatorForm
         CalculatorTextBox.PlaceholderText = "Enter expression (e.g. 2+2*3)";
         CalculatorTextBox.Size = new Size(790, 32);
         CalculatorTextBox.TabIndex = 0;
-        CalculatorTextBox.MouseDown += Calculator_MouseDown;
-        CalculatorTextBox.MouseMove += Calculator_MouseMove;
-        CalculatorTextBox.MouseUp += Calculator_MouseUp;
         // 
         // ResultOutputControl
         // 
@@ -57,9 +54,6 @@ partial class CalculatorForm
         ResultOutputControl.Size = new Size(790, 38);
         ResultOutputControl.TabIndex = 1;
         ResultOutputControl.Text = "";
-        ResultOutputControl.MouseDown += Calculator_MouseDown;
-        ResultOutputControl.MouseMove += Calculator_MouseMove;
-        ResultOutputControl.MouseUp += Calculator_MouseUp;
         // 
         // CalculatorForm
         // 
@@ -76,12 +70,8 @@ partial class CalculatorForm
         StartPosition = FormStartPosition.Manual;
         TopMost = true;
         Deactivate += CalculatorForm_Deactivate;
-        FormClosing += CalculatorForm_FormClosing;
         VisibleChanged += CalculatorForm_VisibleChanged;
         KeyDown += CalculatorForm_KeyDown;
-        MouseDown += Calculator_MouseDown;
-        MouseMove += Calculator_MouseMove;
-        MouseUp += Calculator_MouseUp;
         ResumeLayout(false);
         PerformLayout();
     }

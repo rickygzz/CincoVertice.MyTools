@@ -1,7 +1,8 @@
-using CincoVertice.MyTools.Ui.Win.Main;
-using CincoVertice.MyTools.Ui.Win.Services;
+﻿using CincoVertice.MyTools.Ui.Win.Behaviors;
+using CincoVertice.MyTools.Ui.Win.CodeReview.Actions;
+using CincoVertice.MyTools.Ui.Win.Shell.Services;
 
-namespace CincoVertice.MyTools.Ui.Win;
+namespace CincoVertice.MyTools.Ui.Win.Shell;
 
 /// <summary>
 ///     Root of the application. Lives in the systray, starts the global hotkeys
@@ -10,13 +11,22 @@ namespace CincoVertice.MyTools.Ui.Win;
 public sealed class TrayApplicationContext : ApplicationContext
 {
     private readonly MainForm _mainForm;
+    private readonly CheckFolderAction _checkFolderAction;
+    private readonly FixFolderAction _fixFolderAction;
     private readonly NotifyIcon _notifyIcon;
 
-    public TrayApplicationContext(MainForm mainForm, GlobalHotkeyService hotkeys)
+    public TrayApplicationContext(
+        MainForm mainForm,
+        GlobalHotkeyService hotkeyService,
+        CheckFolderAction checkFolderAction,
+        FixFolderAction fixFolderAction)
     {
         _mainForm = mainForm;
+        _checkFolderAction = checkFolderAction;
+        _fixFolderAction = fixFolderAction;
         _mainForm.Resize += MainForm_Resize;
-        _mainForm.FormClosing += MainForm_FormClosing;
+        // X hides to the systray
+        _mainForm.HideOnUserClose();
 
         _notifyIcon = new NotifyIcon
         {
@@ -28,7 +38,7 @@ public sealed class TrayApplicationContext : ApplicationContext
         };
         _notifyIcon.DoubleClick += (_, _) => ShowMainForm();
 
-        hotkeys.Start();
+        hotkeyService.Start();
     }
 
     private ContextMenuStrip BuildContextMenu()
@@ -39,6 +49,14 @@ public sealed class TrayApplicationContext : ApplicationContext
         open.Font = new Font(open.Font, FontStyle.Bold);
 
         menu.Items.Add(open);
+        menu.Items.Add(new ToolStripMenuItem(
+            "Check folder for &standard...",
+            null,
+            async (_, _) => await _checkFolderAction.ExecuteAsync()));
+        menu.Items.Add(new ToolStripMenuItem(
+            "&Fix folder for standard...",
+            null,
+            async (_, _) => await _fixFolderAction.ExecuteAsync()));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("&Exit", null, (_, _) => Exit()));
 
@@ -56,16 +74,6 @@ public sealed class TrayApplicationContext : ApplicationContext
     {
         if (_mainForm.WindowState == FormWindowState.Minimized)
         {
-            _mainForm.Hide();
-        }
-    }
-
-    private void MainForm_FormClosing(object? sender, FormClosingEventArgs e)
-    {
-        // X hides to the systray; Windows shutdown, Task Manager, etc. still close normally.
-        if (e.CloseReason == CloseReason.UserClosing)
-        {
-            e.Cancel = true;
             _mainForm.Hide();
         }
     }

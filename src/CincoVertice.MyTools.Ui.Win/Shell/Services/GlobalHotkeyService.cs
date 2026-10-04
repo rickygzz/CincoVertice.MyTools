@@ -1,9 +1,9 @@
 ﻿using CincoVertice.Common.WinApi.Hotkey;
 using CincoVertice.Common.WinApi.Hotkey.Window;
 using CincoVertice.Common.WinApi.Libs.Enums;
-using CincoVertice.MyTools.Ui.Win.Forms.Calculator;
+using CincoVertice.MyTools.Ui.Win.Calculator.Actions;
 
-namespace CincoVertice.MyTools.Ui.Win.Services;
+namespace CincoVertice.MyTools.Ui.Win.Shell.Services;
 
 /// <summary>
 ///     Registers the application-wide hotkeys and runs their actions.
@@ -11,12 +11,12 @@ namespace CincoVertice.MyTools.Ui.Win.Services;
 /// </summary>
 public sealed class GlobalHotkeyService : IDisposable
 {
-    private readonly CalculatorForm _calculatorForm;
+    private readonly ShowCalculatorAction _showCalculatorAction;
     private readonly Hotkey _hotkeys = new();
 
-    public GlobalHotkeyService(CalculatorForm calculatorForm)
+    public GlobalHotkeyService(ShowCalculatorAction showCalculatorAction)
     {
-        _calculatorForm = calculatorForm;
+        _showCalculatorAction = showCalculatorAction;
     }
 
     public void Start()
@@ -28,10 +28,9 @@ public sealed class GlobalHotkeyService : IDisposable
             Calculator_HotKeyPressed));
     }
 
-    private void Calculator_HotKeyPressed(object? sender, HotkeyKeyPressedEventArgs key)
+    private async void Calculator_HotKeyPressed(object? sender, HotkeyKeyPressedEventArgs key)
     {
-        _calculatorForm.Show();
-        _calculatorForm.Activate();
+        await _showCalculatorAction.ExecuteAsync();
     }
 
     public void Dispose()

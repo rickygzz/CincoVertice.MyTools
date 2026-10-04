@@ -1,4 +1,4 @@
-﻿namespace CincoVertice.MyTools.Ui.Win.Main
+﻿namespace CincoVertice.MyTools.Ui.Win.Shell
 {
     partial class MainForm
     {

@@ -2,13 +2,13 @@
 <Project>
   <ItemGroup />
   <ItemGroup>
-    <Compile Update="Forms\Calculator\CalculatorForm.cs">
+    <Compile Update="Calculator\CalculatorForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Update="Forms\CodeReview\CodeReviewForm.cs">
+    <Compile Update="CodeReview\CodeReviewForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Update="Forms\Main\MainForm.cs">
+    <Compile Update="Shell\MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
   </ItemGroup>
