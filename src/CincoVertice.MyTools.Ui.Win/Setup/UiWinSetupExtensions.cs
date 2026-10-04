@@ -1,5 +1,6 @@
 ﻿using CincoVertice.Common.Application.Calculator.Setup;
 using CincoVertice.Common.Application.Setup;
+using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.MyTools.Ui.Calculator.Views;
 using CincoVertice.MyTools.Ui.CodeReview.Views;
 using CincoVertice.MyTools.Ui.Setup;
@@ -9,6 +10,7 @@ using CincoVertice.MyTools.Ui.Win.CodeReview;
 using CincoVertice.MyTools.Ui.Win.CodeReview.Actions;
 using CincoVertice.MyTools.Ui.Win.CodeReview.Services;
 using CincoVertice.MyTools.Ui.Win.Shell;
+using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,10 +28,13 @@ public static class UiWinSetupExtensions
         services.AddSingleton<ICalculatorView>(sp => sp.GetRequiredService<CalculatorForm>());
 
         services.AddSingleton<GlobalHotkeyService>();
+        services.AddSingleton<AppIconService>();
+        services.AddSingleton<MouseMoveSimulator>();
         services.AddSingleton<CodeReviewWindowService>();
         services.AddSingleton<CheckFolderAction>();
         services.AddSingleton<FixFolderAction>();
         services.AddSingleton<ShowCalculatorAction>();
+        services.AddSingleton<ToggleActivityAction>();
 
         services.AddScoped<CodeReviewForm>();
         services.AddScoped<ICodeReviewView>(sp => sp.GetRequiredService<CodeReviewForm>());

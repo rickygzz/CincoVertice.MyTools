@@ -13,24 +13,28 @@ public sealed class TrayApplicationContext : ApplicationContext
     private readonly MainForm _mainForm;
     private readonly CheckFolderAction _checkFolderAction;
     private readonly FixFolderAction _fixFolderAction;
+    private readonly AppIconService _appIconService;
     private readonly NotifyIcon _notifyIcon;
 
     public TrayApplicationContext(
         MainForm mainForm,
         GlobalHotkeyService hotkeyService,
         CheckFolderAction checkFolderAction,
-        FixFolderAction fixFolderAction)
+        FixFolderAction fixFolderAction,
+        AppIconService appIconService)
     {
         _mainForm = mainForm;
         _checkFolderAction = checkFolderAction;
         _fixFolderAction = fixFolderAction;
+        _appIconService = appIconService;
+        _appIconService.Changed += AppIcon_Changed;
         _mainForm.Resize += MainForm_Resize;
         // X hides to the systray
         _mainForm.HideOnUserClose();
 
         _notifyIcon = new NotifyIcon
         {
-            Icon = Resources.Resources.RGIcon,
+            Icon = _appIconService.Current,
             Text = "My Tools",
             BalloonTipTitle = "My Tools",
             ContextMenuStrip = BuildContextMenu(),
@@ -70,6 +74,12 @@ public sealed class TrayApplicationContext : ApplicationContext
         _mainForm.Activate();
     }
 
+    private void AppIcon_Changed(object? sender, EventArgs e)
+    {
+        _notifyIcon.Icon = _appIconService.Current;
+        _mainForm.Icon = _appIconService.Current;
+    }
+
     private void MainForm_Resize(object? sender, EventArgs e)
     {
         if (_mainForm.WindowState == FormWindowState.Minimized)
@@ -90,6 +100,7 @@ public sealed class TrayApplicationContext : ApplicationContext
     {
         if (disposing)
         {
+            _appIconService.Changed -= AppIcon_Changed;
             _notifyIcon.ContextMenuStrip?.Dispose();
             _notifyIcon.Dispose();
         }

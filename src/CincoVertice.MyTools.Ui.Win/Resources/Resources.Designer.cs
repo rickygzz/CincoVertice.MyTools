@@ -69,5 +69,15 @@ namespace CincoVertice.MyTools.Ui.Win.Resources {
                 return ((System.Drawing.Icon)(obj));
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Icon similar to (Icon).
+        /// </summary>
+        internal static System.Drawing.Icon RGRedIcon {
+            get {
+                object obj = ResourceManager.GetObject("RGRedIcon", resourceCulture);
+                return ((System.Drawing.Icon)(obj));
+            }
+        }
     }
 }
