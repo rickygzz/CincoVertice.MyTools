@@ -1,11 +1,12 @@
 ﻿using CincoVertice.MyTools.Ui.Win.CodeReview.Services;
+using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 
 namespace CincoVertice.MyTools.Ui.Win.CodeReview.Actions;
 
 /// <summary>
 ///     Asks for a folder and checks it for the code standard in a new Code Review window.
 /// </summary>
-public sealed class CheckFolderAction
+public sealed class CheckFolderAction : IAppAction
 {
     private readonly CodeReviewWindowService _codeReviewWindowService;
 
@@ -16,6 +17,10 @@ public sealed class CheckFolderAction
     {
         _codeReviewWindowService = codeReviewWindowService;
     }
+
+    public string Name => "CheckFolder";
+
+    public string? DefaultShortcut => null;
 
     /// <summary>
     ///     Shows the folder picker; when a folder is chosen, opens a Code Review window and checks it there.

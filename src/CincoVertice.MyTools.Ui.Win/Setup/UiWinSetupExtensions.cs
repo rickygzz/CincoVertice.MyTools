@@ -1,4 +1,5 @@
 ﻿using CincoVertice.Common.Application.Calculator.Setup;
+using CincoVertice.Common.Application.Scripting;
 using CincoVertice.Common.Application.Setup;
 using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.MyTools.Ui.Calculator.Views;
@@ -9,6 +10,8 @@ using CincoVertice.MyTools.Ui.Win.Calculator.Actions;
 using CincoVertice.MyTools.Ui.Win.CodeReview;
 using CincoVertice.MyTools.Ui.Win.CodeReview.Actions;
 using CincoVertice.MyTools.Ui.Win.CodeReview.Services;
+using CincoVertice.MyTools.Ui.Win.Scripting.Actions;
+using CincoVertice.MyTools.Ui.Win.Scripting.Services;
 using CincoVertice.MyTools.Ui.Win.Shell;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Services;
@@ -35,6 +38,31 @@ public static class UiWinSetupExtensions
         services.AddSingleton<FixFolderAction>();
         services.AddSingleton<ShowCalculatorAction>();
         services.AddSingleton<ToggleActivityAction>();
+        services.AddSingleton<EditHotkeysAction>();
+
+        // Every action can be bound to a shortcut in hotkeys.cfg; same instances as above
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ShowCalculatorAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ToggleActivityAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<CheckFolderAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<FixFolderAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<EditHotkeysAction>());
+
+        // One action per script in config\scripts, after the built-in actions, which win a hotkeys.cfg name clash
+        services.AddSingleton<ScriptEngine>();
+        services.AddSingleton<TrayNotificationService>();
+
+        foreach (string scriptFile in ScriptCatalog.GetScriptFiles())
+        {
+            if (ScriptCatalog.GetActionName(scriptFile).Length > 0)
+            {
+                services.AddSingleton<IAppAction>(sp => new ScriptAction(
+                    scriptFile,
+                    sp.GetRequiredService<ScriptEngine>(),
+                    sp.GetRequiredService<TrayNotificationService>()));
+            }
+        }
+
+        services.AddSingleton(_ => new HotkeyConfigService(HotkeyConfigService.DefaultFilePath));
 
         services.AddScoped<CodeReviewForm>();
         services.AddScoped<ICodeReviewView>(sp => sp.GetRequiredService<CodeReviewForm>());

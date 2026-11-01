@@ -1,11 +1,12 @@
 ﻿using CincoVertice.MyTools.Ui.Calculator.Presenters;
+using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 
 namespace CincoVertice.MyTools.Ui.Win.Calculator.Actions;
 
 /// <summary>
 ///     Shows the calculator, e.g. from the global hotkey.
 /// </summary>
-public sealed class ShowCalculatorAction
+public sealed class ShowCalculatorAction : IAppAction
 {
     private readonly CalculatorPresenter _presenter;
 
@@ -13,6 +14,10 @@ public sealed class ShowCalculatorAction
     {
         _presenter = presenter;
     }
+
+    public string Name => "ShowCalculator";
+
+    public string? DefaultShortcut => "Ctrl+Alt+A";
 
     public Task ExecuteAsync()
     {

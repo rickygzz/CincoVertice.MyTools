@@ -1,7 +1,22 @@
-﻿namespace CincoVertice.MyTools.Ui.Win.Behaviors;
+﻿using CincoVertice.Common.WinApi.Helpers;
+
+namespace CincoVertice.MyTools.Ui.Win.Behaviors;
 
 public static class FormExtensions
 {
+    /// <summary>
+    ///     Brings the form to the foreground with the keyboard focus when it is shown, even while another application
+    ///     is active, e.g. a dialog opened from a global hotkey. Windows would otherwise show it without focus.
+    /// </summary>
+    public static void ActivateWhenShown(this Form form)
+    {
+        form.Shown += (_, _) =>
+        {
+            WindowHelper.ForceForeground(form.Handle);
+            form.Activate();
+        };
+    }
+
     /// <summary>
     ///     Centers the form on the screen the mouse cursor is on.
     /// </summary>

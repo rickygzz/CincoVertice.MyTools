@@ -1,4 +1,5 @@
 ﻿using CincoVertice.MyTools.Ui.Win.CodeReview.Services;
+using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 
 namespace CincoVertice.MyTools.Ui.Win.CodeReview.Actions;
 
@@ -6,7 +7,7 @@ namespace CincoVertice.MyTools.Ui.Win.CodeReview.Actions;
 ///     Asks for a folder and, after a warning, fixes it for the code standard in place, showing the result in a new
 ///     Code Review window.
 /// </summary>
-public sealed class FixFolderAction
+public sealed class FixFolderAction : IAppAction
 {
     private readonly CodeReviewWindowService _codeReviewWindowService;
 
@@ -17,6 +18,10 @@ public sealed class FixFolderAction
     {
         _codeReviewWindowService = codeReviewWindowService;
     }
+
+    public string Name => "FixFolder";
+
+    public string? DefaultShortcut => null;
 
     public async Task ExecuteAsync()
     {

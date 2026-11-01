@@ -7,7 +7,7 @@ namespace CincoVertice.MyTools.Ui.Win.Shell.Actions;
 ///     Turns activity on or off, e.g. from the global hotkey: starts or stops the mouse move timer, and shows the
 ///     red icon while it runs.
 /// </summary>
-public sealed class ToggleActivityAction
+public sealed class ToggleActivityAction : IAppAction
 {
     private readonly MouseMoveSimulator _mouseMoveSimulator;
     private readonly AppIconService _appIconService;
@@ -17,6 +17,10 @@ public sealed class ToggleActivityAction
         _mouseMoveSimulator = mouseMoveSimulator;
         _appIconService = appIconService;
     }
+
+    public string Name => "ToggleActivity";
+
+    public string? DefaultShortcut => "Ctrl+Alt+M";
 
     public Task ExecuteAsync()
     {

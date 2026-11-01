@@ -23,6 +23,7 @@
     <ProjectReference Include="..\..\common\src\CincoVertice.Common.UI.Win.Controls\CincoVertice.Common.UI.Win.Controls.csproj" />
     <ProjectReference Include="..\..\common\src\CincoVertice.Common.WinApi\CincoVertice.Common.WinApi.csproj" />
     <ProjectReference Include="..\CincoVertice.MyTools.UI\CincoVertice.MyTools.UI.csproj" />
+    <ProjectReference Include="..\..\common\src\CincoVertice.Common.Application.Scripting\CincoVertice.Common.Application.Scripting.csproj" />
   </ItemGroup>
 
 </Project>
