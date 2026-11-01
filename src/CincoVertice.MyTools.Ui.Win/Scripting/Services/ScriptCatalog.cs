@@ -20,6 +20,8 @@ public static class ScriptCatalog
         # Functions, by module (see SCRIPTING.md for details):
         #   dialog.ask(prompt, default)  dialog.form(title, [prompts], [defaults])  dialog.message(text)
         #   dialog.confirm(question)  clipboard.gettext()  clipboard.settext(text)  keyboard.type(text)
+        #   clipboard.clear()  clipboard.pasteastext()  window.title()
+        #   keyboard.press("Ctrl+V")  keyboard.press("Tab", 3)
         #   shell.open(address or file)  shell.run(program, arguments)  tray.notify(text)
         #   script.wait(ms)  script.stop()
         #   text.length  text.upper  text.lower  text.trim  text.replace(text, old, new)  text.contains(text, part)

@@ -1,7 +1,9 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 using CincoVertice.Common.Application.Scripting.Interfaces;
 using CincoVertice.Common.WinApi.Helpers;
+using CincoVertice.Common.WinApi.Hotkey;
 using CincoVertice.Common.WinApi.Libs;
 using CincoVertice.Common.WinApi.Libs.Enums;
 using CincoVertice.MyTools.Ui.Win.Shell.Services;
@@ -16,6 +18,9 @@ public sealed class DesktopScriptHost : IScriptHost
 {
     // How long type() waits for the user to release the hotkey's keys
     private const int ReleaseTimeoutMilliseconds = 3000;
+
+    // How long pasteastext() gives the program to read the clipboard before putting the old content back
+    private const int PasteSettleMilliseconds = 500;
 
     private static readonly KeyCode[] _modifierKeys =
         [KeyCode.VK_CONTROL, KeyCode.VK_MENU, KeyCode.VK_SHIFT, KeyCode.VK_LWIN, KeyCode.VK_RWIN];
@@ -85,6 +90,43 @@ public sealed class DesktopScriptHost : IScriptHost
         SendKeys.SendWait(EscapeForSendKeys(text));
     }
 
+    public async Task PasteTextAsync(string text)
+    {
+        // Copied now: the clipboard's own data object stops working once the clipboard changes
+        DataObject? saved = CopyClipboard();
+        SetClipboard(text);
+
+        await WaitForModifierKeysReleasedAsync();
+        InputSimulator.SendShortcut(FSModifiers.MOD_CONTROL, KeyCode.V);
+
+        // The program reads the clipboard when it handles Ctrl+V, a moment after the keys were sent
+        await Task.Delay(PasteSettleMilliseconds);
+
+        if (saved is null)
+        {
+            Clipboard.Clear();
+        }
+        else
+        {
+            Clipboard.SetDataObject(saved, copy: true);
+        }
+    }
+
+    public async Task PressAsync(string keys, int times)
+    {
+        if (!HotkeyParser.TryParseKeys(keys, out FSModifiers modifiers, out KeyCode key, out string error))
+        {
+            throw new ArgumentException(error);
+        }
+
+        // The hotkey's own keys would add to the ones pressed: Ctrl+Alt+V instead of Ctrl+V
+        await WaitForModifierKeysReleasedAsync();
+
+        InputSimulator.SendShortcut(modifiers, key, times);
+    }
+
+    public string GetActiveWindowTitle() => WindowHelper.GetForegroundWindowTitle();
+
     public Task WaitAsync(int milliseconds) => Task.Delay(milliseconds);
 
     public void Notify(string text) => _notifications.Show(_title, text);
@@ -112,6 +154,39 @@ public sealed class DesktopScriptHost : IScriptHost
         WindowHelper.ForceForeground(owner.Handle);
 
         return owner;
+    }
+
+    /// <summary>
+    ///     A copy of everything in the clipboard, in every format it has (text, formatted text, HTML, pictures...).
+    ///     A format that can't be read, e.g. an embedded object, is left out. Null when the clipboard is empty.
+    /// </summary>
+    private static DataObject? CopyClipboard()
+    {
+        var current = Clipboard.GetDataObject();
+
+        if (current is null)
+        {
+            return null;
+        }
+
+        var copy = new DataObject();
+
+        foreach (string format in current.GetFormats(autoConvert: false))
+        {
+            try
+            {
+                if (current.GetData(format, autoConvert: false) is { } data)
+                {
+                    copy.SetData(format, autoConvert: false, data);
+                }
+            }
+            catch (Exception ex) when (ex is ExternalException or NotSupportedException or InvalidOperationException)
+            {
+                // Left out; the other formats are still put back
+            }
+        }
+
+        return copy.GetFormats().Length == 0 ? null : copy;
     }
 
     private static async Task WaitForModifierKeysReleasedAsync()

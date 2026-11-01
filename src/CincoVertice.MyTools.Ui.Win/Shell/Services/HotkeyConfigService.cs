@@ -64,6 +64,7 @@ public sealed class HotkeyConfigService
         sb.AppendLine("# Modifiers: Ctrl, Alt, Shift, Win.");
         sb.AppendLine("# Keys: A-Z, 0-9, F1-F24, NumPad0-NumPad9, Space, Enter, Esc, Tab, Delete, Insert, Home, End,");
         sb.AppendLine("#       PageUp, PageDown, Up, Down, Left, Right, PrintScreen, Plus, Minus.");
+        sb.AppendLine("#       Or the character a key types, e.g. Ctrl+Alt+< (adds Shift if it needs it).");
         sb.AppendLine("# A line starting with # is ignored: remove the # to turn a hotkey on, add it to turn one off.");
         sb.AppendLine();
 
