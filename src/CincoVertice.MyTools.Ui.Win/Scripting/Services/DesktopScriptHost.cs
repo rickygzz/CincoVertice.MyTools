@@ -94,7 +94,9 @@ public sealed class DesktopScriptHost : IScriptHost
     {
         // Copied now: the clipboard's own data object stops working once the clipboard changes
         DataObject? saved = CopyClipboard();
-        SetClipboard(text);
+
+        // Windows line endings, which every program accepts; scripts write lines with \n
+        SetClipboard(text.ReplaceLineEndings("\r\n"));
 
         await WaitForModifierKeysReleasedAsync();
         InputSimulator.SendShortcut(FSModifiers.MOD_CONTROL, KeyCode.V);
