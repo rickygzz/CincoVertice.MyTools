@@ -1,5 +1,6 @@
 ﻿using CincoVertice.Common.Application.Calculator.Setup;
 using CincoVertice.Common.Application.Scripting;
+using CincoVertice.Common.Application.Scripting.Services;
 using CincoVertice.Common.Application.Setup;
 using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.MyTools.Ui.Calculator.Views;
@@ -47,7 +48,8 @@ public static class UiWinSetupExtensions
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<EditHotkeysAction>());
 
         // The built-in actions above, plus one per script in config\scripts, read again on every hotkey reload
-        services.AddSingleton<ScriptEngine>();
+        services.AddSingleton(_ => new ScriptEngine(
+            new JsonFileVariableStore(ScriptCatalog.GlobalVariablesFilePath)));
         services.AddSingleton<TrayNotificationService>();
         services.AddSingleton(sp => new AppActionCatalog(
             sp.GetServices<IAppAction>(),

@@ -66,6 +66,9 @@ public sealed class HotkeyConfigService
         sb.AppendLine("#       PageUp, PageDown, Up, Down, Left, Right, PrintScreen, Plus, Minus.");
         sb.AppendLine("#       Or the character a key types, e.g. Ctrl+Alt+< (adds Shift if it needs it).");
         sb.AppendLine("# A line starting with # is ignored: remove the # to turn a hotkey on, add it to turn one off.");
+        sb.AppendLine("# A script can get a value after the shortcut (script.argument()), one line per value:");
+        sb.AppendLine("#   PrTemplate = Ctrl+Alt+1, app1");
+        sb.AppendLine("#   PrTemplate = Ctrl+Alt+2, app2");
         sb.AppendLine();
 
         foreach (var action in actions.OrderBy(a => a.Name, StringComparer.OrdinalIgnoreCase))

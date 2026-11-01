@@ -40,7 +40,7 @@ public sealed class AppActionCatalog
 
         foreach (string scriptFile in ScriptCatalog.GetScriptFiles(_scriptsFolderPath))
         {
-            if (ScriptCatalog.GetActionName(scriptFile).Length == 0)
+            if (ScriptCatalog.IsLibrary(scriptFile) || ScriptCatalog.GetActionName(scriptFile).Length == 0)
             {
                 continue;
             }

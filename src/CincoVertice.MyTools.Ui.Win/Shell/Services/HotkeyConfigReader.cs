@@ -18,13 +18,14 @@ public static class HotkeyConfigReader
         var result = new HotkeyConfigResultModel();
         ConfigItems items = new ConfigLexer(text).Items;
 
+        // An action can have several lines when each passes a different argument
         HashSet<string> boundActions = new(StringComparer.OrdinalIgnoreCase);
         Dictionary<(FSModifiers, KeyCode), string> usedShortcuts = [];
 
         for (int i = 0; i < items.KeysCount; i++)
         {
             string name = items.GetKeyName(i);
-            string shortcut = WithoutComment(items.GetValue(i));
+            var (shortcut, argument) = SplitArgument(WithoutComment(items.GetValue(i)));
             string? action = actionNames.FirstOrDefault(a => a.Equals(name, StringComparison.OrdinalIgnoreCase));
 
             if (action is null)
@@ -34,9 +35,10 @@ public static class HotkeyConfigReader
                 continue;
             }
 
-            if (!boundActions.Add(action))
+            if (!boundActions.Add(action + "\0" + argument))
             {
-                result.Problems.Add($"{name}: set more than once; the first line is used.");
+                string with = argument is null ? string.Empty : $" with {argument}";
+                result.Problems.Add($"{name}{with}: set more than once; the first line is used.");
 
                 continue;
             }
@@ -56,7 +58,7 @@ public static class HotkeyConfigReader
             }
 
             usedShortcuts[(modifiers, key)] = action;
-            result.Bindings.Add(new HotkeyBindingModel(action, shortcut, modifiers, key));
+            result.Bindings.Add(new HotkeyBindingModel(action, shortcut, modifiers, key, argument));
         }
 
         AddSkippedLines(text, items, result);
@@ -95,6 +97,27 @@ public static class HotkeyConfigReader
                 result.Problems.Add($"Line {i + 1}: '{line}' is not 'Action = Shortcut'.");
             }
         }
+    }
+
+    /// <summary>
+    ///     Splits "Ctrl+Alt+1, app1" at the first comma that is not the shortcut's own key, so "Ctrl+," is the comma
+    ///     key and "Ctrl+,, app1" passes app1. The argument is null when there is none.
+    /// </summary>
+    private static (string Shortcut, string? Argument) SplitArgument(string value)
+    {
+        for (int i = 0; i < value.Length; i++)
+        {
+            string before = value[..i].TrimEnd();
+
+            if (value[i] == ',' && before.Length > 0 && before[^1] != '+')
+            {
+                string argument = value[(i + 1)..].Trim();
+
+                return (before, argument.Length > 0 ? argument : null);
+            }
+        }
+
+        return (value, null);
     }
 
     // A # after the shortcut is a comment; the lexer keeps it in the value

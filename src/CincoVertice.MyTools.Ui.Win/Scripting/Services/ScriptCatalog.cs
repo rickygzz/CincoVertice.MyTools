@@ -24,6 +24,7 @@ public static class ScriptCatalog
         #   keyboard.press("Ctrl+V")  keyboard.press("Tab", 3)
         #   shell.open(address or file)  shell.run(program, arguments)  tray.notify(text)
         #   script.wait(ms)  script.stop()
+        #   global.set(name, value)  global.get(name, default)  (kept between runs, in config\global.vars)
         #   text.length  text.upper  text.lower  text.trim  text.replace(text, old, new)  text.contains(text, part)
         #   text.urlencode  list.length(list)  list.contains(list, item)  number(value)  text(value)
         # Lists:   [a, b, c]  list[1] is the first item  list + list
@@ -42,6 +43,12 @@ public static class ScriptCatalog
         """;
 
     public static string FolderPath { get; } = Path.Combine(AppContext.BaseDirectory, "config", "scripts");
+
+    /// <summary>
+    ///     config\global.vars next to the executable: the global variables of global.set and global.get.
+    /// </summary>
+    public static string GlobalVariablesFilePath { get; } =
+        Path.Combine(AppContext.BaseDirectory, "config", "global.vars");
 
     /// <summary>
     ///     The script files in <paramref name="folderPath"/> (normally <see cref="FolderPath"/>), sorted by name.
@@ -66,6 +73,12 @@ public static class ScriptCatalog
             return [];
         }
     }
+
+    /// <summary>
+    ///     Whether the file is only for script.include: its name starts with "_", as in "_PrCommon.mts". It is not an
+    ///     action, so it is not in the Scripts menu and can't be bound in hotkeys.cfg.
+    /// </summary>
+    public static bool IsLibrary(string filePath) => Path.GetFileName(filePath).StartsWith('_');
 
     /// <summary>
     ///     The action name for a script file: its name without the letters hotkeys.cfg can't use, so

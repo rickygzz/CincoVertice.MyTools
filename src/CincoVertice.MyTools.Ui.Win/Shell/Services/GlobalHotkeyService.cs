@@ -45,12 +45,29 @@ public sealed class GlobalHotkeyService : IDisposable
         foreach (var binding in config.Bindings)
         {
             var action = Actions.First(a => a.Name.Equals(binding.ActionName, StringComparison.OrdinalIgnoreCase));
+            Func<Task> execute;
+
+            if (binding.Argument is null)
+            {
+                execute = action.ExecuteAsync;
+            }
+            else if (action is IArgumentAppAction argumentAction)
+            {
+                string argument = binding.Argument;
+                execute = () => argumentAction.ExecuteAsync(argument);
+            }
+            else
+            {
+                problems.Add($"{binding.ActionName}: takes no value after the shortcut ({binding.Argument}).");
+
+                continue;
+            }
 
             // No repeat: holding the keys down runs the action once, which matters for toggles
             var hotkey = new HotkeyData(
                 binding.Modifiers | FSModifiers.MOD_NOREPEAT,
                 binding.Key,
-                async (_, _) => await action.ExecuteAsync());
+                async (_, _) => await execute());
 
             if (!_hotkeys.TryRegisterHotKey(hotkey, out string error))
             {
