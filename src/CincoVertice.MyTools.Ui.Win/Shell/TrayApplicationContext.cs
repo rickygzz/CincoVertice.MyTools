@@ -23,31 +23,37 @@ public sealed class TrayApplicationContext : ApplicationContext
     private readonly CheckFolderAction _checkFolderAction;
     private readonly FixFolderAction _fixFolderAction;
     private readonly EditHotkeysAction _editHotkeysAction;
-    private readonly IReadOnlyList<ScriptAction> _scriptActions;
+    private readonly GlobalHotkeyService _hotkeyService;
+    private readonly HotkeyFilesWatcher _hotkeyFilesWatcher;
     private readonly TrayNotificationService _notifications;
+    private readonly ToolStripMenuItem _scriptsMenu = new("S&cripts");
     private readonly NotifyIcon _notifyIcon;
+
+    private ToolStripMenuItem? _hotkeyProblemsItem;
 
     public TrayApplicationContext(
         MainForm mainForm,
         AppIconService appIconService,
         GlobalHotkeyService hotkeyService,
+        HotkeyFilesWatcher hotkeyFilesWatcher,
         CheckFolderAction checkFolderAction,
         FixFolderAction fixFolderAction,
         EditHotkeysAction editHotkeysAction,
-        IEnumerable<IAppAction> actions,
         TrayNotificationService notifications)
     {
         _mainForm = mainForm;
         _appIconService = appIconService;
+        _hotkeyService = hotkeyService;
+        _hotkeyFilesWatcher = hotkeyFilesWatcher;
         _checkFolderAction = checkFolderAction;
         _fixFolderAction = fixFolderAction;
         _editHotkeysAction = editHotkeysAction;
-        _scriptActions = [.. actions.OfType<ScriptAction>()];
         _notifications = notifications;
 
         _mainForm.Resize += MainForm_Resize;
         _appIconService.Changed += AppIcon_Changed;
         _notifications.Requested += Notification_Requested;
+        _hotkeyFilesWatcher.Changed += HotkeyFiles_Changed;
 
         // X hides to the systray
         _mainForm.HideOnUserClose();
@@ -62,7 +68,8 @@ public sealed class TrayApplicationContext : ApplicationContext
         };
         _notifyIcon.DoubleClick += (_, _) => ShowMainForm();
 
-        ShowHotkeyProblems(hotkeyService.Start());
+        ReloadHotkeys(announceSuccess: false);
+        _hotkeyFilesWatcher.Start();
     }
 
     private ContextMenuStrip BuildContextMenu()
@@ -91,12 +98,19 @@ public sealed class TrayApplicationContext : ApplicationContext
             async (_, _) => await _editHotkeysAction.ExecuteAsync());
         editHotkeys.Name = EditHotkeysKey;
 
+        // For when the file watcher misses a change, e.g. on a network drive
+        var reloadHotkeys = new ToolStripMenuItem(
+            "&Reload hotkeys",
+            null,
+            (_, _) => ReloadHotkeys(announceSuccess: true));
+
         menu.Items.Add(open);
         menu.Items.Add(checkFolder);
         menu.Items.Add(fixFolder);
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(BuildScriptsMenu());
+        menu.Items.Add(_scriptsMenu);
         menu.Items.Add(editHotkeys);
+        menu.Items.Add(reloadHotkeys);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("&Exit", null, (_, _) => Exit()));
 
@@ -104,31 +118,60 @@ public sealed class TrayApplicationContext : ApplicationContext
     }
 
     /// <summary>
-    ///     Scripts: one item per script in config\scripts, as found at startup, and the folder to add or edit them.
+    ///     Registers the hotkeys in hotkeys.cfg again and refreshes the menus that depend on them.
     /// </summary>
-    private ToolStripMenuItem BuildScriptsMenu()
+    /// <param name="announceSuccess">Whether to show a notification when every hotkey is active.</param>
+    private void ReloadHotkeys(bool announceSuccess)
     {
-        var scripts = new ToolStripMenuItem("S&cripts");
+        var problems = _hotkeyService.Register();
 
-        foreach (var script in _scriptActions)
+        FillScriptsMenu();
+        ShowHotkeyProblems(problems);
+
+        if (announceSuccess && problems.Count == 0)
         {
-            scripts.DropDownItems.Add(new ToolStripMenuItem(
+            _notifyIcon.ShowBalloonTip(3000, "My Tools", "Hotkeys reloaded.", ToolTipIcon.Info);
+        }
+    }
+
+    private void HotkeyFiles_Changed(object? sender, EventArgs e)
+    {
+        ReloadHotkeys(announceSuccess: true);
+    }
+
+    /// <summary>
+    ///     Scripts: one item per script in config\scripts, as of the last reload, and the folder to add or edit them.
+    /// </summary>
+    private void FillScriptsMenu()
+    {
+        // Clear() doesn't dispose the items
+        List<ToolStripItem> oldItems = [.. _scriptsMenu.DropDownItems.Cast<ToolStripItem>()];
+        _scriptsMenu.DropDownItems.Clear();
+
+        foreach (var item in oldItems)
+        {
+            item.Dispose();
+        }
+
+        var scripts = _hotkeyService.Actions.OfType<ScriptAction>().ToList();
+
+        foreach (var script in scripts)
+        {
+            _scriptsMenu.DropDownItems.Add(new ToolStripMenuItem(
                 script.Name,
                 null,
                 async (_, _) => await script.ExecuteAsync()));
         }
 
-        if (_scriptActions.Count > 0)
+        if (scripts.Count > 0)
         {
-            scripts.DropDownItems.Add(new ToolStripSeparator());
+            _scriptsMenu.DropDownItems.Add(new ToolStripSeparator());
         }
 
-        scripts.DropDownItems.Add(new ToolStripMenuItem(
+        _scriptsMenu.DropDownItems.Add(new ToolStripMenuItem(
             "Open scripts &folder",
             null,
             (_, _) => OpenScriptsFolder()));
-
-        return scripts;
     }
 
     private static void OpenScriptsFolder()
@@ -152,6 +195,13 @@ public sealed class TrayApplicationContext : ApplicationContext
 
     private void ShowHotkeyProblems(List<string> problems)
     {
+        if (_hotkeyProblemsItem is not null)
+        {
+            _notifyIcon.ContextMenuStrip!.Items.Remove(_hotkeyProblemsItem);
+            _hotkeyProblemsItem.Dispose();
+            _hotkeyProblemsItem = null;
+        }
+
         if (problems.Count == 0)
         {
             return;
@@ -168,7 +218,7 @@ public sealed class TrayApplicationContext : ApplicationContext
         lines.Add("Tray menu: Hotkey problems, Edit hotkeys.");
 
         // The notification disappears after a few seconds (a toast on Windows 11), so the menu keeps the full list
-        var showProblems = new ToolStripMenuItem(
+        _hotkeyProblemsItem = new ToolStripMenuItem(
             $"Hotkey &problems ({problems.Count})...",
             null,
             (_, _) => MessageBox.Show(
@@ -177,7 +227,7 @@ public sealed class TrayApplicationContext : ApplicationContext
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Warning));
         int editHotkeysIndex = _notifyIcon.ContextMenuStrip!.Items.IndexOfKey(EditHotkeysKey);
-        _notifyIcon.ContextMenuStrip.Items.Insert(editHotkeysIndex, showProblems);
+        _notifyIcon.ContextMenuStrip.Items.Insert(editHotkeysIndex, _hotkeyProblemsItem);
 
         _notifyIcon.ShowBalloonTip(
             10000,
@@ -214,6 +264,7 @@ public sealed class TrayApplicationContext : ApplicationContext
         {
             _appIconService.Changed -= AppIcon_Changed;
             _notifications.Requested -= Notification_Requested;
+            _hotkeyFilesWatcher.Changed -= HotkeyFiles_Changed;
             _notifyIcon.ContextMenuStrip?.Dispose();
             _notifyIcon.Dispose();
         }

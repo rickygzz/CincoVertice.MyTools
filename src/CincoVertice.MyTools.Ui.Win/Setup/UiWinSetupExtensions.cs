@@ -10,7 +10,6 @@ using CincoVertice.MyTools.Ui.Win.Calculator.Actions;
 using CincoVertice.MyTools.Ui.Win.CodeReview;
 using CincoVertice.MyTools.Ui.Win.CodeReview.Actions;
 using CincoVertice.MyTools.Ui.Win.CodeReview.Services;
-using CincoVertice.MyTools.Ui.Win.Scripting.Actions;
 using CincoVertice.MyTools.Ui.Win.Scripting.Services;
 using CincoVertice.MyTools.Ui.Win.Shell;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
@@ -47,22 +46,19 @@ public static class UiWinSetupExtensions
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<FixFolderAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<EditHotkeysAction>());
 
-        // One action per script in config\scripts, after the built-in actions, which win a hotkeys.cfg name clash
+        // The built-in actions above, plus one per script in config\scripts, read again on every hotkey reload
         services.AddSingleton<ScriptEngine>();
         services.AddSingleton<TrayNotificationService>();
-
-        foreach (string scriptFile in ScriptCatalog.GetScriptFiles())
-        {
-            if (ScriptCatalog.GetActionName(scriptFile).Length > 0)
-            {
-                services.AddSingleton<IAppAction>(sp => new ScriptAction(
-                    scriptFile,
-                    sp.GetRequiredService<ScriptEngine>(),
-                    sp.GetRequiredService<TrayNotificationService>()));
-            }
-        }
+        services.AddSingleton(sp => new AppActionCatalog(
+            sp.GetServices<IAppAction>(),
+            sp.GetRequiredService<ScriptEngine>(),
+            sp.GetRequiredService<TrayNotificationService>(),
+            ScriptCatalog.FolderPath));
 
         services.AddSingleton(_ => new HotkeyConfigService(HotkeyConfigService.DefaultFilePath));
+        services.AddSingleton(_ => new HotkeyFilesWatcher(
+            HotkeyConfigService.DefaultFilePath,
+            ScriptCatalog.FolderPath));
 
         services.AddScoped<CodeReviewForm>();
         services.AddScoped<ICodeReviewView>(sp => sp.GetRequiredService<CodeReviewForm>());

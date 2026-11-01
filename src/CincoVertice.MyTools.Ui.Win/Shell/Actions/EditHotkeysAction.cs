@@ -5,8 +5,8 @@ using CincoVertice.MyTools.Ui.Win.Shell.Services;
 namespace CincoVertice.MyTools.Ui.Win.Shell.Actions;
 
 /// <summary>
-///     Opens hotkeys.cfg in its associated editor, or in Notepad when .cfg files have none. Changes apply after a
-///     restart, as the file's header says.
+///     Opens hotkeys.cfg in its associated editor, or in Notepad when .cfg files have none. MyTools reloads the
+///     hotkeys when the file is saved (<see cref="Services.HotkeyFilesWatcher"/>).
 /// </summary>
 public sealed class EditHotkeysAction : IAppAction
 {

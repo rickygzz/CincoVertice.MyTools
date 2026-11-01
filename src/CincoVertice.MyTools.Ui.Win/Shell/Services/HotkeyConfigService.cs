@@ -60,7 +60,7 @@ public sealed class HotkeyConfigService
     {
         var sb = new StringBuilder();
 
-        sb.AppendLine("# MyTools hotkeys: one line per hotkey, Action = Shortcut. Restart MyTools after editing.");
+        sb.AppendLine("# MyTools hotkeys: one line per hotkey, Action = Shortcut. Changes apply when you save.");
         sb.AppendLine("# Modifiers: Ctrl, Alt, Shift, Win.");
         sb.AppendLine("# Keys: A-Z, 0-9, F1-F24, NumPad0-NumPad9, Space, Enter, Esc, Tab, Delete, Insert, Home, End,");
         sb.AppendLine("#       PageUp, PageDown, Up, Down, Left, Right, PrintScreen, Plus, Minus.");

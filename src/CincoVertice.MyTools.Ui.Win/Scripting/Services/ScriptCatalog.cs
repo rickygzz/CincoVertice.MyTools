@@ -14,7 +14,7 @@ public static class ScriptCatalog
 
     private const string ExampleScript =
         """
-        # My Tools script. Bind it in hotkeys.cfg, e.g. GoogleSearch = Ctrl+Alt+G, and restart My Tools.
+        # My Tools script. Bind it in hotkeys.cfg, e.g. GoogleSearch = Ctrl+Alt+G; it applies when you save.
         # The action's name is the file name; changes to this file apply the next time it runs.
         #
         # Functions, by module (see SCRIPTING.md for details):
@@ -42,20 +42,21 @@ public static class ScriptCatalog
     public static string FolderPath { get; } = Path.Combine(AppContext.BaseDirectory, "config", "scripts");
 
     /// <summary>
-    ///     The script files, sorted by name. Creates the folder with an example script the first time.
+    ///     The script files in <paramref name="folderPath"/> (normally <see cref="FolderPath"/>), sorted by name.
+    ///     Creates the folder with an example script the first time.
     /// </summary>
-    public static IReadOnlyList<string> GetScriptFiles()
+    public static IReadOnlyList<string> GetScriptFiles(string folderPath)
     {
         try
         {
-            if (!Directory.Exists(FolderPath))
+            if (!Directory.Exists(folderPath))
             {
-                Directory.CreateDirectory(FolderPath);
-                File.WriteAllText(Path.Combine(FolderPath, ExampleFileName), ExampleScript);
+                Directory.CreateDirectory(folderPath);
+                File.WriteAllText(Path.Combine(folderPath, ExampleFileName), ExampleScript);
             }
 
             // EnumerationOptions avoids the legacy match where *.mts also matches *.mtsx
-            return [.. Directory.EnumerateFiles(FolderPath, "*" + Extension, new EnumerationOptions())
+            return [.. Directory.EnumerateFiles(folderPath, "*" + Extension, new EnumerationOptions())
                 .Order(StringComparer.OrdinalIgnoreCase)];
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

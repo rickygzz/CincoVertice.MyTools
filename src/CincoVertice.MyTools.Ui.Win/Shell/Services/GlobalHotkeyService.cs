@@ -10,33 +10,41 @@ namespace CincoVertice.MyTools.Ui.Win.Shell.Services;
 /// </summary>
 public sealed class GlobalHotkeyService : IDisposable
 {
-    private readonly IReadOnlyList<IAppAction> _actions;
+    private readonly AppActionCatalog _actionCatalog;
     private readonly HotkeyConfigService _hotkeyConfig;
     private readonly Hotkey _hotkeys = new();
 
     public GlobalHotkeyService(
-        IEnumerable<IAppAction> actions,
+        AppActionCatalog actionCatalog,
         HotkeyConfigService hotkeyConfig)
     {
-        _actions = [.. actions];
+        _actionCatalog = actionCatalog;
         _hotkeyConfig = hotkeyConfig;
     }
 
     /// <summary>
-    ///     Registers every hotkey in hotkeys.cfg.
+    ///     The actions as of the last <see cref="Register"/>, including one per script.
+    /// </summary>
+    public IReadOnlyList<IAppAction> Actions { get; private set; } = [];
+
+    /// <summary>
+    ///     Replaces the registered hotkeys with the ones in hotkeys.cfg, for the scripts in the scripts folder now.
     /// </summary>
     /// <returns>
     ///     One problem per hotkey that is not active: a line that can't be used, or a shortcut that Windows refused
     ///     (e.g. another application already uses it). Empty when all are active.
     /// </returns>
-    public List<string> Start()
+    public List<string> Register()
     {
-        var config = _hotkeyConfig.Load(_actions);
+        _hotkeys.UnregisterAll();
+        Actions = _actionCatalog.GetActions();
+
+        var config = _hotkeyConfig.Load(Actions);
         List<string> problems = [.. config.Problems];
 
         foreach (var binding in config.Bindings)
         {
-            var action = _actions.First(a => a.Name.Equals(binding.ActionName, StringComparison.OrdinalIgnoreCase));
+            var action = Actions.First(a => a.Name.Equals(binding.ActionName, StringComparison.OrdinalIgnoreCase));
 
             // No repeat: holding the keys down runs the action once, which matters for toggles
             var hotkey = new HotkeyData(
