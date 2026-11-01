@@ -1,9 +1,9 @@
-﻿//using CincoVertice.Common.Win.Controls.RTF.Models;
+﻿// using CincoVertice.Common.Win.Controls.RTF.Models;
 
-//namespace CincoVertice.MyTools.UI.CodeReview.Adapters;
+// namespace CincoVertice.MyTools.UI.CodeReview.Adapters;
 
-//public interface IConsoleOutputAdapter
-//{
+// public interface IConsoleOutputAdapter
+// {
 //    void AddColors(params Color[] colors);
 //    void Write(string text, RtfFormat format);
 
@@ -12,4 +12,4 @@
 //    void NewLine(int count = 1);
 
 //    void UpdateText();
-//}
+// }

@@ -7,17 +7,17 @@
 // 6) Add helpers for structure: NewLine, WriteKeyValue, WriteList, WriteWithTimestamp, WriteException, WriteBatch to minimize repaint churn.
 // 7) Keep InitializeConsoleOutput minimal and delegate to the helpers for clarity and maintainability.
 
-//using System;
-//using System.Collections.Generic;
-//using System.Drawing;
-//using System.Linq;
-//using System.Windows.Forms;
-//using CincoVertice.Common.Win.Controls.RTF.Models;
+// using System;
+// using System.Collections.Generic;
+// using System.Drawing;
+// using System.Linq;
+// using System.Windows.Forms;
+// using CincoVertice.Common.Win.Controls.RTF.Models;
 
-//namespace CincoVertice.MyTools.UI.CodeReview;
+// namespace CincoVertice.MyTools.UI.CodeReview;
 
-//partial class CodeReviewForm
-//{
+// partial class CodeReviewForm
+// {
 //    // Palette indices mapped to the order in AddColor()
 //    private const int Palette_White = 0;
 //    private const int Palette_PaleBlue = 1;
@@ -78,8 +78,8 @@
 //        // Defaults
 //        fmt.Size = size;
 //        if (lineHeight.HasValue) fmt.LineHeight = lineHeight.Value;
-//        if (bold.HasValue) fmt.Bold = bold.Value ? 1 : 0;
-//        if (italic.HasValue) fmt.Italic = italic.Value ? 1 : 0;
+//        if (bold.HasValue) fmt.Bold = bold.Value;
+//        if (italic.HasValue) fmt.Italic = italic.Value;
 
 //        switch (level)
 //        {
@@ -87,7 +87,7 @@
 //                fmt.ForeColorIndex = Palette_PaleBlue;
 //                fmt.Size = Math.Max(size, 12);
 //                fmt.LineHeight = lineHeight ?? 1.5;
-//                fmt.Bold = 1;
+//                fmt.Bold = true;
 //                break;
 
 //            case ConsoleLevel.Info:
@@ -102,25 +102,25 @@
 
 //            case ConsoleLevel.Warning:
 //                fmt.ForeColorIndex = Palette_Orange;
-//                fmt.Bold = bold ?? true ? 1 : 0;
+//                fmt.Bold = bold ?? true;
 //                break;
 
 //            case ConsoleLevel.Error:
 //                fmt.ForeColorIndex = Palette_Orange;
-//                fmt.Bold = 1;
+//                fmt.Bold = true;
 //                if (highlight) fmt.HighlightColorIndex = Palette_Gold;
 //                break;
 
 //            case ConsoleLevel.Tip:
 //                fmt.ForeColorIndex = Palette_Blue;
-//                fmt.Italic = 1;
+//                fmt.Italic = true;
 //                if (highlight) fmt.HighlightColorIndex = Palette_PaleGreen;
 //                break;
 
 //            case ConsoleLevel.Highlight:
 //                fmt.ForeColorIndex = Palette_White;
 //                fmt.HighlightColorIndex = Palette_Blue;
-//                fmt.Bold = 1;
+//                fmt.Bold = true;
 //                break;
 
 //            default:
@@ -140,7 +140,7 @@
 //        ConsoleWrite(title + (version is null ? string.Empty : " "), GetFormat(ConsoleLevel.Title, size: 12, lineHeight: 1.5, bold: true));
 //        if (!string.IsNullOrWhiteSpace(version))
 //        {
-//            ConsoleWrite(version!, new RtfFormat { Bold = 1 });
+//            ConsoleWrite(version!, new RtfFormat { Bold = true });
 //        }
 //        NewLine();
 //    }
@@ -168,7 +168,7 @@
 
 //    private void WriteKeyValue(string key, string value, bool boldKey = true)
 //    {
-//        ConsoleWrite(key + ": ", new RtfFormat { Bold = boldKey ? 1 : 0, ForeColorIndex = Palette_PaleBlue });
+//        ConsoleWrite(key + ": ", new RtfFormat { Bold = boldKey, ForeColorIndex = Palette_PaleBlue });
 //        ConsoleWrite(value, new RtfFormat { ForeColorIndex = Palette_White });
 //        NewLine();
 //    }
@@ -177,7 +177,7 @@
 //    {
 //        foreach (var item in items)
 //        {
-//            ConsoleWrite($"{bullet} ", new RtfFormat { ForeColorIndex = Palette_PaleBlue, Bold = 1 });
+//            ConsoleWrite($"{bullet} ", new RtfFormat { ForeColorIndex = Palette_PaleBlue, Bold = true });
 //            ConsoleWrite(item, new RtfFormat { ForeColorIndex = Palette_White });
 //            NewLine();
 //        }
@@ -227,10 +227,10 @@
 
 //        WriteTitle("New console", "v1.0.0");
 
-//        WriteInfo("Working on: middleware-services-nubank-quote/common", highlight: true);
+//        WriteInfo("Working on: quote/common", highlight: true);
 //        NewLine();
 
 //        WriteTip("Checkout to DEV and delete branches starting with DEV-");
 //        NewLine();
 //    }
-//}
+// }

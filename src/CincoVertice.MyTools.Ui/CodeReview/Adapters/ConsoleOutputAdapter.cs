@@ -1,7 +1,7 @@
-﻿//namespace CincoVertice.MyTools.UI.CodeReview.Adapters;
+﻿// namespace CincoVertice.MyTools.UI.CodeReview.Adapters;
 
-//public sealed class ConsoleOutputAdapter : IConsoleOutputAdapter
-//{
+// public sealed class ConsoleOutputAdapter : IConsoleOutputAdapter
+// {
 //    private readonly ConsoleOutputControl _console;
 
 //    public ConsoleOutputAdapter(ConsoleOutputControl console)
@@ -43,7 +43,7 @@
 
 //    public void WriteTitle(string title)
 //    {
-//        Write(title, new RtfFormat { Size = 12, LineHeight = 1.5, Bold = 1 });
+//        Write(title, new RtfFormat { Size = 12, LineHeight = 1.5, Bold = true });
 //        NewLine();
 //    }
 
@@ -63,4 +63,4 @@
 //            _console.UpdateText();
 //        }
 //    }
-//}
+// }
