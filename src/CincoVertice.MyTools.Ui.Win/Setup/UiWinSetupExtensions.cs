@@ -6,11 +6,14 @@ using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.MyTools.Ui.Calculator.Views;
 using CincoVertice.MyTools.Ui.CodeReview.Views;
 using CincoVertice.MyTools.Ui.Setup;
+using CincoVertice.MyTools.Ui.Shell.Interfaces;
+using CincoVertice.MyTools.Ui.Shell.Views;
 using CincoVertice.MyTools.Ui.Win.Calculator;
 using CincoVertice.MyTools.Ui.Win.Calculator.Actions;
 using CincoVertice.MyTools.Ui.Win.CodeReview;
 using CincoVertice.MyTools.Ui.Win.CodeReview.Actions;
 using CincoVertice.MyTools.Ui.Win.CodeReview.Services;
+using CincoVertice.MyTools.Ui.Win.Scripting.Actions;
 using CincoVertice.MyTools.Ui.Win.Scripting.Services;
 using CincoVertice.MyTools.Ui.Win.Shell;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
@@ -25,12 +28,14 @@ public static class UiWinSetupExtensions
     public static IServiceCollection AddMyToolsUiWinLayer(this IServiceCollection services)
     {
         services.AddSingleton<TrayApplicationContext>();
+        services.AddSingleton<ITrayView>(sp => sp.GetRequiredService<TrayApplicationContext>());
 
         services.AddSingleton<MainForm>();
         services.AddSingleton<CalculatorForm>();
         services.AddSingleton<ICalculatorView>(sp => sp.GetRequiredService<CalculatorForm>());
 
         services.AddSingleton<GlobalHotkeyService>();
+        services.AddSingleton<IHotkeyRegistrar>(sp => sp.GetRequiredService<GlobalHotkeyService>());
         services.AddSingleton<AppIconService>();
         services.AddSingleton<MouseMoveSimulator>();
         services.AddSingleton<CodeReviewWindowService>();
@@ -39,6 +44,7 @@ public static class UiWinSetupExtensions
         services.AddSingleton<ShowCalculatorAction>();
         services.AddSingleton<ToggleActivityAction>();
         services.AddSingleton<EditHotkeysAction>();
+        services.AddSingleton<OpenScriptsFolderAction>();
 
         // Every action can be bound to a shortcut in hotkeys.cfg; same instances as above
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ShowCalculatorAction>());
@@ -46,6 +52,7 @@ public static class UiWinSetupExtensions
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<CheckFolderAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<FixFolderAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<EditHotkeysAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<OpenScriptsFolderAction>());
 
         // The built-in actions above, plus one per script in config\scripts, read again on every hotkey reload
         services.AddSingleton(_ => new ScriptEngine(

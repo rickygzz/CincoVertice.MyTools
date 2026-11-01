@@ -1,50 +1,61 @@
 ﻿using CincoVertice.Common.WinApi.Hotkey;
 using CincoVertice.Common.WinApi.Libs.Enums;
+using CincoVertice.MyTools.Ui.Shell.Interfaces;
+using CincoVertice.MyTools.Ui.Shell.Models;
+using CincoVertice.MyTools.Ui.Win.Scripting.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 
 namespace CincoVertice.MyTools.Ui.Win.Shell.Services;
 
 /// <summary>
-///     Registers the application-wide hotkeys from hotkeys.cfg, each running its <see cref="IAppAction"/>.
-///     Must be started on the UI thread, since the hotkey window receives its messages there.
+///     Registers the application-wide hotkeys from hotkeys.cfg, each running its <see cref="IAppAction"/>, and
+///     tells when hotkeys.cfg or the scripts change. Must be used on the UI thread, since the hotkey window receives
+///     its messages there.
 /// </summary>
-public sealed class GlobalHotkeyService : IDisposable
+public sealed class GlobalHotkeyService : IHotkeyRegistrar, IDisposable
 {
     private readonly AppActionCatalog _actionCatalog;
     private readonly HotkeyConfigService _hotkeyConfig;
+    private readonly HotkeyFilesWatcher _filesWatcher;
     private readonly Hotkey _hotkeys = new();
 
     public GlobalHotkeyService(
         AppActionCatalog actionCatalog,
-        HotkeyConfigService hotkeyConfig)
+        HotkeyConfigService hotkeyConfig,
+        HotkeyFilesWatcher filesWatcher)
     {
         _actionCatalog = actionCatalog;
         _hotkeyConfig = hotkeyConfig;
+        _filesWatcher = filesWatcher;
+
+        _filesWatcher.Changed += FilesWatcher_Changed;
     }
 
-    /// <summary>
-    ///     The actions as of the last <see cref="Register"/>, including one per script.
-    /// </summary>
-    public IReadOnlyList<IAppAction> Actions { get; private set; } = [];
+    public event EventHandler? FilesChanged;
+
+    public void WatchFiles()
+    {
+        _filesWatcher.Start();
+    }
 
     /// <summary>
     ///     Replaces the registered hotkeys with the ones in hotkeys.cfg, for the scripts in the scripts folder now.
     /// </summary>
     /// <returns>
     ///     One problem per hotkey that is not active: a line that can't be used, or a shortcut that Windows refused
-    ///     (e.g. another application already uses it). Empty when all are active.
+    ///     (e.g. another application already uses it); and the scripts, for the Scripts menu.
     /// </returns>
-    public List<string> Register()
+    public HotkeyRegistrationModel Register()
     {
         _hotkeys.UnregisterAll();
-        Actions = _actionCatalog.GetActions();
+        var actions = _actionCatalog.GetActions();
 
-        var config = _hotkeyConfig.Load(Actions);
+        var config = _hotkeyConfig.Load(actions);
         List<string> problems = [.. config.Problems];
 
         foreach (var binding in config.Bindings)
         {
-            var action = Actions.First(a => a.Name.Equals(binding.ActionName, StringComparison.OrdinalIgnoreCase));
+            var action = actions.First(a => a.Name.Equals(binding.ActionName, StringComparison.OrdinalIgnoreCase));
             Func<Task> execute;
 
             if (binding.Argument is null)
@@ -75,11 +86,22 @@ public sealed class GlobalHotkeyService : IDisposable
             }
         }
 
-        return problems;
+        List<ScriptMenuItemModel> scripts =
+        [
+            .. actions.OfType<ScriptAction>().Select(s => new ScriptMenuItemModel(s.Name, s.ExecuteAsync))
+        ];
+
+        return new HotkeyRegistrationModel(problems, scripts);
+    }
+
+    private void FilesWatcher_Changed(object? sender, EventArgs e)
+    {
+        FilesChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public void Dispose()
     {
+        _filesWatcher.Changed -= FilesWatcher_Changed;
         _hotkeys.Dispose();
     }
 }

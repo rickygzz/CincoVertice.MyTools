@@ -30,6 +30,20 @@ public static class FormExtensions
     }
 
     /// <summary>
+    ///     Hides the form when it is minimized, so it goes to the systray instead of the taskbar.
+    /// </summary>
+    public static void HideOnMinimize(this Form form)
+    {
+        form.Resize += (_, _) =>
+        {
+            if (form.WindowState == FormWindowState.Minimized)
+            {
+                form.Hide();
+            }
+        };
+    }
+
+    /// <summary>
     ///     Makes a user close (X, Alt+F4, Close()) hide the form instead, so a singleton form is not disposed and can
     ///     be shown again. Windows shutdown, Task Manager, Application.Exit, etc. still close it.
     /// </summary>

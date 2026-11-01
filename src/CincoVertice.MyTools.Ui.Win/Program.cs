@@ -1,4 +1,5 @@
 ﻿using CincoVertice.Common.WinApi.Helpers;
+using CincoVertice.MyTools.Ui.Shell.Presenters;
 using CincoVertice.MyTools.Ui.Win.Setup;
 using CincoVertice.MyTools.Ui.Win.Shell;
 using Microsoft.Extensions.DependencyInjection;
@@ -39,6 +40,9 @@ public static class Program
             using var host = builder.Build();
 
             var trayContext = host.Services.GetRequiredService<TrayApplicationContext>();
+
+            // Registers the hotkeys on this thread, the UI thread, and fills the tray menu
+            host.Services.GetRequiredService<TrayPresenter>().Start();
 
             Application.Run(trayContext);
         }
