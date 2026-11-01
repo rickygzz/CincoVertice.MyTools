@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 using CincoVertice.Common.Application.Scripting.Interfaces;
+using CincoVertice.Common.Application.Scripting.Models;
 using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.Common.WinApi.Hotkey;
 using CincoVertice.Common.WinApi.Libs;
@@ -37,9 +38,8 @@ public sealed class DesktopScriptHost : IScriptHost
     public Task<string?> AskAsync(string prompt, string defaultText) =>
         Task.FromResult(InputDialog.Show(_title, prompt, defaultText));
 
-    public Task<IReadOnlyList<string>?> FormAsync(
-        string title, IReadOnlyList<string> prompts, IReadOnlyList<string> defaultTexts) =>
-        Task.FromResult(InputDialog.Show(_title, title, prompts, defaultTexts));
+    public Task<IReadOnlyList<string>?> FormAsync(string title, IReadOnlyList<FormFieldModel> fields) =>
+        Task.FromResult(InputDialog.Show(_title, title, fields));
 
     public Task SayAsync(string text)
     {
