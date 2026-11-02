@@ -1,6 +1,5 @@
-using CincoVertice.Common.WinApi.Helpers;
+﻿using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.MyTools.Ui.Win.Shell.Models;
-using CincoVertice.MyTools.Ui.Win.Shell.Services;
 using CincoVertice.MyTools.Ui.Win.Shell.Services.Config;
 using Xunit;
 

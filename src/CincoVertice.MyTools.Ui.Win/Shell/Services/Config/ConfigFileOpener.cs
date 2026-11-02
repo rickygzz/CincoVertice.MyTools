@@ -1,7 +1,7 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Diagnostics;
 
-namespace CincoVertice.MyTools.Ui.Win.Shell.Services;
+namespace CincoVertice.MyTools.Ui.Win.Shell.Services.Config;
 
 /// <summary>
 ///     Opens a config file for the user to edit.

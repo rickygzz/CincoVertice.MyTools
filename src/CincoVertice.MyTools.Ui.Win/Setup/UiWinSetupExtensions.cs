@@ -20,6 +20,7 @@ using CincoVertice.MyTools.Ui.Win.Scripting.Services;
 using CincoVertice.MyTools.Ui.Win.Shell;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Services;
+using CincoVertice.MyTools.Ui.Win.Shell.Services.Config;
 using CincoVertice.MyTools.Ui.Win.Snipping.Actions;
 using CincoVertice.MyTools.Ui.Win.Snipping.Services;
 using Microsoft.Extensions.Configuration;
