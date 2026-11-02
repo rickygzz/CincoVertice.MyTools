@@ -4,6 +4,11 @@ This repository will contain a Win Forms application that will help me to manage
 
 Work in progress...
 
+## Scripts
+
+Hotkeys can run your own scripts: ask something, open a web page, start a program, type text, and more. See
+[SCRIPTING.md](SCRIPTING.md) for the language and everything it can do.
+
 ```
 ## Git Configuration
 
