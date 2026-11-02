@@ -49,6 +49,9 @@ partial class SnipEditorForm
         MoreColorsMenuItem = new ToolStripMenuItem();
         SizeComboBox = new ToolStripComboBox();
         TransparencyComboBox = new ToolStripComboBox();
+        ArrowHeadEndButton = new ToolStripButton();
+        ArrowHeadStartButton = new ToolStripButton();
+        ArrowHeadsBothButton = new ToolStripButton();
         ColorsSeparator = new ToolStripSeparator();
         UndoButton = new ToolStripButton();
         RedoButton = new ToolStripButton();
@@ -67,7 +70,7 @@ partial class SnipEditorForm
         // Tools
         //
         Tools.GripStyle = ToolStripGripStyle.Hidden;
-        Tools.Items.AddRange(new ToolStripItem[] { PenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, ToolsSeparator, ColorDropDownButton, SizeComboBox, TransparencyComboBox, ColorsSeparator, UndoButton, RedoButton, HistorySeparator, CopyButton, SaveButton });
+        Tools.Items.AddRange(new ToolStripItem[] { PenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, ToolsSeparator, ColorDropDownButton, SizeComboBox, TransparencyComboBox, ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton, ColorsSeparator, UndoButton, RedoButton, HistorySeparator, CopyButton, SaveButton });
         Tools.Location = new Point(0, 0);
         Tools.Name = "Tools";
         Tools.Padding = new Padding(4, 2, 4, 2);
@@ -161,6 +164,33 @@ partial class SnipEditorForm
         TransparencyComboBox.Size = new Size(60, 23);
         TransparencyComboBox.ToolTipText = "Transparency";
         TransparencyComboBox.SelectedIndexChanged += TransparencyComboBox_SelectedIndexChanged;
+        //
+        // ArrowHeadEndButton
+        //
+        ArrowHeadEndButton.DisplayStyle = ToolStripItemDisplayStyle.Image;
+        ArrowHeadEndButton.Name = "ArrowHeadEndButton";
+        ArrowHeadEndButton.Tag = "End";
+        ArrowHeadEndButton.Text = "Head at the end";
+        ArrowHeadEndButton.ToolTipText = "Arrow head where you end the drag";
+        ArrowHeadEndButton.Click += ArrowHeadsButton_Click;
+        //
+        // ArrowHeadStartButton
+        //
+        ArrowHeadStartButton.DisplayStyle = ToolStripItemDisplayStyle.Image;
+        ArrowHeadStartButton.Name = "ArrowHeadStartButton";
+        ArrowHeadStartButton.Tag = "Start";
+        ArrowHeadStartButton.Text = "Head at the start";
+        ArrowHeadStartButton.ToolTipText = "Arrow head where you start the drag";
+        ArrowHeadStartButton.Click += ArrowHeadsButton_Click;
+        //
+        // ArrowHeadsBothButton
+        //
+        ArrowHeadsBothButton.DisplayStyle = ToolStripItemDisplayStyle.Image;
+        ArrowHeadsBothButton.Name = "ArrowHeadsBothButton";
+        ArrowHeadsBothButton.Tag = "Both";
+        ArrowHeadsBothButton.Text = "Heads at both ends";
+        ArrowHeadsBothButton.ToolTipText = "Arrow heads at both ends";
+        ArrowHeadsBothButton.Click += ArrowHeadsButton_Click;
         //
         // ColorsSeparator
         //
@@ -281,6 +311,9 @@ partial class SnipEditorForm
     private ToolStripMenuItem MoreColorsMenuItem;
     private ToolStripComboBox SizeComboBox;
     private ToolStripComboBox TransparencyComboBox;
+    private ToolStripButton ArrowHeadEndButton;
+    private ToolStripButton ArrowHeadStartButton;
+    private ToolStripButton ArrowHeadsBothButton;
     private ToolStripSeparator ColorsSeparator;
     private ToolStripButton UndoButton;
     private ToolStripButton RedoButton;

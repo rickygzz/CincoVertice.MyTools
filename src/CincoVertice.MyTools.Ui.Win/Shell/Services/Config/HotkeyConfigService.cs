@@ -2,7 +2,7 @@
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Models;
 
-namespace CincoVertice.MyTools.Ui.Win.Shell.Services;
+namespace CincoVertice.MyTools.Ui.Win.Shell.Services.Config;
 
 /// <summary>
 ///     Owns hotkeys.cfg: creates it with each action's default shortcut the first time, and reads it.

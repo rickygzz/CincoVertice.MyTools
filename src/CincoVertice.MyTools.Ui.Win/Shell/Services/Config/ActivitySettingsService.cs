@@ -1,8 +1,8 @@
-using System.Text;
+﻿using System.Text;
 using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.MyTools.Ui.Win.Shell.Models;
 
-namespace CincoVertice.MyTools.Ui.Win.Shell.Services;
+namespace CincoVertice.MyTools.Ui.Win.Shell.Services.Config;
 
 /// <summary>
 ///     Owns activity.cfg: creates it with the default settings the first time, and reads it.

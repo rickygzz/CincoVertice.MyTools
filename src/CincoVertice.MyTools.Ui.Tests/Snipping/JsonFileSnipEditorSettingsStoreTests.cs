@@ -58,6 +58,35 @@ public sealed class JsonFileSnipEditorSettingsStoreTests : IDisposable
     }
 
     [Fact]
+    public void SaveThenLoad_KeepsTheArrowHeads()
+    {
+        // Act
+        _store.Save(new SnipEditorSettingsModel(
+            SnipTool.Arrow,
+            new Dictionary<SnipTool, SnipToolSettingsModel>(),
+            [],
+            SnipArrowHeads.Both));
+
+        // Assert
+        Assert.Contains("\"arrowHeads\": \"Both\"", File.ReadAllText(_store.FilePath));
+        Assert.Equal(SnipArrowHeads.Both, _store.Load()!.ArrowHeads);
+    }
+
+    [Fact]
+    public void Load_AFileFromBeforeArrowHeads_HasTheHeadAtTheEnd()
+    {
+        // Arrange
+        WriteFile("""{ "tool": "Arrow" }""");
+
+        // Act
+        SnipEditorSettingsModel? loaded = _store.Load();
+
+        // Assert
+        Assert.NotNull(loaded);
+        Assert.Equal(SnipArrowHeads.End, loaded.ArrowHeads);
+    }
+
+    [Fact]
     public void Save_WritesAFileThatIsEasyToRead()
     {
         // Act

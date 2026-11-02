@@ -60,6 +60,7 @@ public sealed class SnipEditorPresenter
     private readonly List<Color> _customColors = [];
 
     private SnipTool _tool = SnipTool.Pen;
+    private SnipArrowHeads _arrowHeads = SnipArrowHeads.End;
 
     // The drag in progress: where it started, the points of a freehand line, and what it would add
     private Point? _start;
@@ -89,6 +90,7 @@ public sealed class SnipEditorPresenter
         _view.MoreColorsRequested += OnMoreColorsRequested;
         _view.SizeSelected += OnSizeSelected;
         _view.TransparencySelected += OnTransparencySelected;
+        _view.ArrowHeadsSelected += OnArrowHeadsSelected;
         _view.TextCommitted += OnTextCommitted;
         _view.UndoRequested += OnUndoRequested;
         _view.RedoRequested += OnRedoRequested;
@@ -140,6 +142,11 @@ public sealed class SnipEditorPresenter
             _tool = saved.Tool;
         }
 
+        if (Enum.IsDefined(saved.ArrowHeads))
+        {
+            _arrowHeads = saved.ArrowHeads;
+        }
+
         foreach (var (tool, settings) in saved.Tools)
         {
             if (!_settings.TryGetValue(tool, out SnipToolSettingsModel? defaults))
@@ -163,7 +170,11 @@ public sealed class SnipEditorPresenter
     private void SaveSettings()
     {
         // Copies: the store may keep them, and the editor goes on changing its own
-        _settingsStore.Save(new SnipEditorSettingsModel(_tool, _settings.ToDictionary(), [.. _customColors]));
+        _settingsStore.Save(new SnipEditorSettingsModel(
+            _tool,
+            _settings.ToDictionary(),
+            [.. _customColors],
+            _arrowHeads));
     }
 
     /// <summary>
@@ -197,6 +208,7 @@ public sealed class SnipEditorPresenter
         _view.ShowColor(Settings.Color);
         _view.ShowSizes(SizesOf(_tool), Settings.Size);
         _view.ShowTransparencies(Transparencies, Settings.Transparency);
+        _view.ShowArrowHeads(_tool == SnipTool.Arrow ? _arrowHeads : null);
     }
 
     /// <summary>The color without transparency, compared by its value only, as palette colors are.</summary>
@@ -312,6 +324,13 @@ public sealed class SnipEditorPresenter
         SaveSettings();
     }
 
+    private void OnArrowHeadsSelected(object? sender, SnipArrowHeads heads)
+    {
+        _arrowHeads = heads;
+        _view.ShowArrowHeads(heads);
+        SaveSettings();
+    }
+
     private void OnTextCommitted(object? sender, TextInputModel input)
     {
         // Spaces at the end would only make the text wider; an empty text adds nothing
@@ -371,7 +390,7 @@ public sealed class SnipEditorPresenter
         // The pen and the highlighter differ only in their settings
         return _tool switch
         {
-            SnipTool.Arrow => new ArrowAnnotationModel(start, end, color, width),
+            SnipTool.Arrow => new ArrowAnnotationModel(start, end, color, width, _arrowHeads),
             SnipTool.Rectangle => new RectangleAnnotationModel(FromCorners(start, end), color, width),
             _ => new StrokeAnnotationModel([.. _points], color, width),
         };

@@ -1,6 +1,6 @@
 ﻿using CincoVertice.Common.WinApi.Libs.Enums;
 using CincoVertice.MyTools.Ui.Win.Shell.Models;
-using CincoVertice.MyTools.Ui.Win.Shell.Services;
+using CincoVertice.MyTools.Ui.Win.Shell.Services.Config;
 using Xunit;
 
 namespace CincoVertice.MyTools.Ui.Win.Tests.Shell;
@@ -8,6 +8,19 @@ namespace CincoVertice.MyTools.Ui.Win.Tests.Shell;
 public class HotkeyConfigReaderTests
 {
     private static readonly string[] _actions = ["ShowCalculator", "ToggleActivity", "CheckFolder"];
+
+    [Fact]
+    public void Read_AQuoteThatIsNeverClosed_IsReportedAndKeepsTheLinesBeforeIt()
+    {
+        // Act
+        HotkeyConfigResultModel result = HotkeyConfigReader.Read(
+            "ShowCalculator = Ctrl+Alt+A\nCheckFolder = [\"F5\nToggleActivity = F6",
+            _actions);
+
+        // Assert
+        Assert.StartsWith("CheckFolder: the [\" is never closed", Assert.Single(result.Problems));
+        Assert.Equal("ShowCalculator", Assert.Single(result.Bindings).ActionName);
+    }
 
     [Fact]
     public void Read_ReturnsBindingForEachLine()

@@ -1,6 +1,6 @@
-using CincoVertice.Common.WinApi.Helpers;
+﻿using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.MyTools.Ui.Win.Shell.Models;
-using CincoVertice.MyTools.Ui.Win.Shell.Services;
+using CincoVertice.MyTools.Ui.Win.Shell.Services.Config;
 using Xunit;
 
 namespace CincoVertice.MyTools.Ui.Win.Tests.Shell;
@@ -115,6 +115,18 @@ public sealed class ActivitySettingsTests : IDisposable
         // Assert
         Assert.StartsWith(expectedProblemStart, Assert.Single(result.Problems));
         Assert.Equal(MouseMoveSettings.Default, result.Settings);
+    }
+
+    [Fact]
+    public void Read_AQuoteThatIsNeverClosed_IsReportedAndKeepsTheDefault()
+    {
+        // Act
+        ActivitySettingsResultModel result = ActivitySettingsReader.Read(
+            "SpeedMax = 50\nInterval = [\"1000\nSpeedMin = 30");
+
+        // Assert
+        Assert.StartsWith("Interval: the [\" is never closed", Assert.Single(result.Problems));
+        Assert.Equal(MouseMoveSettings.Default with { SpeedMax = 50 }, result.Settings);
     }
 
     [Fact]

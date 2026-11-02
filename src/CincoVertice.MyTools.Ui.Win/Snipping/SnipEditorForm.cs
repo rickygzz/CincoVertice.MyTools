@@ -52,6 +52,11 @@ public partial class SnipEditorForm : Form, ISnipEditorView
             button.Image = Keep(ToolIcons.Create(ToolOf(button), _iconSize));
         }
 
+        foreach (ToolStripButton button in ArrowHeadsButtons())
+        {
+            button.Image = Keep(ToolIcons.CreateArrowHeads(ArrowHeadsOf(button), _iconSize));
+        }
+
         UndoButton.Image = Keep(ToolIcons.CreateUndo(_iconSize));
         RedoButton.Image = Keep(ToolIcons.CreateRedo(_iconSize));
 
@@ -78,6 +83,8 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     public event EventHandler<int>? SizeSelected;
 
     public event EventHandler<int>? TransparencySelected;
+
+    public event EventHandler<SnipArrowHeads>? ArrowHeadsSelected;
 
     public event EventHandler<TextInputModel>? TextCommitted;
 
@@ -140,6 +147,15 @@ public partial class SnipEditorForm : Form, ISnipEditorView
             transparencies,
             selected,
             transparency => $"{transparency}%");
+    }
+
+    public void ShowArrowHeads(SnipArrowHeads? selected)
+    {
+        foreach (ToolStripButton button in ArrowHeadsButtons())
+        {
+            button.Visible = selected is not null;
+            button.Checked = ArrowHeadsOf(button) == selected;
+        }
     }
 
     public void ShowAnnotations(IReadOnlyList<AnnotationModel> annotations)
@@ -233,6 +249,9 @@ public partial class SnipEditorForm : Form, ISnipEditorView
 
     private static SnipTool ToolOf(ToolStripButton button) => Enum.Parse<SnipTool>((string)button.Tag!);
 
+    private static SnipArrowHeads ArrowHeadsOf(ToolStripButton button) =>
+        Enum.Parse<SnipArrowHeads>((string)button.Tag!);
+
     private static Bitmap CreateSwatch(Color color, int size)
     {
         var swatch = new Bitmap(size, size);
@@ -297,6 +316,8 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     }
 
     private ToolStripButton[] ToolButtons() => [PenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton];
+
+    private ToolStripButton[] ArrowHeadsButtons() => [ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton];
 
     /// <summary>
     ///     Makes the window as large as the snip, up to most of the screen; a larger snip scrolls.
@@ -385,6 +406,11 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         {
             TransparencySelected?.Invoke(this, _transparencies[TransparencyComboBox.SelectedIndex]);
         }
+    }
+
+    private void ArrowHeadsButton_Click(object? sender, EventArgs e)
+    {
+        ArrowHeadsSelected?.Invoke(this, ArrowHeadsOf((ToolStripButton)sender!));
     }
 
     private void UndoButton_Click(object? sender, EventArgs e)

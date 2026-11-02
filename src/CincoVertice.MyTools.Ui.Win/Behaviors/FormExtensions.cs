@@ -30,6 +30,19 @@ public static class FormExtensions
     }
 
     /// <summary>
+    ///     Moves the form up if its bottom edge is below its screen's working area, e.g. after it grew.
+    /// </summary>
+    public static void KeepBottomOnScreen(this Form form)
+    {
+        Rectangle area = Screen.FromControl(form).WorkingArea;
+
+        if (form.Bottom > area.Bottom)
+        {
+            form.Top = Math.Max(area.Top, area.Bottom - form.Height);
+        }
+    }
+
+    /// <summary>
     ///     Hides the form when it is minimized, so it goes to the systray instead of the taskbar.
     /// </summary>
     public static void HideOnMinimize(this Form form)

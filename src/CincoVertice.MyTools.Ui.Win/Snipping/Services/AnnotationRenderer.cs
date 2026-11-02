@@ -78,7 +78,16 @@ public static class AnnotationRenderer
         float headSize = arrow.Width <= 2 ? 5 : 3.5f;
         using var head = new AdjustableArrowCap(headSize, headSize, isFilled: true);
 
-        pen.CustomEndCap = head;
+        if (arrow.Heads is SnipArrowHeads.Start or SnipArrowHeads.Both)
+        {
+            pen.CustomStartCap = head;
+        }
+
+        if (arrow.Heads is SnipArrowHeads.End or SnipArrowHeads.Both)
+        {
+            pen.CustomEndCap = head;
+        }
+
         graphics.DrawLine(pen, arrow.From, arrow.To);
     }
 

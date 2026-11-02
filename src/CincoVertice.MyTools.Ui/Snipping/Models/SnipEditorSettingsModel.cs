@@ -9,7 +9,9 @@ namespace CincoVertice.MyTools.Ui.Snipping.Models;
 /// <param name="Tool">The tool selected last.</param>
 /// <param name="Tools">Each tool's size, transparency and color; a tool that's missing keeps its defaults.</param>
 /// <param name="CustomColors">The colors picked with More colors, newest first.</param>
+/// <param name="ArrowHeads">Which ends of the arrow tool's arrows have a head.</param>
 public sealed record SnipEditorSettingsModel(
     SnipTool Tool,
     IReadOnlyDictionary<SnipTool, SnipToolSettingsModel> Tools,
-    IReadOnlyList<Color> CustomColors);
+    IReadOnlyList<Color> CustomColors,
+    SnipArrowHeads ArrowHeads = SnipArrowHeads.End);

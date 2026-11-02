@@ -1,9 +1,9 @@
-using System.Globalization;
+﻿using System.Globalization;
 using CincoVertice.Common.Utils.Config;
 using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.MyTools.Ui.Win.Shell.Models;
 
-namespace CincoVertice.MyTools.Ui.Win.Shell.Services;
+namespace CincoVertice.MyTools.Ui.Win.Shell.Services.Config;
 
 /// <summary>
 ///     Reads activity.cfg with the config lexer: one "Name = Value" per line, # for comments. Every line that can't
@@ -32,7 +32,8 @@ public static class ActivitySettingsReader
     public static ActivitySettingsResultModel Read(string text)
     {
         List<string> problems = [];
-        ConfigItems items = new ConfigLexer(text).Items;
+        ConfigLexer lexer = new(text);
+        ConfigItems items = lexer.Items;
         Dictionary<string, int> values = new(StringComparer.OrdinalIgnoreCase);
         HashSet<string> seen = new(StringComparer.OrdinalIgnoreCase);
         MouseMoveSettings defaults = MouseMoveSettings.Default;
@@ -41,6 +42,14 @@ public static class ActivitySettingsReader
         for (int i = 0; i < items.KeysCount; i++)
         {
             string name = items.GetKeyName(i);
+
+            if (items.GetValueType(i) == ConfigTokenType.ErrorQuotedStringNotClosed)
+            {
+                problems.Add($"{name}: the [\" is never closed, so the rest of the file is ignored.");
+
+                continue;
+            }
+
             string value = WithoutComment(items.GetValue(i));
             bool isMoveImmediately = name.Equals(MoveImmediatelyName, StringComparison.OrdinalIgnoreCase);
 
@@ -67,12 +76,12 @@ public static class ActivitySettingsReader
             }
             else
             {
-                var range = _ranges[name];
-                problems.Add($"{name}: must be a whole number from {range.Min} to {range.Max}; the default is used.");
+                var (Min, Max) = _ranges[name];
+                problems.Add($"{name}: must be a whole number from {Min} to {Max}; the default is used.");
             }
         }
 
-        foreach (var (number, line) in ConfigLineChecker.FindUnreadLines(text, items))
+        foreach (var (number, line) in lexer.BadLines)
         {
             problems.Add($"Line {number}: '{line}' is not 'Name = Value'.");
         }
