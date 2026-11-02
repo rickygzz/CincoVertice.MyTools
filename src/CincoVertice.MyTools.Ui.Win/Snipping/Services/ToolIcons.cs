@@ -55,6 +55,33 @@ public static class ToolIcons
     /// <returns>The undo icon mirrored, turning to the right; the caller disposes it.</returns>
     public static Bitmap CreateRedo(int size) => CreateHistory(size, mirrored: true);
 
+    /// <returns>A level arrow with the heads asked for: End points right; the caller disposes it.</returns>
+    public static Bitmap CreateArrowHeads(SnipArrowHeads heads, int size)
+    {
+        var icon = new Bitmap(size, size);
+
+        using var graphics = Graphics.FromImage(icon);
+        using var head = new AdjustableArrowCap(3.2f, 3.2f, isFilled: true);
+        using var pen = new Pen(_ink, LineWidth);
+
+        graphics.SmoothingMode = SmoothingMode.AntiAlias;
+        graphics.ScaleTransform(size / Grid, size / Grid);
+
+        if (heads is SnipArrowHeads.Start or SnipArrowHeads.Both)
+        {
+            pen.CustomStartCap = head;
+        }
+
+        if (heads is SnipArrowHeads.End or SnipArrowHeads.Both)
+        {
+            pen.CustomEndCap = head;
+        }
+
+        graphics.DrawLine(pen, 2.5f, 8, 13.5f, 8);
+
+        return icon;
+    }
+
     private static Bitmap CreateHistory(int size, bool mirrored)
     {
         var icon = new Bitmap(size, size);

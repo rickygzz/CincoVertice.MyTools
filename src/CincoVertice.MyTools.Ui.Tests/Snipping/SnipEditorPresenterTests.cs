@@ -332,6 +332,99 @@ public class SnipEditorPresenterTests
             Assert.Single(_presenter.Annotations));
     }
 
+    [Theory]
+    [InlineData(SnipArrowHeads.End)]
+    [InlineData(SnipArrowHeads.Start)]
+    [InlineData(SnipArrowHeads.Both)]
+    public void Arrow_HasTheSelectedHeads(SnipArrowHeads heads)
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Arrow);
+        _view.SelectArrowHeads(heads);
+
+        // Act
+        _view.Press(0, 0);
+        _view.Release(50, 50);
+
+        // Assert
+        Assert.Equal(heads, Assert.IsType<ArrowAnnotationModel>(Assert.Single(_presenter.Annotations)).Heads);
+        Assert.Equal(heads, _view.ArrowHeads);
+    }
+
+    [Fact]
+    public void Arrow_HeadsSelectedLater_DoNotChangeTheArrowsDrawn()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Arrow);
+        _view.Press(0, 0);
+        _view.Release(50, 50);
+
+        // Act
+        _view.SelectArrowHeads(SnipArrowHeads.Both);
+
+        // Assert
+        Assert.Equal(
+            SnipArrowHeads.End,
+            Assert.IsType<ArrowAnnotationModel>(Assert.Single(_presenter.Annotations)).Heads);
+    }
+
+    [Theory]
+    [InlineData(SnipTool.Pen)]
+    [InlineData(SnipTool.Highlighter)]
+    [InlineData(SnipTool.Rectangle)]
+    [InlineData(SnipTool.Text)]
+    public void ArrowHeads_AreOnlyOfferedForTheArrow(SnipTool tool)
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Arrow);
+        _view.SelectArrowHeads(SnipArrowHeads.Start);
+
+        // Act
+        _view.SelectTool(tool);
+
+        // Assert
+        Assert.Null(_view.ArrowHeads);
+
+        // Act
+        _view.SelectTool(SnipTool.Arrow);
+
+        // Assert: still the ones selected
+        Assert.Equal(SnipArrowHeads.Start, _view.ArrowHeads);
+    }
+
+    [Fact]
+    public void ArrowHeads_AreSaved_AndANewEditorStartsWithThem()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Arrow);
+
+        // Act
+        _view.SelectArrowHeads(SnipArrowHeads.Both);
+        var view = new FakeSnipEditorView();
+        new SnipEditorPresenter(view, _time, new FakeSettingsStore(_store.Saved[^1])).Start();
+
+        // Assert
+        Assert.Equal(SnipArrowHeads.Both, view.ArrowHeads);
+    }
+
+    [Fact]
+    public void SavedArrowHeadsTheEditorDoesntOffer_KeepTheDefault()
+    {
+        // Arrange
+        var store = new FakeSettingsStore(new SnipEditorSettingsModel(
+            SnipTool.Arrow,
+            new Dictionary<SnipTool, SnipToolSettingsModel>(),
+            [],
+            (SnipArrowHeads)99));
+        var view = new FakeSnipEditorView();
+
+        // Act
+        new SnipEditorPresenter(view, _time, store).Start();
+
+        // Assert
+        Assert.Equal(SnipArrowHeads.End, view.ArrowHeads);
+    }
+
     [Fact]
     public void Rectangle_DraggedUpAndLeft_IsTheSameRectangle()
     {
@@ -629,6 +722,8 @@ public class SnipEditorPresenterTests
 
         public event EventHandler<int>? TransparencySelected;
 
+        public event EventHandler<SnipArrowHeads>? ArrowHeadsSelected;
+
         public event EventHandler<TextInputModel>? TextCommitted;
 
         public event EventHandler? UndoRequested;
@@ -666,6 +761,8 @@ public class SnipEditorPresenterTests
 
         public int Transparency { get; private set; }
 
+        public SnipArrowHeads? ArrowHeads { get; private set; }
+
         public IReadOnlyList<AnnotationModel> Annotations { get; private set; } = [];
 
         public bool CanUndo { get; private set; }
@@ -699,6 +796,8 @@ public class SnipEditorPresenterTests
 
         public void SelectTransparency(int transparency) => TransparencySelected?.Invoke(this, transparency);
 
+        public void SelectArrowHeads(SnipArrowHeads heads) => ArrowHeadsSelected?.Invoke(this, heads);
+
         public void CommitText(int x, int y, string text) =>
             TextCommitted?.Invoke(this, new TextInputModel(new Point(x, y), text));
 
@@ -731,6 +830,8 @@ public class SnipEditorPresenterTests
 
         public void ShowTransparencies(IReadOnlyList<int> transparencies, int selected) =>
             (TransparencyChoices, Transparency) = (transparencies, selected);
+
+        public void ShowArrowHeads(SnipArrowHeads? selected) => ArrowHeads = selected;
 
         public void ShowAnnotations(IReadOnlyList<AnnotationModel> annotations) => Annotations = annotations;
 

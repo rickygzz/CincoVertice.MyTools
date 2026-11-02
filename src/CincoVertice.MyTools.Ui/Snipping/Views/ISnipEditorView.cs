@@ -32,6 +32,9 @@ public interface ISnipEditorView
     /// <summary>Raised with how see-through to draw, in percent.</summary>
     event EventHandler<int>? TransparencySelected;
 
+    /// <summary>Raised with which ends of an arrow should have a head.</summary>
+    event EventHandler<SnipArrowHeads>? ArrowHeadsSelected;
+
     /// <summary>Raised when the user ends a text begun by <see cref="BeginTextInput"/>; it can be empty.</summary>
     event EventHandler<TextInputModel>? TextCommitted;
 
@@ -65,6 +68,9 @@ public interface ISnipEditorView
 
     /// <summary>Shows the transparencies to choose from, in percent, and selects one of them.</summary>
     void ShowTransparencies(IReadOnlyList<int> transparencies, int selected);
+
+    /// <summary>Shows the choice of arrow heads with one selected; null hides it, for the other tools.</summary>
+    void ShowArrowHeads(SnipArrowHeads? selected);
 
     /// <summary>Draws these annotations over the snip, in order, instead of the ones shown before.</summary>
     void ShowAnnotations(IReadOnlyList<AnnotationModel> annotations);
