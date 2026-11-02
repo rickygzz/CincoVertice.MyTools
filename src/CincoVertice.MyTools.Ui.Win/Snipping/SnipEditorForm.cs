@@ -212,15 +212,23 @@ public partial class SnipEditorForm : Form, ISnipEditorView
 
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
-        // Esc never reaches the text box's KeyDown: it is a dialog key
-        if (keyData == Keys.Escape && _textLocation is not null)
+        // An open list closes itself on Esc; the window stays
+        if (keyData != Keys.Escape || SizeComboBox.DroppedDown || TransparencyComboBox.DroppedDown)
         {
-            CancelText();
-
-            return true;
+            return base.ProcessCmdKey(ref msg, keyData);
         }
 
-        return base.ProcessCmdKey(ref msg, keyData);
+        // Esc never reaches the text box's KeyDown: it is a dialog key. While typing, it only drops the text
+        if (_textLocation is not null)
+        {
+            CancelText();
+        }
+        else
+        {
+            Close();
+        }
+
+        return true;
     }
 
     private static SnipTool ToolOf(ToolStripButton button) => Enum.Parse<SnipTool>((string)button.Tag!);
