@@ -1,0 +1,29 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>Resources\RG.ico</ApplicationIcon>
+    <Version>0.0.1</Version>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\common\src\CincoVertice.Common.Application.Calculator\CincoVertice.Common.Application.Calculator.csproj" />
+    <ProjectReference Include="..\..\common\src\CincoVertice.Common.UI.Win.Controls\CincoVertice.Common.UI.Win.Controls.csproj" />
+    <ProjectReference Include="..\..\common\src\CincoVertice.Common.WinApi\CincoVertice.Common.WinApi.csproj" />
+    <ProjectReference Include="..\CincoVertice.MyTools.UI\CincoVertice.MyTools.UI.csproj" />
+    <ProjectReference Include="..\..\common\src\CincoVertice.Common.Application.Scripting\CincoVertice.Common.Application.Scripting.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,61 @@
+﻿using CincoVertice.Common.WinApi.Helpers;
+
+namespace CincoVertice.MyTools.Ui.Win.Behaviors;
+
+public static class FormExtensions
+{
+    /// <summary>
+    ///     Brings the form to the foreground with the keyboard focus when it is shown, even while another application
+    ///     is active, e.g. a dialog opened from a global hotkey. Windows would otherwise show it without focus.
+    /// </summary>
+    public static void ActivateWhenShown(this Form form)
+    {
+        form.Shown += (_, _) =>
+        {
+            WindowHelper.ForceForeground(form.Handle);
+            form.Activate();
+        };
+    }
+
+    /// <summary>
+    ///     Centers the form on the screen the mouse cursor is on.
+    /// </summary>
+    public static void CenterOnCursorScreen(this Form form)
+    {
+        Rectangle area = Screen.FromPoint(Cursor.Position).WorkingArea;
+
+        form.Location = new Point(
+            area.Left + (area.Width - form.Width) / 2,
+            area.Top + (area.Height - form.Height) / 2);
+    }
+
+    /// <summary>
+    ///     Hides the form when it is minimized, so it goes to the systray instead of the taskbar.
+    /// </summary>
+    public static void HideOnMinimize(this Form form)
+    {
+        form.Resize += (_, _) =>
+        {
+            if (form.WindowState == FormWindowState.Minimized)
+            {
+                form.Hide();
+            }
+        };
+    }
+
+    /// <summary>
+    ///     Makes a user close (X, Alt+F4, Close()) hide the form instead, so a singleton form is not disposed and can
+    ///     be shown again. Windows shutdown, Task Manager, Application.Exit, etc. still close it.
+    /// </summary>
+    public static void HideOnUserClose(this Form form)
+    {
+        form.FormClosing += (_, e) =>
+        {
+            if (e.CloseReason == CloseReason.UserClosing)
+            {
+                e.Cancel = true;
+                form.Hide();
+            }
+        };
+    }
+}

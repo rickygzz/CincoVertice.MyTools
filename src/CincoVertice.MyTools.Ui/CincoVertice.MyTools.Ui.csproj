@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\common\src\CincoVertice.Common.Utils\CincoVertice.Common.Utils.csproj" />
+    <ProjectReference Include="..\..\common\src\CincoVertice.Common.Application\CincoVertice.Common.Application.csproj" />
+    <ProjectReference Include="..\..\common\src\CincoVertice.Common.Application.Calculator\CincoVertice.Common.Application.Calculator.csproj" />
+  </ItemGroup>
+
+</Project>
