@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using CincoVertice.Common.Utils.Config;
 using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.MyTools.Ui.Win.Shell.Models;
@@ -76,8 +76,8 @@ public static class ActivitySettingsReader
             }
             else
             {
-                var range = _ranges[name];
-                problems.Add($"{name}: must be a whole number from {range.Min} to {range.Max}; the default is used.");
+                var (Min, Max) = _ranges[name];
+                problems.Add($"{name}: must be a whole number from {Min} to {Max}; the default is used.");
             }
         }
 

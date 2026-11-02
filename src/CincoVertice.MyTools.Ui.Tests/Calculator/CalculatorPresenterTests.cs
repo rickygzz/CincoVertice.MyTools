@@ -1,4 +1,6 @@
-﻿using CincoVertice.Common.Application.Calculator;
+﻿using System.Globalization;
+using CincoVertice.Common.Application.Calculator;
+using CincoVertice.MyTools.Ui.Calculator.Models;
 using CincoVertice.MyTools.Ui.Calculator.Presenters;
 using CincoVertice.MyTools.Ui.Calculator.Views;
 using Xunit;
@@ -87,9 +89,160 @@ public class CalculatorPresenterTests
         Assert.Equal((2, 0), _view.Selection);
     }
 
+    [Fact]
+    public void ToggleHistoryRequested_BeforeAnyOperation_ShowsThatThereAreNone()
+    {
+        // Act
+        _view.RequestToggleHistory();
+
+        // Assert
+        Assert.Equal([], _view.History!);
+        Assert.Equal(CalculatorPresenter.NoHistoryText, _view.HistoryEmptyText);
+    }
+
+    [Fact]
+    public void ToggleHistoryRequested_ShowsEachOperationOldestFirst()
+    {
+        // Arrange
+        Calculate("2+2*3");
+        Calculate("  10000 ");
+
+        // Act
+        _view.RequestToggleHistory();
+
+        // Assert
+        Assert.Equal(
+            [
+                new CalculatorHistoryEntryModel("2+2*3", "8"),
+                new CalculatorHistoryEntryModel("10000", "10,000"),
+            ],
+            _view.History!);
+    }
+
+    [Theory]
+    [InlineData("2+)")]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void History_LeavesOutWhatCouldNotBeEvaluated(string expression)
+    {
+        // Arrange
+        Calculate("1+1");
+        Calculate(expression);
+
+        // Act
+        _view.RequestToggleHistory();
+
+        // Assert
+        Assert.Equal(new CalculatorHistoryEntryModel("1+1", "2"), Assert.Single(_view.History!));
+    }
+
+    [Fact]
+    public void History_KeepsTheNewestOperations()
+    {
+        // Arrange
+        for (int i = 1; i <= CalculatorPresenter.MaxHistory + 1; i++)
+        {
+            Calculate(i.ToString(CultureInfo.InvariantCulture));
+        }
+
+        // Act
+        _view.RequestToggleHistory();
+
+        // Assert
+        Assert.Equal(CalculatorPresenter.MaxHistory, _view.History!.Count);
+        Assert.Equal(new CalculatorHistoryEntryModel("2", "2"), _view.History[0]);
+    }
+
+    [Fact]
+    public void EvaluateRequested_WhileTheHistoryIsShown_AddsToItInsteadOfShowingTheResult()
+    {
+        // Arrange
+        _view.RequestToggleHistory();
+
+        // Act
+        Calculate("1+1");
+
+        // Assert
+        Assert.Equal(new CalculatorHistoryEntryModel("1+1", "2"), Assert.Single(_view.History!));
+        Assert.Null(_view.Result);
+    }
+
+    [Fact]
+    public void EvaluateRequested_WhenErrorWhileTheHistoryIsShown_DrawsTheHistoryAndThenTheError()
+    {
+        // Arrange
+        Calculate("1+1");
+        _view.RequestToggleHistory();
+        _view.Calls.Clear();
+
+        // Act
+        Calculate("2+)");
+        Calculate("3+)");
+
+        // Assert
+        Assert.Equal(["History", "Error", "History", "Error"], _view.Calls);
+    }
+
+    [Fact]
+    public void ToggleHistoryRequested_Twice_HidesItAndShowsTheCurrentResult()
+    {
+        // Arrange
+        _view.RequestToggleHistory();
+        Calculate("1+1");
+        _view.Calls.Clear();
+
+        // Act
+        _view.RequestToggleHistory();
+
+        // Assert
+        Assert.Equal(["HideHistory", "Result"], _view.Calls);
+        Assert.Equal("2", _view.Result);
+    }
+
+    [Fact]
+    public void ToggleHistoryRequested_Twice_AfterAnError_ShowsTheErrorAgain()
+    {
+        // Arrange
+        Calculate("2+)");
+        _view.RequestToggleHistory();
+        _view.Calls.Clear();
+
+        // Act
+        _view.RequestToggleHistory();
+
+        // Assert
+        Assert.Equal(["HideHistory", "Error"], _view.Calls);
+        Assert.Equal((2, 1), _view.Selection);
+    }
+
+    [Fact]
+    public void ToggleHistoryRequested_Twice_BeforeAnyOperation_ShowsAnEmptyResult()
+    {
+        // Act
+        _view.RequestToggleHistory();
+        _view.RequestToggleHistory();
+
+        // Assert
+        Assert.Equal(string.Empty, _view.Result);
+    }
+
+    private void Calculate(string expression)
+    {
+        _view.Expression = expression;
+        _view.RequestEvaluate();
+    }
+
     private sealed class FakeCalculatorView : ICalculatorView
     {
         public event EventHandler? EvaluateRequested;
+
+        public event EventHandler? ToggleHistoryRequested;
+
+        public List<string> Calls { get; } = [];
+
+        public IReadOnlyList<CalculatorHistoryEntryModel>? History { get; private set; }
+
+        public string? HistoryEmptyText { get; private set; }
 
         public string Expression { get; set; } = string.Empty;
 
@@ -105,10 +258,26 @@ public class CalculatorPresenterTests
 
         public void ShowAndActivate() => ShowCount++;
 
-        public void ShowResult(string result) => Result = result;
+        public void RequestToggleHistory() => ToggleHistoryRequested?.Invoke(this, EventArgs.Empty);
+
+        public void ShowResult(string result)
+        {
+            Calls.Add("Result");
+            Result = result;
+        }
+
+        public void ShowHistory(IReadOnlyList<CalculatorHistoryEntryModel> entries, string emptyText)
+        {
+            Calls.Add("History");
+            History = [.. entries];
+            HistoryEmptyText = emptyText;
+        }
+
+        public void HideHistory() => Calls.Add("HideHistory");
 
         public void ShowError(string message, int selectionStart, int selectionLength)
         {
+            Calls.Add("Error");
             Error = message;
             Selection = (selectionStart, selectionLength);
         }

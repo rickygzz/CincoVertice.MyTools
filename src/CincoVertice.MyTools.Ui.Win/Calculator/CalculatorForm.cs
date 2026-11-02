@@ -1,5 +1,7 @@
 ﻿using CincoVertice.Common.Ui.Rtf.Constants;
+using CincoVertice.Common.Ui.Rtf.Models;
 using CincoVertice.Common.Ui.Rtf.Themes;
+using CincoVertice.MyTools.Ui.Calculator.Models;
 using CincoVertice.MyTools.Ui.Calculator.Views;
 using CincoVertice.MyTools.Ui.Win.Behaviors;
 
@@ -11,10 +13,32 @@ namespace CincoVertice.MyTools.Ui.Win.Calculator;
 /// </summary>
 public partial class CalculatorForm : Form, ICalculatorView
 {
+    // How many times its normal height the output is while it shows the history
+    private const int HistoryHeightFactor = 8;
+
+    // What was added to the output's height; 0 at its normal height. Worked out when it grows, not in the
+    // constructor, because the form is only scaled to the screen's DPI when its handle is created.
+    private int _historyExtraHeight;
+
+    // The history's operations, like RtfConstants.Console (its results) but dimmer
+    private readonly RtfFormat _operationFormat;
+
     public CalculatorForm()
     {
         InitializeComponent();
-        ResultOutputControl.SetTheme(new ModernConsole());
+
+        var theme = new ModernConsole();
+
+        ResultOutputControl.SetTheme(theme);
+        _operationFormat = new RtfFormat
+        {
+            Bold = RtfConstants.Console.Bold,
+            Italic = RtfConstants.Console.Italic,
+            ForeColorIndex = theme.ColorIndex("Accent1Dark"),
+            HighlightColorIndex = RtfConstants.Console.HighlightColorIndex,
+            Size = RtfConstants.Console.Size,
+            LineHeight = RtfConstants.Console.LineHeight,
+        };
 
         // Safety net for Alt+F4 (still works with ControlBox = false) or any future Close() call
         FormExtensions.HideOnUserClose(this);
@@ -22,6 +46,8 @@ public partial class CalculatorForm : Form, ICalculatorView
     }
 
     public event EventHandler? EvaluateRequested;
+
+    public event EventHandler? ToggleHistoryRequested;
 
     public string Expression => CalculatorTextBox.Text;
 
@@ -37,9 +63,47 @@ public partial class CalculatorForm : Form, ICalculatorView
         ResultOutputControl.Visible = true;
     }
 
+    public void ShowHistory(IReadOnlyList<CalculatorHistoryEntryModel> entries, string emptyText)
+    {
+        if (_historyExtraHeight == 0)
+        {
+            SetHistoryExtraHeight(ResultOutputControl.Height * (HistoryHeightFactor - 1));
+        }
+
+        ResultOutputControl.SetText(entries.Count == 0 ? emptyText : string.Empty, _operationFormat);
+
+        for (int i = 0; i < entries.Count; i++)
+        {
+            if (i > 0)
+            {
+                ResultOutputControl.AddNewLine();
+            }
+
+            ResultOutputControl.AddText($"{entries[i].Operation} = ", _operationFormat);
+            ResultOutputControl.AddText(entries[i].Result, RtfConstants.Console);
+        }
+
+        ResultOutputControl.UpdateText(scrollToBottom: true);
+        ResultOutputControl.Visible = true;
+    }
+
+    public void HideHistory()
+    {
+        SetHistoryExtraHeight(0);
+    }
+
     public void ShowError(string message, int selectionStart, int selectionLength)
     {
-        ResultOutputControl.SetText(message, RtfConstants.Highlight, updateContent: true);
+        if (_historyExtraHeight > 0)
+        {
+            ResultOutputControl.AddNewLine();
+            ResultOutputControl.AddText(message, RtfConstants.Highlight, updateContent: true);
+        }
+        else
+        {
+            ResultOutputControl.SetText(message, RtfConstants.Highlight, updateContent: true);
+        }
+
         ResultOutputControl.Visible = true;
 
         CalculatorTextBox.Select(selectionStart, selectionLength);
@@ -78,6 +142,25 @@ public partial class CalculatorForm : Form, ICalculatorView
             e.Handled = true;
             e.SuppressKeyPress = true;
         }
+        else if (e.KeyData == (Keys.Control | Keys.H))
+        {
+            ToggleHistoryRequested?.Invoke(this, EventArgs.Empty);
+            e.Handled = true;
+
+            // Otherwise a text box takes Ctrl+H as a backspace
+            e.SuppressKeyPress = true;
+        }
+    }
+
+    private void SetHistoryExtraHeight(int extraHeight)
+    {
+        int change = extraHeight - _historyExtraHeight;
+
+        _historyExtraHeight = extraHeight;
+        ResultOutputControl.Height += change;
+        ClientSize = new Size(ClientSize.Width, ClientSize.Height + change);
+
+        FormExtensions.KeepBottomOnScreen(this);
     }
 
     private void CalculatorForm_Deactivate(object sender, EventArgs e)
