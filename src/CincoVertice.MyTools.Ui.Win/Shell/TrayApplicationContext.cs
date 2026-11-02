@@ -38,6 +38,7 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView
         CheckFolderAction checkFolderAction,
         FixFolderAction fixFolderAction,
         EditHotkeysAction editHotkeysAction,
+        EditActivitySettingsAction editActivitySettingsAction,
         OpenScriptsFolderAction openScriptsFolderAction)
     {
         _mainForm = mainForm;
@@ -63,6 +64,7 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView
 
         // For when the file watcher misses a change, e.g. on a network drive
         AddItem(menu.Items, "&Reload hotkeys", () => ReloadHotkeysRequested?.Invoke(this, EventArgs.Empty));
+        AddAction(menu.Items, "Edit &activity settings...", editActivitySettingsAction);
         menu.Items.Add(new ToolStripSeparator());
         AddItem(menu.Items, "&Exit", Exit);
 

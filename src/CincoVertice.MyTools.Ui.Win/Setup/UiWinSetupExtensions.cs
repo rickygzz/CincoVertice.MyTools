@@ -48,6 +48,7 @@ public static class UiWinSetupExtensions
         services.AddSingleton<ShowCalculatorAction>();
         services.AddSingleton<ToggleActivityAction>();
         services.AddSingleton<EditHotkeysAction>();
+        services.AddSingleton<EditActivitySettingsAction>();
         services.AddSingleton<OpenScriptsFolderAction>();
         services.AddSingleton<ScreenSnipper>();
         services.AddSingleton<ISnipEditorSettingsStore>(_ =>
@@ -61,6 +62,7 @@ public static class UiWinSetupExtensions
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<CheckFolderAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<FixFolderAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<EditHotkeysAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<EditActivitySettingsAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<OpenScriptsFolderAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<SnipRegionAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<SnipAndEditAction>());
@@ -76,6 +78,7 @@ public static class UiWinSetupExtensions
             ScriptCatalog.FolderPath));
 
         services.AddSingleton(_ => new HotkeyConfigService(HotkeyConfigService.DefaultFilePath));
+        services.AddSingleton(_ => new ActivitySettingsService(ActivitySettingsService.DefaultFilePath));
         services.AddSingleton(_ => new HotkeyFilesWatcher(
             HotkeyConfigService.DefaultFilePath,
             ScriptCatalog.FolderPath));
