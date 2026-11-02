@@ -1,8 +1,14 @@
 ﻿# My Tools
 
-This repository will contain a Win Forms application that will help me to manage my daily tasks and projects.
+**A Windows tray app for screen snips, global hotkeys and your own scripts.**
 
-Work in progress...
+My Tools runs in the system tray and is always a hotkey away. Snip part of the screen and mark it up with arrows,
+shapes and text, use the calculator, review code, or write small scripts and bind them to any shortcut.
+
+## Running the app
+
+Windows may warn that the publisher can't be verified, because this build isn't code signed. To run it, click
+**Run**. If you see "Windows protected your PC" instead, click **More info**, then **Run anyway**.
 
 ## Scripts
 
