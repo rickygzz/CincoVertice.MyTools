@@ -1,4 +1,4 @@
-using CincoVertice.MyTools.Ui.Snipping.Interfaces;
+﻿using CincoVertice.MyTools.Ui.Snipping.Interfaces;
 using CincoVertice.MyTools.Ui.Snipping.Presenters;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 using CincoVertice.MyTools.Ui.Win.Snipping.Services;
@@ -26,7 +26,7 @@ public sealed class SnipAndEditAction : IAppAction
 
     public string Name => "SnipAndEdit";
 
-    public string? DefaultShortcut => "Ctrl+Alt+Shift+S";
+    public string? DefaultShortcut => "Ctrl+Alt+S";
 
     public async Task ExecuteAsync()
     {

@@ -1,4 +1,4 @@
-using CincoVertice.MyTools.Ui.Win.Shell.Actions;
+﻿using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 using CincoVertice.MyTools.Ui.Win.Snipping.Services;
 
 namespace CincoVertice.MyTools.Ui.Win.Snipping.Actions;
@@ -17,7 +17,7 @@ public sealed class SnipRegionAction : IAppAction
 
     public string Name => "SnipRegion";
 
-    public string? DefaultShortcut => "Ctrl+Alt+S";
+    public string? DefaultShortcut => "Ctrl+Alt+Shift+S";
 
     public async Task ExecuteAsync()
     {
