@@ -1,5 +1,6 @@
 ﻿using CincoVertice.Common.Utils.Config;
 using CincoVertice.Common.WinApi.Hotkey;
+using CincoVertice.Common.WinApi.Libs;
 using CincoVertice.Common.WinApi.Libs.Enums;
 using CincoVertice.MyTools.Ui.Win.Shell.Models;
 
@@ -13,13 +14,27 @@ public static class HotkeyConfigReader
 {
     /// <param name="text">The content of hotkeys.cfg.</param>
     /// <param name="actionNames">The names of the actions that can be bound.</param>
-    public static HotkeyConfigResultModel Read(string text, IReadOnlyCollection<string> actionNames)
+    public static HotkeyConfigResultModel Read(string text, IReadOnlyCollection<string> actionNames) =>
+        Read(text, actionNames, c => User32.VkKeyScan(c));
+
+    /// <summary>
+    ///     Reads hotkeys.cfg, finding the keys of characters with <paramref name="keyScan"/> instead of the current
+    ///     keyboard layout, e.g. in tests.
+    /// </summary>
+    /// <param name="text">The content of hotkeys.cfg.</param>
+    /// <param name="actionNames">The names of the actions that can be bound.</param>
+    /// <param name="keyScan">Like VkKeyScan: the key and shift state of a character; -1 when no key types it.</param>
+    public static HotkeyConfigResultModel Read(
+        string text,
+        IReadOnlyCollection<string> actionNames,
+        Func<char, short> keyScan)
     {
         var result = new HotkeyConfigResultModel();
         ConfigItems items = new ConfigLexer(text).Items;
 
-        // An action can have several lines when each passes a different argument
-        HashSet<string> boundActions = new(StringComparer.OrdinalIgnoreCase);
+        // An action can have several lines when each passes a different argument. Ordinal: the action's spelling
+        // comes from actionNames, and arguments that differ only in case are different arguments
+        HashSet<string> boundActions = new(StringComparer.Ordinal);
         Dictionary<(FSModifiers, KeyCode), string> usedShortcuts = [];
 
         for (int i = 0; i < items.KeysCount; i++)
@@ -43,7 +58,7 @@ public static class HotkeyConfigReader
                 continue;
             }
 
-            if (!HotkeyParser.TryParse(shortcut, out FSModifiers modifiers, out KeyCode key, out string error))
+            if (!HotkeyParser.TryParse(shortcut, keyScan, out FSModifiers modifiers, out KeyCode key, out string error))
             {
                 result.Problems.Add($"{name}: {error}");
 
@@ -120,11 +135,25 @@ public static class HotkeyConfigReader
         return (value, null);
     }
 
-    // A # after the shortcut is a comment; the lexer keeps it in the value
+    /// <summary>
+    ///     Removes a comment after the shortcut, which the lexer keeps in the value. A # starts a comment when it
+    ///     starts the value or follows a space, unless it is the shortcut's own key: "Ctrl+# # note" is the # key with
+    ///     a comment, and "Ctrl+1, app#1" passes app#1.
+    /// </summary>
     private static string WithoutComment(string value)
     {
-        int hash = value.IndexOf('#');
+        for (int i = 0; i < value.Length; i++)
+        {
+            string before = value[..i].TrimEnd();
 
-        return (hash < 0 ? value : value[..hash]).Trim();
+            if (value[i] == '#'
+                && (i == 0 || char.IsWhiteSpace(value[i - 1]))
+                && (before.Length == 0 || before[^1] != '+'))
+            {
+                return before;
+            }
+        }
+
+        return value.Trim();
     }
 }

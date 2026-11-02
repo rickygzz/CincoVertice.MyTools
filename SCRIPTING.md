@@ -53,6 +53,8 @@ PrTemplate = Ctrl+Alt+1, app1
 PrTemplate = Ctrl+Alt+2, app2
 ```
 
+A `#` after a space starts a comment, so `app#1` is passed whole, but `app #1` passes only `app`.
+
 If a hotkeys.cfg line can't be used (a misspelled name, or a shortcut another program already uses), My Tools shows a
 notification when it loads the hotkeys, and the tray menu gets a **Hotkey problems** item that lists every problem.
 

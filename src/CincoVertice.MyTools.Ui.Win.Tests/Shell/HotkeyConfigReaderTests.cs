@@ -52,6 +52,95 @@ public class HotkeyConfigReaderTests
     }
 
     [Theory]
+    [InlineData("ShowCalculator =\nToggleActivity = Ctrl+Alt+M")]
+    [InlineData("ShowCalculator =   \r\nToggleActivity = Ctrl+Alt+M\r\n")]
+    [InlineData("ShowCalculator = # none\nToggleActivity = Ctrl+Alt+M")]
+    public void Read_EmptyBinding_KeepsTheNextLine(string text)
+    {
+        // Act
+        HotkeyConfigResultModel result = HotkeyConfigReader.Read(text, _actions);
+
+        // Assert
+        Assert.Equal("ToggleActivity", Assert.Single(result.Bindings).ActionName);
+        Assert.StartsWith("ShowCalculator: No shortcut", Assert.Single(result.Problems));
+    }
+
+    [Theory]
+    [InlineData("123Search")]
+    [InlineData("_private")]
+    public void Read_BindsActionsStartingWithADigitOrUnderscore(string action)
+    {
+        // Act
+        HotkeyConfigResultModel result = HotkeyConfigReader.Read($"{action} = Ctrl+Alt+1", [action]);
+
+        // Assert
+        Assert.Empty(result.Problems);
+        Assert.Equal(action, Assert.Single(result.Bindings).ActionName);
+    }
+
+    [Fact]
+    public void Read_ArgumentsThatDifferOnlyInCase_AreDifferentBindings()
+    {
+        // Act
+        HotkeyConfigResultModel result = HotkeyConfigReader.Read(
+            "CheckFolder = Ctrl+Alt+1, A\ncheckfolder = Ctrl+Alt+2, a",
+            _actions);
+
+        // Assert
+        Assert.Empty(result.Problems);
+        Assert.Equal(["A", "a"], result.Bindings.Select(binding => binding.Argument));
+    }
+
+    [Fact]
+    public void Read_SameActionAndArgumentInAnotherCaseOfTheAction_IsADuplicate()
+    {
+        // Act
+        HotkeyConfigResultModel result = HotkeyConfigReader.Read(
+            "CheckFolder = Ctrl+Alt+1, a\ncheckfolder = Ctrl+Alt+2, a",
+            _actions);
+
+        // Assert
+        Assert.Single(result.Bindings);
+        Assert.Contains("set more than once", Assert.Single(result.Problems));
+    }
+
+    [Theory]
+    [InlineData("CheckFolder = Ctrl+Alt+#", "Ctrl+Alt+#", null)]
+    [InlineData("CheckFolder = Ctrl+Alt+# # note", "Ctrl+Alt+#", null)]
+    [InlineData("CheckFolder = Ctrl + Alt + # # note", "Ctrl + Alt + #", null)]
+    [InlineData("CheckFolder = Ctrl+Alt+#, app1", "Ctrl+Alt+#", "app1")]
+    [InlineData("CheckFolder = Ctrl+Alt+1, app#1", "Ctrl+Alt+1", "app#1")]
+    [InlineData("CheckFolder = Ctrl+Alt+1, app#1 # note", "Ctrl+Alt+1", "app#1")]
+    [InlineData("CheckFolder = Ctrl+Alt+1 #note", "Ctrl+Alt+1", null)]
+    public void Read_HashIsACommentOnlyAfterASpaceAndNotAsTheKey(string text, string shortcut, string? argument)
+    {
+        // Act: # is Shift+3 here, as on a US keyboard; on others it can need AltGr, which can't be a hotkey
+        HotkeyConfigResultModel result = HotkeyConfigReader.Read(
+            text,
+            _actions,
+            c => c == '#' ? (short)0x133 : (short)-1);
+
+        // Assert
+        Assert.Empty(result.Problems);
+        HotkeyBindingModel binding = Assert.Single(result.Bindings);
+        Assert.Equal((shortcut, argument), (binding.Shortcut, binding.Argument));
+    }
+
+    [Fact]
+    public void Read_HashKeyThatNeedsAltGr_SaysSo()
+    {
+        // Act: Ctrl and Alt in the shift state, as on a keyboard that types # with AltGr
+        HotkeyConfigResultModel result = HotkeyConfigReader.Read(
+            "CheckFolder = Ctrl+Alt+#",
+            _actions,
+            c => c == '#' ? (short)0x633 : (short)-1);
+
+        // Assert
+        Assert.Empty(result.Bindings);
+        Assert.Contains("'#' is typed with AltGr", Assert.Single(result.Problems));
+    }
+
+    [Theory]
     [InlineData("Unknown = Ctrl+Alt+A", "Unknown: unknown action")]
     [InlineData("ShowCalculator = Ctrl+Alt+Foo", "ShowCalculator: 'Foo' is not a key")]
     [InlineData("ShowCalculator =", "ShowCalculator: No shortcut")]

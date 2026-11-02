@@ -30,6 +30,10 @@ public sealed class DesktopScriptHost : IScriptHost
         KeyCode.VK_LWIN,
         KeyCode.VK_RWIN ];
 
+    // One paste at a time across all scripts, each of which has its own host: another script's paste in between would
+    // send the wrong text and leave temporary text on the clipboard
+    private static readonly SemaphoreSlim _pasteGate = new(1, 1);
+
     private readonly string _title;
     private readonly TrayNotificationService _notifications;
 
@@ -96,25 +100,34 @@ public sealed class DesktopScriptHost : IScriptHost
 
     public async Task PasteTextAsync(string text)
     {
-        // Copied now: the clipboard's own data object stops working once the clipboard changes
-        DataObject? saved = CopyClipboard();
+        await _pasteGate.WaitAsync();
 
-        // Windows line endings, which every program accepts; scripts write lines with \n
-        SetClipboard(text.ReplaceLineEndings("\r\n"));
-
-        await WaitForModifierKeysReleasedAsync();
-        InputSimulator.SendShortcut(FSModifiers.MOD_CONTROL, KeyCode.V);
-
-        // The program reads the clipboard when it handles Ctrl+V, a moment after the keys were sent
-        await Task.Delay(PasteSettleMilliseconds);
-
-        if (saved is null)
+        try
         {
-            Clipboard.Clear();
+            // Copied now: the clipboard's own data object stops working once the clipboard changes
+            DataObject? saved = CopyClipboard();
+
+            // Windows line endings, which every program accepts; scripts write lines with \n
+            SetClipboard(text.ReplaceLineEndings("\r\n"));
+
+            await WaitForModifierKeysReleasedAsync();
+            InputSimulator.SendShortcut(FSModifiers.MOD_CONTROL, KeyCode.V);
+
+            // The program reads the clipboard when it handles Ctrl+V, a moment after the keys were sent
+            await Task.Delay(PasteSettleMilliseconds);
+
+            if (saved is null)
+            {
+                Clipboard.Clear();
+            }
+            else
+            {
+                Clipboard.SetDataObject(saved, copy: true);
+            }
         }
-        else
+        finally
         {
-            Clipboard.SetDataObject(saved, copy: true);
+            _pasteGate.Release();
         }
     }
 

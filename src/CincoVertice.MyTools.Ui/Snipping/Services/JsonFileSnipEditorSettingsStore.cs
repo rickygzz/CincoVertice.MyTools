@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -43,7 +43,7 @@ public sealed class JsonFileSnipEditorSettingsStore : ISnipEditorSettingsStore
 
             var file = JsonSerializer.Deserialize<SettingsFile>(File.ReadAllText(FilePath), _options);
 
-            if (file is null)
+            if (file is null || file.Tools?.Values.Any(tool => tool is null) == true)
             {
                 return null;
             }

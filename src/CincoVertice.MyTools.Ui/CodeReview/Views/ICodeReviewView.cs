@@ -4,7 +4,7 @@ namespace CincoVertice.MyTools.Ui.CodeReview.Views;
 
 public interface ICodeReviewView : IConsoleOutputView
 {
-    event EventHandler LoadCodeReview;
+    event EventHandler? LoadCodeReview;
 
     /// <summary>Shows that a folder check has started.</summary>
     void ShowCheckingFolder(string folderPath);

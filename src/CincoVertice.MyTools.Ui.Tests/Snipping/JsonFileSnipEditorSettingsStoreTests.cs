@@ -155,6 +155,7 @@ public sealed class JsonFileSnipEditorSettingsStoreTests : IDisposable
     [InlineData("not json")]
     [InlineData("""{ "tool": "Brush" }""")]
     [InlineData("""{ "tool": "Pen", "tools": { "Brush": { "size": 4 } } }""")]
+    [InlineData("""{ "tool": "Pen", "tools": { "Pen": null } }""")]
     [InlineData("null")]
     public void Load_ABrokenFile_GivesNothing(string json)
     {
