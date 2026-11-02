@@ -60,6 +60,7 @@ public sealed class ToggleActivityAction : IAppAction
         _mouseMoveSimulator.IdleTicksBeforeMove = result.Settings.IdleTicksBeforeMove;
         _mouseMoveSimulator.SpeedMin = result.Settings.SpeedMin;
         _mouseMoveSimulator.SpeedMax = result.Settings.SpeedMax;
+        _mouseMoveSimulator.MoveImmediately = result.Settings.MoveImmediately;
 
         if (result.Problems.Count > 0)
         {

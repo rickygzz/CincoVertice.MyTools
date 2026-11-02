@@ -21,11 +21,54 @@ public sealed class ActivitySettingsTests : IDisposable
     {
         // Act
         ActivitySettingsResultModel result = ActivitySettingsReader.Read(
-            "# My settings\nInterval = 1000\nidleticksbeforemove = 0\r\nSpeedMin = 30\nSpeedMax = 40 # slow\n");
+            "# My settings\nInterval = 1000\nidleticksbeforemove = 0\r\nSpeedMin = 30\nSpeedMax = 40 # slow\n"
+            + "MoveImmediately = false\n");
 
         // Assert
         Assert.Empty(result.Problems);
-        Assert.Equal(new ActivitySettingsModel(1000, 0, 30, 40), result.Settings);
+        Assert.Equal(new ActivitySettingsModel(1000, 0, 30, 40, false), result.Settings);
+    }
+
+    [Theory]
+    [InlineData("MoveImmediately = true", true)]
+    [InlineData("MoveImmediately = false", false)]
+    [InlineData("moveimmediately = FALSE", false)]
+    [InlineData("MoveImmediately = True # right away", true)]
+    [InlineData("MoveImmediately = false # wait", false)]
+    public void Read_MoveImmediately_IsTrueOrFalseInAnyCase(string text, bool expected)
+    {
+        // Act
+        ActivitySettingsResultModel result = ActivitySettingsReader.Read(text);
+
+        // Assert
+        Assert.Empty(result.Problems);
+        Assert.Equal(expected, result.Settings.MoveImmediately);
+    }
+
+    [Theory]
+    [InlineData("MoveImmediately = yes")]
+    [InlineData("MoveImmediately = 1")]
+    [InlineData("MoveImmediately =")]
+    public void Read_MoveImmediatelyThatIsNotTrueOrFalse_KeepsTheDefault(string text)
+    {
+        // Act
+        ActivitySettingsResultModel result = ActivitySettingsReader.Read(text);
+
+        // Assert
+        Assert.StartsWith("MoveImmediately: must be true or false", Assert.Single(result.Problems));
+        Assert.Equal(ActivitySettingsModel.Default, result.Settings);
+    }
+
+    [Fact]
+    public void Read_MoveImmediatelyTwice_UsesTheFirst()
+    {
+        // Act
+        ActivitySettingsResultModel result = ActivitySettingsReader.Read(
+            "MoveImmediately = false\nMoveImmediately = true");
+
+        // Assert
+        Assert.StartsWith("MoveImmediately: set more than once", Assert.Single(result.Problems));
+        Assert.False(result.Settings.MoveImmediately);
     }
 
     [Fact]
@@ -62,7 +105,7 @@ public sealed class ActivitySettingsTests : IDisposable
     [InlineData("SpeedMin = 19", "SpeedMin: must be a whole number from 20 to 100")]
     [InlineData("SpeedMax = 101", "SpeedMax: must be a whole number from 20 to 100")]
     [InlineData("Speed = 50", "Speed: unknown setting")]
-    [InlineData("Interval 1000", "Line 1: 'Interval 1000' is not 'Name = Number'")]
+    [InlineData("Interval 1000", "Line 1: 'Interval 1000' is not 'Name = Value'")]
     public void Read_ALineThatCantBeUsed_IsReportedAndKeepsTheDefaults(string text, string expectedProblemStart)
     {
         // Act

@@ -59,11 +59,15 @@ public sealed class ActivitySettingsService
         sb.AppendLine("#   The wait is about Interval x IdleTicksBeforeMove: 5000 x 20 is 100 seconds.");
         sb.AppendLine("# SpeedMin, SpeedMax: how slow a move is, picked at random between the two (20 to 100).");
         sb.AppendLine("#   Higher is slower, so SpeedMin is the fastest. SpeedMin can't be above SpeedMax.");
+        sb.AppendLine("# MoveImmediately: true to move the mouse as soon as you turn it on; false to wait first,");
+        sb.AppendLine("#   as after you move the mouse.");
         sb.AppendLine();
         sb.AppendLine($"{ActivitySettingsReader.IntervalName} = {defaults.Interval}");
         sb.AppendLine($"{ActivitySettingsReader.IdleTicksName} = {defaults.IdleTicksBeforeMove}");
         sb.AppendLine($"{ActivitySettingsReader.SpeedMinName} = {defaults.SpeedMin}");
         sb.AppendLine($"{ActivitySettingsReader.SpeedMaxName} = {defaults.SpeedMax}");
+        sb.AppendLine(
+            $"{ActivitySettingsReader.MoveImmediatelyName} = {defaults.MoveImmediately.ToString().ToLowerInvariant()}");
 
         return sb.ToString();
     }
