@@ -53,7 +53,7 @@ public class CalculatorPresenter
 
         try
         {
-            string result = ExpressionCalculator.Format(_calculator.Evaluate(expression), groupThousands: true);
+            string result = _calculator.EvaluateToText(expression, groupThousands: true);
 
             AddToHistory(new CalculatorHistoryEntryModel(expression.Trim(), result));
             _showCurrent = () => _view.ShowResult(result);

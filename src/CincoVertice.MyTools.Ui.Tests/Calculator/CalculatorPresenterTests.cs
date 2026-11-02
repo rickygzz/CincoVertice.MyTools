@@ -31,6 +31,7 @@ public class CalculatorPresenterTests
     [InlineData("2+2*3", "8")]
     [InlineData("10000", "10,000")]
     [InlineData("1/4", "0.25")]
+    [InlineData("3 km to m", "3,000 m")]
     public void EvaluateRequested_ShowsFormattedResult(string expression, string expected)
     {
         // Arrange
