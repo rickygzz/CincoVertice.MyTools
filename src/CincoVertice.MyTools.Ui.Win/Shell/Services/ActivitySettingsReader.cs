@@ -1,5 +1,6 @@
 using System.Globalization;
 using CincoVertice.Common.Utils.Config;
+using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.MyTools.Ui.Win.Shell.Models;
 
 namespace CincoVertice.MyTools.Ui.Win.Shell.Services;
@@ -34,7 +35,7 @@ public static class ActivitySettingsReader
         ConfigItems items = new ConfigLexer(text).Items;
         Dictionary<string, int> values = new(StringComparer.OrdinalIgnoreCase);
         HashSet<string> seen = new(StringComparer.OrdinalIgnoreCase);
-        ActivitySettingsModel defaults = ActivitySettingsModel.Default;
+        MouseMoveSettings defaults = MouseMoveSettings.Default;
         bool moveImmediately = defaults.MoveImmediately;
 
         for (int i = 0; i < items.KeysCount; i++)
@@ -86,7 +87,7 @@ public static class ActivitySettingsReader
             speedMax = defaults.SpeedMax;
         }
 
-        var result = new ActivitySettingsModel(
+        var result = new MouseMoveSettings(
             values.GetValueOrDefault(IntervalName, defaults.Interval),
             values.GetValueOrDefault(IdleTicksName, defaults.IdleTicksBeforeMove),
             speedMin,

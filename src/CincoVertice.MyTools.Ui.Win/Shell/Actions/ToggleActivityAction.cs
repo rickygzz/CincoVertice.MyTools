@@ -49,18 +49,13 @@ public sealed class ToggleActivityAction : IAppAction
     }
 
     /// <summary>
-    ///     Reads activity.cfg on every start, so edits apply the next time activity is turned on. The timer is stopped
-    ///     here, so it never sees half of the new settings.
+    ///     Reads activity.cfg on every start, so edits apply the next time activity is turned on.
     /// </summary>
     private void ApplySettings()
     {
         ActivitySettingsResultModel result = _settingsService.Load();
 
-        _mouseMoveSimulator.Interval = result.Settings.Interval;
-        _mouseMoveSimulator.IdleTicksBeforeMove = result.Settings.IdleTicksBeforeMove;
-        _mouseMoveSimulator.SpeedMin = result.Settings.SpeedMin;
-        _mouseMoveSimulator.SpeedMax = result.Settings.SpeedMax;
-        _mouseMoveSimulator.MoveImmediately = result.Settings.MoveImmediately;
+        _mouseMoveSimulator.Settings = result.Settings;
 
         if (result.Problems.Count > 0)
         {

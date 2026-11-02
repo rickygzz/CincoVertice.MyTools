@@ -1,4 +1,5 @@
 using System.Text;
+using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.MyTools.Ui.Win.Shell.Models;
 
 namespace CincoVertice.MyTools.Ui.Win.Shell.Services;
@@ -40,7 +41,7 @@ public sealed class ActivitySettingsService
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             return new ActivitySettingsResultModel(
-                ActivitySettingsModel.Default,
+                MouseMoveSettings.Default,
                 [$"Could not use {FilePath}, so the default settings are used: {ex.Message}"]);
         }
     }
@@ -48,7 +49,7 @@ public sealed class ActivitySettingsService
     /// <summary>The content of a new activity.cfg.</summary>
     public static string CreateDefaultText()
     {
-        ActivitySettingsModel defaults = ActivitySettingsModel.Default;
+        MouseMoveSettings defaults = MouseMoveSettings.Default;
         var sb = new StringBuilder();
 
         sb.AppendLine("# MyTools activity, which moves the mouse while you are away (the ToggleActivity hotkey).");

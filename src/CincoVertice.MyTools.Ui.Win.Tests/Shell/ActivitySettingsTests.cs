@@ -1,3 +1,4 @@
+using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.MyTools.Ui.Win.Shell.Models;
 using CincoVertice.MyTools.Ui.Win.Shell.Services;
 using Xunit;
@@ -26,7 +27,7 @@ public sealed class ActivitySettingsTests : IDisposable
 
         // Assert
         Assert.Empty(result.Problems);
-        Assert.Equal(new ActivitySettingsModel(1000, 0, 30, 40, false), result.Settings);
+        Assert.Equal(new MouseMoveSettings(1000, 0, 30, 40, false), result.Settings);
     }
 
     [Theory]
@@ -56,7 +57,7 @@ public sealed class ActivitySettingsTests : IDisposable
 
         // Assert
         Assert.StartsWith("MoveImmediately: must be true or false", Assert.Single(result.Problems));
-        Assert.Equal(ActivitySettingsModel.Default, result.Settings);
+        Assert.Equal(MouseMoveSettings.Default, result.Settings);
     }
 
     [Fact]
@@ -79,7 +80,7 @@ public sealed class ActivitySettingsTests : IDisposable
 
         // Assert
         Assert.Empty(result.Problems);
-        Assert.Equal(ActivitySettingsModel.Default with { Interval = 1000 }, result.Settings);
+        Assert.Equal(MouseMoveSettings.Default with { Interval = 1000 }, result.Settings);
     }
 
     [Fact]
@@ -90,7 +91,7 @@ public sealed class ActivitySettingsTests : IDisposable
 
         // Assert
         Assert.Empty(result.Problems);
-        Assert.Equal(ActivitySettingsModel.Default, result.Settings);
+        Assert.Equal(MouseMoveSettings.Default, result.Settings);
     }
 
     [Theory]
@@ -113,7 +114,7 @@ public sealed class ActivitySettingsTests : IDisposable
 
         // Assert
         Assert.StartsWith(expectedProblemStart, Assert.Single(result.Problems));
-        Assert.Equal(ActivitySettingsModel.Default, result.Settings);
+        Assert.Equal(MouseMoveSettings.Default, result.Settings);
     }
 
     [Fact]
@@ -124,7 +125,7 @@ public sealed class ActivitySettingsTests : IDisposable
 
         // Assert
         Assert.Single(result.Problems);
-        Assert.Equal(ActivitySettingsModel.Default with { SpeedMin = 30, SpeedMax = 50 }, result.Settings);
+        Assert.Equal(MouseMoveSettings.Default with { SpeedMin = 30, SpeedMax = 50 }, result.Settings);
     }
 
     [Fact]
@@ -146,7 +147,7 @@ public sealed class ActivitySettingsTests : IDisposable
 
         // Assert: Random.Next would throw on these on the timer's thread, ending the app
         Assert.StartsWith("SpeedMin (80) is above SpeedMax (40)", Assert.Single(result.Problems));
-        Assert.Equal(ActivitySettingsModel.Default, result.Settings);
+        Assert.Equal(MouseMoveSettings.Default, result.Settings);
     }
 
     [Fact]
@@ -157,7 +158,7 @@ public sealed class ActivitySettingsTests : IDisposable
 
         // Assert
         Assert.Single(result.Problems);
-        Assert.Equal(ActivitySettingsModel.Default, result.Settings);
+        Assert.Equal(MouseMoveSettings.Default, result.Settings);
     }
 
     [Fact]
@@ -183,7 +184,7 @@ public sealed class ActivitySettingsTests : IDisposable
         // Assert
         Assert.True(File.Exists(service.FilePath));
         Assert.Empty(result.Problems);
-        Assert.Equal(ActivitySettingsModel.Default, result.Settings);
+        Assert.Equal(MouseMoveSettings.Default, result.Settings);
     }
 
     [Fact]
@@ -213,7 +214,7 @@ public sealed class ActivitySettingsTests : IDisposable
 
         // Assert
         Assert.StartsWith($"Could not use {path}", Assert.Single(result.Problems));
-        Assert.Equal(ActivitySettingsModel.Default, result.Settings);
+        Assert.Equal(MouseMoveSettings.Default, result.Settings);
     }
 
     [Fact]
@@ -224,6 +225,6 @@ public sealed class ActivitySettingsTests : IDisposable
 
         // Assert
         Assert.Empty(result.Problems);
-        Assert.Equal(ActivitySettingsModel.Default, result.Settings);
+        Assert.Equal(MouseMoveSettings.Default, result.Settings);
     }
 }
