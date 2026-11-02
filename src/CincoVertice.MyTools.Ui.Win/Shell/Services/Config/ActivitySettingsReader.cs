@@ -42,6 +42,14 @@ public static class ActivitySettingsReader
         for (int i = 0; i < items.KeysCount; i++)
         {
             string name = items.GetKeyName(i);
+
+            if (items.GetValueType(i) == ConfigTokenType.ErrorQuotedStringNotClosed)
+            {
+                problems.Add($"{name}: the [\" is never closed, so the rest of the file is ignored.");
+
+                continue;
+            }
+
             string value = WithoutComment(items.GetValue(i));
             bool isMoveImmediately = name.Equals(MoveImmediatelyName, StringComparison.OrdinalIgnoreCase);
 

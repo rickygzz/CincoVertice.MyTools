@@ -41,6 +41,14 @@ public static class HotkeyConfigReader
         for (int i = 0; i < items.KeysCount; i++)
         {
             string name = items.GetKeyName(i);
+
+            if (items.GetValueType(i) == ConfigTokenType.ErrorQuotedStringNotClosed)
+            {
+                result.Problems.Add($"{name}: the [\" is never closed, so the rest of the file is ignored.");
+
+                continue;
+            }
+
             var (shortcut, argument) = SplitArgument(WithoutComment(items.GetValue(i)));
             string? action = actionNames.FirstOrDefault(a => a.Equals(name, StringComparison.OrdinalIgnoreCase));
 

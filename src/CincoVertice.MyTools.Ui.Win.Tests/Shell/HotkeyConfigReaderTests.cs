@@ -10,6 +10,19 @@ public class HotkeyConfigReaderTests
     private static readonly string[] _actions = ["ShowCalculator", "ToggleActivity", "CheckFolder"];
 
     [Fact]
+    public void Read_AQuoteThatIsNeverClosed_IsReportedAndKeepsTheLinesBeforeIt()
+    {
+        // Act
+        HotkeyConfigResultModel result = HotkeyConfigReader.Read(
+            "ShowCalculator = Ctrl+Alt+A\nCheckFolder = [\"F5\nToggleActivity = F6",
+            _actions);
+
+        // Assert
+        Assert.StartsWith("CheckFolder: the [\" is never closed", Assert.Single(result.Problems));
+        Assert.Equal("ShowCalculator", Assert.Single(result.Bindings).ActionName);
+    }
+
+    [Fact]
     public void Read_ReturnsBindingForEachLine()
     {
         // Arrange

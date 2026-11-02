@@ -118,6 +118,18 @@ public sealed class ActivitySettingsTests : IDisposable
     }
 
     [Fact]
+    public void Read_AQuoteThatIsNeverClosed_IsReportedAndKeepsTheDefault()
+    {
+        // Act
+        ActivitySettingsResultModel result = ActivitySettingsReader.Read(
+            "SpeedMax = 50\nInterval = [\"1000\nSpeedMin = 30");
+
+        // Assert
+        Assert.StartsWith("Interval: the [\" is never closed", Assert.Single(result.Problems));
+        Assert.Equal(MouseMoveSettings.Default with { SpeedMax = 50 }, result.Settings);
+    }
+
+    [Fact]
     public void Read_ABadLine_DoesNotAffectTheOthers()
     {
         // Act
