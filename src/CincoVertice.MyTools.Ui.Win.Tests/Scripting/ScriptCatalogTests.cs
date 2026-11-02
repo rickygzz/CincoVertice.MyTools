@@ -29,7 +29,7 @@ public class ScriptCatalogTests
 
             // Assert
             string example = Assert.Single(files, f => Path.GetFileName(f) == "GoogleSearch.mts");
-            var tokens = new ScriptLexer().Tokenize(File.ReadAllText(example));
+            var tokens = ScriptLexer.Tokenize(File.ReadAllText(example));
             Assert.NotEmpty(new ScriptParser().Parse(tokens));
         }
         finally

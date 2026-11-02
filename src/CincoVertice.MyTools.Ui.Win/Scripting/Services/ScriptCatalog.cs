@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 
 namespace CincoVertice.MyTools.Ui.Win.Scripting.Services;
 
@@ -42,7 +42,8 @@ public static class ScriptCatalog
 
         """;
 
-    public static string FolderPath { get; } = Path.Combine(AppContext.BaseDirectory, "config", "scripts");
+    public static string FolderPath { get; } =
+        Path.Combine(AppContext.BaseDirectory, "config", "scripts");
 
     /// <summary>
     ///     config\global.vars next to the executable: the global variables of global.set and global.get.

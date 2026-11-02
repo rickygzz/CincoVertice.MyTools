@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 using CincoVertice.Common.Application.Scripting.Interfaces;
@@ -23,8 +23,12 @@ public sealed class DesktopScriptHost : IScriptHost
     // How long pasteastext() gives the program to read the clipboard before putting the old content back
     private const int PasteSettleMilliseconds = 500;
 
-    private static readonly KeyCode[] _modifierKeys =
-        [KeyCode.VK_CONTROL, KeyCode.VK_MENU, KeyCode.VK_SHIFT, KeyCode.VK_LWIN, KeyCode.VK_RWIN];
+    private static readonly KeyCode[] _modifierKeys = [
+        KeyCode.VK_CONTROL,
+        KeyCode.VK_MENU,
+        KeyCode.VK_SHIFT,
+        KeyCode.VK_LWIN,
+        KeyCode.VK_RWIN ];
 
     private readonly string _title;
     private readonly TrayNotificationService _notifications;
