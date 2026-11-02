@@ -11,5 +11,14 @@
     <Compile Update="Shell\MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="Snipping\ColorPaletteControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Snipping\SnipEditorForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Snipping\SnipOverlayForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
   </ItemGroup>
 </Project>

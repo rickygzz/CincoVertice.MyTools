@@ -1,0 +1,149 @@
+using System.Drawing.Drawing2D;
+using System.Drawing.Text;
+using CincoVertice.MyTools.Ui.Snipping.Models;
+
+namespace CincoVertice.MyTools.Ui.Win.Snipping.Services;
+
+/// <summary>
+///     Draws the snip editor's tool icons, at any size so they're sharp at any DPI. Each icon is drawn on a 16 by 16
+///     grid, scaled to the size asked for.
+/// </summary>
+public static class ToolIcons
+{
+    private const float Grid = 16f;
+    private const float LineWidth = 1.4f;
+
+    private static readonly Color _ink = Color.FromArgb(50, 50, 50);
+    private static readonly Color _marker = Color.FromArgb(255, 210, 0);
+
+    /// <returns>A new square image; the caller disposes it.</returns>
+    public static Bitmap Create(SnipTool tool, int size)
+    {
+        var icon = new Bitmap(size, size);
+
+        using var graphics = Graphics.FromImage(icon);
+        using var pen = new Pen(_ink, LineWidth) { LineJoin = LineJoin.Round, StartCap = LineCap.Round };
+
+        graphics.SmoothingMode = SmoothingMode.AntiAlias;
+        graphics.ScaleTransform(size / Grid, size / Grid);
+
+        switch (tool)
+        {
+            case SnipTool.Pen:
+                DrawPen(graphics, pen);
+                break;
+            case SnipTool.Highlighter:
+                DrawHighlighter(graphics, pen);
+                break;
+            case SnipTool.Arrow:
+                DrawArrow(graphics, pen);
+                break;
+            case SnipTool.Rectangle:
+                DrawRectangle(graphics, pen);
+                break;
+            case SnipTool.Text:
+                DrawText(graphics);
+                break;
+        }
+
+        return icon;
+    }
+
+    /// <returns>An arrow turning back to the left; the caller disposes it.</returns>
+    public static Bitmap CreateUndo(int size) => CreateHistory(size, mirrored: false);
+
+    /// <returns>The undo icon mirrored, turning to the right; the caller disposes it.</returns>
+    public static Bitmap CreateRedo(int size) => CreateHistory(size, mirrored: true);
+
+    private static Bitmap CreateHistory(int size, bool mirrored)
+    {
+        var icon = new Bitmap(size, size);
+
+        using var graphics = Graphics.FromImage(icon);
+        using var head = new AdjustableArrowCap(3.2f, 3.2f, isFilled: true);
+        using var pen = new Pen(_ink, LineWidth) { LineJoin = LineJoin.Round, EndCap = LineCap.Round };
+        using var path = new GraphicsPath();
+
+        graphics.SmoothingMode = SmoothingMode.AntiAlias;
+        graphics.ScaleTransform(size / Grid, size / Grid);
+
+        if (mirrored)
+        {
+            graphics.TranslateTransform(Grid, 0);
+            graphics.ScaleTransform(-1, 1);
+        }
+
+        // From the head on the left: along the top, round the right, and back along the bottom
+        pen.CustomStartCap = head;
+        path.AddLine(3.5f, 5.5f, 9.5f, 5.5f);
+        path.AddArc(6.25f, 5.5f, 7, 7, 270, 180);
+        path.AddLine(9.75f, 12.5f, 5.5f, 12.5f);
+        graphics.DrawPath(pen, path);
+
+        return icon;
+    }
+
+    /// <summary>A pencil from the bottom left (its tip) to the top right.</summary>
+    private static void DrawPen(Graphics graphics, Pen pen)
+    {
+        graphics.TranslateTransform(8, 8);
+        graphics.RotateTransform(-45);
+
+        PointF[] tip = [new(-4.5f, -2), new(-8, 0), new(-4.5f, 2)];
+        using var tipBrush = new SolidBrush(_ink);
+
+        graphics.DrawRectangle(pen, -4.5f, -2, 10, 4);
+        graphics.DrawLine(pen, 3, -2, 3, 2);
+        graphics.DrawPolygon(pen, tip);
+        graphics.FillPolygon(tipBrush, [new PointF(-6.8f, -0.7f), new PointF(-8, 0), new PointF(-6.8f, 0.7f)]);
+    }
+
+    /// <summary>A marker with a chisel tip over a yellow stroke.</summary>
+    private static void DrawHighlighter(Graphics graphics, Pen pen)
+    {
+        using var stroke = new Pen(_marker, 3) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+        using var tipBrush = new SolidBrush(_marker);
+
+        graphics.DrawLine(stroke, 2.5f, 14, 13.5f, 14);
+
+        graphics.TranslateTransform(8.5f, 6.5f);
+        graphics.RotateTransform(-45);
+
+        PointF[] tip = [new(-3, -2.5f), new(-6.5f, -1.2f), new(-6.5f, 1.2f), new(-3, 2.5f)];
+
+        graphics.FillPolygon(tipBrush, tip);
+        graphics.DrawPolygon(pen, tip);
+        graphics.DrawRectangle(pen, -3, -2.5f, 8.5f, 5);
+    }
+
+    private static void DrawArrow(Graphics graphics, Pen pen)
+    {
+        // Scaled by the pen width, like the arrows drawn on a snip
+        using var head = new AdjustableArrowCap(3.2f, 3.2f, isFilled: true);
+
+        pen.CustomEndCap = head;
+        graphics.DrawLine(pen, 3, 13, 12.5f, 3.5f);
+    }
+
+    private static void DrawRectangle(Graphics graphics, Pen pen)
+    {
+        using var path = new GraphicsPath();
+
+        path.AddRoundedRectangle(new RectangleF(2, 3.5f, 12, 9), new SizeF(5, 5));
+        graphics.DrawPath(pen, path);
+    }
+
+    private static void DrawText(Graphics graphics)
+    {
+        using var font = new Font(AnnotationRenderer.FontFamilyName, 13, FontStyle.Bold, GraphicsUnit.Pixel);
+        using var brush = new SolidBrush(_ink);
+        using var format = new StringFormat
+        {
+            Alignment = StringAlignment.Center,
+            LineAlignment = StringAlignment.Center,
+        };
+
+        graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+        graphics.DrawString("A", font, brush, new RectangleF(0, 0, Grid, Grid + 1), format);
+    }
+}
