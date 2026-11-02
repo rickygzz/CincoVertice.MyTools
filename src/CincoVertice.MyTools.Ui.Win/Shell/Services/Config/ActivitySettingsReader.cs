@@ -3,7 +3,7 @@ using CincoVertice.Common.Utils.Config;
 using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.MyTools.Ui.Win.Shell.Models;
 
-namespace CincoVertice.MyTools.Ui.Win.Shell.Services;
+namespace CincoVertice.MyTools.Ui.Win.Shell.Services.Config;
 
 /// <summary>
 ///     Reads activity.cfg with the config lexer: one "Name = Value" per line, # for comments. Every line that can't
@@ -32,7 +32,8 @@ public static class ActivitySettingsReader
     public static ActivitySettingsResultModel Read(string text)
     {
         List<string> problems = [];
-        ConfigItems items = new ConfigLexer(text).Items;
+        ConfigLexer lexer = new(text);
+        ConfigItems items = lexer.Items;
         Dictionary<string, int> values = new(StringComparer.OrdinalIgnoreCase);
         HashSet<string> seen = new(StringComparer.OrdinalIgnoreCase);
         MouseMoveSettings defaults = MouseMoveSettings.Default;
@@ -72,7 +73,7 @@ public static class ActivitySettingsReader
             }
         }
 
-        foreach (var (number, line) in ConfigLineChecker.FindUnreadLines(text, items))
+        foreach (var (number, line) in lexer.BadLines)
         {
             problems.Add($"Line {number}: '{line}' is not 'Name = Value'.");
         }

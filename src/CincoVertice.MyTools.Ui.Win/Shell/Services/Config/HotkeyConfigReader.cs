@@ -4,7 +4,7 @@ using CincoVertice.Common.WinApi.Libs;
 using CincoVertice.Common.WinApi.Libs.Enums;
 using CincoVertice.MyTools.Ui.Win.Shell.Models;
 
-namespace CincoVertice.MyTools.Ui.Win.Shell.Services;
+namespace CincoVertice.MyTools.Ui.Win.Shell.Services.Config;
 
 /// <summary>
 ///     Reads hotkeys.cfg with the config lexer: one "Action = Shortcut" per line, # for comment lines.
@@ -30,7 +30,8 @@ public static class HotkeyConfigReader
         Func<char, short> keyScan)
     {
         var result = new HotkeyConfigResultModel();
-        ConfigItems items = new ConfigLexer(text).Items;
+        ConfigLexer lexer = new(text);
+        ConfigItems items = lexer.Items;
 
         // An action can have several lines when each passes a different argument. Ordinal: the action's spelling
         // comes from actionNames, and arguments that differ only in case are different arguments
@@ -76,7 +77,7 @@ public static class HotkeyConfigReader
             result.Bindings.Add(new HotkeyBindingModel(action, shortcut, modifiers, key, argument));
         }
 
-        foreach (var (number, line) in ConfigLineChecker.FindUnreadLines(text, items))
+        foreach (var (number, line) in lexer.BadLines)
         {
             result.Problems.Add($"Line {number}: '{line}' is not 'Action = Shortcut'.");
         }
