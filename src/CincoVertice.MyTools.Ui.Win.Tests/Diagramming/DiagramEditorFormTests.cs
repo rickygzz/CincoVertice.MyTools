@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Windows.Forms;
 using CincoVertice.MyTools.Ui.Diagramming.Interfaces;
 using CincoVertice.MyTools.Ui.Diagramming.Models;
 using CincoVertice.MyTools.Ui.Diagramming.Presenters;
@@ -47,7 +48,7 @@ public class DiagramEditorFormTests
     {
         // Every tool button's tag, the palettes and the lists are read here
         using var form = new DiagramEditorForm();
-        var presenter = new DiagramEditorPresenter(form, new NoStore());
+        var presenter = new DiagramEditorPresenter(form, new NoStore(), new NoSettings());
 
         presenter.Start();
 
@@ -214,7 +215,7 @@ public class DiagramEditorFormTests
     {
         // Arrange
         using var form = new DiagramEditorForm();
-        new DiagramEditorPresenter(form, new NoStore()).Start();
+        new DiagramEditorPresenter(form, new NoStore(), new NoSettings()).Start();
 
         // Act: from a file edited by hand, say; a field's value out of its range would throw
         form.ShowProperties(new DiagramPropertiesModel(
@@ -234,6 +235,44 @@ public class DiagramEditorFormTests
 
         // Assert: reaching here is the point
         Assert.NotNull(form);
+    }
+
+    [Theory]
+    [InlineData(900, 600, false)]
+    [InlineData(800, 500, true)]
+    public void Form_TakesASavedSize(int width, int height, bool isMaximized)
+    {
+        // Arrange
+        using var form = new DiagramEditorForm();
+
+        // Act
+        form.ShowWindowSize(new DiagramWindowSizeModel(new Size(width, height), isMaximized));
+
+        // Assert
+        Assert.Equal(isMaximized, form.WindowState == FormWindowState.Maximized);
+    }
+
+    [Fact]
+    public void Form_ASavedSizeLargerThanTheScreen_FitsTheScreen()
+    {
+        // Arrange
+        using var form = new DiagramEditorForm();
+        Rectangle area = Screen.FromPoint(Cursor.Position).WorkingArea;
+
+        // Act
+        form.ShowWindowSize(new DiagramWindowSizeModel(new Size(99999, 99999), false));
+
+        // Assert
+        Assert.Equal(area.Size, form.Size);
+    }
+
+    private sealed class NoSettings : IDiagramEditorSettingsStore
+    {
+        public DiagramEditorSettingsModel? Load() => null;
+
+        public void Save(DiagramEditorSettingsModel settings)
+        {
+        }
     }
 
     private sealed class NoStore : IDiagramFileStore

@@ -11,13 +11,22 @@ namespace CincoVertice.MyTools.Ui.Win.Diagramming.Actions;
 public sealed class OpenDiagramEditorAction : IAppAction
 {
     private readonly IDiagramFileStore _fileStore;
+    private readonly IDiagramEditorSettingsStore _settingsStore;
     private readonly RobotoFontInstaller _fontInstaller;
 
-    public OpenDiagramEditorAction(IDiagramFileStore fileStore, RobotoFontInstaller fontInstaller)
+    public OpenDiagramEditorAction(
+        IDiagramFileStore fileStore,
+        IDiagramEditorSettingsStore settingsStore,
+        RobotoFontInstaller fontInstaller)
     {
         _fileStore = fileStore;
+        _settingsStore = settingsStore;
         _fontInstaller = fontInstaller;
     }
+
+    /// <summary>Where the editor keeps the last used style and its layout: config\diagrameditor.json.</summary>
+    public static string SettingsFilePath { get; } =
+        Path.Combine(AppContext.BaseDirectory, "config", "diagrameditor.json");
 
     public string Name => "DiagramEditor";
 
@@ -29,7 +38,7 @@ public sealed class OpenDiagramEditorAction : IAppAction
 
         // Disposed itself when closed
         var editor = new DiagramEditorForm();
-        var presenter = new DiagramEditorPresenter(editor, _fileStore);
+        var presenter = new DiagramEditorPresenter(editor, _fileStore, _settingsStore);
 
         presenter.Start();
         editor.Show();

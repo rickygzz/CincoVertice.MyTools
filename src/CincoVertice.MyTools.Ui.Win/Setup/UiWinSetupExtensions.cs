@@ -61,6 +61,8 @@ public static class UiWinSetupExtensions
         services.AddSingleton<SnipRegionAction>();
         services.AddSingleton<SnipAndEditAction>();
         services.AddSingleton<IDiagramFileStore, SvgDiagramFileStore>();
+        services.AddSingleton<IDiagramEditorSettingsStore>(_ =>
+            new JsonFileDiagramEditorSettingsStore(OpenDiagramEditorAction.SettingsFilePath));
         services.AddSingleton(_ => RobotoFontInstaller.ForCurrentUser());
         services.AddSingleton<OpenDiagramEditorAction>();
 

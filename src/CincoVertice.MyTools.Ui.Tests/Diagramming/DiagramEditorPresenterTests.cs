@@ -13,11 +13,12 @@ public class DiagramEditorPresenterTests
 {
     private readonly FakeView _view = new();
     private readonly FakeStore _store = new();
+    private readonly FakeSettingsStore _settings = new();
     private readonly DiagramEditorPresenter _presenter;
 
     public DiagramEditorPresenterTests()
     {
-        _presenter = new DiagramEditorPresenter(_view, _store);
+        _presenter = new DiagramEditorPresenter(_view, _store, _settings);
         _presenter.Start();
     }
 
@@ -1636,6 +1637,203 @@ public class DiagramEditorPresenterTests
         Assert.Equal("Consolas", _view.TextFontFamily);
     }
 
+    private (FakeView View, DiagramEditorPresenter Presenter) NewEditor(DiagramEditorSettingsModel? saved)
+    {
+        var view = new FakeView();
+        var presenter = new DiagramEditorPresenter(view, _store, new FakeSettingsStore(saved));
+
+        presenter.Start();
+
+        return (view, presenter);
+    }
+
+    private DiagramEditorPresenter NewEditorWithTheSavedSettings(out FakeView view)
+    {
+        (view, DiagramEditorPresenter presenter) = NewEditor(_settings.Saved[^1]);
+
+        return presenter;
+    }
+
+    [Fact]
+    public void Settings_WithoutAnySaved_StartWithTheDefaults()
+    {
+        // Assert
+        Assert.Equal("Roboto", _view.ShownStyle!.FontFamily);
+        Assert.Equal(DiagramRouting.Elbow, _view.ShownRouting);
+        Assert.Equal(DiagramArrowHeads.End, _view.ShownHeads);
+        Assert.True(_view.PanelShown);
+        Assert.Null(_view.WindowShown);
+        Assert.Empty(_settings.Saved);
+    }
+
+    [Fact]
+    public void Settings_ANewEditor_StartsWithTheLastStyleUsed()
+    {
+        // Arrange
+        _view.SelectColor(DiagramColorTarget.Fill, Color.Red);
+        _view.SelectColor(DiagramColorTarget.Line, Color.Blue);
+        _view.SelectColor(DiagramColorTarget.Text, Color.Green);
+        _view.SelectLineWidth(5);
+        _view.SelectDashed(true);
+        _view.SelectFontSize(24);
+        _view.SelectFontFamily("Consolas");
+        _view.SelectRouting(DiagramRouting.Straight);
+        _view.SelectHeads(DiagramArrowHeads.Both);
+
+        // Act
+        DiagramEditorPresenter presenter = NewEditorWithTheSavedSettings(out FakeView view);
+
+        // Assert: shown, and used by what's drawn next
+        DiagramStyleModel expected = new(
+            Color.FromArgb(255, Color.Red),
+            Color.FromArgb(255, Color.Blue),
+            5,
+            true,
+            Color.FromArgb(255, Color.Green),
+            24,
+            "Consolas");
+        Assert.Equal(expected, view.ShownStyle);
+        Assert.Equal(DiagramRouting.Straight, view.ShownRouting);
+        Assert.Equal(DiagramArrowHeads.Both, view.ShownHeads);
+
+        view.Tool(DiagramTool.Rectangle);
+        view.Drag(100, 100, 200, 200);
+        Assert.Equal(expected, presenter.Diagram.Shapes[0].Style);
+    }
+
+    [Fact]
+    public void Settings_ChangingWhatsSelected_IsWhatsUsedLast()
+    {
+        // Arrange
+        AddShape(100, 100);
+
+        // Act: the shape is selected, and this is what carries over to the next editor
+        _view.SelectColor(DiagramColorTarget.Fill, Color.Red);
+
+        // Assert
+        Assert.Equal(Color.Red.ToArgb(), _settings.Saved[^1].Style.Fill.ToArgb());
+    }
+
+    [Fact]
+    public void Settings_NoFill_IsKept()
+    {
+        // Act
+        _view.SelectColor(DiagramColorTarget.Fill, Color.Empty);
+
+        // Assert
+        Assert.True(_settings.Saved[^1].Style.Fill.IsEmpty);
+    }
+
+    [Fact]
+    public void Settings_DrawingAndSelecting_SaveNothing()
+    {
+        // Act
+        DiagramShapeModel a = AddShape(100, 100);
+        DiagramShapeModel b = AddShape(400, 100);
+        Connect(a, b);
+        _view.Click(120, 120);
+        _view.Drag(120, 120, 220, 220);
+        _view.Command(DiagramCommand.Undo);
+        _view.Wheel(0, 0, steps: 2, control: true);
+        _view.DoubleClick(300, 300);
+        _view.CommitText("Note");
+
+        // Assert
+        Assert.Empty(_settings.Saved);
+    }
+
+    [Fact]
+    public void Settings_DontIncludeTheTool()
+    {
+        // Arrange
+        _view.Tool(DiagramTool.Ellipse);
+        _view.SelectLineWidth(5);
+
+        // Act
+        NewEditorWithTheSavedSettings(out FakeView view);
+
+        // Assert
+        Assert.Equal(DiagramTool.Select, view.ShownTool);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Settings_ThePropertiesPanel_IsKept(bool isVisible)
+    {
+        // Act
+        _view.TogglePanel(isVisible);
+        NewEditorWithTheSavedSettings(out FakeView view);
+
+        // Assert
+        Assert.Equal(isVisible, view.PanelShown);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Settings_TheWindowsSize_IsKeptWhenItCloses(bool isMaximized)
+    {
+        // Act
+        _view.CloseWithSize(900, 600, isMaximized);
+        NewEditorWithTheSavedSettings(out FakeView view);
+
+        // Assert
+        Assert.Equal(new DiagramWindowSizeModel(new Size(900, 600), isMaximized), view.WindowShown);
+    }
+
+    [Fact]
+    public void Settings_ChangingSomethingElse_KeepsTheWindowsSizeThatWasSaved()
+    {
+        // Arrange
+        var window = new DiagramWindowSizeModel(new Size(900, 600), false);
+        var store = new FakeSettingsStore(new DiagramEditorSettingsModel(
+            _view.ShownStyle!,
+            DiagramRouting.Elbow,
+            DiagramArrowHeads.End,
+            Window: window));
+        var view = new FakeView();
+
+        new DiagramEditorPresenter(view, _store, store).Start();
+
+        // Act
+        view.SelectLineWidth(5);
+
+        // Assert
+        Assert.Equal(window, view.WindowShown);
+        Assert.Equal(window, store.Saved[^1].Window);
+    }
+
+    [Theory]
+    [InlineData(0, 600)]
+    [InlineData(900, 0)]
+    [InlineData(-1, -1)]
+    public void Settings_AWindowSizeThatCantBeUsed_IsIgnored(int width, int height)
+    {
+        // Act
+        (FakeView view, _) = NewEditor(new DiagramEditorSettingsModel(
+            _view.ShownStyle!,
+            DiagramRouting.Elbow,
+            DiagramArrowHeads.End,
+            Window: new DiagramWindowSizeModel(new Size(width, height), false)));
+
+        // Assert
+        Assert.Null(view.WindowShown);
+    }
+
+    [Fact]
+    public void Settings_ARoutingOrHeadThatDoesntExist_KeepsTheDefault()
+    {
+        // Act: e.g. a file edited by hand
+        (FakeView view, _) = NewEditor(new DiagramEditorSettingsModel(
+            _view.ShownStyle!,
+            (DiagramRouting)99,
+            (DiagramArrowHeads)99));
+
+        // Assert
+        Assert.Equal((DiagramRouting.Elbow, DiagramArrowHeads.End), (view.ShownRouting, view.ShownHeads));
+    }
+
     [Fact]
     public void Connector_WithTheTool_FromAShapesBody_PicksTheSides()
     {
@@ -2503,6 +2701,15 @@ public class DiagramEditorPresenterTests
     private static Rectangle Moved(Rectangle box, int offset) =>
         new(box.X + offset, box.Y + offset, box.Width, box.Height);
 
+    private sealed class FakeSettingsStore(DiagramEditorSettingsModel? loaded = null) : IDiagramEditorSettingsStore
+    {
+        public List<DiagramEditorSettingsModel> Saved { get; } = [];
+
+        public DiagramEditorSettingsModel? Load() => loaded;
+
+        public void Save(DiagramEditorSettingsModel settings) => Saved.Add(settings);
+    }
+
     private sealed class FakeStore : IDiagramFileStore
     {
         public string? SavedPath { get; private set; }
@@ -2573,6 +2780,23 @@ public class DiagramEditorPresenterTests
         public event EventHandler<string>? TextCommitted;
 
         public event EventHandler<CancelEventArgs>? Closing;
+
+        public event EventHandler<bool>? PropertiesPanelToggled;
+
+        public event EventHandler<DiagramWindowSizeModel>? WindowClosed;
+
+        public bool? PanelShown { get; private set; }
+
+        public DiagramWindowSizeModel? WindowShown { get; private set; }
+
+        public void TogglePanel(bool isVisible) => PropertiesPanelToggled?.Invoke(this, isVisible);
+
+        public void CloseWithSize(int width, int height, bool isMaximized = false) =>
+            WindowClosed?.Invoke(this, new DiagramWindowSizeModel(new Size(width, height), isMaximized));
+
+        public void ShowPropertiesPanel(bool isVisible) => PanelShown = isVisible;
+
+        public void ShowWindowSize(DiagramWindowSizeModel size) => WindowShown = size;
 
         public DiagramSceneModel? Scene { get; private set; }
 

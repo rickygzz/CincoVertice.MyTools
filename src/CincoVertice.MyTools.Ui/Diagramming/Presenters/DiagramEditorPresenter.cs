@@ -49,6 +49,7 @@ public sealed class DiagramEditorPresenter
 
     private readonly IDiagramEditorView _view;
     private readonly IDiagramFileStore _fileStore;
+    private readonly IDiagramEditorSettingsStore _settingsStore;
     private readonly Stack<DiagramModel> _undo = new();
     private readonly Stack<DiagramModel> _redo = new();
     private readonly HashSet<int> _selectedShapes = [];
@@ -71,6 +72,8 @@ public sealed class DiagramEditorPresenter
 
     private DiagramRouting _routing = DiagramRouting.Elbow;
     private DiagramArrowHeads _heads = DiagramArrowHeads.End;
+    private bool _isPropertiesPanelVisible = true;
+    private DiagramWindowSizeModel? _windowSize;
 
     // The drag in progress and what it shows
     private Drag? _drag;
@@ -94,10 +97,22 @@ public sealed class DiagramEditorPresenter
     private Point _lastPointer;
     private int _pasteCount;
 
-    public DiagramEditorPresenter(IDiagramEditorView view, IDiagramFileStore fileStore)
+    /// <param name="view">The window.</param>
+    /// <param name="fileStore">Where diagrams are opened from and saved to.</param>
+    /// <param name="settingsStore">
+    ///     Where the last used style and the window's layout are kept: the editor starts with the ones saved last, and
+    ///     saves them on every change.
+    /// </param>
+    public DiagramEditorPresenter(
+        IDiagramEditorView view,
+        IDiagramFileStore fileStore,
+        IDiagramEditorSettingsStore settingsStore)
     {
         _view = view;
         _fileStore = fileStore;
+        _settingsStore = settingsStore;
+
+        Apply(settingsStore.Load());
 
         _view.PointerPressed += OnPointerPressed;
         _view.PointerMoved += OnPointerMoved;
@@ -121,6 +136,8 @@ public sealed class DiagramEditorPresenter
         _view.TextEdited += OnTextEdited;
         _view.TextCommitted += OnTextCommitted;
         _view.Closing += OnClosing;
+        _view.PropertiesPanelToggled += OnPropertiesPanelToggled;
+        _view.WindowClosed += OnWindowClosed;
     }
 
     /// <summary>The diagram, without the change being dragged.</summary>
@@ -141,9 +158,68 @@ public sealed class DiagramEditorPresenter
     {
         _view.ShowPalette(SnipEditorPresenter.Palette);
         _view.ShowSizes(LineWidths, FontSizes);
+        _view.ShowPropertiesPanel(_isPropertiesPanelVisible);
+
+        if (_windowSize is not null)
+        {
+            _view.ShowWindowSize(_windowSize);
+        }
+
         _view.ShowTool(_tool);
         ShowSelectedStyle();
         Refresh();
+    }
+
+    /// <summary>
+    ///     Takes the saved settings that can still be used: a routing, a head or a window size the editor can't use
+    ///     (e.g. from a file edited by hand) keeps its default.
+    /// </summary>
+    private void Apply(DiagramEditorSettingsModel? saved)
+    {
+        if (saved is null)
+        {
+            return;
+        }
+
+        _style = saved.Style;
+        _isPropertiesPanelVisible = saved.IsPropertiesPanelVisible;
+
+        if (Enum.IsDefined(saved.Routing))
+        {
+            _routing = saved.Routing;
+        }
+
+        if (Enum.IsDefined(saved.Heads))
+        {
+            _heads = saved.Heads;
+        }
+
+        if (saved.Window is { Size: { Width: > 0, Height: > 0 } })
+        {
+            _windowSize = saved.Window;
+        }
+    }
+
+    private void SaveSettings()
+    {
+        _settingsStore.Save(new DiagramEditorSettingsModel(
+            _style,
+            _routing,
+            _heads,
+            _isPropertiesPanelVisible,
+            _windowSize));
+    }
+
+    private void OnPropertiesPanelToggled(object? sender, bool isVisible)
+    {
+        _isPropertiesPanelVisible = isVisible;
+        SaveSettings();
+    }
+
+    private void OnWindowClosed(object? sender, DiagramWindowSizeModel size)
+    {
+        _windowSize = size;
+        SaveSettings();
     }
 
     private static Rectangle FromCorners(Point a, Point b) => Rectangle.FromLTRB(
@@ -1494,12 +1570,14 @@ public sealed class DiagramEditorPresenter
 
         // Choosing how it should go takes the place of the bends
         ChangeSelectedConnectors(connector => connector with { Routing = routing, Bends = null });
+        SaveSettings();
     }
 
     private void OnArrowHeadsSelected(object? sender, DiagramArrowHeads heads)
     {
         _heads = heads;
         ChangeSelectedConnectors(connector => connector with { Heads = heads });
+        SaveSettings();
     }
 
     private void ChangeSelectedConnectors(Func<DiagramConnectorModel, DiagramConnectorModel> change)
@@ -1523,6 +1601,7 @@ public sealed class DiagramEditorPresenter
     private void ChangeStyle(Func<DiagramStyleModel, DiagramStyleModel> change)
     {
         _style = change(_style);
+        SaveSettings();
 
         if (_selectedShapes.Count > 0 || _selectedConnectors.Count > 0)
         {

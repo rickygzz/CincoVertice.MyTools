@@ -114,6 +114,10 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
 
     public event EventHandler<string>? TextCommitted;
 
+    public event EventHandler<bool>? PropertiesPanelToggled;
+
+    public event EventHandler<DiagramWindowSizeModel>? WindowClosed;
+
     event EventHandler<CancelEventArgs>? IDiagramEditorView.Closing
     {
         add => _closing += value;
@@ -171,6 +175,22 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         ArrowHeadsComboBox.SelectedIndex = (int)heads;
 
         _isShowingChoices = false;
+    }
+
+    public void ShowPropertiesPanel(bool isVisible)
+    {
+        PropertiesPanel.Visible = isVisible;
+        PropertiesButton.Checked = isVisible;
+    }
+
+    public void ShowWindowSize(DiagramWindowSizeModel size)
+    {
+        // It may have been saved on a larger screen than this one
+        Rectangle area = Screen.FromPoint(Cursor.Position).WorkingArea;
+
+        Size = new Size(Math.Min(size.Size.Width, area.Width), Math.Min(size.Size.Height, area.Height));
+        FormExtensions.CenterOnCursorScreen(this);
+        WindowState = size.IsMaximized ? FormWindowState.Maximized : FormWindowState.Normal;
     }
 
     public void ShowProperties(DiagramPropertiesModel properties)
@@ -492,8 +512,8 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
 
     private void ToggleProperties()
     {
-        PropertiesPanel.Visible = !PropertiesPanel.Visible;
-        PropertiesButton.Checked = PropertiesPanel.Visible;
+        ShowPropertiesPanel(!PropertiesPanel.Visible);
+        PropertiesPanelToggled?.Invoke(this, PropertiesPanel.Visible);
     }
 
     private void BoundsBox_ValueChanged(object? sender, EventArgs e)
@@ -800,6 +820,14 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
 
         _closing?.Invoke(this, closing);
         e.Cancel = closing.Cancel;
+
+        if (!e.Cancel)
+        {
+            // Its normal size, also while it's maximized or minimized
+            Size size = WindowState == FormWindowState.Normal ? Size : RestoreBounds.Size;
+
+            WindowClosed?.Invoke(this, new DiagramWindowSizeModel(size, WindowState == FormWindowState.Maximized));
+        }
     }
 
     private void DiagramEditorForm_KeyUp(object? sender, KeyEventArgs e)

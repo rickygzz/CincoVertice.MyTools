@@ -121,7 +121,8 @@ public static class DiagramJson
         shape.GroupId,
         shape.CornerRadius is int radius ? Math.Max(radius, 0) : null);
 
-    private static DiagramStyleModel ToStyle(StyleFile? style) => new(
+    /// <summary>A style read from a file, with values out of range brought into range.</summary>
+    internal static DiagramStyleModel ToStyle(StyleFile? style) => new(
         ParseColor(style?.Fill, Color.Empty),
         ParseColor(style?.Line, Color.Black),
         Math.Clamp(style?.LineWidth ?? 2, 0, MaxLineWidth),
@@ -176,7 +177,8 @@ public static class DiagramJson
 
     private sealed record PointFile(int X, int Y);
 
-    private sealed record StyleFile(
+    /// <summary>A style as it's written in a file.</summary>
+    internal sealed record StyleFile(
         string? Fill,
         string? Line,
         int LineWidth,

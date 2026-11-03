@@ -64,6 +64,12 @@ public interface IDiagramEditorView
     /// <summary>Raised when the user ends a text begun by <see cref="BeginTextEdit"/>, not when they cancel it.</summary>
     event EventHandler<string>? TextCommitted;
 
+    /// <summary>Raised with true when the user shows the properties panel, and false when they hide it.</summary>
+    event EventHandler<bool>? PropertiesPanelToggled;
+
+    /// <summary>Raised with the window's size as it closes, once closing wasn't cancelled.</summary>
+    event EventHandler<DiagramWindowSizeModel>? WindowClosed;
+
     /// <summary>Raised before the window closes; cancel to keep it open.</summary>
     event EventHandler<CancelEventArgs>? Closing;
 
@@ -80,6 +86,12 @@ public interface IDiagramEditorView
 
     /// <summary>Shows the style of what's selected, or of what comes next when nothing is.</summary>
     void ShowStyle(DiagramStyleModel style, DiagramRouting routing, DiagramArrowHeads heads);
+
+    /// <summary>Shows or hides the properties panel, as it was saved. Called once, before the window shows.</summary>
+    void ShowPropertiesPanel(bool isVisible);
+
+    /// <summary>Makes the window this large, as it was saved. Called once at most, before the window shows.</summary>
+    void ShowWindowSize(DiagramWindowSizeModel size);
 
     /// <summary>Shows the properties of the selection, which change while it's dragged too.</summary>
     void ShowProperties(DiagramPropertiesModel properties);

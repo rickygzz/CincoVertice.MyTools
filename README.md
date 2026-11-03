@@ -58,6 +58,9 @@ that open anywhere, and open again here to keep editing them. SVG files from oth
 
 If you already have a `config\hotkeys.cfg`, add `DiagramEditor = Ctrl+Alt+D` to it to get the hotkey.
 
+The editor remembers the style you used last, for new shapes and connectors, along with whether the properties panel is
+shown and the window's size, in `config\diagrameditor.json`.
+
 New text uses [Roboto](https://fonts.google.com/specimen/Roboto), which comes with the app under the
 [SIL Open Font License](https://openfontlicense.org). Opening the editor installs it for your user if it's missing, so
 browsers show saved diagrams in it too; that needs no administrator rights. On a computer without a diagram's font, its
