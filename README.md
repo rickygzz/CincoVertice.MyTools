@@ -10,6 +10,9 @@ shapes and text, use the calculator, review code, or write small scripts and bin
 Windows may warn that the publisher can't be verified, because this build isn't code signed. To run it, click
 **Run**. If you see "Windows protected your PC" instead, click **More info**, then **Run anyway**.
 
+To have it start when you sign in to Windows, tick **Start with Windows** in the tray menu; untick it to stop. This needs
+no administrator rights. If you move the app to another folder, tick it again.
+
 ## Calculator
 
 Type an expression and press Enter. Ctrl+H shows or hides the history of operations.
@@ -76,7 +79,7 @@ Hotkeys can run your own scripts: ask something, open a web page, start a progra
 The tray menu's **Edit hotkeys...**, **Edit activity settings...** and **Scripts → Edit scripts...** open one window with
 those files listed on the left. It colors them and underlines what the app couldn't use while you type: hover over the
 line, or click the problem in the list below the text. Ctrl+S saves. Hotkeys apply when you save, and scripts the next
-time they run.
+time they run. Ctrl+wheel zooms; click the percentage at the top right, or press Ctrl+0, to go back to 100%.
 
 ```
 ## Git Configuration
