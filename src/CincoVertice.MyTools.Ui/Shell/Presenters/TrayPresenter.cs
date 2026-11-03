@@ -1,3 +1,4 @@
+using System.Security;
 using CincoVertice.MyTools.Ui.Shell.Interfaces;
 using CincoVertice.MyTools.Ui.Shell.Views;
 
@@ -19,13 +20,17 @@ public class TrayPresenter
 
     private readonly ITrayView _view;
     private readonly IHotkeyRegistrar _hotkeys;
+    private readonly IStartWithWindows _startWithWindows;
 
-    public TrayPresenter(ITrayView view, IHotkeyRegistrar hotkeys)
+    public TrayPresenter(ITrayView view, IHotkeyRegistrar hotkeys, IStartWithWindows startWithWindows)
     {
         _view = view;
         _hotkeys = hotkeys;
+        _startWithWindows = startWithWindows;
 
         _view.ReloadHotkeysRequested += OnReloadHotkeysRequested;
+        _view.MenuOpening += OnMenuOpening;
+        _view.StartWithWindowsRequested += OnStartWithWindowsRequested;
         _hotkeys.FilesChanged += OnHotkeyFilesChanged;
     }
 
@@ -89,5 +94,25 @@ public class TrayPresenter
     private void OnHotkeyFilesChanged(object? sender, EventArgs e)
     {
         Reload();
+    }
+
+    // Task Manager and Settings can turn it off too
+    private void OnMenuOpening(object? sender, EventArgs e)
+    {
+        _view.ShowStartWithWindows(_startWithWindows.IsEnabled);
+    }
+
+    private void OnStartWithWindowsRequested(object? sender, bool enabled)
+    {
+        try
+        {
+            _startWithWindows.SetEnabled(enabled);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+        {
+            _view.ShowNotification(AppTitle, $"Could not change Start with Windows: {ex.Message}", isWarning: true);
+        }
+
+        _view.ShowStartWithWindows(_startWithWindows.IsEnabled);
     }
 }

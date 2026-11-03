@@ -57,6 +57,7 @@ public sealed class ConfigEditorTests : IDisposable
 
         // Assert
         Assert.NotNull(editor);
+        Assert.NotNull(provider.GetRequiredService<CincoVertice.MyTools.Ui.Shell.Interfaces.IStartWithWindows>());
         Assert.Contains(catalog.GetActions(), action => action.Name == "EditScripts");
         Assert.Empty(language.Check(EditableFileKind.Hotkeys, "EditScripts = Ctrl+Alt+F12"));
     }

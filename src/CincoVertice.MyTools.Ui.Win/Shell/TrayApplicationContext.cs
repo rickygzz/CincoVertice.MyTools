@@ -31,6 +31,8 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView
     // The Hotkey problems item goes above it
     private readonly ToolStripMenuItem _editHotkeysItem;
 
+    private readonly ToolStripMenuItem _startWithWindowsItem;
+
     private ToolStripMenuItem? _hotkeyProblemsItem;
 
     public TrayApplicationContext(
@@ -72,7 +74,12 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView
         AddItem(menu.Items, "&Reload hotkeys", () => ReloadHotkeysRequested?.Invoke(this, EventArgs.Empty));
         AddAction(menu.Items, "Edit &activity settings...", editActivitySettingsAction);
         menu.Items.Add(new ToolStripSeparator());
+        _startWithWindowsItem = AddItem(
+            menu.Items,
+            "Start with &Windows",
+            () => StartWithWindowsRequested?.Invoke(this, !_startWithWindowsItem!.Checked));
         AddItem(menu.Items, "&Exit", Exit);
+        menu.Opening += (_, _) => MenuOpening?.Invoke(this, EventArgs.Empty);
 
         _notifyIcon = new NotifyIcon
         {
@@ -87,6 +94,15 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView
     }
 
     public event EventHandler? ReloadHotkeysRequested;
+
+    public event EventHandler? MenuOpening;
+
+    public event EventHandler<bool>? StartWithWindowsRequested;
+
+    public void ShowStartWithWindows(bool isEnabled)
+    {
+        _startWithWindowsItem.Checked = isEnabled;
+    }
 
     /// <summary>
     ///     Scripts: one item per script, then the editor and the folder to add or edit them.

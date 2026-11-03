@@ -10,11 +10,60 @@ public class TrayPresenterTests
 {
     private readonly FakeTrayView _view = new();
     private readonly FakeHotkeyRegistrar _hotkeys = new();
+    private readonly FakeStartWithWindows _startWithWindows = new();
     private readonly TrayPresenter _presenter;
 
     public TrayPresenterTests()
     {
-        _presenter = new TrayPresenter(_view, _hotkeys);
+        _presenter = new TrayPresenter(_view, _hotkeys, _startWithWindows);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void MenuOpening_ShowsWhetherItStartsWithWindows(bool isEnabled)
+    {
+        // Arrange: changed elsewhere, as in Task Manager
+        _startWithWindows.IsEnabled = isEnabled;
+
+        // Act
+        _view.OpenMenu();
+
+        // Assert
+        Assert.Equal(isEnabled, _view.StartsWithWindows);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void StartWithWindowsRequested_ChangesIt_AndShowsIt(bool enabled)
+    {
+        // Arrange
+        _startWithWindows.IsEnabled = !enabled;
+
+        // Act
+        _view.RequestStartWithWindows(enabled);
+
+        // Assert
+        Assert.Equal(enabled, _startWithWindows.IsEnabled);
+        Assert.Equal(enabled, _view.StartsWithWindows);
+        Assert.Empty(_view.Notifications);
+    }
+
+    [Fact]
+    public void StartWithWindowsRequested_WhenItFails_SaysSo_AndShowsItDidntChange()
+    {
+        // Arrange
+        _startWithWindows.Error = new UnauthorizedAccessException("Denied");
+
+        // Act
+        _view.RequestStartWithWindows(true);
+
+        // Assert
+        var notification = Assert.Single(_view.Notifications);
+        Assert.True(notification.IsWarning);
+        Assert.Contains("Denied", notification.Text);
+        Assert.False(_view.StartsWithWindows);
     }
 
     [Fact]
@@ -100,9 +149,38 @@ public class TrayPresenterTests
         Assert.Equal(string.Join(Environment.NewLine, expectedLines), summary);
     }
 
+    private sealed class FakeStartWithWindows : IStartWithWindows
+    {
+        public bool IsEnabled { get; set; }
+
+        public Exception? Error { get; set; }
+
+        public void SetEnabled(bool enabled)
+        {
+            if (Error is not null)
+            {
+                throw Error;
+            }
+
+            IsEnabled = enabled;
+        }
+    }
+
     private sealed class FakeTrayView : ITrayView
     {
         public event EventHandler? ReloadHotkeysRequested;
+
+        public event EventHandler? MenuOpening;
+
+        public event EventHandler<bool>? StartWithWindowsRequested;
+
+        public bool StartsWithWindows { get; private set; }
+
+        public void ShowStartWithWindows(bool isEnabled) => StartsWithWindows = isEnabled;
+
+        public void OpenMenu() => MenuOpening?.Invoke(this, EventArgs.Empty);
+
+        public void RequestStartWithWindows(bool enabled) => StartWithWindowsRequested?.Invoke(this, enabled);
 
         public IReadOnlyList<ScriptMenuItemModel> Scripts { get; private set; } = [];
 
