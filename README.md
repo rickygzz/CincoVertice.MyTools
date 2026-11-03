@@ -42,7 +42,7 @@ that open anywhere, and open again here to keep editing them. SVG files from oth
 | Write in a shape, or label a connector | Double-click it |
 | Connect two shapes | Hover a shape and drag from one of the circles around it to another shape; drop on a circle there to pick that side too. Or `C`, then drag from one shape to the other, and the sides are picked for you. The connector follows them when they move. `V` or Esc goes back to selecting |
 | Attach a connector somewhere else | Click it, then drag one of the dots at its ends to another shape, or to a circle on it to pick the side. Dropped on nothing, it stays where it was. Dropped on the middle of its own shape, the side is picked for you again |
-| Change a connector's path | Click it, then drag its line anywhere to add a bend, or drag a diamond to move one. Double-click a diamond to remove it. **Reset line** takes them all off, and so does choosing Elbow or Straight |
+| Change a connector's path | Click an elbow connector, then drag any piece of its line sideways; it stays level and upright, with rounded corners. **Reset line** lets it work out its own path again, and so does choosing Elbow or Straight |
 | Select | Click, Shift+click to add, or drag on nothing around them. Ctrl+A for all |
 | Move | Drag, or the arrow keys (Shift for one pixel at a time) |
 | Scale | Drag a square around the selection, with Shift to keep the proportions |

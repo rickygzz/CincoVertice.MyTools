@@ -3,6 +3,7 @@ using System.Drawing;
 using CincoVertice.MyTools.Ui.Diagramming.Interfaces;
 using CincoVertice.MyTools.Ui.Diagramming.Models;
 using CincoVertice.MyTools.Ui.Diagramming.Presenters;
+using CincoVertice.MyTools.Ui.Diagramming.Services;
 using CincoVertice.MyTools.Ui.Diagramming.Views;
 using Xunit;
 
@@ -820,44 +821,149 @@ public class DiagramEditorPresenterTests
         Assert.NotEqual(100, Diagram.Shapes[1].Bounds.Y);
     }
 
-    [Fact]
-    public void Bend_DraggingTheLineOfASelectedConnector_AddsOne_ShownAndSnapped()
+    private void AssertLineIsLevelAndUpright(DiagramModel diagram)
     {
-        // Arrange
+        foreach (DiagramConnectorModel connector in diagram.Connectors)
+        {
+            IReadOnlyList<PointF> route = DiagramRouter.RouteFor(connector, diagram)!;
+
+            for (int i = 1; i < route.Count; i++)
+            {
+                Assert.True(DiagramRouter.IsLevelOrUpright(route[i - 1], route[i]), $"{route[i - 1]} to {route[i]}");
+            }
+        }
+    }
+
+    /// <summary>
+    ///     An elbow from the first shape at 100, 100 to the one at 400, 300, selected: across from 200, 125 to 300, down
+    ///     to 325, and across to 400.
+    /// </summary>
+    private void AddSelectedElbowWithCorners()
+    {
+        DiagramShapeModel a = AddShape(100, 100);
+        DiagramShapeModel c = AddShape(400, 300);
+
+        Connect(a, c);
+        ClickEmpty();
+        _view.Click(300, 200);
+    }
+
+    [Fact]
+    public void Segment_ThePieceOfAStraightLookingLine_StepsAside_WithStubsAtBothShapes_ShownAndSnapped()
+    {
+        // Arrange: from 200, 125 to 400, 125
         AddSelectedConnector();
 
         // Act
         _view.Press(300, 125);
         _view.Move(303, 202);
 
-        // Assert: a preview, on the grid
-        Assert.Equal(new Point(300, 200), Assert.Single(_view.Scene!.Diagram.Connectors).Bends![0]);
+        // Assert: a preview, on the grid, and only sideways
+        Assert.Equal(
+            [new Point(220, 125), new Point(220, 200), new Point(380, 200), new Point(380, 125)],
+            _view.Scene!.Diagram.Connectors[0].Bends!);
         Assert.Null(Diagram.Connectors[0].Bends);
 
         // Act
         _view.Release(303, 202);
 
         // Assert
-        Assert.Equal([new Point(300, 200)], Diagram.Connectors[0].Bends!);
-        Assert.Equal([new Point(300, 200)], _view.Scene!.ConnectorBends!);
+        Assert.Equal(4, Diagram.Connectors[0].Bends!.Count);
+        AssertLineIsLevelAndUpright(Diagram);
         Assert.NotEmpty(_presenter.SelectedConnectorIds);
     }
 
     [Fact]
-    public void Bend_WithAlt_DoesntSnap()
+    public void Segment_NeverMakesASlantedLine_WhereverItsDragged()
     {
         // Arrange
-        AddSelectedConnector();
+        AddSelectedElbowWithCorners();
 
-        // Act
-        _view.Drag(300, 125, 303, 202, alt: true);
+        // Act: far off in both directions, which is what made a slanted line with free bends
+        _view.Drag(300, 200, 150, 480);
 
         // Assert
-        Assert.Equal([new Point(303, 202)], Diagram.Connectors[0].Bends!);
+        AssertLineIsLevelAndUpright(Diagram);
+        Assert.Equal([new Point(150, 125), new Point(150, 325)], Diagram.Connectors[0].Bends!);
     }
 
     [Fact]
-    public void Bend_AClickOnTheLine_AddsNone()
+    public void Segment_WithAlt_DoesntSnap()
+    {
+        // Arrange
+        AddSelectedElbowWithCorners();
+
+        // Act
+        _view.Drag(300, 200, 253, 200, alt: true);
+
+        // Assert
+        Assert.Equal([new Point(253, 125), new Point(253, 325)], Diagram.Connectors[0].Bends!);
+    }
+
+    [Fact]
+    public void Segment_NearAShape_LinesUpWithIt_AndShowsAGuide()
+    {
+        // Arrange
+        AddSelectedElbowWithCorners();
+
+        // Act: 3 away from the first shape's left edge
+        _view.Press(300, 200);
+        _view.Move(103, 400);
+
+        // Assert
+        Assert.Equal(100, _view.Scene!.Diagram.Connectors[0].Bends![0].X);
+        Assert.All(_view.Scene.Guides, guide => Assert.Equal(guide.From.X, guide.To.X));
+        Assert.NotEmpty(_view.Scene.Guides);
+    }
+
+    [Fact]
+    public void Segment_ThePieceLeavingAShape_KeepsAStubThere()
+    {
+        // Arrange
+        AddSelectedElbowWithCorners();
+
+        // Act
+        _view.Drag(250, 125, 250, 160);
+
+        // Assert
+        Assert.Equal(
+            [new Point(220, 125), new Point(220, 160), new Point(300, 160), new Point(300, 325)],
+            Diagram.Connectors[0].Bends!);
+        AssertLineIsLevelAndUpright(Diagram);
+    }
+
+    [Fact]
+    public void Segment_ThePieceArrivingAtAShape_KeepsAStubThere()
+    {
+        // Arrange
+        AddSelectedElbowWithCorners();
+
+        // Act
+        _view.Drag(350, 325, 350, 300);
+
+        // Assert
+        Assert.Equal(
+            [new Point(300, 125), new Point(300, 300), new Point(380, 300), new Point(380, 325)],
+            Diagram.Connectors[0].Bends!);
+        AssertLineIsLevelAndUpright(Diagram);
+    }
+
+    [Fact]
+    public void Segment_CanBeDraggedAgain()
+    {
+        // Arrange
+        AddSelectedElbowWithCorners();
+        _view.Drag(300, 200, 250, 200);
+
+        // Act
+        _view.Drag(250, 200, 350, 200);
+
+        // Assert
+        Assert.Equal([new Point(350, 125), new Point(350, 325)], Diagram.Connectors[0].Bends!);
+    }
+
+    [Fact]
+    public void Segment_AClick_ChangesNothing()
     {
         // Arrange
         AddSelectedConnector();
@@ -872,7 +978,23 @@ public class DiagramEditorPresenterTests
     }
 
     [Fact]
-    public void Bend_OnAnUnselectedConnector_OnlySelectsIt()
+    public void Segment_BackToWhereItWas_HasNothingToUndo()
+    {
+        // Arrange
+        AddSelectedElbowWithCorners();
+        DiagramModel before = Diagram;
+
+        // Act
+        _view.Press(300, 200);
+        _view.Move(400, 200);
+        _view.Release(300, 200);
+
+        // Assert
+        Assert.Same(before, Diagram);
+    }
+
+    [Fact]
+    public void Segment_OnAnUnselectedConnector_OnlySelectsIt()
     {
         // Arrange
         DiagramShapeModel a = AddShape(100, 100);
@@ -889,98 +1011,36 @@ public class DiagramEditorPresenterTests
     }
 
     [Fact]
-    public void Bend_OnAnElbow_KeepsItsCorners_AndGoesInTheRightPlace()
-    {
-        // Arrange: from 200, 125 across to 300, down to 325, and across to 400
-        DiagramShapeModel a = AddShape(100, 100);
-        DiagramShapeModel c = AddShape(400, 300);
-        Connect(a, c);
-        ClickEmpty();
-        _view.Click(300, 200);
-
-        // Act: the upright piece, between the two corners
-        _view.Drag(300, 200, 250, 200);
-
-        // Assert
-        Assert.Equal(
-            [new Point(300, 125), new Point(250, 200), new Point(300, 325)],
-            Diagram.Connectors[0].Bends!);
-    }
-
-    [Fact]
-    public void Bend_DraggingOne_MovesIt_WithoutAddingAnother()
+    public void Segment_OfAStraightConnector_CantBeMoved()
     {
         // Arrange
         AddSelectedConnector();
+        _view.SelectRouting(DiagramRouting.Straight);
+
+        // Act
         _view.Drag(300, 125, 300, 200);
-
-        // Act
-        _view.Drag(300, 200, 250, 260);
-
-        // Assert
-        Assert.Equal([new Point(250, 260)], Diagram.Connectors[0].Bends!);
-    }
-
-    [Fact]
-    public void Bend_BackToWhereItWas_HasNothingToUndo()
-    {
-        // Arrange
-        AddSelectedConnector();
-        _view.Drag(300, 125, 300, 200);
-        DiagramModel before = Diagram;
-
-        // Act
-        _view.Press(300, 200);
-        _view.Move(400, 400);
-        _view.Release(300, 200);
-
-        // Assert
-        Assert.Same(before, Diagram);
-    }
-
-    [Fact]
-    public void Bend_DoubleClicked_IsRemoved_AndTheLastOneGoesBackToTheRouting()
-    {
-        // Arrange
-        AddSelectedConnector();
-        _view.Drag(300, 125, 300, 200);
-
-        // The line now goes from 200, 150 on the first shape to the bend, so through 250, 175
-        _view.Drag(250, 175, 250, 260);
-        Assert.Equal(2, Diagram.Connectors[0].Bends!.Count);
-
-        // Act
-        _view.DoubleClick(250, 260);
-
-        // Assert
-        Assert.Equal([new Point(300, 200)], Diagram.Connectors[0].Bends!);
-        Assert.Null(_view.TextBounds);
-
-        // Act
-        _view.DoubleClick(300, 200);
 
         // Assert
         Assert.Null(Diagram.Connectors[0].Bends);
     }
 
     [Fact]
-    public void Bend_DoubleClickOnTheLine_StillEditsTheLabel()
+    public void Segment_DoubleClickOnTheLine_StillEditsTheLabel()
     {
         // Arrange
-        AddSelectedConnector();
-        _view.Drag(300, 125, 300, 200);
+        AddSelectedElbowWithCorners();
 
-        // Act: on the line, away from the bend
-        _view.DoubleClick(250, 175);
+        // Act
+        _view.DoubleClick(300, 200);
         _view.CommitText("yes");
 
         // Assert
         Assert.Equal("yes", Diagram.Connectors[0].Label);
-        Assert.Single(Diagram.Connectors[0].Bends!);
+        Assert.Null(Diagram.Connectors[0].Bends);
     }
 
     [Fact]
-    public void Bend_UndoAndCancel_PutItBack()
+    public void Segment_UndoAndCancel_PutItBack()
     {
         // Arrange
         AddSelectedConnector();
@@ -999,7 +1059,7 @@ public class DiagramEditorPresenterTests
     }
 
     [Fact]
-    public void Bend_ShiftOnTheLine_TakesItOffTheSelectionInstead()
+    public void Segment_ShiftOnTheLine_TakesItOffTheSelectionInstead()
     {
         // Arrange
         AddSelectedConnector();
@@ -1013,74 +1073,74 @@ public class DiagramEditorPresenterTests
     }
 
     [Fact]
-    public void Bend_ShowsTheMoveCursor()
+    public void Segment_ShowsTheCursorForTheWayItMoves()
     {
         // Arrange
-        AddSelectedConnector();
+        AddSelectedElbowWithCorners();
 
-        // Act
-        _view.Hover(300, 125);
+        // Act & Assert: the upright piece moves sideways, the level one up and down
+        _view.Hover(300, 200);
+        Assert.Equal(DiagramCursor.SizeHorizontal, _view.Cursor);
 
-        // Assert
-        Assert.Equal(DiagramCursor.Move, _view.Cursor);
+        _view.Hover(250, 125);
+        Assert.Equal(DiagramCursor.SizeVertical, _view.Cursor);
     }
 
     [Fact]
-    public void Bends_StayWhenOneShapeMoves_AndGoAlongWhenBothDo()
+    public void Segment_MovedThenAShapeMoves_StaysLevelAndUpright()
     {
         // Arrange
-        (DiagramShapeModel a, DiagramShapeModel b, _) = AddSelectedConnector();
-        _view.Drag(300, 125, 300, 200);
+        AddSelectedElbowWithCorners();
+        _view.Drag(300, 200, 250, 200);
+        DiagramShapeModel a = Diagram.Shapes[0];
         ClickEmpty();
 
-        // Act: only the first
+        // Act: only the first shape, which the saved corners aren't lined up with any more
         _view.Drag(a.Bounds.X + 10, a.Bounds.Y + 10, a.Bounds.X + 10, a.Bounds.Y - 40);
 
         // Assert
-        Assert.Equal([new Point(300, 200)], Diagram.Connectors[0].Bends!);
-
-        // Act: both
-        ClickEmpty();
-        _view.Press(50, 0);
-        _view.Move(600, 200);
-        _view.Release(600, 200);
-        Assert.Contains(b.Id, _presenter.SelectedShapeIds);
-        _view.Drag(b.Bounds.X + 10, b.Bounds.Y + 10, b.Bounds.X + 10, b.Bounds.Y + 110);
-
-        // Assert
-        Assert.Equal([new Point(300, 300)], Diagram.Connectors[0].Bends!);
+        Assert.Equal([new Point(250, 125), new Point(250, 325)], Diagram.Connectors[0].Bends!);
+        AssertLineIsLevelAndUpright(Diagram);
     }
 
     [Fact]
-    public void Bends_GoAlongWithANudgeOfBothShapes_AndWhenScaled()
+    public void Segment_MovedThenBothShapesMove_GoesAlong()
     {
         // Arrange
-        AddSelectedConnector();
-        _view.Drag(300, 125, 300, 200);
-        ClickEmpty();
-        _view.Press(50, 50);
-        _view.Move(600, 200);
-        _view.Release(600, 200);
+        AddSelectedElbowWithCorners();
+        _view.Drag(300, 200, 250, 200);
+        _view.Command(DiagramCommand.SelectAll);
 
         // Act
-        _view.Nudge(10, 0);
+        _view.Nudge(10, 20);
 
         // Assert
-        Assert.Equal([new Point(310, 200)], Diagram.Connectors[0].Bends!);
-
-        // Act: the box from 110..510 by 100..150 becomes twice as high
-        _view.Drag(310, 150, 310, 200, alt: true);
-
-        // Assert
-        Assert.Equal(new Point(310, 300), Diagram.Connectors[0].Bends![0]);
+        Assert.Equal([new Point(260, 145), new Point(260, 345)], Diagram.Connectors[0].Bends!);
     }
 
     [Fact]
-    public void Bends_GoAlongWhenCopied()
+    public void Segment_MovedThenBothShapesAreScaled_GoesAlong()
+    {
+        // Arrange: the box from 100, 100 to 500, 350
+        AddSelectedElbowWithCorners();
+        _view.Drag(300, 200, 250, 200);
+        ClickEmpty();
+        _view.Command(DiagramCommand.SelectAll);
+
+        // Act: twice as wide
+        _view.Drag(500, 225, 900, 225, alt: true);
+
+        // Assert
+        Assert.Equal(400, Diagram.Connectors[0].Bends![0].X);
+        AssertLineIsLevelAndUpright(Diagram);
+    }
+
+    [Fact]
+    public void Segment_MovedGoesAlongWhenCopied()
     {
         // Arrange
-        AddSelectedConnector();
-        _view.Drag(300, 125, 300, 200);
+        AddSelectedElbowWithCorners();
+        _view.Drag(300, 200, 250, 200);
         _view.Command(DiagramCommand.SelectAll);
 
         // Act
@@ -1088,26 +1148,28 @@ public class DiagramEditorPresenterTests
         _view.Command(DiagramCommand.Paste);
 
         // Assert
-        Assert.Equal([new Point(320, 220)], Diagram.Connectors[1].Bends!);
+        Assert.Equal([new Point(270, 145), new Point(270, 345)], Diagram.Connectors[1].Bends!);
     }
 
     [Fact]
-    public void Bends_StayWhenAnEndIsAttachedElsewhere()
+    public void Segment_MovedStaysWhenAnEndIsAttachedElsewhere()
     {
         // Arrange
-        AddSelectedConnector();
+        (_, _, DiagramShapeModel c) = AddSelectedConnector();
         _view.Drag(300, 125, 300, 200);
+        int corners = Diagram.Connectors[0].Bends!.Count;
 
-        // Act: the end is the tip of the head, at the second shape, reached from the bend
-        PointF end = _view.Scene!.ConnectorEnds![1];
-        _view.Drag((int)end.X, (int)end.Y, 450, 325);
+        // Act
+        _view.Drag(400, 125, c.Bounds.X + 50, c.Bounds.Y + 25);
 
         // Assert
-        Assert.Equal([new Point(300, 200)], Diagram.Connectors[0].Bends!);
+        Assert.Equal(corners, Diagram.Connectors[0].Bends!.Count);
+        Assert.Equal(c.Id, Diagram.Connectors[0].ToShapeId);
+        AssertLineIsLevelAndUpright(Diagram);
     }
 
     [Fact]
-    public void ResetRoute_TakesTheBendsOff_AndWithoutAnyHasNothingToUndo()
+    public void ResetRoute_LetsItWorkOutItsPathAgain_AndWithoutChangesHasNothingToUndo()
     {
         // Arrange
         AddSelectedConnector();
@@ -1123,7 +1185,7 @@ public class DiagramEditorPresenterTests
     }
 
     [Fact]
-    public void Routing_ChosenForASelectedConnector_TakesTheBendsOff()
+    public void Routing_ChosenForASelectedConnector_LetsItWorkOutItsPathAgain()
     {
         // Arrange
         AddSelectedConnector();

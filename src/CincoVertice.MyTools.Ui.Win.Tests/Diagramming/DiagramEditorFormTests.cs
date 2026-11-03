@@ -209,20 +209,6 @@ public class DiagramEditorFormTests
         Assert.Equal(Color.FromArgb(0, 120, 215).ToArgb(), image.GetPixel(100, 100).ToArgb());
     }
 
-    [Fact]
-    public void Renderer_DrawsTheBendsOfASelectedConnector()
-    {
-        // Arrange
-        DiagramSceneModel scene = Scene(DiagramModel.Empty) with { ConnectorBends = [new Point(100, 100)] };
-
-        // Act
-        using Bitmap image = Render(scene);
-
-        // Assert: the blue outline around a white middle
-        Assert.Equal(Color.White.ToArgb(), image.GetPixel(100, 100).ToArgb());
-        Assert.NotEqual(Color.White.ToArgb(), image.GetPixel(105, 100).ToArgb());
-    }
-
     private sealed class NoStore : IDiagramFileStore
     {
         public void Save(string path, DiagramModel diagram)

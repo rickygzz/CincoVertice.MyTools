@@ -65,7 +65,7 @@ public sealed class DiagramSvgTests : IDisposable
         // Arrange
         DiagramModel diagram = Sample() with
         {
-            Connectors = [Sample().Connectors[0] with { Bends = [new Point(900, 900)] }],
+            Connectors = [Sample().Connectors[0] with { Label = string.Empty, Bends = [new Point(900, 900)] }],
         };
 
         // Act

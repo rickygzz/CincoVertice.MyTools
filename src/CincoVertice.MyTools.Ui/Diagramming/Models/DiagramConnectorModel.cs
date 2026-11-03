@@ -13,8 +13,8 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 /// <param name="FromSide">The side it leaves from; null to pick the one that fits best as the shapes move.</param>
 /// <param name="ToSide">The side it arrives at; null to pick the one that fits best as the shapes move.</param>
 /// <param name="Bends">
-///     The points it goes through on its way, in order, with straight lines between them; null to follow
-///     <paramref name="Routing"/>. They stay where they are when only one of its shapes moves.
+///     The corners of an elbow connector whose lines were moved by hand, in order; null for the corners it works out
+///     by itself. They stay where they are when only one of its shapes moves. A straight connector doesn't use them.
 /// </param>
 public sealed record DiagramConnectorModel(
     int Id,

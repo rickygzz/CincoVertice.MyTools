@@ -253,9 +253,9 @@ public sealed class DiagramEditorPresenter
         }
 
         // With Shift or Ctrl, a press on a selected connector takes it off the selection instead
-        if (!pointer.Shift && !pointer.Control && BendDragAt(point) is { } bendDrag)
+        if (!pointer.Shift && !pointer.Control && SegmentDragAt(point) is { } segmentDrag)
         {
-            _drag = bendDrag;
+            _drag = segmentDrag;
             Refresh();
 
             return;
@@ -410,8 +410,8 @@ public sealed class DiagramEditorPresenter
             case ReconnectDrag reconnect:
                 DragReconnect(reconnect, point);
                 break;
-            case BendDrag bend:
-                DragBend(bend, point, pointer.Alt);
+            case SegmentDrag segment:
+                DragSegment(segment, point, pointer.Alt);
                 break;
             case BandDrag band:
                 _band = FromCorners(band.Start, point);
@@ -490,66 +490,52 @@ public sealed class DiagramEditorPresenter
         };
     }
 
-    /// <summary>
-    ///     A drag of the bend at the point of a selected connector, or a new bend on its line there. An elbow's corners
-    ///     become bends too, so the line only changes where it's dragged.
-    /// </summary>
-    /// <returns>The drag; null when there's no selected connector at the point.</returns>
-    private BendDrag? BendDragAt(Point point)
+    /// <summary>A drag of the piece of line at the point, of a selected elbow connector.</summary>
+    /// <returns>The drag; null when there's no such line at the point.</returns>
+    private SegmentDrag? SegmentDragAt(Point point)
     {
         if (_tool != DiagramTool.Select)
         {
             return null;
         }
 
-        float distance = GrabDistance / _viewport.Zoom;
+        IEnumerable<DiagramConnectorModel> elbows = _diagram.Connectors
+            .Where(c => _selectedConnectors.Contains(c.Id) && c.Routing == DiagramRouting.Elbow);
 
-        foreach (DiagramConnectorModel connector in _diagram.Connectors.Where(c => _selectedConnectors.Contains(c.Id)))
+        foreach (DiagramConnectorModel connector in elbows)
         {
-            if (connector.Bends is { } bends && DiagramHitTester.BendAt(bends, point, distance) is int bend)
-            {
-                return new BendDrag(point, connector.Id, bends, bend, IsNew: false);
-            }
-
             if (DiagramRouter.PathOf(connector, _diagram) is { } path
-                && DiagramHitTester.SegmentAt(path.Points, point, distance) is int segment)
+                && DiagramHitTester.SegmentAt(path.Points, point, GrabDistance / _viewport.Zoom) is int segment
+                && DiagramRouter.RouteFor(connector, _diagram) is { } route
+                && DiagramRouter.IsLevelOrUpright(route[segment], route[segment + 1]))
             {
-                List<Point> corners = [.. path.Points.Skip(1).SkipLast(1).Select(Point.Round)];
-
-                return new BendDrag(point, connector.Id, connector.Bends ?? corners, segment, IsNew: true);
+                return new SegmentDrag(point, connector.Id, route, segment);
             }
         }
 
         return null;
     }
 
-    private void DragBend(BendDrag bend, Point point, bool isSnapOff)
+    private void DragSegment(SegmentDrag drag, Point point, bool isSnapOff)
     {
-        if (IsStillAClick(bend.Start, point))
+        if (IsStillAClick(drag.Start, point))
         {
             return;
         }
 
+        bool isLevel = drag.Route[drag.Segment].Y == drag.Route[drag.Segment + 1].Y;
         DiagramSnapModel snap = isSnapOff
             ? new DiagramSnapModel(0, 0, [])
             : DiagramSnapper.SnapPoint(point, [.. _diagram.Shapes.Select(shape => shape.Bounds)], SnapTolerance());
         Point moved = point;
 
         moved.Offset(snap.DeltaX, snap.DeltaY);
-        _guides = snap.Guides;
+        _guides = [.. snap.Guides.Where(guide => IsVerticalGuide(guide) != isLevel)];
 
-        List<Point> bends = [.. bend.Bends];
+        List<PointF> route = DiagramRouter.WithSegmentMoved(drag.Route, drag.Segment, isLevel ? moved.Y : moved.X);
+        List<Point> corners = [.. route.Skip(1).SkipLast(1).Select(Point.Round)];
 
-        if (bend.IsNew)
-        {
-            bends.Insert(bend.Index, moved);
-        }
-        else
-        {
-            bends[bend.Index] = moved;
-        }
-
-        _preview = WithBends(_diagram, bend.ConnectorId, bends);
+        _preview = WithBends(_diagram, drag.ConnectorId, corners.Count > 0 ? corners : null);
     }
 
     private static DiagramModel WithBends(DiagramModel diagram, int connectorId, IReadOnlyList<Point>? bends) => diagram with
@@ -762,7 +748,7 @@ public sealed class DiagramEditorPresenter
                 && !preview.Connectors.SequenceEqual(_diagram.Connectors):
                 Commit(preview);
                 break;
-            case BendDrag bend when preview is not null && (bend.IsNew || BendsChanged(bend, preview)):
+            case SegmentDrag segment when preview is not null && RouteChanged(segment, preview):
                 Commit(preview);
                 break;
             case BandDrag when band is Rectangle box:
@@ -779,11 +765,11 @@ public sealed class DiagramEditorPresenter
     }
 
     /// <summary>Dragged and brought back to where it was is nothing to undo.</summary>
-    private static bool BendsChanged(BendDrag bend, DiagramModel preview)
+    private static bool RouteChanged(SegmentDrag drag, DiagramModel preview)
     {
-        IReadOnlyList<Point> bends = preview.Connectors.First(c => c.Id == bend.ConnectorId).Bends ?? [];
+        DiagramConnectorModel connector = preview.Connectors.First(c => c.Id == drag.ConnectorId);
 
-        return !bends.SequenceEqual(bend.Bends);
+        return !DiagramRouter.RouteFor(connector, preview)!.SequenceEqual(drag.Route);
     }
 
     private void ReleaseCreate(CreateDrag create, DiagramModel? preview)
@@ -837,11 +823,7 @@ public sealed class DiagramEditorPresenter
 
         Point point = _viewport.ToDiagram(pointer.Location);
 
-        if (BendDragAt(point) is { IsNew: false } bend)
-        {
-            RemoveBend(bend);
-        }
-        else if (DiagramHitTester.ShapeAt(_diagram, point) is { } shape)
+        if (DiagramHitTester.ShapeAt(_diagram, point) is { } shape)
         {
             BeginShapeText(shape);
         }
@@ -855,15 +837,6 @@ public sealed class DiagramEditorPresenter
         }
 
         Refresh();
-    }
-
-    /// <summary>Without its last bend, a connector follows its routing again.</summary>
-    private void RemoveBend(BendDrag bend)
-    {
-        List<Point> bends = [.. bend.Bends];
-
-        bends.RemoveAt(bend.Index);
-        Commit(WithBends(_diagram, bend.ConnectorId, bends.Count > 0 ? bends : null));
     }
 
     private void ResetRoute()
@@ -1590,9 +1563,11 @@ public sealed class DiagramEditorPresenter
             return DiagramCursor.Cross;
         }
 
-        if (BendDragAt(point) is not null)
+        if (SegmentDragAt(point) is { } segment)
         {
-            return DiagramCursor.Move;
+            return segment.Route[segment.Segment].Y == segment.Route[segment.Segment + 1].Y
+                ? DiagramCursor.SizeVertical
+                : DiagramCursor.SizeHorizontal;
         }
 
         if (_selectedShapes.Count > 0
@@ -1635,12 +1610,7 @@ public sealed class DiagramEditorPresenter
             _draftConnector,
             _connectTarget,
             AnchorsOf(shown),
-            ConnectorEndsOf(shown),
-            [
-                .. shown.Connectors
-                    .Where(c => _selectedConnectors.Contains(c.Id))
-                    .SelectMany(c => c.Bends ?? []),
-            ]));
+            ConnectorEndsOf(shown)));
         _view.ShowUndoRedo(_undo.Count > 0, _redo.Count > 0);
         _view.ShowDocument(Name, HasChanges);
         _view.ShowZoom((int)Math.Round(_viewport.Zoom * 100));
@@ -1701,10 +1671,9 @@ public sealed class DiagramEditorPresenter
 
     /// <param name="Start">Where the drag started.</param>
     /// <param name="ConnectorId">The connector being changed.</param>
-    /// <param name="Bends">Its bends before the drag.</param>
-    /// <param name="Index">Which bend is dragged, or where the new one goes among them.</param>
-    /// <param name="IsNew">True when the drag adds a bend.</param>
-    private sealed record BendDrag(Point Start, int ConnectorId, IReadOnlyList<Point> Bends, int Index, bool IsNew) : Drag;
+    /// <param name="Route">Its whole line before the drag.</param>
+    /// <param name="Segment">The index of the point that starts the piece being dragged.</param>
+    private sealed record SegmentDrag(Point Start, int ConnectorId, IReadOnlyList<PointF> Route, int Segment) : Drag;
 
     private sealed record BandDrag(Point Start) : Drag;
 }

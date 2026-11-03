@@ -270,27 +270,6 @@ public static class DiagramRenderer
         }
 
         DrawConnectorEnds(graphics, scene.ConnectorEnds ?? [], zoom);
-        DrawBends(graphics, scene.ConnectorBends ?? [], zoom, selection);
-    }
-
-    private static void DrawBends(Graphics graphics, IReadOnlyList<Point> bends, float zoom, Pen pen)
-    {
-        float size = HandleSize / zoom;
-
-        foreach (Point bend in bends)
-        {
-            // A diamond, unlike the squares that scale and the dots at a connector's ends
-            PointF[] diamond =
-            [
-                new(bend.X, bend.Y - size * 0.7f),
-                new(bend.X + size * 0.7f, bend.Y),
-                new(bend.X, bend.Y + size * 0.7f),
-                new(bend.X - size * 0.7f, bend.Y),
-            ];
-
-            graphics.FillPolygon(Brushes.White, diamond);
-            graphics.DrawPolygon(pen, diamond);
-        }
     }
 
     private static void DrawConnectorEnds(Graphics graphics, IReadOnlyList<PointF> ends, float zoom)

@@ -69,23 +69,6 @@ public static class DiagramHitTester
         return null;
     }
 
-    /// <returns>Which bend is within the distance of the point; null when there's none.</returns>
-    public static int? BendAt(IReadOnlyList<Point> bends, Point point, float distance)
-    {
-        for (int i = 0; i < bends.Count; i++)
-        {
-            float x = bends[i].X - point.X;
-            float y = bends[i].Y - point.Y;
-
-            if (x * x + y * y <= distance * distance)
-            {
-                return i;
-            }
-        }
-
-        return null;
-    }
-
     /// <returns>The index of the point that starts the piece of line within the distance; null when there's none.</returns>
     public static int? SegmentAt(IReadOnlyList<PointF> line, Point point, float distance)
     {

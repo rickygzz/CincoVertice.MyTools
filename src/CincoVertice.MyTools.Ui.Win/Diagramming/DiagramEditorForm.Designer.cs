@@ -379,7 +379,7 @@ partial class DiagramEditorForm
         ResetRouteButton.Name = "ResetRouteButton";
         ResetRouteButton.Tag = "ResetRoute";
         ResetRouteButton.Text = "Reset line";
-        ResetRouteButton.ToolTipText = "Take the bends off the selected connectors";
+        ResetRouteButton.ToolTipText = "Let the selected connectors work out their own path again";
         ResetRouteButton.Click += CommandButton_Click;
         //
         // ConnectorsSeparator

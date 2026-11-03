@@ -16,7 +16,6 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 /// <param name="ConnectTargetId">The shape a connector being dragged would attach to; null for none.</param>
 /// <param name="Anchors">The circles to connect from or to, around the shape under the mouse; null for none.</param>
 /// <param name="ConnectorEnds">The ends of the selected connectors, which can be dragged to another place.</param>
-/// <param name="ConnectorBends">The bends of the selected connectors, which can be dragged or removed.</param>
 public sealed record DiagramSceneModel(
     DiagramModel Diagram,
     IReadOnlySet<int> SelectedShapeIds,
@@ -28,5 +27,4 @@ public sealed record DiagramSceneModel(
     (Point From, Point To)? DraftConnector,
     int? ConnectTargetId,
     DiagramAnchorsModel? Anchors = null,
-    IReadOnlyList<PointF>? ConnectorEnds = null,
-    IReadOnlyList<Point>? ConnectorBends = null);
+    IReadOnlyList<PointF>? ConnectorEnds = null);

@@ -22,7 +22,7 @@ public enum DiagramCommand
     BringToFront,
     SendToBack,
 
-    /// <summary>Takes the bends off the selected connectors, so they follow their routing again.</summary>
+    /// <summary>Makes the selected connectors work out their own corners again.</summary>
     ResetRoute,
     ZoomIn,
     ZoomOut,

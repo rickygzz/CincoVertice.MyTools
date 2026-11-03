@@ -4,8 +4,8 @@ using CincoVertice.MyTools.Ui.Diagramming.Models;
 namespace CincoVertice.MyTools.Ui.Diagramming.Services;
 
 /// <summary>
-///     Works out where a connector goes from where its shapes are now and its bends, so it follows them when they
-///     move. It doesn't avoid other shapes on its way.
+///     Works out where a connector goes from where its shapes are now, so it follows them when they move. An elbow
+///     connector's lines are always level or upright. It doesn't avoid other shapes on its way.
 /// </summary>
 public static class DiagramRouter
 {
@@ -109,26 +109,127 @@ public static class DiagramRouter
     private static PointF CenterOf(Rectangle bounds) =>
         new(bounds.Left + bounds.Width / 2f, bounds.Top + bounds.Height / 2f);
 
-    /// <summary>Through the bends, leaving and arriving at the sides if it has them, or else facing the nearest bend.</summary>
+    /// <summary>
+    ///     The whole line of a connector, from one shape to the other; its head isn't taken off the line yet.
+    /// </summary>
+    /// <returns>The line; null if one of its shapes doesn't exist.</returns>
+    public static List<PointF>? RouteFor(DiagramConnectorModel connector, DiagramModel diagram)
+    {
+        DiagramShapeModel? from = diagram.Shapes.FirstOrDefault(shape => shape.Id == connector.FromShapeId);
+        DiagramShapeModel? to = diagram.Shapes.FirstOrDefault(shape => shape.Id == connector.ToShapeId);
+
+        return from is null || to is null ? null : RouteOf(connector, from, to);
+    }
+
+    /// <returns>True when the piece of line between the points is level or upright.</returns>
+    public static bool IsLevelOrUpright(PointF a, PointF b) => a.X == b.X || a.Y == b.Y;
+
+    /// <summary>
+    ///     A line with one of its pieces slid sideways, and the pieces next to it longer or shorter to meet it. A piece
+    ///     touching a shape keeps a short stub there, so the line still leaves that shape straight.
+    /// </summary>
+    /// <param name="route">The whole line, only level and upright.</param>
+    /// <param name="segment">The index of the point that starts the piece.</param>
+    /// <param name="position">Where the piece goes: its Y if it's level, or else its X.</param>
+    public static List<PointF> WithSegmentMoved(IReadOnlyList<PointF> route, int segment, float position)
+    {
+        PointF a = route[segment];
+        PointF b = route[segment + 1];
+        bool isLevel = a.Y == b.Y;
+        float length = Math.Abs(b.X - a.X) + Math.Abs(b.Y - a.Y);
+        float stub = Math.Min(ElbowStub, length / 3);
+        List<PointF> moved = [.. route.Take(segment)];
+
+        PointF Slid(PointF point) => isLevel ? new PointF(point.X, position) : new PointF(position, point.Y);
+
+        PointF Toward(PointF from, PointF to) => new(
+            from.X + Math.Sign(to.X - from.X) * stub,
+            from.Y + Math.Sign(to.Y - from.Y) * stub);
+
+        if (segment == 0)
+        {
+            PointF start = Toward(a, b);
+
+            moved.AddRange([a, start, Slid(start)]);
+        }
+        else
+        {
+            moved.Add(Slid(a));
+        }
+
+        if (segment + 1 == route.Count - 1)
+        {
+            PointF end = Toward(b, a);
+
+            moved.AddRange([Slid(end), end, b]);
+        }
+        else
+        {
+            moved.Add(Slid(b));
+        }
+
+        moved.AddRange(route.Skip(segment + 2));
+
+        return WithoutExtraPoints(moved);
+    }
+
+    /// <summary>
+    ///     Through the corners, leaving and arriving straight at the sides it has, or else those facing the nearest
+    ///     corner. A shape that moved, or corners from an older file, may not line up with the next corner, so a turn
+    ///     is added between them: the line is always level and upright.
+    /// </summary>
     private static List<PointF> RouteThroughBends(
         DiagramConnectorModel connector,
         IReadOnlyList<Point> bends,
         DiagramShapeModel from,
         DiagramShapeModel to)
     {
-        PointF start = connector.FromSide is DiagramSide fromSide
-            ? AnchorPoint(from, fromSide)
-            : BorderPoint(from, bends[0]);
-        PointF end = connector.ToSide is DiagramSide toSide
-            ? AnchorPoint(to, toSide)
-            : BorderPoint(to, bends[^1]);
+        PointF first = bends[0];
+        PointF last = bends[^1];
+        DiagramSide startSide = connector.FromSide ?? FacingSide(from.Bounds, first);
+        DiagramSide endSide = connector.ToSide ?? FacingSide(to.Bounds, last);
+        PointF start = LinedUpWith(AnchorPoint(from, startSide), first);
+        PointF end = LinedUpWith(AnchorPoint(to, endSide), last);
+        List<PointF> route = [start];
 
-        return [start, .. bends.Select(bend => (PointF)bend), end];
+        if (!IsLevelOrUpright(start, first))
+        {
+            route.Add(DirectionOf(startSide).X != 0 ? new PointF(first.X, start.Y) : new PointF(start.X, first.Y));
+        }
+
+        for (int i = 0; i < bends.Count; i++)
+        {
+            PointF bend = bends[i];
+
+            route.Add(bend);
+
+            if (i + 1 < bends.Count && !IsLevelOrUpright(bend, bends[i + 1]))
+            {
+                route.Add(new PointF(bends[i + 1].X, bend.Y));
+            }
+        }
+
+        if (!IsLevelOrUpright(last, end))
+        {
+            route.Add(DirectionOf(endSide).X != 0 ? new PointF(last.X, end.Y) : new PointF(end.X, last.Y));
+        }
+
+        route.Add(end);
+
+        return WithoutExtraPoints(route);
     }
+
+    /// <summary>
+    ///     A shape's middle can be half a pixel off a corner, which is always on a whole pixel, and that would need a
+    ///     tiny extra turn. So the line touches the shape that little bit off the middle instead.
+    /// </summary>
+    private static PointF LinedUpWith(PointF anchor, PointF corner) => new(
+        Math.Abs(anchor.X - corner.X) < 1 ? corner.X : anchor.X,
+        Math.Abs(anchor.Y - corner.Y) < 1 ? corner.Y : anchor.Y);
 
     private static List<PointF> RouteOf(DiagramConnectorModel connector, DiagramShapeModel from, DiagramShapeModel to)
     {
-        if (connector.Bends is { Count: > 0 } bends)
+        if (connector.Routing == DiagramRouting.Elbow && connector.Bends is { Count: > 0 } bends)
         {
             return RouteThroughBends(connector, bends, from, to);
         }
@@ -257,7 +358,10 @@ public static class DiagramRouter
         return endB <= startA ? (endB + startA) / 2f : Math.Max(endA, endB) + ElbowStub;
     }
 
-    /// <summary>Without points that don't turn, which would make a rounded corner out of a straight line.</summary>
+    /// <summary>
+    ///     Without points that don't turn, which would make a rounded corner out of a straight line, and without points
+    ///     where the line goes past a corner and doubles back on itself, which would show as a spike.
+    /// </summary>
     private static List<PointF> WithoutExtraPoints(List<PointF> route)
     {
         List<PointF> kept = [route[0]];
@@ -265,35 +369,31 @@ public static class DiagramRouter
         for (int i = 1; i < route.Count; i++)
         {
             PointF point = route[i];
-            PointF last = kept[^1];
 
-            if (point == last)
+            if (point == kept[^1])
             {
                 continue;
             }
 
-            if (kept.Count >= 2 && IsSameDirection(kept[^2], last, point))
+            if (kept.Count >= 2 && IsInLine(kept[^2], kept[^1], point))
             {
-                kept[^1] = point;
+                kept.RemoveAt(kept.Count - 1);
+
+                // Doubled back all the way to the point before
+                if (point == kept[^1])
+                {
+                    continue;
+                }
             }
-            else
-            {
-                kept.Add(point);
-            }
+
+            kept.Add(point);
         }
 
         return kept.Count >= 2 ? kept : [route[0], route[^1]];
     }
 
-    private static bool IsSameDirection(PointF a, PointF b, PointF c)
-    {
-        float firstX = b.X - a.X;
-        float firstY = b.Y - a.Y;
-        float secondX = c.X - b.X;
-        float secondY = c.Y - b.Y;
-
-        return Math.Abs(firstX * secondY - firstY * secondX) < 0.001f && firstX * secondX + firstY * secondY > 0;
-    }
+    private static bool IsInLine(PointF a, PointF b, PointF c) =>
+        Math.Abs((b.X - a.X) * (c.Y - b.Y) - (b.Y - a.Y) * (c.X - b.X)) < 0.001f;
 
     private static List<PointF> StraightRoute(DiagramShapeModel from, DiagramShapeModel to)
     {

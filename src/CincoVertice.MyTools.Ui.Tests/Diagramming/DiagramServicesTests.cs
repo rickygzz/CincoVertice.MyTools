@@ -307,7 +307,7 @@ public class DiagramServicesTests
     }
 
     [Fact]
-    public void Bends_TheLineGoesThroughThem_LeavingFacingTheNearest()
+    public void Bends_TheLineGoesThroughThem_LeavingTowardTheNearest()
     {
         // Arrange
         DiagramConnectorModel connector = Connector(DiagramRouting.Elbow) with
@@ -325,30 +325,71 @@ public class DiagramServicesTests
             points);
     }
 
-    [Fact]
-    public void Bends_WithSides_StillLeaveAndArriveThere()
+    [Theory]
+    [InlineData(DiagramSide.Top, DiagramSide.Bottom)]
+    [InlineData(DiagramSide.Right, DiagramSide.Left)]
+    [InlineData(DiagramSide.Left, DiagramSide.Top)]
+    [InlineData(null, null)]
+    public void Bends_ThatDontLineUp_GetATurn_SoTheLineIsNeverSlanted(DiagramSide? from, DiagramSide? to)
     {
-        // Arrange
-        DiagramConnectorModel connector = Connector() with
+        // Arrange: slanted between them, as free bends in an older file could be
+        DiagramConnectorModel connector = Connector(DiagramRouting.Elbow) with
         {
-            FromSide = DiagramSide.Top,
-            ToSide = DiagramSide.Bottom,
-            Bends = [new Point(200, 200)],
+            FromSide = from,
+            ToSide = to,
+            Bends = [new Point(150, 170), new Point(230, 90), new Point(260, 310)],
         };
-        DiagramModel diagram = new([Shape(1, 0, 0), Shape(2, 300, 0)], [connector]);
+        DiagramModel diagram = new([Shape(1, 0, 0), Shape(2, 300, 275)], [connector]);
 
         // Act
         IReadOnlyList<PointF> points = DiagramRouter.PathOf(connector, diagram)!.Points;
 
         // Assert
-        Assert.Equal([new PointF(50, 0), new PointF(200, 200), new PointF(350, 50)], points);
+        AssertOnlyLevelOrUpright(points);
     }
 
     [Fact]
-    public void Bends_AnEmptyList_FollowsTheRouting()
+    public void Bends_ThatWouldGoPastACornerAndBack_LeaveNoSpike()
+    {
+        // Arrange: the turn between the first two is at 360, 105, which the line would reach only after 390, 105
+        DiagramConnectorModel connector = Connector(DiagramRouting.Elbow) with
+        {
+            Bends = [new Point(390, 105), new Point(360, 260), new Point(390, 415)],
+        };
+        DiagramShapeModel first = new(1, DiagramShapeKind.Rectangle, new Rectangle(30, 60, 160, 90), string.Empty, _style);
+        DiagramShapeModel second = new(2, DiagramShapeKind.Rectangle, new Rectangle(600, 370, 200, 95), string.Empty, _style);
+        DiagramModel diagram = new([first, second], [connector]);
+
+        // Act
+        IReadOnlyList<PointF> points = DiagramRouter.PathOf(connector, diagram)!.Points;
+
+        // Assert
+        AssertOnlyLevelOrUpright(points);
+        Assert.Equal(new PointF(360, 105), points[1]);
+        Assert.DoesNotContain(new PointF(390, 105), points);
+    }
+
+    [Fact]
+    public void Bends_AHalfPixelOffACorner_NeedNoExtraTurn()
+    {
+        // Arrange: a shape 51 high has its middle at 25.5
+        DiagramShapeModel odd = new(1, DiagramShapeKind.Rectangle, new Rectangle(0, 0, 100, 51), string.Empty, _style);
+        DiagramConnectorModel connector = Connector(DiagramRouting.Elbow) with { Bends = [new Point(200, 25), new Point(200, 300)] };
+        DiagramModel diagram = new([odd, Shape(2, 300, 275)], [connector]);
+
+        // Act
+        IReadOnlyList<PointF> points = DiagramRouter.PathOf(connector, diagram)!.Points;
+
+        // Assert
+        Assert.Equal(4, points.Count);
+        AssertOnlyLevelOrUpright(points);
+    }
+
+    [Fact]
+    public void Bends_AnEmptyList_WorksOutItsOwnCorners()
     {
         // Arrange
-        DiagramConnectorModel connector = Connector() with { Bends = [] };
+        DiagramConnectorModel connector = Connector(DiagramRouting.Elbow) with { Bends = [] };
         DiagramModel diagram = new([Shape(1, 0, 0), Shape(2, 300, 0)], [connector]);
 
         // Assert
@@ -356,16 +397,94 @@ public class DiagramServicesTests
     }
 
     [Fact]
-    public void BendAt_And_SegmentAt_FindWhatsNear()
+    public void Bends_OnAStraightConnector_AreIgnored()
     {
-        Assert.Equal(1, DiagramHitTester.BendAt([new Point(0, 0), new Point(100, 100)], new Point(103, 98), 6));
-        Assert.Null(DiagramHitTester.BendAt([new Point(0, 0)], new Point(50, 50), 6));
+        // Arrange
+        DiagramConnectorModel connector = Connector() with { Bends = [new Point(200, 300)] };
+        DiagramModel diagram = new([Shape(1, 0, 0), Shape(2, 300, 0)], [connector]);
 
+        // Assert
+        Assert.Equal(2, DiagramRouter.PathOf(connector, diagram)!.Points.Count);
+    }
+
+    [Fact]
+    public void SegmentAt_FindsThePieceNear()
+    {
         PointF[] line = [new(0, 0), new(100, 0), new(100, 100)];
 
         Assert.Equal(0, DiagramHitTester.SegmentAt(line, new Point(50, 3), 6));
         Assert.Equal(1, DiagramHitTester.SegmentAt(line, new Point(97, 50), 6));
         Assert.Null(DiagramHitTester.SegmentAt(line, new Point(50, 50), 6));
+    }
+
+    [Fact]
+    public void WithSegmentMoved_AMiddlePiece_MovesItsBothEnds_OnlySideways()
+    {
+        // Arrange
+        PointF[] route = [new(0, 0), new(100, 0), new(100, 200), new(300, 200)];
+
+        // Act
+        List<PointF> moved = DiagramRouter.WithSegmentMoved(route, 1, 150);
+
+        // Assert
+        Assert.Equal([new PointF(0, 0), new PointF(150, 0), new PointF(150, 200), new PointF(300, 200)], moved);
+    }
+
+    [Fact]
+    public void WithSegmentMoved_TheFirstPiece_KeepsAStub()
+    {
+        // Arrange
+        PointF[] route = [new(0, 0), new(100, 0), new(100, 200)];
+
+        // Act
+        List<PointF> moved = DiagramRouter.WithSegmentMoved(route, 0, 50);
+
+        // Assert
+        Assert.Equal(
+            [new PointF(0, 0), new PointF(20, 0), new PointF(20, 50), new PointF(100, 50), new PointF(100, 200)],
+            moved);
+    }
+
+    [Fact]
+    public void WithSegmentMoved_TheOnlyPiece_KeepsAStubAtBothEnds()
+    {
+        // Arrange: upright this time
+        PointF[] route = [new(0, 0), new(0, 300)];
+
+        // Act
+        List<PointF> moved = DiagramRouter.WithSegmentMoved(route, 0, 80);
+
+        // Assert
+        Assert.Equal(
+            [new PointF(0, 0), new PointF(0, 20), new PointF(80, 20), new PointF(80, 280), new PointF(0, 280), new PointF(0, 300)],
+            moved);
+    }
+
+    [Fact]
+    public void WithSegmentMoved_OntoTheNextPiece_LeavesNoExtraCorners()
+    {
+        // Arrange
+        PointF[] route = [new(0, 0), new(100, 0), new(100, 200), new(300, 200), new(300, 400)];
+
+        // Act: the piece at x = 100 slid to x = 300, in line with the last piece
+        List<PointF> moved = DiagramRouter.WithSegmentMoved(route, 1, 300);
+
+        // Assert
+        Assert.Equal([new PointF(0, 0), new PointF(300, 0), new PointF(300, 400)], moved);
+    }
+
+    [Fact]
+    public void WithSegmentMoved_OnAShortPiece_UsesAShorterStub()
+    {
+        // Arrange
+        PointF[] route = [new(0, 0), new(30, 0)];
+
+        // Act
+        List<PointF> moved = DiagramRouter.WithSegmentMoved(route, 0, 50);
+
+        // Assert
+        Assert.Equal(new PointF(10, 0), moved[1]);
+        Assert.Equal(new PointF(20, 0), moved[^2]);
     }
 
     [Fact]
