@@ -30,10 +30,53 @@ Add a unit and `to` to convert the result: `10 km to mi`, `100 C to F`, `(2+3)*4
 Long names like `meters` or `hours` work too. Any case works, unless it could mean two units: `mb` is an error because
 `MB` is megabytes and `Mb` is megabits. Results are rounded to 10 significant digits.
 
+## Diagram editor
+
+Draw diagrams without opening a browser: Ctrl+Alt+D, or **Diagram editor** in the tray menu. They're saved as SVG images
+that open anywhere, and open again here to keep editing them. SVG files from other programs can't be opened.
+
+| To | Do |
+|---|---|
+| Add a shape | Pick it on the left (`R` rectangle, `U` rounded, `O` ellipse, `D` diamond, `P` parallelogram, `H` hexagon, `Y` cylinder, `M` document) and drag, or click for the usual size |
+| Add a text | `T` and click, or double-click on nothing. Enter ends it, Shift+Enter starts a new line |
+| Write in a shape, or label a connector | Double-click it |
+| Connect two shapes | Hover a shape and drag from one of the circles around it to another shape; drop on a circle there to pick that side too. Or `C`, then drag from one shape to the other, and the sides are picked for you. The connector follows them when they move. `V` or Esc goes back to selecting |
+| Attach a connector somewhere else | Click it, then drag one of the dots at its ends to another shape, or to a circle on it to pick the side. Dropped on nothing, it stays where it was. Dropped on the middle of its own shape, the side is picked for you again |
+| Change a connector's path | Click an elbow connector, then drag any piece of its line sideways; it stays level and upright, with rounded corners. **Reset line** lets it work out its own path again, and so does choosing Elbow or Straight |
+| See and change what's selected | The panel on the right: position, size, corner radius, colors, border, text, font and connector options. F4 or **Properties** hides it |
+| Select | Click, Shift+click to add, or drag on nothing around them. Ctrl+A for all |
+| Move | Drag, or the arrow keys (Shift for one pixel at a time) |
+| Scale | Drag a square around the selection, with Shift to keep the proportions |
+| Line up | Dragging snaps to other shapes' edges and middles, showing a guide, and otherwise to the grid. Alt turns it off |
+| Change colors, line, text size or connector style | Use the top bar, for what's selected and for what comes next |
+| Copy, paste, duplicate | Ctrl+C, Ctrl+V, Ctrl+D, also between editor windows. Ctrl+X cuts |
+| Group, ungroup | Ctrl+G, Ctrl+Shift+G |
+| Bring to front, send to back | Ctrl+], Ctrl+[ |
+| Zoom | Ctrl+wheel, Ctrl+plus, Ctrl+minus, Ctrl+0 for 100% |
+| Move the view | Wheel (Shift for sideways), or drag with the middle button or Space held |
+| Undo, redo, save | Ctrl+Z, Ctrl+Y, Ctrl+S (Ctrl+Shift+S to save as) |
+
+If you already have a `config\hotkeys.cfg`, add `DiagramEditor = Ctrl+Alt+D` to it to get the hotkey.
+
+The editor remembers the style you used last, for new shapes and connectors, along with whether the properties panel is
+shown and the window's size, in `config\diagrameditor.json`.
+
+New text uses [Roboto](https://fonts.google.com/specimen/Roboto), which comes with the app under the
+[SIL Open Font License](https://openfontlicense.org). Opening the editor installs it for your user if it's missing, so
+browsers show saved diagrams in it too; that needs no administrator rights. On a computer without a diagram's font, its
+SVG shows in another sans serif font.
+
 ## Scripts
 
 Hotkeys can run your own scripts: ask something, open a web page, start a program, type text, and more. See
 [SCRIPTING.md](SCRIPTING.md) for the language and everything it can do.
+
+## Config editor
+
+The tray menu's **Edit hotkeys...**, **Edit activity settings...** and **Scripts → Edit scripts...** open one window with
+those files listed on the left. It colors them and underlines what the app couldn't use while you type: hover over the
+line, or click the problem in the list below the text. Ctrl+S saves. Hotkeys apply when you save, and scripts the next
+time they run.
 
 ```
 ## Git Configuration

@@ -8,6 +8,15 @@
     <Compile Update="CodeReview\CodeReviewForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="ConfigEditor\ConfigEditorForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Diagramming\DiagramCanvasControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Diagramming\DiagramEditorForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Shell\MainForm.cs">
       <SubType>Form</SubType>
     </Compile>

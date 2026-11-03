@@ -17,7 +17,7 @@ public sealed class ShowCalculatorAction : IAppAction
 
     public string Name => "ShowCalculator";
 
-    public string? DefaultShortcut => "Ctrl+Alt+A";
+    public string? DefaultShortcut => "Ctrl+Alt+C";
 
     public Task ExecuteAsync()
     {

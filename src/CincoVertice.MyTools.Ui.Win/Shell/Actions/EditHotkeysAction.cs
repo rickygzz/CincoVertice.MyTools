@@ -1,17 +1,20 @@
-﻿using CincoVertice.MyTools.Ui.Win.Shell.Services.Config;
+﻿using CincoVertice.MyTools.Ui.Win.ConfigEditor.Services;
+using CincoVertice.MyTools.Ui.Win.Shell.Services.Config;
 
 namespace CincoVertice.MyTools.Ui.Win.Shell.Actions;
 
 /// <summary>
-///     Opens hotkeys.cfg for editing. MyTools reloads the hotkeys when the file is saved
+///     Opens hotkeys.cfg in the config editor. MyTools reloads the hotkeys when the file is saved
 ///     (<see cref="Services.HotkeyFilesWatcher"/>).
 /// </summary>
 public sealed class EditHotkeysAction : IAppAction
 {
+    private readonly ConfigEditorWindowService _editor;
     private readonly HotkeyConfigService _hotkeyConfigService;
 
-    public EditHotkeysAction(HotkeyConfigService hotkeyConfigService)
+    public EditHotkeysAction(ConfigEditorWindowService editor, HotkeyConfigService hotkeyConfigService)
     {
+        _editor = editor;
         _hotkeyConfigService = hotkeyConfigService;
     }
 
@@ -21,20 +24,7 @@ public sealed class EditHotkeysAction : IAppAction
 
     public Task ExecuteAsync()
     {
-        string filePath = _hotkeyConfigService.FilePath;
-
-        if (!File.Exists(filePath))
-        {
-            MessageBox.Show(
-                $"{filePath} does not exist. It is created when MyTools starts.",
-                "Edit hotkeys",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Warning);
-
-            return Task.CompletedTask;
-        }
-
-        ConfigFileOpener.Open(filePath);
+        _editor.Open(_hotkeyConfigService.FilePath);
 
         return Task.CompletedTask;
     }

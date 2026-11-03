@@ -9,4 +9,8 @@ namespace CincoVertice.MyTools.Ui.Win.Shell.Models;
 /// <param name="Problems">One per line or setting that can't be used, saying why; empty when all can.</param>
 public sealed record ActivitySettingsResultModel(
     MouseMoveSettings Settings,
-    IReadOnlyList<string> Problems);
+    IReadOnlyList<string> Problems)
+{
+    /// <summary>The problems found in the file's text, with their lines.</summary>
+    public IReadOnlyList<ConfigLineProblemModel> LineProblems { get; init; } = [];
+}

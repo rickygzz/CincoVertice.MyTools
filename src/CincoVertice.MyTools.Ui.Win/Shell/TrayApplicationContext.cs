@@ -3,6 +3,7 @@ using CincoVertice.MyTools.Ui.Shell.Presenters;
 using CincoVertice.MyTools.Ui.Shell.Views;
 using CincoVertice.MyTools.Ui.Win.Behaviors;
 using CincoVertice.MyTools.Ui.Win.CodeReview.Actions;
+using CincoVertice.MyTools.Ui.Win.Diagramming.Actions;
 using CincoVertice.MyTools.Ui.Win.Scripting.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Models;
@@ -23,6 +24,7 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView
     private readonly AppIconService _appIconService;
     private readonly TrayNotificationService _notifications;
     private readonly OpenScriptsFolderAction _openScriptsFolderAction;
+    private readonly EditScriptsAction _editScriptsAction;
     private readonly NotifyIcon _notifyIcon;
     private readonly ToolStripMenuItem _scriptsMenu = new("S&cripts");
 
@@ -39,12 +41,15 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView
         FixFolderAction fixFolderAction,
         EditHotkeysAction editHotkeysAction,
         EditActivitySettingsAction editActivitySettingsAction,
-        OpenScriptsFolderAction openScriptsFolderAction)
+        OpenScriptsFolderAction openScriptsFolderAction,
+        EditScriptsAction editScriptsAction,
+        OpenDiagramEditorAction openDiagramEditorAction)
     {
         _mainForm = mainForm;
         _appIconService = appIconService;
         _notifications = notifications;
         _openScriptsFolderAction = openScriptsFolderAction;
+        _editScriptsAction = editScriptsAction;
 
         _appIconService.Changed += AppIcon_Changed;
         _notifications.Requested += Notification_Requested;
@@ -56,6 +61,7 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView
         var menu = new ContextMenuStrip();
         var open = AddItem(menu.Items, "&Open", ShowMainForm);
         open.Font = new Font(open.Font, FontStyle.Bold);
+        AddAction(menu.Items, "&Diagram editor", openDiagramEditorAction);
         AddAction(menu.Items, "Check folder for &standard...", checkFolderAction);
         AddAction(menu.Items, "&Fix folder for standard...", fixFolderAction);
         menu.Items.Add(new ToolStripSeparator());
@@ -83,7 +89,7 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView
     public event EventHandler? ReloadHotkeysRequested;
 
     /// <summary>
-    ///     Scripts: one item per script, then the folder to add or edit them.
+    ///     Scripts: one item per script, then the editor and the folder to add or edit them.
     /// </summary>
     public void ShowScripts(IReadOnlyList<ScriptMenuItemModel> scripts)
     {
@@ -102,6 +108,7 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView
             _scriptsMenu.DropDownItems.Add(new ToolStripSeparator());
         }
 
+        AddAction(_scriptsMenu.DropDownItems, "&Edit scripts...", _editScriptsAction);
         AddAction(_scriptsMenu.DropDownItems, "Open scripts &folder", _openScriptsFolderAction);
     }
 
