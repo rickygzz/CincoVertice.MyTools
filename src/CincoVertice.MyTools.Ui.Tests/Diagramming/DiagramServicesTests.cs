@@ -487,6 +487,39 @@ public class DiagramServicesTests
         Assert.Equal(new PointF(20, 0), moved[^2]);
     }
 
+    [Theory]
+    [InlineData(DiagramShapeKind.Rectangle, null, false)]
+    [InlineData(DiagramShapeKind.Rectangle, 0, false)]
+    [InlineData(DiagramShapeKind.Rectangle, 10, true)]
+    [InlineData(DiagramShapeKind.RoundedRectangle, null, true)]
+    [InlineData(DiagramShapeKind.RoundedRectangle, 10, true)]
+    [InlineData(DiagramShapeKind.RoundedRectangle, 0, false)]
+    public void Figures_ARectanglesCornersAreRoundOnlyWithARadius(DiagramShapeKind kind, int? radius, bool hasCurves)
+    {
+        // Act
+        DiagramFigureModel figure = DiagramFigures.Of(kind, new Rectangle(0, 0, 100, 50), radius)[0];
+
+        // Assert
+        Assert.Equal(hasCurves, figure.Segments.Any(segment => segment.Operation == DiagramPathOperation.Curve));
+    }
+
+    [Fact]
+    public void Figures_ARadiusTooLarge_MakesAPill_StayingInsideTheShape()
+    {
+        // Act
+        DiagramFigureModel figure = DiagramFigures.Of(DiagramShapeKind.Rectangle, new Rectangle(0, 0, 100, 50), 500)[0];
+
+        // Assert: half the height
+        Assert.Equal(new PointF(25, 0), figure.Segments[0].Points[0]);
+        Assert.All(
+            figure.Segments.SelectMany(segment => segment.Points),
+            point =>
+            {
+                Assert.InRange(point.X, 0, 100);
+                Assert.InRange(point.Y, 0, 50);
+            });
+    }
+
     [Fact]
     public void RoundedLine_HasACurveAtEveryCorner_AndKeepsItsEnds()
     {

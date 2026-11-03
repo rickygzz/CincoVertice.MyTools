@@ -80,12 +80,54 @@ partial class DiagramEditorForm
         UngroupButton = new ToolStripButton();
         FrontButton = new ToolStripButton();
         BackButton = new ToolStripButton();
+        PropertiesButton = new ToolStripButton();
         ZoomLabel = new ToolStripLabel();
         Canvas = new DiagramCanvasControl();
         TextInputBox = new TextBox();
+        PropertiesPanel = new Panel();
+        PropertiesTable = new TableLayoutPanel();
+        PropertiesTitleLabel = new Label();
+        TextLabel = new Label();
+        TextPropertyBox = new TextBox();
+        XLabel = new Label();
+        XBox = new NumericUpDown();
+        YLabel = new Label();
+        YBox = new NumericUpDown();
+        WidthLabel = new Label();
+        WidthBox = new NumericUpDown();
+        HeightLabel = new Label();
+        HeightBox = new NumericUpDown();
+        CornerRadiusLabel = new Label();
+        CornerRadiusBox = new NumericUpDown();
+        FillLabel = new Label();
+        FillColorButton = new Button();
+        LineLabel = new Label();
+        LineColorButton = new Button();
+        LineWidthLabel = new Label();
+        LineWidthBox = new NumericUpDown();
+        DashedCheckBox = new CheckBox();
+        TextColorLabel = new Label();
+        TextColorButton = new Button();
+        FontFamilyLabel = new Label();
+        FontFamilyBox = new ComboBox();
+        FontSizeLabel = new Label();
+        FontSizeBox = new NumericUpDown();
+        RoutingLabel = new Label();
+        RoutingPropertyBox = new ComboBox();
+        ArrowsLabel = new Label();
+        ArrowsPropertyBox = new ComboBox();
         ToolsStrip.SuspendLayout();
         StyleStrip.SuspendLayout();
         Canvas.SuspendLayout();
+        PropertiesPanel.SuspendLayout();
+        PropertiesTable.SuspendLayout();
+        ((System.ComponentModel.ISupportInitialize)XBox).BeginInit();
+        ((System.ComponentModel.ISupportInitialize)YBox).BeginInit();
+        ((System.ComponentModel.ISupportInitialize)WidthBox).BeginInit();
+        ((System.ComponentModel.ISupportInitialize)HeightBox).BeginInit();
+        ((System.ComponentModel.ISupportInitialize)CornerRadiusBox).BeginInit();
+        ((System.ComponentModel.ISupportInitialize)LineWidthBox).BeginInit();
+        ((System.ComponentModel.ISupportInitialize)FontSizeBox).BeginInit();
         SuspendLayout();
         //
         // ToolsStrip
@@ -203,7 +245,7 @@ partial class DiagramEditorForm
         // StyleStrip
         //
         StyleStrip.GripStyle = ToolStripGripStyle.Hidden;
-        StyleStrip.Items.AddRange(new ToolStripItem[] { NewButton, OpenButton, SaveButton, FileSeparator, UndoButton, RedoButton, HistorySeparator, FillDropDownButton, LineDropDownButton, LineWidthComboBox, DashedButton, TextColorDropDownButton, FontSizeComboBox, StyleSeparator, RoutingComboBox, ArrowHeadsComboBox, ResetRouteButton, ConnectorsSeparator, GroupButton, UngroupButton, FrontButton, BackButton, ZoomLabel });
+        StyleStrip.Items.AddRange(new ToolStripItem[] { NewButton, OpenButton, SaveButton, FileSeparator, UndoButton, RedoButton, HistorySeparator, FillDropDownButton, LineDropDownButton, LineWidthComboBox, DashedButton, TextColorDropDownButton, FontSizeComboBox, StyleSeparator, RoutingComboBox, ArrowHeadsComboBox, ResetRouteButton, ConnectorsSeparator, GroupButton, UngroupButton, FrontButton, BackButton, ZoomLabel, PropertiesButton });
         StyleStrip.Name = "StyleStrip";
         StyleStrip.Padding = new Padding(4, 2, 4, 2);
         StyleStrip.TabIndex = 1;
@@ -418,10 +460,311 @@ partial class DiagramEditorForm
         BackButton.ToolTipText = "Send to back (Ctrl+[)";
         BackButton.Click += CommandButton_Click;
         //
+        // PropertiesButton
+        //
+        PropertiesButton.Alignment = ToolStripItemAlignment.Right;
+        PropertiesButton.Checked = true;
+        PropertiesButton.Name = "PropertiesButton";
+        PropertiesButton.Overflow = ToolStripItemOverflow.Never;
+        PropertiesButton.Text = "Properties";
+        PropertiesButton.ToolTipText = "Show or hide the properties panel (F4)";
+        PropertiesButton.Click += PropertiesButton_Click;
+        //
+        // PropertiesPanel
+        //
+        PropertiesPanel.AutoScroll = true;
+        PropertiesPanel.BorderStyle = BorderStyle.FixedSingle;
+        PropertiesPanel.Controls.Add(PropertiesTable);
+        PropertiesPanel.Dock = DockStyle.Right;
+        PropertiesPanel.Name = "PropertiesPanel";
+        PropertiesPanel.Size = new Size(230, 700);
+        PropertiesPanel.TabIndex = 3;
+        //
+        // PropertiesTable
+        //
+        PropertiesTable.AutoSize = true;
+        PropertiesTable.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+        PropertiesTable.ColumnCount = 2;
+        PropertiesTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90F));
+        PropertiesTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        PropertiesTable.Controls.Add(PropertiesTitleLabel, 0, 0);
+        PropertiesTable.SetColumnSpan(PropertiesTitleLabel, 2);
+        PropertiesTable.Controls.Add(TextLabel, 0, 1);
+        PropertiesTable.Controls.Add(TextPropertyBox, 1, 1);
+        PropertiesTable.Controls.Add(XLabel, 0, 2);
+        PropertiesTable.Controls.Add(XBox, 1, 2);
+        PropertiesTable.Controls.Add(YLabel, 0, 3);
+        PropertiesTable.Controls.Add(YBox, 1, 3);
+        PropertiesTable.Controls.Add(WidthLabel, 0, 4);
+        PropertiesTable.Controls.Add(WidthBox, 1, 4);
+        PropertiesTable.Controls.Add(HeightLabel, 0, 5);
+        PropertiesTable.Controls.Add(HeightBox, 1, 5);
+        PropertiesTable.Controls.Add(CornerRadiusLabel, 0, 6);
+        PropertiesTable.Controls.Add(CornerRadiusBox, 1, 6);
+        PropertiesTable.Controls.Add(FillLabel, 0, 7);
+        PropertiesTable.Controls.Add(FillColorButton, 1, 7);
+        PropertiesTable.Controls.Add(LineLabel, 0, 8);
+        PropertiesTable.Controls.Add(LineColorButton, 1, 8);
+        PropertiesTable.Controls.Add(LineWidthLabel, 0, 9);
+        PropertiesTable.Controls.Add(LineWidthBox, 1, 9);
+        PropertiesTable.Controls.Add(DashedCheckBox, 1, 10);
+        PropertiesTable.Controls.Add(TextColorLabel, 0, 11);
+        PropertiesTable.Controls.Add(TextColorButton, 1, 11);
+        PropertiesTable.Controls.Add(FontFamilyLabel, 0, 12);
+        PropertiesTable.Controls.Add(FontFamilyBox, 1, 12);
+        PropertiesTable.Controls.Add(FontSizeLabel, 0, 13);
+        PropertiesTable.Controls.Add(FontSizeBox, 1, 13);
+        PropertiesTable.Controls.Add(RoutingLabel, 0, 14);
+        PropertiesTable.Controls.Add(RoutingPropertyBox, 1, 14);
+        PropertiesTable.Controls.Add(ArrowsLabel, 0, 15);
+        PropertiesTable.Controls.Add(ArrowsPropertyBox, 1, 15);
+        PropertiesTable.Dock = DockStyle.Top;
+        PropertiesTable.Name = "PropertiesTable";
+        PropertiesTable.Padding = new Padding(6);
+        PropertiesTable.RowCount = 16;
+        PropertiesTable.TabIndex = 0;
+        //
+        // PropertiesTitleLabel
+        //
+        PropertiesTitleLabel.AutoSize = true;
+        PropertiesTitleLabel.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+        PropertiesTitleLabel.Margin = new Padding(3, 3, 3, 9);
+        PropertiesTitleLabel.Name = "PropertiesTitleLabel";
+        //
+        // TextLabel
+        //
+        TextLabel.Anchor = AnchorStyles.Left;
+        TextLabel.AutoSize = true;
+        TextLabel.Name = "TextLabel";
+        TextLabel.Text = "Text";
+        //
+        // TextPropertyBox
+        //
+        TextPropertyBox.AcceptsReturn = true;
+        TextPropertyBox.Dock = DockStyle.Fill;
+        TextPropertyBox.Multiline = true;
+        TextPropertyBox.Name = "TextPropertyBox";
+        TextPropertyBox.Size = new Size(120, 60);
+        TextPropertyBox.TabIndex = 0;
+        TextPropertyBox.KeyDown += TextPropertyBox_KeyDown;
+        TextPropertyBox.Leave += TextPropertyBox_Leave;
+        //
+        // XLabel
+        //
+        XLabel.Anchor = AnchorStyles.Left;
+        XLabel.AutoSize = true;
+        XLabel.Name = "XLabel";
+        XLabel.Text = "X";
+        //
+        // XBox
+        //
+        XBox.Dock = DockStyle.Fill;
+        XBox.Maximum = new decimal(new int[] { 100000, 0, 0, 0 });
+        XBox.Minimum = new decimal(new int[] { 100000, 0, 0, int.MinValue });
+        XBox.Name = "XBox";
+        XBox.TabIndex = 1;
+        XBox.ValueChanged += BoundsBox_ValueChanged;
+        //
+        // YLabel
+        //
+        YLabel.Anchor = AnchorStyles.Left;
+        YLabel.AutoSize = true;
+        YLabel.Name = "YLabel";
+        YLabel.Text = "Y";
+        //
+        // YBox
+        //
+        YBox.Dock = DockStyle.Fill;
+        YBox.Maximum = new decimal(new int[] { 100000, 0, 0, 0 });
+        YBox.Minimum = new decimal(new int[] { 100000, 0, 0, int.MinValue });
+        YBox.Name = "YBox";
+        YBox.TabIndex = 2;
+        YBox.ValueChanged += BoundsBox_ValueChanged;
+        //
+        // WidthLabel
+        //
+        WidthLabel.Anchor = AnchorStyles.Left;
+        WidthLabel.AutoSize = true;
+        WidthLabel.Name = "WidthLabel";
+        WidthLabel.Text = "Width";
+        //
+        // WidthBox
+        //
+        WidthBox.Dock = DockStyle.Fill;
+        WidthBox.Maximum = new decimal(new int[] { 100000, 0, 0, 0 });
+        WidthBox.Minimum = new decimal(new int[] { 10, 0, 0, 0 });
+        WidthBox.Name = "WidthBox";
+        WidthBox.TabIndex = 3;
+        WidthBox.Value = new decimal(new int[] { 10, 0, 0, 0 });
+        WidthBox.ValueChanged += BoundsBox_ValueChanged;
+        //
+        // HeightLabel
+        //
+        HeightLabel.Anchor = AnchorStyles.Left;
+        HeightLabel.AutoSize = true;
+        HeightLabel.Name = "HeightLabel";
+        HeightLabel.Text = "Height";
+        //
+        // HeightBox
+        //
+        HeightBox.Dock = DockStyle.Fill;
+        HeightBox.Maximum = new decimal(new int[] { 100000, 0, 0, 0 });
+        HeightBox.Minimum = new decimal(new int[] { 10, 0, 0, 0 });
+        HeightBox.Name = "HeightBox";
+        HeightBox.TabIndex = 4;
+        HeightBox.Value = new decimal(new int[] { 10, 0, 0, 0 });
+        HeightBox.ValueChanged += BoundsBox_ValueChanged;
+        //
+        // CornerRadiusLabel
+        //
+        CornerRadiusLabel.Anchor = AnchorStyles.Left;
+        CornerRadiusLabel.AutoSize = true;
+        CornerRadiusLabel.Name = "CornerRadiusLabel";
+        CornerRadiusLabel.Text = "Corner radius";
+        //
+        // CornerRadiusBox
+        //
+        CornerRadiusBox.Dock = DockStyle.Fill;
+        CornerRadiusBox.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
+        CornerRadiusBox.Name = "CornerRadiusBox";
+        CornerRadiusBox.TabIndex = 5;
+        CornerRadiusBox.ValueChanged += CornerRadiusBox_ValueChanged;
+        //
+        // FillLabel
+        //
+        FillLabel.Anchor = AnchorStyles.Left;
+        FillLabel.AutoSize = true;
+        FillLabel.Name = "FillLabel";
+        FillLabel.Text = "Fill";
+        //
+        // FillColorButton
+        //
+        FillColorButton.Dock = DockStyle.Fill;
+        FillColorButton.FlatStyle = FlatStyle.Flat;
+        FillColorButton.Name = "FillColorButton";
+        FillColorButton.TabIndex = 6;
+        FillColorButton.Click += FillColorButton_Click;
+        //
+        // LineLabel
+        //
+        LineLabel.Anchor = AnchorStyles.Left;
+        LineLabel.AutoSize = true;
+        LineLabel.Name = "LineLabel";
+        LineLabel.Text = "Border";
+        //
+        // LineColorButton
+        //
+        LineColorButton.Dock = DockStyle.Fill;
+        LineColorButton.FlatStyle = FlatStyle.Flat;
+        LineColorButton.Name = "LineColorButton";
+        LineColorButton.TabIndex = 7;
+        LineColorButton.Click += LineColorButton_Click;
+        //
+        // LineWidthLabel
+        //
+        LineWidthLabel.Anchor = AnchorStyles.Left;
+        LineWidthLabel.AutoSize = true;
+        LineWidthLabel.Name = "LineWidthLabel";
+        LineWidthLabel.Text = "Border width";
+        //
+        // LineWidthBox
+        //
+        LineWidthBox.Dock = DockStyle.Fill;
+        LineWidthBox.Name = "LineWidthBox";
+        LineWidthBox.TabIndex = 8;
+        LineWidthBox.ValueChanged += LineWidthBox_ValueChanged;
+        //
+        // DashedCheckBox
+        //
+        DashedCheckBox.AutoSize = true;
+        DashedCheckBox.Name = "DashedCheckBox";
+        DashedCheckBox.TabIndex = 9;
+        DashedCheckBox.Text = "Dashed";
+        DashedCheckBox.CheckedChanged += DashedCheckBox_CheckedChanged;
+        //
+        // TextColorLabel
+        //
+        TextColorLabel.Anchor = AnchorStyles.Left;
+        TextColorLabel.AutoSize = true;
+        TextColorLabel.Name = "TextColorLabel";
+        TextColorLabel.Text = "Text color";
+        //
+        // TextColorButton
+        //
+        TextColorButton.Dock = DockStyle.Fill;
+        TextColorButton.FlatStyle = FlatStyle.Flat;
+        TextColorButton.Name = "TextColorButton";
+        TextColorButton.TabIndex = 10;
+        TextColorButton.Click += TextColorButton_Click;
+        //
+        // FontFamilyLabel
+        //
+        FontFamilyLabel.Anchor = AnchorStyles.Left;
+        FontFamilyLabel.AutoSize = true;
+        FontFamilyLabel.Name = "FontFamilyLabel";
+        FontFamilyLabel.Text = "Font";
+        //
+        // FontFamilyBox
+        //
+        FontFamilyBox.Dock = DockStyle.Fill;
+        FontFamilyBox.DropDownStyle = ComboBoxStyle.DropDownList;
+        FontFamilyBox.DropDownWidth = 220;
+        FontFamilyBox.Name = "FontFamilyBox";
+        FontFamilyBox.TabIndex = 14;
+        FontFamilyBox.SelectedIndexChanged += FontFamilyBox_SelectedIndexChanged;
+        //
+        // FontSizeLabel
+        //
+        FontSizeLabel.Anchor = AnchorStyles.Left;
+        FontSizeLabel.AutoSize = true;
+        FontSizeLabel.Name = "FontSizeLabel";
+        FontSizeLabel.Text = "Text size";
+        //
+        // FontSizeBox
+        //
+        FontSizeBox.Dock = DockStyle.Fill;
+        FontSizeBox.Maximum = new decimal(new int[] { 400, 0, 0, 0 });
+        FontSizeBox.Minimum = new decimal(new int[] { 6, 0, 0, 0 });
+        FontSizeBox.Name = "FontSizeBox";
+        FontSizeBox.TabIndex = 11;
+        FontSizeBox.Value = new decimal(new int[] { 6, 0, 0, 0 });
+        FontSizeBox.ValueChanged += FontSizeBox_ValueChanged;
+        //
+        // RoutingLabel
+        //
+        RoutingLabel.Anchor = AnchorStyles.Left;
+        RoutingLabel.AutoSize = true;
+        RoutingLabel.Name = "RoutingLabel";
+        RoutingLabel.Text = "Route";
+        //
+        // RoutingPropertyBox
+        //
+        RoutingPropertyBox.Dock = DockStyle.Fill;
+        RoutingPropertyBox.DropDownStyle = ComboBoxStyle.DropDownList;
+        RoutingPropertyBox.Name = "RoutingPropertyBox";
+        RoutingPropertyBox.TabIndex = 12;
+        RoutingPropertyBox.SelectedIndexChanged += RoutingPropertyBox_SelectedIndexChanged;
+        //
+        // ArrowsLabel
+        //
+        ArrowsLabel.Anchor = AnchorStyles.Left;
+        ArrowsLabel.AutoSize = true;
+        ArrowsLabel.Name = "ArrowsLabel";
+        ArrowsLabel.Text = "Arrows";
+        //
+        // ArrowsPropertyBox
+        //
+        ArrowsPropertyBox.Dock = DockStyle.Fill;
+        ArrowsPropertyBox.DropDownStyle = ComboBoxStyle.DropDownList;
+        ArrowsPropertyBox.Name = "ArrowsPropertyBox";
+        ArrowsPropertyBox.TabIndex = 13;
+        ArrowsPropertyBox.SelectedIndexChanged += ArrowsPropertyBox_SelectedIndexChanged;
+        //
         // ZoomLabel
         //
         ZoomLabel.Alignment = ToolStripItemAlignment.Right;
         ZoomLabel.Name = "ZoomLabel";
+        ZoomLabel.Overflow = ToolStripItemOverflow.Never;
         ZoomLabel.ToolTipText = "Ctrl+wheel to zoom, Ctrl+0 for 100%";
         //
         // Canvas
@@ -454,8 +797,9 @@ partial class DiagramEditorForm
         //
         AutoScaleDimensions = new SizeF(7F, 15F);
         AutoScaleMode = AutoScaleMode.Font;
-        ClientSize = new Size(1100, 720);
+        ClientSize = new Size(1280, 760);
         Controls.Add(Canvas);
+        Controls.Add(PropertiesPanel);
         Controls.Add(ToolsStrip);
         Controls.Add(StyleStrip);
         KeyPreview = true;
@@ -472,6 +816,17 @@ partial class DiagramEditorForm
         StyleStrip.PerformLayout();
         Canvas.ResumeLayout(false);
         Canvas.PerformLayout();
+        ((System.ComponentModel.ISupportInitialize)XBox).EndInit();
+        ((System.ComponentModel.ISupportInitialize)YBox).EndInit();
+        ((System.ComponentModel.ISupportInitialize)WidthBox).EndInit();
+        ((System.ComponentModel.ISupportInitialize)HeightBox).EndInit();
+        ((System.ComponentModel.ISupportInitialize)CornerRadiusBox).EndInit();
+        ((System.ComponentModel.ISupportInitialize)LineWidthBox).EndInit();
+        ((System.ComponentModel.ISupportInitialize)FontSizeBox).EndInit();
+        PropertiesTable.ResumeLayout(false);
+        PropertiesTable.PerformLayout();
+        PropertiesPanel.ResumeLayout(false);
+        PropertiesPanel.PerformLayout();
         ResumeLayout(false);
         PerformLayout();
     }
@@ -524,7 +879,40 @@ partial class DiagramEditorForm
     private ToolStripButton UngroupButton;
     private ToolStripButton FrontButton;
     private ToolStripButton BackButton;
+    private ToolStripButton PropertiesButton;
     private ToolStripLabel ZoomLabel;
     private DiagramCanvasControl Canvas;
     private TextBox TextInputBox;
+    private Panel PropertiesPanel;
+    private TableLayoutPanel PropertiesTable;
+    private Label PropertiesTitleLabel;
+    private Label TextLabel;
+    private TextBox TextPropertyBox;
+    private Label XLabel;
+    private NumericUpDown XBox;
+    private Label YLabel;
+    private NumericUpDown YBox;
+    private Label WidthLabel;
+    private NumericUpDown WidthBox;
+    private Label HeightLabel;
+    private NumericUpDown HeightBox;
+    private Label CornerRadiusLabel;
+    private NumericUpDown CornerRadiusBox;
+    private Label FillLabel;
+    private Button FillColorButton;
+    private Label LineLabel;
+    private Button LineColorButton;
+    private Label LineWidthLabel;
+    private NumericUpDown LineWidthBox;
+    private CheckBox DashedCheckBox;
+    private Label TextColorLabel;
+    private Button TextColorButton;
+    private Label FontFamilyLabel;
+    private ComboBox FontFamilyBox;
+    private Label FontSizeLabel;
+    private NumericUpDown FontSizeBox;
+    private Label RoutingLabel;
+    private ComboBox RoutingPropertyBox;
+    private Label ArrowsLabel;
+    private ComboBox ArrowsPropertyBox;
 }

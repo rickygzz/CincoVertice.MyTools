@@ -44,6 +44,68 @@ public sealed class DiagramSvgTests : IDisposable
     }
 
     [Fact]
+    public void WriteThenRead_KeepsTheCornerRadius_AndTheImageShowsIt()
+    {
+        // Arrange
+        DiagramModel diagram = Sample() with { Shapes = [Sample().Shapes[0] with { CornerRadius = 20 }], Connectors = [] };
+
+        // Act
+        string svg = DiagramSvg.Write(diagram);
+
+        // Assert
+        Assert.Equal(20, DiagramSvg.Read(svg).Shapes[0].CornerRadius);
+        Assert.Contains("C", (string?)XDocument.Parse(svg).Descendants(_svg + "path").First().Attribute("d"));
+    }
+
+    [Fact]
+    public void WriteThenRead_KeepsTheFont_AndTheImageAsksForIt()
+    {
+        // Arrange
+        DiagramModel diagram = Sample() with
+        {
+            Shapes = [Sample().Shapes[0] with { Style = _style with { FontFamily = "Courier New" } }],
+            Connectors = [],
+        };
+
+        // Act
+        string svg = DiagramSvg.Write(diagram);
+
+        // Assert
+        Assert.Equal("Courier New", DiagramSvg.Read(svg).Shapes[0].Style.FontFamily);
+        Assert.Equal(
+            "'Courier New', sans-serif",
+            (string?)XDocument.Parse(svg).Descendants(_svg + "text").First().Attribute("font-family"));
+    }
+
+    [Fact]
+    public void Write_AQuoteInAFontsName_CantBreakOutOfTheAttribute()
+    {
+        // Arrange
+        DiagramModel diagram = Sample() with
+        {
+            Shapes = [Sample().Shapes[0] with { Style = _style with { FontFamily = "It's" } }],
+            Connectors = [],
+        };
+
+        // Act
+        XDocument document = XDocument.Parse(DiagramSvg.Write(diagram));
+
+        // Assert
+        Assert.Equal(
+            "'Its', sans-serif",
+            (string?)document.Descendants(_svg + "text").First().Attribute("font-family"));
+    }
+
+    [Theory]
+    [InlineData("""{ "format": "mytools-diagram", "shapes": [{ "id": 1, "kind": "Text", "width": 9, "height": 9, "style": { "fontSize": 14 } }] }""")]
+    [InlineData("""{ "format": "mytools-diagram", "shapes": [{ "id": 1, "kind": "Text", "width": 9, "height": 9 }] }""")]
+    [InlineData("""{ "format": "mytools-diagram", "shapes": [{ "id": 1, "kind": "Text", "width": 9, "height": 9, "style": { "fontFamily": " " } }] }""")]
+    public void Json_AFileFromBeforeFonts_KeepsTheFontItHad(string json)
+    {
+        Assert.Equal("Segoe UI", DiagramJson.Read(json).Shapes[0].Style.FontFamily);
+    }
+
+    [Fact]
     public void WriteThenRead_KeepsTheBends()
     {
         // Arrange

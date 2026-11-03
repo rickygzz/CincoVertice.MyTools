@@ -19,6 +19,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Diagramming\Fonts\Roboto.ttf" LogicalName="Roboto.ttf" />
+    <Content Include="Diagramming\Fonts\OFL.txt" Link="licenses\Roboto-OFL.txt" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\common\src\CincoVertice.Common.Application.Calculator\CincoVertice.Common.Application.Calculator.csproj" />
     <ProjectReference Include="..\..\common\src\CincoVertice.Common.UI.Win.Controls\CincoVertice.Common.UI.Win.Controls.csproj" />
     <ProjectReference Include="..\..\common\src\CincoVertice.Common.WinApi\CincoVertice.Common.WinApi.csproj" />

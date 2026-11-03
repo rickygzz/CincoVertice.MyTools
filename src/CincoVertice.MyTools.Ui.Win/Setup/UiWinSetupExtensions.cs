@@ -18,6 +18,7 @@ using CincoVertice.MyTools.Ui.Win.CodeReview;
 using CincoVertice.MyTools.Ui.Win.CodeReview.Actions;
 using CincoVertice.MyTools.Ui.Win.CodeReview.Services;
 using CincoVertice.MyTools.Ui.Win.Diagramming.Actions;
+using CincoVertice.MyTools.Ui.Win.Diagramming.Services;
 using CincoVertice.MyTools.Ui.Win.Scripting.Actions;
 using CincoVertice.MyTools.Ui.Win.Scripting.Services;
 using CincoVertice.MyTools.Ui.Win.Shell;
@@ -60,6 +61,7 @@ public static class UiWinSetupExtensions
         services.AddSingleton<SnipRegionAction>();
         services.AddSingleton<SnipAndEditAction>();
         services.AddSingleton<IDiagramFileStore, SvgDiagramFileStore>();
+        services.AddSingleton(_ => RobotoFontInstaller.ForCurrentUser());
         services.AddSingleton<OpenDiagramEditorAction>();
 
         // Every action can be bound to a shortcut in hotkeys.cfg; same instances as above

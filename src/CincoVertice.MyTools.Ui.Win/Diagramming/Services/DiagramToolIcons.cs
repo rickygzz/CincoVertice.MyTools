@@ -73,7 +73,7 @@ public static class DiagramToolIcons
 
     private static void DrawText(Graphics graphics)
     {
-        using var font = new Font(DiagramSvg.FontFamily, 13, FontStyle.Bold, GraphicsUnit.Pixel);
+        using var font = new Font("Segoe UI", 13, FontStyle.Bold, GraphicsUnit.Pixel);
         using var brush = new SolidBrush(_ink);
         using var format = new StringFormat
         {

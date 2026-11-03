@@ -14,9 +14,6 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Services;
 /// </summary>
 public static class DiagramSvg
 {
-    /// <summary>The font of all the text; on another computer without it, the file falls back to any sans serif.</summary>
-    public const string FontFamily = "Segoe UI";
-
     private const string MetadataId = "mytools-diagram";
     private const int Margin = 20;
 
@@ -30,7 +27,6 @@ public static class DiagramSvg
             new XAttribute("viewBox", $"{area.X} {area.Y} {area.Width} {area.Height}"),
             new XAttribute("width", area.Width),
             new XAttribute("height", area.Height),
-            new XAttribute("font-family", $"{FontFamily}, sans-serif"),
             new XElement(_svg + "metadata", new XAttribute("id", MetadataId), DiagramJson.Write(diagram)));
 
         foreach (DiagramShapeModel shape in diagram.Shapes)
@@ -143,7 +139,7 @@ public static class DiagramSvg
     {
         var group = new XElement(_svg + "g");
 
-        foreach (DiagramFigureModel figure in DiagramFigures.Of(shape.Kind, shape.Bounds))
+        foreach (DiagramFigureModel figure in DiagramFigures.Of(shape.Kind, shape.Bounds, shape.CornerRadius))
         {
             var path = new XElement(
                 _svg + "path",
@@ -231,6 +227,9 @@ public static class DiagramSvg
         var text = new XElement(
             _svg + "text",
             new XAttribute("text-anchor", "middle"),
+
+            // In quotes for a name with spaces; on a computer without it, any sans serif font shows instead
+            new XAttribute("font-family", $"'{style.FontFamily.Replace("'", string.Empty)}', sans-serif"),
             new XAttribute("font-size", style.FontSize),
             new XAttribute("fill", Hex(style.TextColor)),
             new XAttribute(XNamespace.Xml + "space", "preserve"));

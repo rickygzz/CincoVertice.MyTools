@@ -17,6 +17,9 @@ public static class DiagramJson
     private const int MaxFontSize = 400;
     private const int MaxLineWidth = 100;
 
+    // What every text used before a font could be chosen, so older diagrams keep their look
+    private const string OlderFilesFontFamily = "Segoe UI";
+
     private static readonly JsonSerializerOptions _options = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -38,7 +41,8 @@ public static class DiagramJson
                 shape.Bounds.Height,
                 shape.Text,
                 StyleFile.From(shape.Style),
-                shape.GroupId))],
+                shape.GroupId,
+                shape.CornerRadius))],
             [.. diagram.Connectors.Select(connector => new ConnectorFile(
                 connector.Id,
                 connector.FromShapeId,
@@ -114,7 +118,8 @@ public static class DiagramJson
         new Rectangle(shape.X, shape.Y, Math.Max(shape.Width, 1), Math.Max(shape.Height, 1)),
         shape.Text ?? string.Empty,
         ToStyle(shape.Style),
-        shape.GroupId);
+        shape.GroupId,
+        shape.CornerRadius is int radius ? Math.Max(radius, 0) : null);
 
     private static DiagramStyleModel ToStyle(StyleFile? style) => new(
         ParseColor(style?.Fill, Color.Empty),
@@ -122,7 +127,8 @@ public static class DiagramJson
         Math.Clamp(style?.LineWidth ?? 2, 0, MaxLineWidth),
         style?.Dashed ?? false,
         ParseColor(style?.TextColor, Color.Black),
-        Math.Clamp(style?.FontSize ?? 14, MinFontSize, MaxFontSize));
+        Math.Clamp(style?.FontSize ?? 14, MinFontSize, MaxFontSize),
+        string.IsNullOrWhiteSpace(style?.FontFamily) ? OlderFilesFontFamily : style.FontFamily);
 
     private static string? FormatColor(Color color) =>
         color.IsEmpty ? null : $"#{color.R:X2}{color.G:X2}{color.B:X2}";
@@ -153,7 +159,8 @@ public static class DiagramJson
         int Height,
         string? Text,
         StyleFile? Style,
-        int? GroupId);
+        int? GroupId,
+        int? CornerRadius);
 
     private sealed record ConnectorFile(
         int Id,
@@ -175,7 +182,8 @@ public static class DiagramJson
         int LineWidth,
         bool Dashed,
         string? TextColor,
-        int FontSize)
+        int FontSize,
+        string? FontFamily)
     {
         public static StyleFile From(DiagramStyleModel style) => new(
             FormatColor(style.Fill),
@@ -183,6 +191,7 @@ public static class DiagramJson
             style.LineWidth,
             style.Dashed,
             FormatColor(style.TextColor),
-            style.FontSize);
+            style.FontSize,
+            style.FontFamily);
     }
 }

@@ -209,6 +209,33 @@ public class DiagramEditorFormTests
         Assert.Equal(Color.FromArgb(0, 120, 215).ToArgb(), image.GetPixel(100, 100).ToArgb());
     }
 
+    [Fact]
+    public void Form_ShowsAnyProperties_EvenOutOfItsFieldsRange()
+    {
+        // Arrange
+        using var form = new DiagramEditorForm();
+        new DiagramEditorPresenter(form, new NoStore()).Start();
+
+        // Act: from a file edited by hand, say; a field's value out of its range would throw
+        form.ShowProperties(new DiagramPropertiesModel(
+            "Rectangle",
+            new Rectangle(-999999, 999999, 1, 999999),
+            5000,
+            Color.Empty,
+            Color.Red,
+            5000,
+            true,
+            Color.Blue,
+            1,
+            "text",
+            DiagramRouting.Straight,
+            DiagramArrowHeads.None));
+        form.ShowProperties(new DiagramPropertiesModel("Nothing selected"));
+
+        // Assert: reaching here is the point
+        Assert.NotNull(form);
+    }
+
     private sealed class NoStore : IDiagramFileStore
     {
         public void Save(string path, DiagramModel diagram)

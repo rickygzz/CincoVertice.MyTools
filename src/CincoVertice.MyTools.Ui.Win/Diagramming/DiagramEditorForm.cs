@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using CincoVertice.MyTools.Ui.Diagramming.Models;
-using CincoVertice.MyTools.Ui.Diagramming.Services;
 using CincoVertice.MyTools.Ui.Diagramming.Views;
 using CincoVertice.MyTools.Ui.Win.Behaviors;
 using CincoVertice.MyTools.Ui.Win.Diagramming.Services;
@@ -60,8 +59,14 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
             ((ToolStripDropDownMenu)button.DropDown).ShowImageMargin = false;
         }
 
-        RoutingComboBox.Items.AddRange(["Elbow", "Straight"]);
-        ArrowHeadsComboBox.Items.AddRange(["Arrow at end", "Arrow at start", "Arrows at both", "No arrows"]);
+        string[] routings = ["Elbow", "Straight"];
+        string[] arrows = ["Arrow at end", "Arrow at start", "Arrows at both", "No arrows"];
+
+        RoutingComboBox.Items.AddRange(routings);
+        ArrowHeadsComboBox.Items.AddRange(arrows);
+        RoutingPropertyBox.Items.AddRange(routings);
+        ArrowsPropertyBox.Items.AddRange(arrows);
+        FontFamilyBox.Items.AddRange([.. DiagramFonts.Names()]);
 
         FormExtensions.CenterOnCursorScreen(this);
         FormExtensions.ActivateWhenShown(this);
@@ -95,9 +100,17 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
 
     public event EventHandler<int>? FontSizeSelected;
 
+    public event EventHandler<string>? FontFamilySelected;
+
     public event EventHandler<DiagramRouting>? RoutingSelected;
 
     public event EventHandler<DiagramArrowHeads>? ArrowHeadsSelected;
+
+    public event EventHandler<Rectangle>? BoundsEdited;
+
+    public event EventHandler<int>? CornerRadiusEdited;
+
+    public event EventHandler<string>? TextEdited;
 
     public event EventHandler<string>? TextCommitted;
 
@@ -160,6 +173,67 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         _isShowingChoices = false;
     }
 
+    public void ShowProperties(DiagramPropertiesModel properties)
+    {
+        _isShowingChoices = true;
+        PropertiesTable.SuspendLayout();
+
+        PropertiesTitleLabel.Text = properties.Title;
+
+        bool hasBounds = properties.Bounds is not null;
+        Rectangle bounds = properties.Bounds ?? Rectangle.Empty;
+
+        ShowNumber(XLabel, XBox, hasBounds ? bounds.X : null);
+        ShowNumber(YLabel, YBox, hasBounds ? bounds.Y : null);
+        ShowNumber(WidthLabel, WidthBox, hasBounds ? bounds.Width : null);
+        ShowNumber(HeightLabel, HeightBox, hasBounds ? bounds.Height : null);
+        ShowNumber(CornerRadiusLabel, CornerRadiusBox, properties.CornerRadius);
+        ShowNumber(LineWidthLabel, LineWidthBox, properties.LineWidth);
+        ShowNumber(FontSizeLabel, FontSizeBox, properties.FontSize);
+
+        ShowColor(FillLabel, FillColorButton, properties.Fill);
+        ShowColor(LineLabel, LineColorButton, properties.Line);
+        ShowColor(TextColorLabel, TextColorButton, properties.TextColor);
+
+        // A connector has a line where a shape has a border
+        LineLabel.Text = hasBounds ? "Border" : "Line";
+        LineWidthLabel.Text = hasBounds ? "Border width" : "Line width";
+
+        DashedCheckBox.Visible = properties.Dashed is not null;
+        DashedCheckBox.Checked = properties.Dashed ?? false;
+
+        TextLabel.Visible = properties.Text is not null;
+        TextPropertyBox.Visible = properties.Text is not null;
+        TextLabel.Text = hasBounds ? "Text" : "Label";
+
+        if (!TextPropertyBox.Focused)
+        {
+            TextPropertyBox.Text = properties.Text?.ReplaceLineEndings(Environment.NewLine) ?? string.Empty;
+        }
+
+        FontFamilyLabel.Visible = properties.FontFamily is not null;
+        FontFamilyBox.Visible = properties.FontFamily is not null;
+
+        if (properties.FontFamily is string fontFamily)
+        {
+            // A diagram from another computer can have a font this one doesn't
+            int index = FontFamilyBox.FindStringExact(fontFamily);
+
+            FontFamilyBox.SelectedIndex = index >= 0 ? index : FontFamilyBox.Items.Add(fontFamily);
+        }
+
+        RoutingLabel.Visible = properties.Routing is not null;
+        RoutingPropertyBox.Visible = properties.Routing is not null;
+        RoutingPropertyBox.SelectedIndex = properties.Routing == DiagramRouting.Straight ? 1 : 0;
+
+        ArrowsLabel.Visible = properties.Heads is not null;
+        ArrowsPropertyBox.Visible = properties.Heads is not null;
+        ArrowsPropertyBox.SelectedIndex = (int)(properties.Heads ?? DiagramArrowHeads.End);
+
+        PropertiesTable.ResumeLayout();
+        _isShowingChoices = false;
+    }
+
     public void ShowUndoRedo(bool canUndo, bool canRedo)
     {
         UndoButton.Enabled = canUndo;
@@ -191,11 +265,11 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         };
     }
 
-    public void BeginTextEdit(Rectangle bounds, string text, int fontSize, Color color)
+    public void BeginTextEdit(Rectangle bounds, string text, int fontSize, string fontFamily, Color color)
     {
         Font? oldFont = _textFont;
 
-        _textFont = new Font(DiagramSvg.FontFamily, fontSize, FontStyle.Regular, GraphicsUnit.Pixel);
+        _textFont = DiagramFonts.Create(fontFamily, fontSize);
         TextInputBox.Font = _textFont;
         oldFont?.Dispose();
         TextInputBox.ForeColor = color;
@@ -281,7 +355,10 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
             || LineWidthComboBox.DroppedDown
             || FontSizeComboBox.DroppedDown
             || RoutingComboBox.DroppedDown
-            || ArrowHeadsComboBox.DroppedDown)
+            || ArrowHeadsComboBox.DroppedDown
+            || RoutingPropertyBox.DroppedDown
+            || ArrowsPropertyBox.DroppedDown
+            || FontFamilyBox.DroppedDown)
         {
             return base.ProcessCmdKey(ref msg, keyData);
         }
@@ -290,6 +367,11 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         if (_isEditingText)
         {
             CancelText();
+        }
+        else if (PropertiesPanel.ContainsFocus)
+        {
+            // Back to the canvas, which also takes what was typed in the field
+            Canvas.Focus();
         }
         else
         {
@@ -372,6 +454,149 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         (ModifierKeys & Keys.Alt) != 0,
         e.Button == MouseButtons.Middle || _isSpaceDown);
 
+    /// <summary>A number, kept in the box's range, which would otherwise throw; null hides the field.</summary>
+    private static void ShowNumber(Label label, NumericUpDown box, int? value)
+    {
+        label.Visible = value is not null;
+        box.Visible = value is not null;
+
+        if (value is int number)
+        {
+            box.Value = Math.Clamp(number, box.Minimum, box.Maximum);
+        }
+    }
+
+    /// <summary>A color on the button; null hides the field, and an empty color reads as none.</summary>
+    private static void ShowColor(Label label, Button button, Color? color)
+    {
+        label.Visible = color is not null;
+        button.Visible = color is not null;
+
+        if (color is Color shown)
+        {
+            button.BackColor = shown.IsEmpty ? SystemColors.Control : shown;
+            button.Text = shown.IsEmpty ? "None" : string.Empty;
+        }
+    }
+
+    /// <summary>The same choices as the top bar's color, below the button.</summary>
+    private static void ShowColorMenu(ToolStripDropDownButton colors, Control button)
+    {
+        colors.DropDown.Show(button, new Point(0, button.Height));
+    }
+
+    private void PropertiesButton_Click(object? sender, EventArgs e)
+    {
+        ToggleProperties();
+    }
+
+    private void ToggleProperties()
+    {
+        PropertiesPanel.Visible = !PropertiesPanel.Visible;
+        PropertiesButton.Checked = PropertiesPanel.Visible;
+    }
+
+    private void BoundsBox_ValueChanged(object? sender, EventArgs e)
+    {
+        if (!_isShowingChoices)
+        {
+            BoundsEdited?.Invoke(
+                this,
+                new Rectangle((int)XBox.Value, (int)YBox.Value, (int)WidthBox.Value, (int)HeightBox.Value));
+        }
+    }
+
+    private void CornerRadiusBox_ValueChanged(object? sender, EventArgs e)
+    {
+        if (!_isShowingChoices)
+        {
+            CornerRadiusEdited?.Invoke(this, (int)CornerRadiusBox.Value);
+        }
+    }
+
+    private void LineWidthBox_ValueChanged(object? sender, EventArgs e)
+    {
+        if (!_isShowingChoices)
+        {
+            LineWidthSelected?.Invoke(this, (int)LineWidthBox.Value);
+        }
+    }
+
+    private void FontSizeBox_ValueChanged(object? sender, EventArgs e)
+    {
+        if (!_isShowingChoices)
+        {
+            FontSizeSelected?.Invoke(this, (int)FontSizeBox.Value);
+        }
+    }
+
+    private void FontFamilyBox_SelectedIndexChanged(object? sender, EventArgs e)
+    {
+        if (!_isShowingChoices && FontFamilyBox.SelectedItem is string fontFamily)
+        {
+            FontFamilySelected?.Invoke(this, fontFamily);
+        }
+    }
+
+    private void DashedCheckBox_CheckedChanged(object? sender, EventArgs e)
+    {
+        if (!_isShowingChoices)
+        {
+            DashedSelected?.Invoke(this, DashedCheckBox.Checked);
+        }
+    }
+
+    private void RoutingPropertyBox_SelectedIndexChanged(object? sender, EventArgs e)
+    {
+        if (!_isShowingChoices && RoutingPropertyBox.SelectedIndex >= 0)
+        {
+            RoutingSelected?.Invoke(
+                this,
+                RoutingPropertyBox.SelectedIndex == 0 ? DiagramRouting.Elbow : DiagramRouting.Straight);
+        }
+    }
+
+    private void ArrowsPropertyBox_SelectedIndexChanged(object? sender, EventArgs e)
+    {
+        if (!_isShowingChoices && ArrowsPropertyBox.SelectedIndex >= 0)
+        {
+            ArrowHeadsSelected?.Invoke(this, (DiagramArrowHeads)ArrowsPropertyBox.SelectedIndex);
+        }
+    }
+
+    private void FillColorButton_Click(object? sender, EventArgs e)
+    {
+        ShowColorMenu(FillDropDownButton, FillColorButton);
+    }
+
+    private void LineColorButton_Click(object? sender, EventArgs e)
+    {
+        ShowColorMenu(LineDropDownButton, LineColorButton);
+    }
+
+    private void TextColorButton_Click(object? sender, EventArgs e)
+    {
+        ShowColorMenu(TextColorDropDownButton, TextColorButton);
+    }
+
+    private void TextPropertyBox_KeyDown(object? sender, KeyEventArgs e)
+    {
+        // Enter ends the text; Shift+Enter starts a new line
+        if (e.KeyCode == Keys.Enter && !e.Shift)
+        {
+            e.SuppressKeyPress = true;
+            TextEdited?.Invoke(this, TextPropertyBox.Text);
+        }
+    }
+
+    private void TextPropertyBox_Leave(object? sender, EventArgs e)
+    {
+        if (!_isShowingChoices)
+        {
+            TextEdited?.Invoke(this, TextPropertyBox.Text);
+        }
+    }
+
     private void CommitText()
     {
         if (!_isEditingText)
@@ -411,19 +636,23 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
 
     private void FillPalette_ColorPicked(object? sender, Color color)
     {
-        FillDropDownButton.HideDropDown();
+        // Not HideDropDown: the panel's color buttons show this same menu themselves
+        FillDropDownButton.DropDown.Close();
+        Canvas.Focus();
         ColorSelected?.Invoke(this, new DiagramColorChoiceModel(DiagramColorTarget.Fill, color));
     }
 
     private void LinePalette_ColorPicked(object? sender, Color color)
     {
-        LineDropDownButton.HideDropDown();
+        LineDropDownButton.DropDown.Close();
+        Canvas.Focus();
         ColorSelected?.Invoke(this, new DiagramColorChoiceModel(DiagramColorTarget.Line, color));
     }
 
     private void TextPalette_ColorPicked(object? sender, Color color)
     {
-        TextColorDropDownButton.HideDropDown();
+        TextColorDropDownButton.DropDown.Close();
+        Canvas.Focus();
         ColorSelected?.Invoke(this, new DiagramColorChoiceModel(DiagramColorTarget.Text, color));
     }
 
@@ -583,8 +812,17 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
 
     private void DiagramEditorForm_KeyDown(object? sender, KeyEventArgs e)
     {
-        // While typing a text, keys are the text's
-        if (_isEditingText)
+        // Not with Alt, which closes the window
+        if (e.KeyData == Keys.F4)
+        {
+            ToggleProperties();
+            e.Handled = true;
+
+            return;
+        }
+
+        // While typing a text or in the panel's fields, keys are theirs
+        if (_isEditingText || PropertiesPanel.ContainsFocus)
         {
             return;
         }

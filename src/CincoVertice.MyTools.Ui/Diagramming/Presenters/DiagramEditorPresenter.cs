@@ -31,6 +31,9 @@ public sealed class DiagramEditorPresenter
     private const int WheelScrollPixels = 40;
 
     private const int MinShapeSize = 10;
+    private const int MaxLineWidth = 100;
+    private const int MinFontSize = 6;
+    private const int MaxFontSize = 400;
     private const int PasteOffset = 20;
 
     // All in canvas pixels, so they feel the same at any zoom
@@ -82,6 +85,8 @@ public sealed class DiagramEditorPresenter
     private int? _hoverShape;
     private DiagramSide? _hoverSide;
 
+    private DiagramPropertiesModel? _shownProperties;
+
     // What ends the text being typed
     private Action<string>? _commitText;
 
@@ -108,8 +113,12 @@ public sealed class DiagramEditorPresenter
         _view.LineWidthSelected += OnLineWidthSelected;
         _view.DashedSelected += OnDashedSelected;
         _view.FontSizeSelected += OnFontSizeSelected;
+        _view.FontFamilySelected += OnFontFamilySelected;
         _view.RoutingSelected += OnRoutingSelected;
         _view.ArrowHeadsSelected += OnArrowHeadsSelected;
+        _view.BoundsEdited += OnBoundsEdited;
+        _view.CornerRadiusEdited += OnCornerRadiusEdited;
+        _view.TextEdited += OnTextEdited;
         _view.TextCommitted += OnTextCommitted;
         _view.Closing += OnClosing;
     }
@@ -861,6 +870,7 @@ public sealed class DiagramEditorPresenter
             Rectangle.FromLTRB(topLeft.X, topLeft.Y, bottomRight.X, bottomRight.Y),
             shape.Text,
             CanvasFontSize(shape.Style.FontSize),
+            shape.Style.FontFamily,
             shape.Style.TextColor);
     }
 
@@ -881,6 +891,7 @@ public sealed class DiagramEditorPresenter
             new Rectangle(canvas.X - width / 2, canvas.Y - height / 2, width, height),
             connector.Label,
             fontSize,
+            connector.Style.FontFamily,
             connector.Style.TextColor);
     }
 
@@ -913,7 +924,12 @@ public sealed class DiagramEditorPresenter
         int fontSize = CanvasFontSize(_style.FontSize);
         Point canvas = _viewport.ToCanvas(point);
 
-        _view.BeginTextEdit(new Rectangle(canvas.X, canvas.Y, fontSize * 14, fontSize * 2), string.Empty, fontSize, _style.TextColor);
+        _view.BeginTextEdit(
+            new Rectangle(canvas.X, canvas.Y, fontSize * 14, fontSize * 2),
+            string.Empty,
+            fontSize,
+            _style.FontFamily,
+            _style.TextColor);
     }
 
     private void OnTextCommitted(object? sender, string text)
@@ -1390,7 +1406,68 @@ public sealed class DiagramEditorPresenter
 
     private void OnLineWidthSelected(object? sender, int width)
     {
-        ChangeStyle(style => style with { LineWidth = width });
+        ChangeStyle(style => style with { LineWidth = Math.Clamp(width, 0, MaxLineWidth) });
+    }
+
+    /// <summary>Moves and scales the selected shapes as a whole, to where the box around them was typed.</summary>
+    private void OnBoundsEdited(object? sender, Rectangle box)
+    {
+        if (_drag is not null || _selectedShapes.Count == 0)
+        {
+            return;
+        }
+
+        Rectangle from = SelectedBox();
+        var to = new Rectangle(box.Location, new Size(Math.Max(box.Width, MinShapeSize), Math.Max(box.Height, MinShapeSize)));
+
+        if (to != from)
+        {
+            Commit(WithBounds(
+                _diagram,
+                SelectedBounds(),
+                bounds => ScaleInside(bounds, from, to),
+                bend => ScaleInside(new Rectangle(bend, Size.Empty), from, to).Location));
+        }
+    }
+
+    private void OnCornerRadiusEdited(object? sender, int radius)
+    {
+        int corner = Math.Max(radius, 0);
+
+        bool IsChanged(DiagramShapeModel shape) => _selectedShapes.Contains(shape.Id)
+            && DiagramFigures.HasCornerRadius(shape.Kind)
+            && (shape.CornerRadius ?? DiagramFigures.DefaultCornerRadius(shape.Kind)) != corner;
+
+        if (_drag is null && _diagram.Shapes.Any(IsChanged))
+        {
+            Commit(_diagram with
+            {
+                Shapes = [.. _diagram.Shapes.Select(shape => IsChanged(shape) ? shape with { CornerRadius = corner } : shape)],
+            });
+        }
+    }
+
+    /// <summary>The text of the one thing selected: a shape's text or a connector's label.</summary>
+    private void OnTextEdited(object? sender, string text)
+    {
+        if (_drag is not null || _selectedShapes.Count + _selectedConnectors.Count != 1)
+        {
+            return;
+        }
+
+        string edited = text.ReplaceLineEndings("\n").TrimEnd();
+
+        Commit(new DiagramModel(
+            [
+                .. _diagram.Shapes.Select(shape =>
+                    _selectedShapes.Contains(shape.Id) && shape.Text != edited ? shape with { Text = edited } : shape),
+            ],
+            [
+                .. _diagram.Connectors.Select(connector => _selectedConnectors.Contains(connector.Id) && connector.Label != edited
+                    ? connector with { Label = edited }
+                    : connector),
+            ]),
+            onlyIfChanged: true);
     }
 
     private void OnDashedSelected(object? sender, bool isDashed)
@@ -1400,7 +1477,15 @@ public sealed class DiagramEditorPresenter
 
     private void OnFontSizeSelected(object? sender, int size)
     {
-        ChangeStyle(style => style with { FontSize = size });
+        ChangeStyle(style => style with { FontSize = Math.Clamp(size, MinFontSize, MaxFontSize) });
+    }
+
+    private void OnFontFamilySelected(object? sender, string fontFamily)
+    {
+        if (!string.IsNullOrWhiteSpace(fontFamily))
+        {
+            ChangeStyle(style => style with { FontFamily = fontFamily });
+        }
     }
 
     private void OnRoutingSelected(object? sender, DiagramRouting routing)
@@ -1474,8 +1559,17 @@ public sealed class DiagramEditorPresenter
     }
 
     /// <summary>The new diagram becomes current; undo goes back to the one before it, redo is lost.</summary>
-    private void Commit(DiagramModel diagram)
+    /// <param name="diagram">The new diagram.</param>
+    /// <param name="onlyIfChanged">True to leave nothing to undo when its parts are all the same as now.</param>
+    private void Commit(DiagramModel diagram, bool onlyIfChanged = false)
     {
+        if (onlyIfChanged
+            && diagram.Shapes.SequenceEqual(_diagram.Shapes)
+            && diagram.Connectors.SequenceEqual(_diagram.Connectors))
+        {
+            return;
+        }
+
         _undo.Push(_diagram);
         _redo.Clear();
         _diagram = diagram;
@@ -1611,9 +1705,86 @@ public sealed class DiagramEditorPresenter
             _connectTarget,
             AnchorsOf(shown),
             ConnectorEndsOf(shown)));
+        ShowProperties(shown);
         _view.ShowUndoRedo(_undo.Count > 0, _redo.Count > 0);
         _view.ShowDocument(Name, HasChanges);
         _view.ShowZoom((int)Math.Round(_viewport.Zoom * 100));
+    }
+
+    /// <summary>Only when they changed, since this runs on every mouse move and the fields shouldn't flicker.</summary>
+    private void ShowProperties(DiagramModel diagram)
+    {
+        DiagramPropertiesModel properties = PropertiesOf(diagram);
+
+        if (properties != _shownProperties)
+        {
+            _shownProperties = properties;
+            _view.ShowProperties(properties);
+        }
+    }
+
+    /// <summary>
+    ///     What applies to everything selected; a value that differs among them is taken from the first one.
+    /// </summary>
+    private DiagramPropertiesModel PropertiesOf(DiagramModel diagram)
+    {
+        List<DiagramShapeModel> shapes = [.. diagram.Shapes.Where(shape => _selectedShapes.Contains(shape.Id))];
+        List<DiagramConnectorModel> connectors =
+        [
+            .. diagram.Connectors.Where(connector => _selectedConnectors.Contains(connector.Id)),
+        ];
+
+        if (shapes.Count == 0 && connectors.Count == 0)
+        {
+            return new DiagramPropertiesModel("Nothing selected");
+        }
+
+        DiagramStyleModel style = shapes.FirstOrDefault()?.Style ?? connectors[0].Style;
+        List<DiagramShapeModel> outlined = [.. shapes.Where(shape => shape.Kind != DiagramShapeKind.Text)];
+        bool hasLine = outlined.Count > 0 || connectors.Count > 0;
+        bool hasCorners = connectors.Count == 0 && shapes.All(shape => DiagramFigures.HasCornerRadius(shape.Kind));
+
+        int? corner = hasCorners
+            ? shapes[0].CornerRadius ?? DiagramFigures.DefaultCornerRadius(shapes[0].Kind)
+            : null;
+
+        string? text = null;
+
+        if (shapes.Count + connectors.Count == 1)
+        {
+            text = shapes.Count == 1 ? shapes[0].Text : connectors[0].Label;
+        }
+
+        return new DiagramPropertiesModel(
+            TitleOf(shapes, connectors),
+            shapes.Count > 0 ? UnionOf(shapes.Select(shape => shape.Bounds)) : null,
+            corner,
+            outlined.Count > 0 ? outlined[0].Style.Fill : null,
+            hasLine ? style.Line : null,
+            hasLine ? style.LineWidth : null,
+            hasLine ? style.Dashed : null,
+            style.TextColor,
+            style.FontSize,
+            text,
+            connectors.Count > 0 ? connectors[0].Routing : null,
+            connectors.Count > 0 ? connectors[0].Heads : null,
+            style.FontFamily);
+    }
+
+    private static string TitleOf(List<DiagramShapeModel> shapes, List<DiagramConnectorModel> connectors)
+    {
+        int count = shapes.Count + connectors.Count;
+
+        if (count > 1)
+        {
+            return connectors.Count == 0 ? $"{count} shapes" : $"{count} objects";
+        }
+
+        return connectors.Count == 1 ? "Connector" : shapes[0].Kind switch
+        {
+            DiagramShapeKind.RoundedRectangle => "Rounded rectangle",
+            DiagramShapeKind kind => kind.ToString(),
+        };
     }
 
     /// <summary>The circles of the shape a connector is being dragged to, or else of the one under the mouse.</summary>

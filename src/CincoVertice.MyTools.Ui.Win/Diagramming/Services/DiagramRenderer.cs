@@ -77,9 +77,6 @@ public static class DiagramRenderer
         return path;
     }
 
-    private static Font CreateFont(int fontSize) =>
-        new(DiagramSvg.FontFamily, fontSize, FontStyle.Regular, GraphicsUnit.Pixel);
-
     private static void DrawGrid(Graphics graphics, DiagramViewportModel viewport, Size canvasSize)
     {
         const int spacing = DiagramSnapper.GridSize * 5;
@@ -122,7 +119,7 @@ public static class DiagramRenderer
     {
         using Pen pen = CreateLinePen(shape.Style);
 
-        foreach (DiagramFigureModel figure in DiagramFigures.Of(shape.Kind, shape.Bounds))
+        foreach (DiagramFigureModel figure in DiagramFigures.Of(shape.Kind, shape.Bounds, shape.CornerRadius))
         {
             using GraphicsPath path = ToPath(figure);
 
@@ -203,7 +200,7 @@ public static class DiagramRenderer
 
     private static void DrawText(Graphics graphics, DiagramTextBlockModel block, DiagramStyleModel style)
     {
-        using Font font = CreateFont(style.FontSize);
+        using Font font = DiagramFonts.Create(style.FontFamily, style.FontSize);
         using var brush = new SolidBrush(style.TextColor);
         using var format = new StringFormat(StringFormat.GenericTypographic)
         {

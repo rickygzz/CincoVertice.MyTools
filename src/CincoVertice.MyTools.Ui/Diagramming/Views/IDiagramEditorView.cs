@@ -45,9 +45,21 @@ public interface IDiagramEditorView
 
     event EventHandler<int>? FontSizeSelected;
 
+    /// <summary>Raised with the name of the font the text should have.</summary>
+    event EventHandler<string>? FontFamilySelected;
+
     event EventHandler<DiagramRouting>? RoutingSelected;
 
     event EventHandler<DiagramArrowHeads>? ArrowHeadsSelected;
+
+    /// <summary>Raised when the user types where the selected shapes should be, all of them together.</summary>
+    event EventHandler<Rectangle>? BoundsEdited;
+
+    /// <summary>Raised with how round the corners of the selected shapes should be, in pixels.</summary>
+    event EventHandler<int>? CornerRadiusEdited;
+
+    /// <summary>Raised with the text of the selected shape, or the label of the selected connector.</summary>
+    event EventHandler<string>? TextEdited;
 
     /// <summary>Raised when the user ends a text begun by <see cref="BeginTextEdit"/>, not when they cancel it.</summary>
     event EventHandler<string>? TextCommitted;
@@ -69,6 +81,9 @@ public interface IDiagramEditorView
     /// <summary>Shows the style of what's selected, or of what comes next when nothing is.</summary>
     void ShowStyle(DiagramStyleModel style, DiagramRouting routing, DiagramArrowHeads heads);
 
+    /// <summary>Shows the properties of the selection, which change while it's dragged too.</summary>
+    void ShowProperties(DiagramPropertiesModel properties);
+
     void ShowUndoRedo(bool canUndo, bool canRedo);
 
     /// <summary>Shows the name of the diagram.</summary>
@@ -85,8 +100,9 @@ public interface IDiagramEditorView
     /// <param name="bounds">Where, in canvas pixels.</param>
     /// <param name="text">The text to start from, selected.</param>
     /// <param name="fontSize">In canvas pixels.</param>
+    /// <param name="fontFamily">The name of the font.</param>
     /// <param name="color">The color of the text.</param>
-    void BeginTextEdit(Rectangle bounds, string text, int fontSize, Color color);
+    void BeginTextEdit(Rectangle bounds, string text, int fontSize, string fontFamily, Color color);
 
     /// <summary>Lets the user pick any color.</summary>
     /// <returns>The color; null when the user cancels.</returns>

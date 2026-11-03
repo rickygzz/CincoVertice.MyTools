@@ -1199,6 +1199,444 @@ public class DiagramEditorPresenterTests
     }
 
     [Fact]
+    public void Properties_WithNothingSelected_ShowOnlyThat()
+    {
+        // Act
+        ClickEmpty();
+
+        // Assert
+        Assert.Equal(new DiagramPropertiesModel("Nothing selected"), _view.Properties);
+    }
+
+    [Fact]
+    public void Properties_OfARectangle_ShowEverythingItHas()
+    {
+        // Act
+        AddShape(100, 100);
+        _view.SelectColor(DiagramColorTarget.Fill, Color.Red);
+
+        // Assert
+        DiagramPropertiesModel properties = _view.Properties!;
+        Assert.Equal("Rectangle", properties.Title);
+        Assert.Equal(Box(100, 100, 100, 50), properties.Bounds);
+        Assert.Equal(0, properties.CornerRadius);
+        Assert.Equal(Color.Red.ToArgb(), properties.Fill!.Value.ToArgb());
+        Assert.NotNull(properties.Line);
+        Assert.Equal(2, properties.LineWidth);
+        Assert.False(properties.Dashed);
+        Assert.NotNull(properties.TextColor);
+        Assert.Equal(14, properties.FontSize);
+        Assert.Equal(string.Empty, properties.Text);
+        Assert.Null(properties.Routing);
+        Assert.Null(properties.Heads);
+    }
+
+    [Theory]
+    [InlineData(DiagramTool.RoundedRectangle, "Rounded rectangle", 12)]
+    [InlineData(DiagramTool.Rectangle, "Rectangle", 0)]
+    public void Properties_OfARectangleKind_HaveACornerRadius(DiagramTool tool, string title, int expected)
+    {
+        // Act
+        _view.Tool(tool);
+        _view.Drag(100, 100, 300, 200);
+
+        // Assert
+        Assert.Equal((title, expected), (_view.Properties!.Title, _view.Properties.CornerRadius));
+    }
+
+    [Theory]
+    [InlineData(DiagramTool.Ellipse)]
+    [InlineData(DiagramTool.Diamond)]
+    [InlineData(DiagramTool.Cylinder)]
+    public void Properties_OfOtherShapes_HaveNoCornerRadius(DiagramTool tool)
+    {
+        // Act
+        _view.Tool(tool);
+        _view.Drag(100, 100, 300, 200);
+
+        // Assert
+        Assert.Null(_view.Properties!.CornerRadius);
+    }
+
+    [Fact]
+    public void Properties_OfAText_HaveNoFillOrBorder()
+    {
+        // Act
+        _view.DoubleClick(300, 300);
+        _view.CommitText("Note");
+
+        // Assert
+        DiagramPropertiesModel properties = _view.Properties!;
+        Assert.Equal(("Text", "Note"), (properties.Title, properties.Text));
+        Assert.NotNull(properties.Bounds);
+        Assert.Null(properties.Fill);
+        Assert.Null(properties.Line);
+        Assert.Null(properties.LineWidth);
+        Assert.Null(properties.CornerRadius);
+    }
+
+    [Fact]
+    public void Properties_OfAConnector_HaveItsOptions_AndNoSizeOrFill()
+    {
+        // Act
+        AddSelectedConnector();
+
+        // Assert
+        DiagramPropertiesModel properties = _view.Properties!;
+        Assert.Equal("Connector", properties.Title);
+        Assert.Null(properties.Bounds);
+        Assert.Null(properties.Fill);
+        Assert.Null(properties.CornerRadius);
+        Assert.NotNull(properties.Line);
+        Assert.Equal(DiagramRouting.Elbow, properties.Routing);
+        Assert.Equal(DiagramArrowHeads.End, properties.Heads);
+        Assert.Equal(string.Empty, properties.Text);
+    }
+
+    [Fact]
+    public void Properties_OfSeveral_ShowTheBoxAroundThem_AndNoText()
+    {
+        // Arrange
+        AddShape(100, 100);
+        AddShape(400, 200);
+
+        // Act
+        _view.Command(DiagramCommand.SelectAll);
+
+        // Assert
+        Assert.Equal("2 shapes", _view.Properties!.Title);
+        Assert.Equal(Box(100, 100, 400, 150), _view.Properties.Bounds);
+        Assert.Null(_view.Properties.Text);
+    }
+
+    [Fact]
+    public void Properties_OfShapesAndConnectors_SayObjects()
+    {
+        // Arrange
+        AddSelectedConnector();
+
+        // Act
+        _view.Command(DiagramCommand.SelectAll);
+
+        // Assert
+        Assert.Equal("4 objects", _view.Properties!.Title);
+        Assert.Null(_view.Properties.CornerRadius);
+    }
+
+    [Fact]
+    public void Properties_FollowADrag_AndUndo()
+    {
+        // Arrange
+        AddShape(100, 100);
+
+        // Act
+        _view.Press(120, 120);
+        _view.Move(220, 220);
+
+        // Assert: while it's still being dragged
+        Assert.Equal(new Point(200, 200), _view.Properties!.Bounds!.Value.Location);
+
+        // Act
+        _view.Release(220, 220);
+        _view.Command(DiagramCommand.Undo);
+
+        // Assert
+        Assert.Equal(new Point(100, 100), _view.Properties!.Bounds!.Value.Location);
+    }
+
+    [Fact]
+    public void Properties_AreOnlySentWhenTheyChange()
+    {
+        // Arrange
+        AddShape(100, 100);
+        int count = _view.PropertiesShowCount;
+
+        // Act: only the hover changes
+        _view.Hover(150, 125);
+        _view.Hover(214, 125);
+        _view.Hover(900, 900);
+
+        // Assert
+        Assert.Equal(count, _view.PropertiesShowCount);
+    }
+
+    [Theory]
+    [InlineData(300, 100, 100, 50)]
+    [InlineData(100, 400, 100, 50)]
+    [InlineData(100, 100, 250, 50)]
+    [InlineData(100, 100, 100, 170)]
+    public void BoundsEdited_MovesOrSizesTheShape(int x, int y, int width, int height)
+    {
+        // Arrange
+        AddShape(100, 100);
+
+        // Act
+        _view.EditBounds(x, y, width, height);
+
+        // Assert
+        Assert.Equal(Box(x, y, width, height), Diagram.Shapes[0].Bounds);
+        Assert.Equal(Box(x, y, width, height), _view.Properties!.Bounds);
+    }
+
+    [Fact]
+    public void BoundsEdited_TooSmall_StopsAtTheSmallestSize()
+    {
+        // Arrange
+        AddShape(100, 100);
+
+        // Act
+        _view.EditBounds(100, 100, 1, 0);
+
+        // Assert
+        Assert.Equal(Box(100, 100, 10, 10), Diagram.Shapes[0].Bounds);
+    }
+
+    [Fact]
+    public void BoundsEdited_WithoutAChange_HasNothingToUndo()
+    {
+        // Arrange
+        AddShape(100, 100);
+        DiagramModel before = Diagram;
+
+        // Act
+        _view.EditBounds(100, 100, 100, 50);
+
+        // Assert
+        Assert.Same(before, Diagram);
+    }
+
+    [Fact]
+    public void BoundsEdited_OfSeveral_ScalesThemTogether()
+    {
+        // Arrange
+        AddShape(100, 100, 100, 100);
+        AddShape(300, 100, 100, 100);
+        _view.Command(DiagramCommand.SelectAll);
+
+        // Act: the box from 100..400 becomes 100..700
+        _view.EditBounds(100, 100, 600, 100);
+
+        // Assert
+        Assert.Equal(Box(100, 100, 200, 100), Diagram.Shapes[0].Bounds);
+        Assert.Equal(Box(500, 100, 200, 100), Diagram.Shapes[1].Bounds);
+    }
+
+    [Fact]
+    public void BoundsEdited_WithNothingSelected_DoesNothing()
+    {
+        // Act
+        _view.EditBounds(0, 0, 100, 100);
+
+        // Assert
+        Assert.False(_view.CanUndo);
+    }
+
+    [Fact]
+    public void BoundsEdited_OfBothShapes_TakesTheConnectorsCornersAlong()
+    {
+        // Arrange
+        AddSelectedElbowWithCorners();
+        _view.Drag(300, 200, 250, 200);
+        _view.Command(DiagramCommand.SelectAll);
+
+        // Act: 50 further right
+        _view.EditBounds(150, 100, 400, 250);
+
+        // Assert
+        Assert.Equal(300, Diagram.Connectors[0].Bends![0].X);
+    }
+
+    [Fact]
+    public void CornerRadiusEdited_ChangesIt_AndCanBeUndone()
+    {
+        // Arrange
+        AddShape(100, 100);
+
+        // Act & Assert
+        _view.EditCornerRadius(20);
+        Assert.Equal(20, Diagram.Shapes[0].CornerRadius);
+        Assert.Equal(20, _view.Properties!.CornerRadius);
+
+        _view.Command(DiagramCommand.Undo);
+        Assert.Null(Diagram.Shapes[0].CornerRadius);
+    }
+
+    [Fact]
+    public void CornerRadiusEdited_ToTheSameValue_HasNothingToUndo()
+    {
+        // Arrange: a rectangle's usual radius is 0
+        AddShape(100, 100);
+        DiagramModel before = Diagram;
+
+        // Act
+        _view.EditCornerRadius(0);
+
+        // Assert
+        Assert.Same(before, Diagram);
+    }
+
+    [Fact]
+    public void CornerRadiusEdited_OnlyChangesShapesThatHaveCorners()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.Tool(DiagramTool.Ellipse);
+        _view.Drag(400, 100, 500, 200);
+        _view.Command(DiagramCommand.SelectAll);
+
+        // Act
+        _view.EditCornerRadius(20);
+
+        // Assert
+        Assert.Equal(20, Diagram.Shapes[0].CornerRadius);
+        Assert.Null(Diagram.Shapes[1].CornerRadius);
+    }
+
+    [Fact]
+    public void TextEdited_ChangesTheShapesText_OrTheConnectorsLabel()
+    {
+        // Arrange
+        (_, _, _) = AddSelectedConnector();
+
+        // Act & Assert
+        _view.EditText("yes\r\n");
+        Assert.Equal("yes", Diagram.Connectors[0].Label);
+
+        ClickEmpty();
+        _view.Click(120, 120);
+        _view.EditText("Hello\r\nthere");
+        Assert.Equal("Hello\nthere", Diagram.Shapes[0].Text);
+    }
+
+    [Fact]
+    public void TextEdited_ToTheSameText_HasNothingToUndo()
+    {
+        // Arrange: a field that loses the focus sends its text, changed or not
+        AddShape(100, 100);
+        DiagramModel before = Diagram;
+
+        // Act
+        _view.EditText(string.Empty);
+
+        // Assert
+        Assert.Same(before, Diagram);
+    }
+
+    [Fact]
+    public void TextEdited_WithSeveralSelected_DoesNothing()
+    {
+        // Arrange
+        AddShape(100, 100);
+        AddShape(400, 100);
+        _view.Command(DiagramCommand.SelectAll);
+
+        // Act
+        _view.EditText("x");
+
+        // Assert
+        Assert.All(Diagram.Shapes, shape => Assert.Equal(string.Empty, shape.Text));
+    }
+
+    [Theory]
+    [InlineData(-5, 0)]
+    [InlineData(37, 37)]
+    [InlineData(5000, 100)]
+    public void LineWidth_TypedInThePanel_CanBeAnyValueInRange(int width, int expected)
+    {
+        // Arrange
+        AddShape(100, 100);
+
+        // Act
+        _view.SelectLineWidth(width);
+
+        // Assert
+        Assert.Equal(expected, Diagram.Shapes[0].Style.LineWidth);
+    }
+
+    [Theory]
+    [InlineData(1, 6)]
+    [InlineData(37, 37)]
+    [InlineData(5000, 400)]
+    public void FontSize_TypedInThePanel_CanBeAnyValueInRange(int size, int expected)
+    {
+        // Arrange
+        AddShape(100, 100);
+
+        // Act
+        _view.SelectFontSize(size);
+
+        // Assert
+        Assert.Equal(expected, Diagram.Shapes[0].Style.FontSize);
+    }
+
+    [Fact]
+    public void Font_IsRobotoForNewShapes()
+    {
+        Assert.Equal("Roboto", AddShape(100, 100).Style.FontFamily);
+    }
+
+    [Fact]
+    public void Font_AppliesToWhatsSelected_AndToWhatComesNext()
+    {
+        // Arrange
+        AddShape(100, 100);
+        AddShape(400, 100);
+
+        // Act: only the second is selected
+        _view.SelectFontFamily("Consolas");
+
+        // Assert
+        Assert.Equal("Roboto", Diagram.Shapes[0].Style.FontFamily);
+        Assert.Equal("Consolas", Diagram.Shapes[1].Style.FontFamily);
+        Assert.Equal("Consolas", _view.Properties!.FontFamily);
+        Assert.Equal("Consolas", AddShape(700, 100).Style.FontFamily);
+    }
+
+    [Fact]
+    public void Font_AppliesToAConnectorsLabel_AndCanBeUndone()
+    {
+        // Arrange
+        AddSelectedConnector();
+
+        // Act & Assert
+        _view.SelectFontFamily("Consolas");
+        Assert.Equal("Consolas", Diagram.Connectors[0].Style.FontFamily);
+
+        _view.Command(DiagramCommand.Undo);
+        Assert.Equal("Roboto", Diagram.Connectors[0].Style.FontFamily);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Font_WithoutAName_IsIgnored(string name)
+    {
+        // Arrange
+        AddShape(100, 100);
+        DiagramModel before = Diagram;
+
+        // Act
+        _view.SelectFontFamily(name);
+
+        // Assert
+        Assert.Same(before, Diagram);
+    }
+
+    [Fact]
+    public void Font_IsTheOneTheTextBoxUsesToo()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.SelectFontFamily("Consolas");
+
+        // Act
+        _view.DoubleClick(120, 120);
+
+        // Assert
+        Assert.Equal("Consolas", _view.TextFontFamily);
+    }
+
+    [Fact]
     public void Connector_WithTheTool_FromAShapesBody_PicksTheSides()
     {
         // Arrange
@@ -2120,9 +2558,17 @@ public class DiagramEditorPresenterTests
 
         public event EventHandler<int>? FontSizeSelected;
 
+        public event EventHandler<string>? FontFamilySelected;
+
         public event EventHandler<DiagramRouting>? RoutingSelected;
 
         public event EventHandler<DiagramArrowHeads>? ArrowHeadsSelected;
+
+        public event EventHandler<Rectangle>? BoundsEdited;
+
+        public event EventHandler<int>? CornerRadiusEdited;
+
+        public event EventHandler<string>? TextEdited;
 
         public event EventHandler<string>? TextCommitted;
 
@@ -2135,6 +2581,10 @@ public class DiagramEditorPresenterTests
         public IReadOnlyList<Color> Palette { get; private set; } = [];
 
         public DiagramStyleModel? ShownStyle { get; private set; }
+
+        public DiagramPropertiesModel? Properties { get; private set; }
+
+        public int PropertiesShowCount { get; private set; }
 
         public DiagramRouting ShownRouting { get; private set; }
 
@@ -2155,6 +2605,8 @@ public class DiagramEditorPresenterTests
         public Rectangle? TextBounds { get; private set; }
 
         public int TextFontSize { get; private set; }
+
+        public string? TextFontFamily { get; private set; }
 
         public Color? ColorToPick { get; set; }
 
@@ -2224,11 +2676,20 @@ public class DiagramEditorPresenterTests
 
         public void SelectFontSize(int size) => FontSizeSelected?.Invoke(this, size);
 
+        public void SelectFontFamily(string fontFamily) => FontFamilySelected?.Invoke(this, fontFamily);
+
         public void SelectRouting(DiagramRouting routing) => RoutingSelected?.Invoke(this, routing);
 
         public void SelectHeads(DiagramArrowHeads heads) => ArrowHeadsSelected?.Invoke(this, heads);
 
         public void CommitText(string text) => TextCommitted?.Invoke(this, text);
+
+        public void EditBounds(int x, int y, int width, int height) =>
+            BoundsEdited?.Invoke(this, new Rectangle(x, y, width, height));
+
+        public void EditCornerRadius(int radius) => CornerRadiusEdited?.Invoke(this, radius);
+
+        public void EditText(string text) => TextEdited?.Invoke(this, text);
 
         /// <returns>True when the window stays open.</returns>
         public bool Close()
@@ -2253,6 +2714,12 @@ public class DiagramEditorPresenterTests
         public void ShowStyle(DiagramStyleModel style, DiagramRouting routing, DiagramArrowHeads heads) =>
             (ShownStyle, ShownRouting, ShownHeads) = (style, routing, heads);
 
+        public void ShowProperties(DiagramPropertiesModel properties)
+        {
+            Properties = properties;
+            PropertiesShowCount++;
+        }
+
         public void ShowUndoRedo(bool canUndo, bool canRedo) => (CanUndo, CanRedo) = (canUndo, canRedo);
 
         public void ShowDocument(string name, bool hasChanges) => (DocumentName, HasChanges) = (name, hasChanges);
@@ -2261,8 +2728,8 @@ public class DiagramEditorPresenterTests
 
         public void ShowCursor(DiagramCursor cursor) => Cursor = cursor;
 
-        public void BeginTextEdit(Rectangle bounds, string text, int fontSize, Color color) =>
-            (TextBounds, TextFontSize) = (bounds, fontSize);
+        public void BeginTextEdit(Rectangle bounds, string text, int fontSize, string fontFamily, Color color) =>
+            (TextBounds, TextFontSize, TextFontFamily) = (bounds, fontSize, fontFamily);
 
         public Color? AskColor(Color current) => ColorToPick;
 

@@ -12,12 +12,29 @@ public static class DiagramFigures
     // How far a Bezier curve's control points are from a quarter circle's ends, as a part of the radius
     private const float Kappa = 0.5522848f;
 
+    /// <summary>How round a shape's corners are with no radius of its own, in pixels; only rectangles have corners.</summary>
+    public static int DefaultCornerRadius(DiagramShapeKind kind) => kind == DiagramShapeKind.RoundedRectangle ? 12 : 0;
+
+    /// <returns>True for the shapes whose corners can be rounded.</returns>
+    public static bool HasCornerRadius(DiagramShapeKind kind) =>
+        kind is DiagramShapeKind.Rectangle or DiagramShapeKind.RoundedRectangle;
+
+    /// <param name="kind">Which shape.</param>
+    /// <param name="bounds">Where it is.</param>
+    /// <param name="cornerRadius">How round a rectangle's corners are; null for the kind's usual ones.</param>
     /// <returns>The paths to draw for a shape, in order; none for a text.</returns>
-    public static IReadOnlyList<DiagramFigureModel> Of(DiagramShapeKind kind, Rectangle bounds) => kind switch
+    public static IReadOnlyList<DiagramFigureModel> Of(
+        DiagramShapeKind kind,
+        Rectangle bounds,
+        int? cornerRadius = null) => kind switch
     {
-        DiagramShapeKind.Rectangle or DiagramShapeKind.Diamond or DiagramShapeKind.Parallelogram
-            or DiagramShapeKind.Hexagon => [Polygon(PolygonOf(kind, bounds)!)],
-        DiagramShapeKind.RoundedRectangle => [RoundedRectangle(bounds)],
+        DiagramShapeKind.Rectangle or DiagramShapeKind.RoundedRectangle when
+            (cornerRadius ?? DefaultCornerRadius(kind)) > 0 =>
+            [RoundedRectangle(bounds, cornerRadius ?? DefaultCornerRadius(kind))],
+        DiagramShapeKind.Rectangle or DiagramShapeKind.RoundedRectangle =>
+            [Polygon(PolygonOf(DiagramShapeKind.Rectangle, bounds)!)],
+        DiagramShapeKind.Diamond or DiagramShapeKind.Parallelogram or DiagramShapeKind.Hexagon =>
+            [Polygon(PolygonOf(kind, bounds)!)],
         DiagramShapeKind.Ellipse => [Ellipse(bounds)],
         DiagramShapeKind.Cylinder => Cylinder(bounds),
         DiagramShapeKind.Document => [Document(bounds)],
@@ -147,9 +164,9 @@ public static class DiagramFigures
         return new DiagramFigureModel(segments);
     }
 
-    private static DiagramFigureModel RoundedRectangle(Rectangle bounds)
+    private static DiagramFigureModel RoundedRectangle(Rectangle bounds, int cornerRadius)
     {
-        float radius = Math.Min(12, Math.Min(bounds.Width, bounds.Height) / 2f);
+        float radius = Math.Min(cornerRadius, Math.Min(bounds.Width, bounds.Height) / 2f);
         float control = radius * (1 - Kappa);
         float left = bounds.Left;
         float right = bounds.Right;
