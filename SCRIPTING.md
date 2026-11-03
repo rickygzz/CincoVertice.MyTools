@@ -28,7 +28,9 @@ end
 Scripts are the `.mts` files in the `config\scripts` folder next to `CincoVertice.MyTools.Ui.Win.exe`. The first
 time My Tools starts, it creates the folder with an example, `GoogleSearch.mts`.
 
-To open the folder, use the tray menu: **Scripts → Open scripts folder**. Edit the files with any text editor.
+To edit them, use the tray menu: **Scripts → Edit scripts...**. The editor colors the script, underlines the first
+syntax error while you type, and can add new scripts. **Scripts → Open scripts folder** opens the folder, if you'd
+rather use another text editor.
 
 ### Running a script
 

@@ -71,6 +71,13 @@ SVG shows in another sans serif font.
 Hotkeys can run your own scripts: ask something, open a web page, start a program, type text, and more. See
 [SCRIPTING.md](SCRIPTING.md) for the language and everything it can do.
 
+## Config editor
+
+The tray menu's **Edit hotkeys...**, **Edit activity settings...** and **Scripts → Edit scripts...** open one window with
+those files listed on the left. It colors them and underlines what the app couldn't use while you type: hover over the
+line, or click the problem in the list below the text. Ctrl+S saves. Hotkeys apply when you save, and scripts the next
+time they run.
+
 ```
 ## Git Configuration
 
