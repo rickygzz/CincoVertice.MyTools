@@ -335,6 +335,20 @@ public class DiagramEditorFormTests
     }
 
     [Fact]
+    public void ZoomLabel_ClickingIt_GoesBackTo100()
+    {
+        // Arrange
+        List<string> events = [];
+        using DiagramEditorForm form = ShowFormEditingProperties(events, "TextPropertyBox", "new");
+
+        // Act
+        ClickToolbarButton(form, "ZoomLabel");
+
+        // Assert
+        Assert.Equal(["text new", "ZoomReset"], events);
+    }
+
+    [Fact]
     public void Toolbar_TakesTheNumberBeingTyped_BeforeItsCommand()
     {
         // Arrange

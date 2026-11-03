@@ -763,9 +763,13 @@ partial class DiagramEditorForm
         // ZoomLabel
         //
         ZoomLabel.Alignment = ToolStripItemAlignment.Right;
+        ZoomLabel.IsLink = true;
+        ZoomLabel.LinkBehavior = LinkBehavior.HoverUnderline;
+        ZoomLabel.LinkColor = SystemColors.ControlText;
         ZoomLabel.Name = "ZoomLabel";
         ZoomLabel.Overflow = ToolStripItemOverflow.Never;
-        ZoomLabel.ToolTipText = "Ctrl+wheel to zoom, Ctrl+0 for 100%";
+        ZoomLabel.ToolTipText = "Ctrl+wheel to zoom. Click, or Ctrl+0, for 100%";
+        ZoomLabel.Click += ZoomLabel_Click;
         //
         // Canvas
         //

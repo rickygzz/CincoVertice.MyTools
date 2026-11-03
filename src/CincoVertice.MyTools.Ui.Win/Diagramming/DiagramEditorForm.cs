@@ -668,6 +668,13 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         CommandRequested?.Invoke(this, CommandOf(sender));
     }
 
+    private void ZoomLabel_Click(object? sender, EventArgs e)
+    {
+        CommitText();
+        Canvas.Focus();
+        CommandRequested?.Invoke(this, DiagramCommand.ZoomReset);
+    }
+
     private void FillPalette_ColorPicked(object? sender, Color color)
     {
         // Not HideDropDown: the panel's color buttons show this same menu themselves

@@ -270,6 +270,148 @@ public sealed class ConfigEditorTests : IDisposable
         Assert.Equal(text, File.ReadAllText(path));
     }
 
+    private const int WM_MOUSEWHEEL = 0x020A;
+    private const int MK_CONTROL = 0x0008;
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern nint SendMessage(nint hWnd, int msg, nint wParam, nint lParam);
+
+    /// <summary>Ctrl+wheel, one step toward the user's screen, as Windows sends it.</summary>
+    private static void CtrlWheel(Control control)
+    {
+        Point center = control.PointToScreen(new Point(control.Width / 2, control.Height / 2));
+
+        _ = SendMessage(control.Handle, WM_MOUSEWHEEL, (120 << 16) | MK_CONTROL, (center.Y << 16) | (center.X & 0xFFFF));
+    }
+
+    private static Form ShowControl(CodeTextControl control)
+    {
+        var form = new Form
+        {
+            StartPosition = FormStartPosition.Manual,
+            Location = new Point(-3000, 100),
+            ShowInTaskbar = false,
+            ClientSize = new Size(500, 300),
+        };
+
+        control.Dock = DockStyle.Fill;
+        form.Controls.Add(control);
+        form.Show();
+
+        return form;
+    }
+
+    [Fact]
+    public void Zoom_CtrlWheel_IsReported_AndResetGoesBack()
+    {
+        // Arrange
+        using var control = new CodeTextControl();
+        using Form form = ShowControl(control);
+        control.SetCode("if x\nend");
+        int changes = 0;
+        control.ZoomChanged += (_, _) => changes++;
+
+        // Act
+        CtrlWheel(control);
+
+        // Assert
+        Assert.True(control.ZoomPercent > 100);
+        Assert.Equal(1, changes);
+
+        // Act
+        control.ResetZoom();
+
+        // Assert
+        Assert.Equal(100, control.ZoomPercent);
+        Assert.Equal(2, changes);
+    }
+
+    [Fact]
+    public void Zoom_NumbersGrowWithTheText_WhichStaysOutOfTheirWay()
+    {
+        // Arrange
+        using var control = new CodeTextControl();
+        using Form form = ShowControl(control);
+        control.SetCode("if x\nend");
+        int gutter = control.GutterWidth;
+
+        // Act
+        control.ZoomFactor = 3;
+        CtrlWheel(control);
+
+        // Assert
+        Assert.True(control.GutterWidth > gutter);
+
+        // Right after the numbers: RichTextBox zooms its margin too, which would leave a wide gap
+        int textStart = control.GetPositionFromCharIndex(0).X;
+
+        Assert.InRange(textStart, control.GutterWidth, control.GutterWidth + 16);
+
+        // Act
+        control.ResetZoom();
+
+        // Assert
+        Assert.Equal(gutter, control.GutterWidth);
+    }
+
+    [Fact]
+    public void Zoom_ANewFile_KeepsIt()
+    {
+        // Arrange
+        using var control = new CodeTextControl();
+        using Form form = ShowControl(control);
+        control.SetCode("if x");
+        control.ZoomFactor = 2;
+        CtrlWheel(control);
+        int percent = control.ZoomPercent;
+
+        // Act
+        control.SetCode("other");
+        CtrlWheel(control);
+
+        // Assert
+        Assert.True(control.ZoomPercent >= percent);
+    }
+
+    [Fact]
+    public void Form_ShowsTheZoom_AndItsButtonAndCtrl0GoBackTo100()
+    {
+        // Arrange
+        using var form = new ConfigEditorForm
+        {
+            StartPosition = FormStartPosition.Manual,
+            Location = new Point(-3000, 100),
+            ShowInTaskbar = false,
+        };
+        const System.Reflection.BindingFlags flags =
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+        var editor = (CodeTextControl)typeof(ConfigEditorForm).GetField("CodeEditor", flags)!.GetValue(form)!;
+        var button = (ToolStripItem)typeof(ConfigEditorForm).GetField("ZoomButton", flags)!.GetValue(form)!;
+        form.Show();
+        editor.SetCode("if x");
+
+        // Act
+        CtrlWheel(editor);
+
+        // Assert
+        Assert.NotEqual("100%", button.Text);
+        Assert.Equal($"{editor.ZoomPercent}%", button.Text);
+
+        // Act: the button
+        button.PerformClick();
+
+        // Assert
+        Assert.Equal("100%", button.Text);
+        Assert.Equal(100, editor.ZoomPercent);
+
+        // Act: Ctrl+0
+        CtrlWheel(editor);
+        typeof(ConfigEditorForm).GetMethod("ProcessCmdKey", flags)!.Invoke(form, [default(Message), Keys.Control | Keys.D0]);
+
+        // Assert
+        Assert.Equal("100%", button.Text);
+    }
+
     [Fact]
     public void Colors_DontChangeTheText_OrWhatsSelected()
     {
