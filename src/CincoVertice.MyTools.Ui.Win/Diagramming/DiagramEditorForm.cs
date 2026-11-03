@@ -339,6 +339,18 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         return dialog.ShowDialog(this) == DialogResult.OK ? dialog.FileName : null;
     }
 
+    public bool AskOverwrite(string name)
+    {
+        DialogResult answer = MessageBox.Show(
+            this,
+            $"{name} was changed elsewhere since it was opened here. Replace it with this diagram?",
+            WindowTitle,
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Warning);
+
+        return answer == DialogResult.Yes;
+    }
+
     public DiagramSaveChoice AskSaveChanges(string name)
     {
         DialogResult answer = MessageBox.Show(

@@ -115,7 +115,11 @@ public static class DiagramSvg
                 continue;
             }
 
-            foreach (PointF point in path.Points)
+            IEnumerable<PointF> points = path.Points
+                .Concat(path.StartHead ?? [])
+                .Concat(path.EndHead ?? []);
+
+            foreach (PointF point in points)
             {
                 area = RectangleF.Union(area, new RectangleF(point, SizeF.Empty));
             }
@@ -128,9 +132,14 @@ public static class DiagramSvg
             }
         }
 
+        // Half of a line's width goes outside what it follows
+        int widestLine = diagram.Shapes.Select(shape => shape.Style.LineWidth)
+            .Concat(diagram.Connectors.Select(connector => connector.Style.LineWidth))
+            .Max();
+        int margin = Math.Max(Margin, widestLine / 2 + 1);
         var whole = Rectangle.Ceiling(area);
 
-        whole.Inflate(Margin, Margin);
+        whole.Inflate(margin, margin);
 
         return whole;
     }

@@ -54,7 +54,7 @@ public sealed class JsonFileSnipEditorSettingsStoreTests : IDisposable
         Assert.Equal(settings.Tool, loaded.Tool);
         Assert.Equal(settings.Tools, loaded.Tools);
         Assert.Equal(settings.CustomColors, loaded.CustomColors);
-        Assert.False(File.Exists(_store.FilePath + ".tmp"));
+        Assert.Empty(Directory.GetFiles(Path.GetDirectoryName(_store.FilePath)!, "*.tmp"));
     }
 
     [Fact]

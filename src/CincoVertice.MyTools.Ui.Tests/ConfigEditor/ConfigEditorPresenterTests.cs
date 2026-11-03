@@ -179,6 +179,21 @@ public class ConfigEditorPresenterTests
     }
 
     [Fact]
+    public void Save_AFileWhoseNewLinesChangedElsewhere_AsksFirst()
+    {
+        // Arrange: the text looks the same with \n for every new line
+        _presenter.Open(_script.Path);
+        _view.CodeText = "mine";
+        _store.Formats[_script.Path] = ("\r\n", false);
+
+        // Act
+        _view.RaiseSave();
+
+        // Assert
+        Assert.Equal(1, _view.OverwriteQuestions);
+    }
+
+    [Fact]
     public void Save_AFileRemovedElsewhere_AsksFirst_AndBringsItBack()
     {
         // Arrange

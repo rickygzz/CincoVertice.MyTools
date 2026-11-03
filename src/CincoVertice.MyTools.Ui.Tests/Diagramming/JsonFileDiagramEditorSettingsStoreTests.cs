@@ -63,7 +63,7 @@ public sealed class JsonFileDiagramEditorSettingsStoreTests : IDisposable
 
         // Assert
         Assert.Equal(settings, _store.Load());
-        Assert.False(File.Exists(_store.FilePath + ".tmp"));
+        Assert.Empty(Directory.GetFiles(Path.GetDirectoryName(_store.FilePath)!, "*.tmp"));
     }
 
     [Fact]

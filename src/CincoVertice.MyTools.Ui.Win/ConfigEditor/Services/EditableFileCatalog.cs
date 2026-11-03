@@ -57,28 +57,43 @@ public sealed class EditableFileCatalog : IEditableFileCatalog
         }
 
         string fileName = baseName + ScriptCatalog.Extension;
+        string actionName = ScriptCatalog.GetActionName(fileName);
 
-        if (baseName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0
-            || ScriptCatalog.GetActionName(fileName).Length == 0)
+        if (baseName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || actionName.Length == 0)
         {
             error = $"'{name}' can't be a script's name: use letters, digits or _.";
 
             return false;
         }
 
-        string path = Path.Combine(_scriptsFolderPath, fileName);
-
-        if (File.Exists(path))
+        // hotkeys.cfg runs the first action with a name, so a second one could never be bound
+        if (!ScriptCatalog.IsLibrary(fileName) && IsActionNameTaken(actionName))
         {
-            error = $"There's already a script named {fileName}.";
+            error = $"There's already an action named {actionName}.";
 
             return false;
         }
 
+        string path = Path.Combine(_scriptsFolderPath, fileName);
+        string firstLine = ScriptCatalog.IsLibrary(fileName)
+            ? $"# {baseName}: for other scripts to run with script.include. See SCRIPTING.md."
+            : $"# Bind this script in hotkeys.cfg as {actionName}. See SCRIPTING.md.";
+
         try
         {
             Directory.CreateDirectory(_scriptsFolderPath);
-            File.WriteAllText(path, $"# {baseName}: bind it in hotkeys.cfg by its name. See SCRIPTING.md.\n\n");
+
+            // CreateNew: this never replaces a file, even one another program creates at this very moment
+            using var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write);
+            using var writer = new StreamWriter(stream);
+
+            writer.Write(firstLine + "\n\n");
+        }
+        catch (IOException) when (File.Exists(path))
+        {
+            error = $"There's already a script named {fileName}.";
+
+            return false;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -90,6 +105,18 @@ public sealed class EditableFileCatalog : IEditableFileCatalog
         file = ToScript(path);
 
         return true;
+    }
+
+    private bool IsActionNameTaken(string actionName)
+    {
+        IEnumerable<string> scriptActions = ScriptCatalog.GetScriptFiles(_scriptsFolderPath)
+            .Where(path => !ScriptCatalog.IsLibrary(path))
+            .Select(ScriptCatalog.GetActionName);
+
+        return _actions()
+            .Select(action => action.Name)
+            .Concat(scriptActions)
+            .Contains(actionName, StringComparer.OrdinalIgnoreCase);
     }
 
     private static EditableFileModel ToScript(string path) =>

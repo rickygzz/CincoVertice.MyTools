@@ -148,6 +148,20 @@ public sealed class DiagramFontsTests : IDisposable
         Assert.Single(Directory.GetFiles(_folder));
     }
 
+    [Fact]
+    public void EnsureInstalled_LeavesAFileNamedLikeItsTemporaryOne()
+    {
+        // Arrange
+        Directory.CreateDirectory(_folder);
+        File.WriteAllBytes(Path.Combine(_folder, "Roboto.ttf.tmp"), [9]);
+
+        // Act
+        Installer().EnsureInstalled();
+
+        // Assert
+        Assert.Equal(new byte[] { 9 }, File.ReadAllBytes(Path.Combine(_folder, "Roboto.ttf.tmp")));
+    }
+
     private sealed class FailsHalfwayStream : MemoryStream
     {
         public override void CopyTo(Stream destination, int bufferSize)

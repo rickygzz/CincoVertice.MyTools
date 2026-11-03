@@ -1,4 +1,5 @@
 using System.Text;
+using CincoVertice.Common.Utils.Helpers;
 using CincoVertice.MyTools.Ui.ConfigEditor.Interfaces;
 using CincoVertice.MyTools.Ui.ConfigEditor.Models;
 
@@ -31,6 +32,7 @@ public sealed class EditableFileStore : IEditableFileStore
 
         string newLine = text.Contains("\r\n", StringComparison.Ordinal) ? "\r\n"
             : text.Contains('\n') ? "\n"
+            : text.Contains('\r') ? "\r"
             : Environment.NewLine;
 
         // The text box turns a lone \r into a new line too, which would look like a change
@@ -39,10 +41,6 @@ public sealed class EditableFileStore : IEditableFileStore
 
     public void Write(string path, EditableFileContentModel content)
     {
-        string tempPath = path + ".tmp";
-        string text = content.Text.Replace("\n", content.NewLine);
-
-        File.WriteAllText(tempPath, text, new UTF8Encoding(content.HasBom));
-        File.Move(tempPath, path, overwrite: true);
+        AtomicFile.WriteAllText(path, content.Text.Replace("\n", content.NewLine), new UTF8Encoding(content.HasBom));
     }
 }

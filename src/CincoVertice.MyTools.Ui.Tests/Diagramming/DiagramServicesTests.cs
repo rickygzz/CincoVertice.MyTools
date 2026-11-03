@@ -960,6 +960,19 @@ public class DiagramServicesTests
         Assert.Equal(text, string.Concat(lines));
     }
 
+    [Theory]
+    [InlineData("A  B", 1000f, new[] { "A  B" })]
+    [InlineData("  A", 1000f, new[] { "  A" })]
+    [InlineData("A\n   B", 1000f, new[] { "A", "   B" })]
+    [InlineData("A  ", 1000f, new[] { "A" })] // Spaces at the end only move a centered line
+    [InlineData("   ", 1000f, new[] { "" })]
+    [InlineData("aaa  bbb", 16.5f, new[] { "aaa", "bbb" })] // None at a break
+    [InlineData("a  b  c", 27.5f, new[] { "a  b", "c" })]
+    public void Wrap_KeepsTheSpacesTyped(string text, float width, string[] expected)
+    {
+        Assert.Equal(expected, DiagramTextLayout.Wrap(text, width, 10));
+    }
+
     [Fact]
     public void Wrap_NeverLosesWords()
     {

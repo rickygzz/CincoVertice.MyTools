@@ -2,6 +2,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using CincoVertice.Common.Utils.Helpers;
 using CincoVertice.MyTools.Ui.Snipping.Interfaces;
 using CincoVertice.MyTools.Ui.Snipping.Models;
 
@@ -79,10 +80,7 @@ public sealed class JsonFileSnipEditorSettingsStore : ISnipEditorSettingsStore
         {
             // A new file first, then it replaces the old one, so a failure never leaves half a file
             Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-            string tempPath = FilePath + ".tmp";
-
-            File.WriteAllText(tempPath, JsonSerializer.Serialize(file, _options));
-            File.Move(tempPath, FilePath, overwrite: true);
+            AtomicFile.WriteAllText(FilePath, JsonSerializer.Serialize(file, _options));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

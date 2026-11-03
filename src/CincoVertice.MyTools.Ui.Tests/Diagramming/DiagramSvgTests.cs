@@ -57,6 +57,51 @@ public sealed class DiagramSvgTests : IDisposable
         Assert.True(viewBox[1] + viewBox[3] >= text.Bottom);
     }
 
+    private static float[] ViewBoxOf(DiagramModel diagram) =>
+        [.. ((string)XDocument.Parse(DiagramSvg.Write(diagram)).Root!.Attribute("viewBox")!).Split(' ').Select(float.Parse)];
+
+    [Fact]
+    public void Write_AThickBorder_IsInsideTheImage()
+    {
+        // Arrange: half of a line's width goes outside what it follows
+        var shape = new DiagramShapeModel(
+            1,
+            DiagramShapeKind.Rectangle,
+            new Rectangle(0, 0, 100, 50),
+            string.Empty,
+            _style with { LineWidth = 100 });
+
+        // Act
+        float[] viewBox = ViewBoxOf(new DiagramModel([shape], []));
+
+        // Assert
+        Assert.True(viewBox[0] <= -50);
+        Assert.True(viewBox[1] <= -50);
+        Assert.True(viewBox[0] + viewBox[2] >= 150);
+        Assert.True(viewBox[1] + viewBox[3] >= 100);
+    }
+
+    [Fact]
+    public void Write_ALargeArrowHead_IsInsideTheImage()
+    {
+        // Arrange
+        DiagramStyleModel thick = _style with { LineWidth = 100 };
+        DiagramModel diagram = new(
+            [
+                new DiagramShapeModel(1, DiagramShapeKind.Rectangle, new Rectangle(0, 0, 10, 10), string.Empty, _style),
+                new DiagramShapeModel(2, DiagramShapeKind.Rectangle, new Rectangle(1000, 0, 10, 10), string.Empty, _style),
+            ],
+            [new DiagramConnectorModel(3, 1, 2, DiagramRouting.Straight, DiagramArrowHeads.End, string.Empty, thick)]);
+        IReadOnlyList<PointF> head = DiagramRouter.PathOf(diagram.Connectors[0], diagram)!.EndHead!;
+
+        // Act
+        float[] viewBox = ViewBoxOf(diagram);
+
+        // Assert
+        Assert.True(viewBox[1] <= head.Min(point => point.Y));
+        Assert.True(viewBox[1] + viewBox[3] >= head.Max(point => point.Y));
+    }
+
     [Fact]
     public void Write_ALongEmojiText_CanBeSavedAndRead()
     {
@@ -357,6 +402,27 @@ public sealed class DiagramSvgTests : IDisposable
 
         // Assert
         Assert.Equal(Sample().Shapes, loaded.Shapes);
-        Assert.False(File.Exists(path + ".tmp"));
+        Assert.Single(Directory.GetFiles(_folder));
+    }
+
+    [Fact]
+    public void Store_TheVersion_ChangesWithTheFile_AndIsNullWithoutIt()
+    {
+        // Arrange
+        var store = new SvgDiagramFileStore();
+        Directory.CreateDirectory(_folder);
+        string path = Path.Combine(_folder, "versioned.svg");
+
+        // Act & Assert
+        Assert.Null(store.VersionOf(path));
+
+        store.Save(path, Sample());
+        string? first = store.VersionOf(path);
+
+        Assert.NotNull(first);
+        Assert.Equal(first, store.VersionOf(path));
+
+        store.Save(path, DiagramModel.Empty);
+        Assert.NotEqual(first, store.VersionOf(path));
     }
 }

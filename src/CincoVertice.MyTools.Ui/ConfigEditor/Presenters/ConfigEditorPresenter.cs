@@ -159,7 +159,7 @@ public sealed class ConfigEditorPresenter
     {
         try
         {
-            return _store.Read(_file!.Path).Text != _saved!.Text;
+            return _store.Read(_file!.Path) != _saved!;
         }
         catch (FileNotFoundException)
         {
@@ -239,7 +239,7 @@ public sealed class ConfigEditorPresenter
 
         try
         {
-            if (_store.Read(_file.Path).Text != _saved.Text)
+            if (_store.Read(_file.Path) != _saved)
             {
                 Load(_file);
             }

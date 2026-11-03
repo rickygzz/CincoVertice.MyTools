@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Text.RegularExpressions;
 using CincoVertice.MyTools.Ui.Diagramming.Models;
 
 namespace CincoVertice.MyTools.Ui.Diagramming.Services;
@@ -11,6 +12,8 @@ public static class DiagramTextLayout
 {
     private const float AverageCharacterWidth = 0.55f;
     private const float LineHeightFactor = 1.25f;
+
+    private static readonly Regex _spacesThenWord = new("( *)([^ ]+)", RegexOptions.CultureInvariant);
 
     /// <summary>An estimate of how wide a line is, in pixels.</summary>
     public static float WidthOf(string line, int fontSize) => line.Length * fontSize * AverageCharacterWidth;
@@ -27,7 +30,10 @@ public static class DiagramTextLayout
     public static DiagramTextBlockModel LayoutAt(string text, PointF center, int fontSize) =>
         Place(text.ReplaceLineEndings("\n").Split('\n'), center.X, center.Y, fontSize);
 
-    /// <summary>Breaks at spaces; a word too long for a whole line is broken too.</summary>
+    /// <summary>
+    ///     Breaks at spaces, which are kept as typed except at a break and at the end of a line, where they'd only move
+    ///     it off center; a word too long for a whole line is broken too.
+    /// </summary>
     public static IReadOnlyList<string> Wrap(string text, float width, int fontSize)
     {
         int maxCharacters = Math.Max(1, (int)(width / (fontSize * AverageCharacterWidth)));
@@ -37,13 +43,14 @@ public static class DiagramTextLayout
         {
             string line = string.Empty;
 
-            foreach (string word in paragraph.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            foreach (Match match in _spacesThenWord.Matches(paragraph))
             {
-                string rest = word;
+                string rest = match.Groups[2].Value;
+                string longer = line + match.Groups[1].Value + rest;
 
-                if (line.Length > 0 && line.Length + 1 + rest.Length <= maxCharacters)
+                if (longer.Length <= maxCharacters)
                 {
-                    line += " " + rest;
+                    line = longer;
 
                     continue;
                 }

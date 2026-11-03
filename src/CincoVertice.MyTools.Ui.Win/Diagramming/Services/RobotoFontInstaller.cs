@@ -1,4 +1,5 @@
 using System.Security;
+using CincoVertice.Common.Utils.Helpers;
 using CincoVertice.Common.WinApi.Libs;
 using CincoVertice.Common.WinApi.Libs.Enums;
 using Microsoft.Win32;
@@ -69,7 +70,9 @@ public sealed class RobotoFontInstaller
             if (!File.Exists(path))
             {
                 Directory.CreateDirectory(_fontsFolder);
-                CopyFont(path);
+
+                // A partial font at the real path would count as installed from then on
+                AtomicFile.Write(path, CopyFont, overwrite: false);
             }
 
             _register(RegistryValueName, path);
@@ -83,25 +86,12 @@ public sealed class RobotoFontInstaller
         }
     }
 
-    /// <summary>Through a temporary file: a partial font at the real path would count as installed from then on.</summary>
     private void CopyFont(string path)
     {
-        string temporaryPath = path + ".tmp";
+        using Stream font = _openFont();
+        using FileStream file = File.Create(path);
 
-        try
-        {
-            using (Stream font = _openFont())
-            using (FileStream file = File.Create(temporaryPath))
-            {
-                font.CopyTo(file);
-            }
-
-            File.Move(temporaryPath, path);
-        }
-        finally
-        {
-            File.Delete(temporaryPath);
-        }
+        font.CopyTo(file);
     }
 
     private static void Register(string name, string path)

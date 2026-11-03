@@ -378,5 +378,7 @@ public class DiagramEditorFormTests
         }
 
         public DiagramModel Load(string path) => DiagramModel.Empty;
+
+        public string? VersionOf(string path) => null;
     }
 }

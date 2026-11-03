@@ -169,6 +169,50 @@ public sealed class ConfigEditorTests : IDisposable
         Assert.NotEmpty(error);
     }
 
+    [Theory]
+    [InlineData("Known")]
+    [InlineData("known")]
+    [InlineData("Kn-own")]
+    [InlineData("Google Search")]
+    public void Catalog_RefusesANameWhoseActionIsTaken(string name)
+    {
+        // Arrange: Known is a built-in action, and the first run adds GoogleSearch.mts
+        EditableFileCatalog catalog = CreateCatalog();
+        catalog.GetFiles();
+
+        // Act
+        bool created = catalog.TryCreateScript(name, out EditableFileModel? file, out string error);
+
+        // Assert: hotkeys.cfg could only ever run the other one
+        Assert.False(created);
+        Assert.Null(file);
+        Assert.Contains("already", error);
+    }
+
+    [Fact]
+    public void Catalog_ANewScriptSaysItsActionsName()
+    {
+        // Act
+        CreateCatalog().TryCreateScript("My Script", out EditableFileModel? file, out _);
+
+        // Assert
+        Assert.Contains("MyScript", File.ReadAllText(file!.Path));
+    }
+
+    [Fact]
+    public void Catalog_ANewLibrary_HasNoAction_SoItsNameIsOnlyTakenByAFile()
+    {
+        // Arrange
+        EditableFileCatalog catalog = CreateCatalog();
+
+        // Act
+        bool created = catalog.TryCreateScript("_Known", out EditableFileModel? file, out _);
+
+        // Assert: and it doesn't offer a hotkey it can't have
+        Assert.True(created);
+        Assert.DoesNotContain("hotkeys.cfg", File.ReadAllText(file!.Path));
+    }
+
     [Fact]
     public void Catalog_DoesntReplaceAScript()
     {

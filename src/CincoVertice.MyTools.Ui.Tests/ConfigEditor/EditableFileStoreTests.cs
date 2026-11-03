@@ -28,6 +28,7 @@ public sealed class EditableFileStoreTests : IDisposable
     [InlineData("a\r\nb\r\n", false)]
     [InlineData("a\nb\n", false)]
     [InlineData("a\r\nñ\r\n", true)]
+    [InlineData("a\rb\r", false)]
     public void ReadThenWrite_GivesTheSameBytes(string text, bool hasBom)
     {
         // Arrange
@@ -42,7 +43,22 @@ public sealed class EditableFileStoreTests : IDisposable
         Assert.DoesNotContain('\r', content.Text);
         Assert.Equal(hasBom, content.HasBom);
         Assert.Equal(bytes, File.ReadAllBytes(_path));
-        Assert.False(File.Exists(_path + ".tmp"));
+        Assert.Single(Directory.GetFiles(_folder));
+    }
+
+    [Fact]
+    public void Write_LeavesAFileNamedLikeItsTemporaryOne()
+    {
+        // Arrange
+        File.WriteAllText(_path, "old");
+        File.WriteAllText(_path + ".tmp", "mine");
+
+        // Act
+        _store.Write(_path, new EditableFileContentModel("new", "\n", false));
+
+        // Assert
+        Assert.Equal("new", File.ReadAllText(_path));
+        Assert.Equal("mine", File.ReadAllText(_path + ".tmp"));
     }
 
     [Fact]
@@ -69,12 +85,20 @@ public sealed class EditableFileStoreTests : IDisposable
     [Fact]
     public void Write_WhenItCantWrite_KeepsTheFile()
     {
-        // Arrange: a folder where the temporary file goes
+        // Arrange
         File.WriteAllText(_path, "old");
-        Directory.CreateDirectory(_path + ".tmp");
+        File.SetAttributes(_path, FileAttributes.ReadOnly);
 
-        // Act & Assert
-        Assert.ThrowsAny<Exception>(() => _store.Write(_path, new EditableFileContentModel("new", "\n", false)));
-        Assert.Equal("old", File.ReadAllText(_path));
+        try
+        {
+            // Act & Assert: and nothing else is left in the folder, or every failed save would add a file
+            Assert.ThrowsAny<Exception>(() => _store.Write(_path, new EditableFileContentModel("new", "\n", false)));
+            Assert.Equal("old", File.ReadAllText(_path));
+            Assert.Single(Directory.GetFiles(_folder));
+        }
+        finally
+        {
+            File.SetAttributes(_path, FileAttributes.Normal);
+        }
     }
 }

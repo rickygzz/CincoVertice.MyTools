@@ -58,6 +58,7 @@ public sealed class DiagramEditorPresenter
     private DiagramModel _diagram = DiagramModel.Empty;
     private DiagramModel _savedDiagram = DiagramModel.Empty;
     private string? _path;
+    private string? _savedVersion;
     private DiagramViewportModel _viewport = new(1, Point.Empty);
     private DiagramTool _tool = DiagramTool.Select;
 
@@ -1173,6 +1174,7 @@ public sealed class DiagramEditorPresenter
         try
         {
             Replace(_fileStore.Load(path), path);
+            _savedVersion = _fileStore.VersionOf(path);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
         {
@@ -1211,6 +1213,14 @@ public sealed class DiagramEditorPresenter
 
     private bool SaveTo(string path)
     {
+        // Another window or program may have saved it. Saving as another file has its own dialog's question
+        if (string.Equals(path, _path, StringComparison.OrdinalIgnoreCase)
+            && _fileStore.VersionOf(path) != _savedVersion
+            && !_view.AskOverwrite(Name))
+        {
+            return false;
+        }
+
         try
         {
             _fileStore.Save(path, _diagram);
@@ -1223,6 +1233,7 @@ public sealed class DiagramEditorPresenter
         }
 
         _path = path;
+        _savedVersion = _fileStore.VersionOf(path);
         _savedDiagram = _diagram;
         Refresh();
 

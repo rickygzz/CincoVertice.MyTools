@@ -2671,6 +2671,91 @@ public class DiagramEditorPresenterTests
         Assert.Equal(_view.PathToSave, _store.SavedPath);
     }
 
+    private void OpenAndChangeADiagram()
+    {
+        _view.PathToOpen = @"C:\Diagrams\flow.svg";
+        _view.Command(DiagramCommand.Open);
+        AddShape(100, 100);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Save_AFileChangedElsewhere_AsksFirst(bool overwrite)
+    {
+        // Arrange: another window saved it
+        OpenAndChangeADiagram();
+        _store.Version = "2";
+        _view.OverwriteAnswer = overwrite;
+
+        // Act
+        _view.Command(DiagramCommand.Save);
+
+        // Assert
+        Assert.Equal(1, _view.OverwriteQuestions);
+        Assert.Equal(overwrite ? _view.PathToOpen : null, _store.SavedPath);
+        Assert.Equal(!overwrite, _view.HasChanges);
+    }
+
+    [Fact]
+    public void Save_AFileRemovedElsewhere_AsksFirst()
+    {
+        // Arrange
+        OpenAndChangeADiagram();
+        _store.Version = null;
+
+        // Act
+        _view.Command(DiagramCommand.Save);
+
+        // Assert
+        Assert.Equal(1, _view.OverwriteQuestions);
+    }
+
+    [Fact]
+    public void Save_AFileNobodyElseChanged_DoesntAsk_AndNeitherDoesItsOwnSave()
+    {
+        // Arrange
+        OpenAndChangeADiagram();
+
+        // Act: each save changes the file's version, and that's no reason to ask at the next one
+        _view.Command(DiagramCommand.Save);
+        AddShape(300, 300);
+        _view.Command(DiagramCommand.Save);
+
+        // Assert
+        Assert.Equal(0, _view.OverwriteQuestions);
+        Assert.False(_view.HasChanges);
+    }
+
+    [Fact]
+    public void SaveAs_AnotherFile_DoesntAskAboutTheOpenOne()
+    {
+        // Arrange
+        OpenAndChangeADiagram();
+        _store.Version = "2";
+        _view.PathToSave = @"C:\Diagrams\copy.svg";
+
+        // Act
+        _view.Command(DiagramCommand.SaveAs);
+
+        // Assert
+        Assert.Equal(0, _view.OverwriteQuestions);
+        Assert.Equal(_view.PathToSave, _store.SavedPath);
+    }
+
+    [Fact]
+    public void Closing_ChoosingSave_ThenNotOverwriting_StaysOpen()
+    {
+        // Arrange
+        OpenAndChangeADiagram();
+        _store.Version = "2";
+        _view.SaveChoice = DiagramSaveChoice.Save;
+        _view.OverwriteAnswer = false;
+
+        // Act & Assert
+        Assert.True(_view.Close());
+    }
+
     [Fact]
     public void Closing_WithoutChanges_DoesntAsk()
     {
@@ -2730,9 +2815,14 @@ public class DiagramEditorPresenterTests
             }
 
             (SavedPath, Saved) = (path, diagram);
+            Version += " saved";
         }
 
         public DiagramModel Load(string path) => LoadError is null ? ToLoad : throw LoadError;
+
+        public string? Version { get; set; } = "1";
+
+        public string? VersionOf(string path) => Version;
     }
 
     private sealed class FakeView : IDiagramEditorView
@@ -2967,6 +3057,17 @@ public class DiagramEditorPresenterTests
         public string? AskOpenPath() => PathToOpen;
 
         public DiagramSaveChoice AskSaveChanges(string name) => SaveChoice;
+
+        public bool OverwriteAnswer { get; set; } = true;
+
+        public int OverwriteQuestions { get; private set; }
+
+        public bool AskOverwrite(string name)
+        {
+            OverwriteQuestions++;
+
+            return OverwriteAnswer;
+        }
 
         public void ShowError(string message) => Error = message;
 

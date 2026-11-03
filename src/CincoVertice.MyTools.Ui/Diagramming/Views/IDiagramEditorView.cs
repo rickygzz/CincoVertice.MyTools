@@ -130,6 +130,9 @@ public interface IDiagramEditorView
     /// <param name="name">The name of the diagram.</param>
     DiagramSaveChoice AskSaveChanges(string name);
 
+    /// <returns>Whether to replace a file that was changed elsewhere since it was opened or saved here.</returns>
+    bool AskOverwrite(string name);
+
     void ShowError(string message);
 
     void SetClipboardText(string text);
