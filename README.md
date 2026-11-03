@@ -43,6 +43,7 @@ that open anywhere, and open again here to keep editing them. SVG files from oth
 | Connect two shapes | Hover a shape and drag from one of the circles around it to another shape; drop on a circle there to pick that side too. Or `C`, then drag from one shape to the other, and the sides are picked for you. The connector follows them when they move. `V` or Esc goes back to selecting |
 | Attach a connector somewhere else | Click it, then drag one of the dots at its ends to another shape, or to a circle on it to pick the side. Dropped on nothing, it stays where it was. Dropped on the middle of its own shape, the side is picked for you again |
 | Change a connector's path | Click an elbow connector, then drag any piece of its line sideways; it stays level and upright, with rounded corners. **Reset line** lets it work out its own path again, and so does choosing Elbow or Straight |
+| See and change what's selected | The panel on the right: position, size, corner radius, colors, border, text, font and connector options. F4 or **Properties** hides it |
 | Select | Click, Shift+click to add, or drag on nothing around them. Ctrl+A for all |
 | Move | Drag, or the arrow keys (Shift for one pixel at a time) |
 | Scale | Drag a square around the selection, with Shift to keep the proportions |
@@ -56,6 +57,11 @@ that open anywhere, and open again here to keep editing them. SVG files from oth
 | Undo, redo, save | Ctrl+Z, Ctrl+Y, Ctrl+S (Ctrl+Shift+S to save as) |
 
 If you already have a `config\hotkeys.cfg`, add `DiagramEditor = Ctrl+Alt+D` to it to get the hotkey.
+
+New text uses [Roboto](https://fonts.google.com/specimen/Roboto), which comes with the app under the
+[SIL Open Font License](https://openfontlicense.org). Opening the editor installs it for your user if it's missing, so
+browsers show saved diagrams in it too; that needs no administrator rights. On a computer without a diagram's font, its
+SVG shows in another sans serif font.
 
 ## Scripts
 
