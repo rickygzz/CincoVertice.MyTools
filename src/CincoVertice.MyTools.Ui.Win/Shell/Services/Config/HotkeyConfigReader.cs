@@ -44,7 +44,7 @@ public static class HotkeyConfigReader
 
             if (items.GetValueType(i) == ConfigTokenType.ErrorQuotedStringNotClosed)
             {
-                result.Problems.Add($"{name}: the [\" is never closed, so the rest of the file is ignored.");
+                result.AddProblem(items.GetLine(i), $"{name}: the [\" is never closed, so the rest of the file is ignored.");
 
                 continue;
             }
@@ -54,7 +54,7 @@ public static class HotkeyConfigReader
 
             if (action is null)
             {
-                result.Problems.Add($"{name}: unknown action. Actions: {string.Join(", ", actionNames)}.");
+                result.AddProblem(items.GetLine(i), $"{name}: unknown action. Actions: {string.Join(", ", actionNames)}.");
 
                 continue;
             }
@@ -62,21 +62,21 @@ public static class HotkeyConfigReader
             if (!boundActions.Add(action + "\0" + argument))
             {
                 string with = argument is null ? string.Empty : $" with {argument}";
-                result.Problems.Add($"{name}{with}: set more than once; the first line is used.");
+                result.AddProblem(items.GetLine(i), $"{name}{with}: set more than once; the first line is used.");
 
                 continue;
             }
 
             if (!HotkeyParser.TryParse(shortcut, keyScan, out FSModifiers modifiers, out KeyCode key, out string error))
             {
-                result.Problems.Add($"{name}: {error}");
+                result.AddProblem(items.GetLine(i), $"{name}: {error}");
 
                 continue;
             }
 
             if (usedShortcuts.TryGetValue((modifiers, key), out string? other))
             {
-                result.Problems.Add($"{name}: {shortcut} is already used by {other}.");
+                result.AddProblem(items.GetLine(i), $"{name}: {shortcut} is already used by {other}.");
 
                 continue;
             }
@@ -87,7 +87,7 @@ public static class HotkeyConfigReader
 
         foreach (var (number, line) in lexer.BadLines)
         {
-            result.Problems.Add($"Line {number}: '{line}' is not 'Action = Shortcut'.");
+            result.AddProblem(number, $"'{line}' is not 'Action = Shortcut'.", $"Line {number}: ");
         }
 
         return result;

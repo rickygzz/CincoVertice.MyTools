@@ -1,16 +1,19 @@
-﻿using CincoVertice.MyTools.Ui.Win.Shell.Services.Config;
+﻿using CincoVertice.MyTools.Ui.Win.ConfigEditor.Services;
+using CincoVertice.MyTools.Ui.Win.Shell.Services.Config;
 
 namespace CincoVertice.MyTools.Ui.Win.Shell.Actions;
 
 /// <summary>
-///     Opens activity.cfg, creating it first if needed. The settings apply the next time activity is turned on.
+///     Opens activity.cfg in the config editor. The settings apply the next time activity is turned on.
 /// </summary>
 public sealed class EditActivitySettingsAction : IAppAction
 {
+    private readonly ConfigEditorWindowService _editor;
     private readonly ActivitySettingsService _settingsService;
 
-    public EditActivitySettingsAction(ActivitySettingsService settingsService)
+    public EditActivitySettingsAction(ConfigEditorWindowService editor, ActivitySettingsService settingsService)
     {
+        _editor = editor;
         _settingsService = settingsService;
     }
 
@@ -20,21 +23,7 @@ public sealed class EditActivitySettingsAction : IAppAction
 
     public Task ExecuteAsync()
     {
-        // Only to create the file: problems in it are reported when activity is turned on
-        _settingsService.Load();
-
-        if (File.Exists(_settingsService.FilePath))
-        {
-            ConfigFileOpener.Open(_settingsService.FilePath);
-        }
-        else
-        {
-            MessageBox.Show(
-                $"{_settingsService.FilePath} could not be created.",
-                "Edit activity settings",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Warning);
-        }
+        _editor.Open(_settingsService.FilePath);
 
         return Task.CompletedTask;
     }

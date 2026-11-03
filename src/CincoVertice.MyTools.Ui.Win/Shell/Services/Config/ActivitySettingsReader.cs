@@ -32,6 +32,14 @@ public static class ActivitySettingsReader
     public static ActivitySettingsResultModel Read(string text)
     {
         List<string> problems = [];
+        List<ConfigLineProblemModel> lineProblems = [];
+
+        void AddProblem(int line, string message, string prefix = "")
+        {
+            problems.Add(prefix + message);
+            lineProblems.Add(new ConfigLineProblemModel(line, message));
+        }
+
         ConfigLexer lexer = new(text);
         ConfigItems items = lexer.Items;
         Dictionary<string, int> values = new(StringComparer.OrdinalIgnoreCase);
@@ -45,7 +53,7 @@ public static class ActivitySettingsReader
 
             if (items.GetValueType(i) == ConfigTokenType.ErrorQuotedStringNotClosed)
             {
-                problems.Add($"{name}: the [\" is never closed, so the rest of the file is ignored.");
+                AddProblem(items.GetLine(i), $"{name}: the [\" is never closed, so the rest of the file is ignored.");
 
                 continue;
             }
@@ -56,18 +64,18 @@ public static class ActivitySettingsReader
             if (!isMoveImmediately && !_ranges.ContainsKey(name))
             {
                 string settings = string.Join(", ", [.. _ranges.Keys, MoveImmediatelyName]);
-                problems.Add($"{name}: unknown setting. Settings: {settings}.");
+                AddProblem(items.GetLine(i), $"{name}: unknown setting. Settings: {settings}.");
             }
             else if (!seen.Add(name))
             {
-                problems.Add($"{name}: set more than once; the first line is used.");
+                AddProblem(items.GetLine(i), $"{name}: set more than once; the first line is used.");
             }
             else if (isMoveImmediately)
             {
                 if (!bool.TryParse(value, out moveImmediately))
                 {
                     moveImmediately = defaults.MoveImmediately;
-                    problems.Add($"{name}: must be true or false; the default is used.");
+                    AddProblem(items.GetLine(i), $"{name}: must be true or false; the default is used.");
                 }
             }
             else if (TryReadNumber(value, _ranges[name], out int number))
@@ -77,13 +85,13 @@ public static class ActivitySettingsReader
             else
             {
                 var (Min, Max) = _ranges[name];
-                problems.Add($"{name}: must be a whole number from {Min} to {Max}; the default is used.");
+                AddProblem(items.GetLine(i), $"{name}: must be a whole number from {Min} to {Max}; the default is used.");
             }
         }
 
         foreach (var (number, line) in lexer.BadLines)
         {
-            problems.Add($"Line {number}: '{line}' is not 'Name = Value'.");
+            AddProblem(number, $"'{line}' is not 'Name = Value'.", $"Line {number}: ");
         }
 
         int speedMin = values.GetValueOrDefault(SpeedMinName, defaults.SpeedMin);
@@ -91,7 +99,11 @@ public static class ActivitySettingsReader
 
         if (speedMin > speedMax)
         {
-            problems.Add($"{SpeedMinName} ({speedMin}) is above {SpeedMaxName} ({speedMax}); the defaults are used.");
+            // At least one of them is in the file, since the defaults are in order
+            int speedIndex = items.GetKeyIndex(values.ContainsKey(SpeedMinName) ? SpeedMinName : SpeedMaxName);
+            int speedLine = items.GetLine(speedIndex);
+
+            AddProblem(speedLine, $"{SpeedMinName} ({speedMin}) is above {SpeedMaxName} ({speedMax}); the defaults are used.");
             speedMin = defaults.SpeedMin;
             speedMax = defaults.SpeedMax;
         }
@@ -103,7 +115,7 @@ public static class ActivitySettingsReader
             speedMax,
             moveImmediately);
 
-        return new ActivitySettingsResultModel(result, problems);
+        return new ActivitySettingsResultModel(result, problems) { LineProblems = lineProblems };
     }
 
     // A # after the value is a comment; the lexer keeps it in the value

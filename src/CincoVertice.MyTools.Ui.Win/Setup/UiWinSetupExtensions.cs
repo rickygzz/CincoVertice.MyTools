@@ -5,6 +5,8 @@ using CincoVertice.Common.Application.Setup;
 using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.MyTools.Ui.Calculator.Views;
 using CincoVertice.MyTools.Ui.CodeReview.Views;
+using CincoVertice.MyTools.Ui.ConfigEditor.Interfaces;
+using CincoVertice.MyTools.Ui.ConfigEditor.Services;
 using CincoVertice.MyTools.Ui.Diagramming.Interfaces;
 using CincoVertice.MyTools.Ui.Diagramming.Services;
 using CincoVertice.MyTools.Ui.Setup;
@@ -17,6 +19,7 @@ using CincoVertice.MyTools.Ui.Win.Calculator.Actions;
 using CincoVertice.MyTools.Ui.Win.CodeReview;
 using CincoVertice.MyTools.Ui.Win.CodeReview.Actions;
 using CincoVertice.MyTools.Ui.Win.CodeReview.Services;
+using CincoVertice.MyTools.Ui.Win.ConfigEditor.Services;
 using CincoVertice.MyTools.Ui.Win.Diagramming.Actions;
 using CincoVertice.MyTools.Ui.Win.Diagramming.Services;
 using CincoVertice.MyTools.Ui.Win.Scripting.Actions;
@@ -55,6 +58,18 @@ public static class UiWinSetupExtensions
         services.AddSingleton<EditHotkeysAction>();
         services.AddSingleton<EditActivitySettingsAction>();
         services.AddSingleton<OpenScriptsFolderAction>();
+        services.AddSingleton<EditScriptsAction>();
+
+        // The actions are read when they're needed, because some of them open this editor
+        services.AddSingleton<IEditableFileStore, EditableFileStore>();
+        services.AddSingleton<IEditableFileCatalog>(sp => new EditableFileCatalog(
+            sp.GetRequiredService<HotkeyConfigService>(),
+            sp.GetRequiredService<ActivitySettingsService>(),
+            () => sp.GetRequiredService<AppActionCatalog>().GetActions().ToList(),
+            ScriptCatalog.FolderPath));
+        services.AddSingleton<IEditableFileLanguage>(sp => new EditableFileLanguage(
+            () => sp.GetRequiredService<AppActionCatalog>().GetActions().Select(action => action.Name).ToList()));
+        services.AddSingleton<ConfigEditorWindowService>();
         services.AddSingleton<ScreenSnipper>();
         services.AddSingleton<ISnipEditorSettingsStore>(_ =>
             new JsonFileSnipEditorSettingsStore(SnipAndEditAction.SettingsFilePath));
@@ -74,6 +89,7 @@ public static class UiWinSetupExtensions
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<EditHotkeysAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<EditActivitySettingsAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<OpenScriptsFolderAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<EditScriptsAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<SnipRegionAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<SnipAndEditAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<OpenDiagramEditorAction>());

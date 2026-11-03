@@ -24,6 +24,7 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView
     private readonly AppIconService _appIconService;
     private readonly TrayNotificationService _notifications;
     private readonly OpenScriptsFolderAction _openScriptsFolderAction;
+    private readonly EditScriptsAction _editScriptsAction;
     private readonly NotifyIcon _notifyIcon;
     private readonly ToolStripMenuItem _scriptsMenu = new("S&cripts");
 
@@ -41,12 +42,14 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView
         EditHotkeysAction editHotkeysAction,
         EditActivitySettingsAction editActivitySettingsAction,
         OpenScriptsFolderAction openScriptsFolderAction,
+        EditScriptsAction editScriptsAction,
         OpenDiagramEditorAction openDiagramEditorAction)
     {
         _mainForm = mainForm;
         _appIconService = appIconService;
         _notifications = notifications;
         _openScriptsFolderAction = openScriptsFolderAction;
+        _editScriptsAction = editScriptsAction;
 
         _appIconService.Changed += AppIcon_Changed;
         _notifications.Requested += Notification_Requested;
@@ -86,7 +89,7 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView
     public event EventHandler? ReloadHotkeysRequested;
 
     /// <summary>
-    ///     Scripts: one item per script, then the folder to add or edit them.
+    ///     Scripts: one item per script, then the editor and the folder to add or edit them.
     /// </summary>
     public void ShowScripts(IReadOnlyList<ScriptMenuItemModel> scripts)
     {
@@ -105,6 +108,7 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView
             _scriptsMenu.DropDownItems.Add(new ToolStripSeparator());
         }
 
+        AddAction(_scriptsMenu.DropDownItems, "&Edit scripts...", _editScriptsAction);
         AddAction(_scriptsMenu.DropDownItems, "Open scripts &folder", _openScriptsFolderAction);
     }
 
