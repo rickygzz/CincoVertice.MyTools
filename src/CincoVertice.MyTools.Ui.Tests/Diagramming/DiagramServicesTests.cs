@@ -723,6 +723,243 @@ public class DiagramServicesTests
         Assert.Equal(expectedLines, DiagramTextLayout.Wrap(text, width, 14).Count);
     }
 
+    private static List<PointF> RouteBetween(DiagramConnectorModel connector, Rectangle from, Rectangle to)
+    {
+        DiagramModel diagram = new(
+            [
+                new DiagramShapeModel(1, DiagramShapeKind.Rectangle, from, string.Empty, _style),
+                new DiagramShapeModel(2, DiagramShapeKind.Rectangle, to, string.Empty, _style),
+            ],
+            [connector]);
+
+        return DiagramRouter.RouteFor(connector, diagram)!;
+    }
+
+    private static bool CrossesInside(IReadOnlyList<PointF> route, Rectangle box)
+    {
+        for (int i = 1; i < route.Count; i++)
+        {
+            float left = Math.Min(route[i - 1].X, route[i].X);
+            float right = Math.Max(route[i - 1].X, route[i].X);
+            float top = Math.Min(route[i - 1].Y, route[i].Y);
+            float bottom = Math.Max(route[i - 1].Y, route[i].Y);
+
+            if (left < box.Right && right > box.Left && top < box.Bottom && bottom > box.Top)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    [Theory]
+    [InlineData(150, 25)] // Straight behind it, as in a shape moved past its bend
+    [InlineData(150, 40)] // Behind it, not lined up
+    [InlineData(150, -50)] // Behind it and above
+    [InlineData(300, -50)] // Right above where it leaves
+    public void Bends_BehindTheSideItLeaves_GoOutFirst_AndAroundTheShape(int x, int y)
+    {
+        // Arrange
+        var from = new Rectangle(200, 0, 100, 50);
+        var to = new Rectangle(600, 300, 100, 50);
+        DiagramConnectorModel connector = Connector(DiagramRouting.Elbow) with
+        {
+            FromSide = DiagramSide.Right,
+            Bends = [new Point(x, y), new Point(x, 500)],
+        };
+
+        // Act
+        List<PointF> route = RouteBetween(connector, from, to);
+
+        // Assert
+        Assert.Equal(new PointF(300, 25), route[0]);
+        Assert.Equal(25, route[1].Y);
+        Assert.True(route[1].X > 300);
+        Assert.False(CrossesInside(route, from));
+        Assert.All(route.Skip(1), (point, i) => Assert.True(DiagramRouter.IsLevelOrUpright(route[i], point)));
+    }
+
+    [Theory]
+    [InlineData(750, 325)]
+    [InlineData(750, 310)]
+    [InlineData(750, 500)]
+    [InlineData(600, 500)]
+    public void Bends_BehindTheSideItArrivesAt_ComeInFromOutside_AndAroundTheShape(int x, int y)
+    {
+        // Arrange
+        var from = new Rectangle(0, 0, 100, 50);
+        var to = new Rectangle(600, 300, 100, 50);
+        DiagramConnectorModel connector = Connector(DiagramRouting.Elbow) with
+        {
+            ToSide = DiagramSide.Left,
+            Bends = [new Point(x, -100), new Point(x, y)],
+        };
+
+        // Act
+        List<PointF> route = RouteBetween(connector, from, to);
+
+        // Assert
+        Assert.Equal(new PointF(600, 325), route[^1]);
+        Assert.Equal(325, route[^2].Y);
+        Assert.True(route[^2].X < 600);
+        Assert.False(CrossesInside(route, to));
+        Assert.All(route.Skip(1), (point, i) => Assert.True(DiagramRouter.IsLevelOrUpright(route[i], point)));
+    }
+
+    [Theory]
+    [InlineData(DiagramSide.Top, 225, 90)]
+    [InlineData(DiagramSide.Bottom, 240, -40)]
+    [InlineData(DiagramSide.Left, 350, 25)]
+    public void Bends_BehindAnySide_LeaveThroughThatSide(DiagramSide side, int x, int y)
+    {
+        // Arrange
+        var from = new Rectangle(200, 0, 100, 50);
+        var to = new Rectangle(600, 300, 100, 50);
+        DiagramConnectorModel connector = Connector(DiagramRouting.Elbow) with
+        {
+            FromSide = side,
+            Bends = [new Point(x, y), new Point(600, y)],
+        };
+
+        // Act
+        List<PointF> route = RouteBetween(connector, from, to);
+
+        // Assert
+        (int outX, int outY) = DiagramRouter.DirectionOf(side);
+
+        Assert.True((route[1].X - route[0].X) * outX + (route[1].Y - route[0].Y) * outY > 0);
+        Assert.False(CrossesInside(route, from));
+    }
+
+    [Fact]
+    public void Bends_AGoingAround_SavedAsCorners_GivesTheSameLine()
+    {
+        // Arrange: sliding a piece keeps the corners of the line as it is
+        var from = new Rectangle(200, 0, 100, 50);
+        var to = new Rectangle(600, 300, 100, 50);
+        DiagramConnectorModel connector = Connector(DiagramRouting.Elbow) with
+        {
+            FromSide = DiagramSide.Right,
+            Bends = [new Point(150, 25), new Point(150, 500)],
+        };
+        List<PointF> route = RouteBetween(connector, from, to);
+
+        // Act
+        List<PointF> again = RouteBetween(
+            connector with { Bends = [.. route.Skip(1).SkipLast(1).Select(Point.Round)] },
+            from,
+            to);
+
+        // Assert
+        Assert.Equal(route, again);
+    }
+
+    [Fact]
+    public void Bends_InsideTheShape_DontGoAround()
+    {
+        // Arrange: nothing to go around to: the line ends up inside anyway
+        var from = new Rectangle(200, 0, 100, 50);
+        var to = new Rectangle(600, 300, 100, 50);
+        DiagramConnectorModel connector = Connector(DiagramRouting.Elbow) with
+        {
+            FromSide = DiagramSide.Right,
+            Bends = [new Point(250, 25), new Point(250, 500)],
+        };
+
+        // Act
+        List<PointF> route = RouteBetween(connector, from, to);
+
+        // Assert
+        Assert.Equal(new PointF(250, 25), route[1]);
+    }
+
+    [Theory]
+    [InlineData(2)]
+    [InlineData(10)]
+    [InlineData(60)]
+    public void Heads_BothOnAShortLine_BothHaveADirection(int gap)
+    {
+        // Arrange
+        DiagramModel diagram = new(
+            [
+                new DiagramShapeModel(1, DiagramShapeKind.Rectangle, new Rectangle(0, 0, 100, 50), string.Empty, _style),
+                new DiagramShapeModel(2, DiagramShapeKind.Rectangle, new Rectangle(100 + gap, 0, 100, 50), string.Empty, _style),
+            ],
+            []);
+
+        // Act
+        DiagramConnectorPathModel path = DiagramRouter.PathOf(Connector(heads: DiagramArrowHeads.Both), diagram)!;
+
+        // Assert: each points at its shape, and they don't cross
+        Assert.Equal(new PointF(100, 25), path.StartHead![0]);
+        Assert.Equal(new PointF(100 + gap, 25), path.EndHead![0]);
+        Assert.True(path.StartHead[1].X <= path.EndHead[1].X);
+    }
+
+    [Theory]
+    [InlineData("""{"format":"mytools-diagram","shapes":[null]}""")]
+    [InlineData("""{"format":"mytools-diagram","connectors":[null]}""")]
+    [InlineData("""{"format":"mytools-diagram","connectors":[{"id":1,"bends":[null]}]}""")]
+    [InlineData("""{"format":"mytools-diagram","shapes":[{"id":1,"kind":99}]}""")]
+    [InlineData("""{"format":"mytools-diagram","connectors":[{"id":1,"heads":99}]}""")]
+    [InlineData("""{"format":"mytools-diagram","connectors":[{"id":1,"routing":99}]}""")]
+    [InlineData("""{"format":"mytools-diagram","connectors":[{"id":1,"fromSide":99}]}""")]
+    [InlineData("""{"format":"mytools-diagram","connectors":[{"id":1,"toSide":99}]}""")]
+    public void Json_AFileWithBadEntries_IsntADiagram(string json)
+    {
+        Assert.Throws<InvalidDataException>(() => DiagramJson.Read(json));
+    }
+
+    [Fact]
+    public void Json_AllTheValuesThatAreAllowed_AreRead()
+    {
+        foreach (DiagramArrowHeads heads in Enum.GetValues<DiagramArrowHeads>())
+        {
+            DiagramModel diagram = new(
+                [Shape(1, 0, 0), Shape(2, 300, 0)],
+                [Connector(DiagramRouting.Elbow, heads) with { FromSide = DiagramSide.Top, Bends = [new Point(5, 5)] }]);
+
+            Assert.Equal(heads, DiagramJson.Read(DiagramJson.Write(diagram)).Connectors[0].Heads);
+        }
+    }
+
+    [Fact]
+    public void Json_ALoneSurrogate_IsEitherReadOrRefused()
+    {
+        // Half an emoji in a file edited by hand: Open only handles InvalidDataException
+        const string json = """{"format":"mytools-diagram","shapes":[{"id":1,"kind":"Rectangle","text":"a\uD83D"}]}""";
+
+        try
+        {
+            DiagramJson.Read(json);
+        }
+        catch (InvalidDataException)
+        {
+            // Refused is fine too
+        }
+    }
+
+    [Theory]
+    [InlineData("ab\U0001F600cd", 16.5f, 10)]
+    [InlineData("\U0001F600\U0001F600\U0001F600", 16.5f, 10)]
+    [InlineData("a\U0001F600b", 5.5f, 10)]
+    [InlineData("\U0001F600", 5.5f, 10)]
+    public void Wrap_KeepsSurrogatePairsTogether(string text, float width, int fontSize)
+    {
+        // Act
+        IReadOnlyList<string> lines = DiagramTextLayout.Wrap(text, width, fontSize);
+
+        // Assert: half an emoji can't be written to an SVG file. And no blank line after the last one
+        foreach (string line in lines)
+        {
+            Assert.DoesNotContain(line.EnumerateRunes(), rune => rune == System.Text.Rune.ReplacementChar);
+            Assert.NotEmpty(line);
+        }
+
+        Assert.Equal(text, string.Concat(lines));
+    }
+
     [Fact]
     public void Wrap_NeverLosesWords()
     {

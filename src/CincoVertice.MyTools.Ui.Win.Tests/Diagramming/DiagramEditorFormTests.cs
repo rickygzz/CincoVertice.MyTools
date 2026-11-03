@@ -3,6 +3,7 @@ using System.Windows.Forms;
 using CincoVertice.MyTools.Ui.Diagramming.Interfaces;
 using CincoVertice.MyTools.Ui.Diagramming.Models;
 using CincoVertice.MyTools.Ui.Diagramming.Presenters;
+using CincoVertice.MyTools.Ui.Diagramming.Views;
 using CincoVertice.MyTools.Ui.Win.Diagramming;
 using CincoVertice.MyTools.Ui.Win.Diagramming.Services;
 using Xunit;
@@ -264,6 +265,101 @@ public class DiagramEditorFormTests
 
         // Assert
         Assert.Equal(area.Size, form.Size);
+    }
+
+    private static DiagramEditorForm ShowFormEditingProperties(List<string> events, string fieldName, string typed)
+    {
+        var form = new DiagramEditorForm
+        {
+            StartPosition = FormStartPosition.Manual,
+            Location = new Point(-3000, 100),
+            ShowInTaskbar = false,
+        };
+        IDiagramEditorView view = form;
+
+        view.TextEdited += (_, text) => events.Add("text " + text);
+        view.BoundsEdited += (_, bounds) => events.Add("width " + bounds.Width);
+        view.CommandRequested += (_, command) => events.Add(command.ToString());
+        view.Closing += (_, _) => events.Add("closing");
+
+        form.Show();
+        form.ShowProperties(new DiagramPropertiesModel(
+            "Rectangle",
+            new Rectangle(0, 0, 100, 50),
+            0,
+            Color.White,
+            Color.Black,
+            1,
+            false,
+            Color.Black,
+            14,
+            "old",
+            DiagramRouting.Elbow,
+            DiagramArrowHeads.End));
+
+        Control field = form.Controls.Find(fieldName, true).Single();
+
+        field.Focus();
+        Assert.True(field.ContainsFocus);
+
+        // As typing does: a number box's own Text would apply the value at once
+        (field.Controls.OfType<TextBox>().FirstOrDefault() ?? field).Text = typed;
+        events.Clear();
+
+        return form;
+    }
+
+    private static void ClickToolbarButton(DiagramEditorForm form, string name)
+    {
+        var button = (ToolStripItem)typeof(DiagramEditorForm)
+            .GetField(name, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+            .GetValue(form)!;
+
+        button.PerformClick();
+    }
+
+    [Theory]
+    [InlineData("SaveButton", "Save")]
+    [InlineData("UndoButton", "Undo")]
+    public void Toolbar_TakesTheTextBeingTyped_BeforeItsCommand(string button, string command)
+    {
+        // Arrange
+        List<string> events = [];
+        using DiagramEditorForm form = ShowFormEditingProperties(events, "TextPropertyBox", "new");
+
+        // Act
+        ClickToolbarButton(form, button);
+
+        // Assert: and only once: a late one would save the old text, or undo the undo
+        Assert.Equal(["text new", command], events);
+    }
+
+    [Fact]
+    public void Toolbar_TakesTheNumberBeingTyped_BeforeItsCommand()
+    {
+        // Arrange
+        List<string> events = [];
+        using DiagramEditorForm form = ShowFormEditingProperties(events, "WidthBox", "250");
+
+        // Act
+        ClickToolbarButton(form, "SaveButton");
+
+        // Assert
+        Assert.Equal(["width 250", "Save"], events);
+    }
+
+    [Fact]
+    public void Closing_TakesTheTextBeingTyped_BeforeAskingAboutChanges()
+    {
+        // Arrange
+        List<string> events = [];
+        using DiagramEditorForm form = ShowFormEditingProperties(events, "TextPropertyBox", "new");
+
+        // Act
+        form.Close();
+
+        // Assert
+        Assert.Equal(["text new", "closing"], events);
     }
 
     private sealed class NoSettings : IDiagramEditorSettingsStore

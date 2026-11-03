@@ -33,6 +33,62 @@ public sealed class DiagramSvgTests : IDisposable
     }
 
     [Fact]
+    public void Write_TextLongerThanItsShape_IsInsideTheImage()
+    {
+        // Arrange: text isn't cut at its shape, on the screen or in the image
+        var shape = new DiagramShapeModel(
+            1,
+            DiagramShapeKind.Rectangle,
+            new Rectangle(0, 0, 120, 60),
+            "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12",
+            _style);
+        RectangleF text = DiagramTextLayout.Layout(
+            shape.Text,
+            DiagramFigures.TextArea(shape.Kind, shape.Bounds),
+            shape.Style.FontSize).Bounds;
+
+        // Act
+        XDocument svg = XDocument.Parse(DiagramSvg.Write(new DiagramModel([shape], [])));
+
+        // Assert
+        float[] viewBox = [.. ((string)svg.Root!.Attribute("viewBox")!).Split(' ').Select(float.Parse)];
+
+        Assert.True(viewBox[1] <= text.Top);
+        Assert.True(viewBox[1] + viewBox[3] >= text.Bottom);
+    }
+
+    [Fact]
+    public void Write_ALongEmojiText_CanBeSavedAndRead()
+    {
+        // Arrange: wrapped in a narrow shape, in the middle of an emoji if it were up to the width alone
+        var shape = new DiagramShapeModel(
+            1,
+            DiagramShapeKind.Rectangle,
+            new Rectangle(0, 0, 40, 40),
+            string.Concat(Enumerable.Repeat("a\U0001F600", 20)),
+            _style);
+
+        // Act
+        DiagramModel read = DiagramSvg.Read(DiagramSvg.Write(new DiagramModel([shape], [])));
+
+        // Assert
+        Assert.Equal(shape.Text, read.Shapes[0].Text);
+    }
+
+    [Fact]
+    public void Write_ALoneSurrogate_DoesntFailTheSave()
+    {
+        // Arrange
+        var shape = new DiagramShapeModel(1, DiagramShapeKind.Rectangle, new Rectangle(0, 0, 200, 40), "a\uD83Db", _style);
+
+        // Act
+        DiagramModel read = DiagramSvg.Read(DiagramSvg.Write(new DiagramModel([shape], [])));
+
+        // Assert
+        Assert.Contains("a", read.Shapes[0].Text);
+    }
+
+    [Fact]
     public void WriteThenRead_GivesTheSameDiagram()
     {
         // Act
@@ -127,7 +183,11 @@ public sealed class DiagramSvgTests : IDisposable
         // Arrange
         DiagramModel diagram = Sample() with
         {
-            Connectors = [Sample().Connectors[0] with { Label = string.Empty, Bends = [new Point(900, 900)] }],
+            Shapes = [.. Sample().Shapes.Select(shape => shape with { Text = string.Empty })],
+            Connectors =
+            [
+                Sample().Connectors[0] with { Label = string.Empty, ToSide = DiagramSide.Right, Bends = [new Point(900, 900)] },
+            ],
         };
 
         // Act
@@ -188,8 +248,14 @@ public sealed class DiagramSvgTests : IDisposable
     [Fact]
     public void Write_TheAreaIsAroundEverything()
     {
+        // Arrange: text that goes past its shape has its own test
+        DiagramModel diagram = Sample() with
+        {
+            Shapes = [.. Sample().Shapes.Select(shape => shape with { Text = string.Empty })],
+        };
+
         // Act
-        XDocument document = XDocument.Parse(DiagramSvg.Write(Sample()));
+        XDocument document = XDocument.Parse(DiagramSvg.Write(diagram));
         int[] viewBox = [.. ((string)document.Root!.Attribute("viewBox")!).Split(' ').Select(int.Parse)];
 
         // Assert: from 0, 20 to 380, 330, with a margin of 20

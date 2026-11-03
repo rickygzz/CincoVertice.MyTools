@@ -76,7 +76,7 @@ public static class DiagramJson
             throw new InvalidDataException("This isn't a diagram.", ex);
         }
 
-        if (file?.Format != FormatName)
+        if (file?.Format != FormatName || !HasOnlyKnownEntries(file))
         {
             throw new InvalidDataException("This isn't a diagram.");
         }
@@ -111,6 +111,19 @@ public static class DiagramJson
 
         return new DiagramModel(shapes, connectors);
     }
+
+    /// <summary>
+    ///     JSON can have null in a list, and a number for a value no kind has, which the code after this doesn't expect:
+    ///     a form's list of arrows, for one, throws on an index it doesn't have.
+    /// </summary>
+    private static bool HasOnlyKnownEntries(DiagramFile file) =>
+        (file.Shapes ?? []).All(shape => shape is not null && Enum.IsDefined(shape.Kind))
+        && (file.Connectors ?? []).All(connector => connector is not null
+            && Enum.IsDefined(connector.Routing)
+            && Enum.IsDefined(connector.Heads)
+            && (connector.FromSide is not DiagramSide from || Enum.IsDefined(from))
+            && (connector.ToSide is not DiagramSide to || Enum.IsDefined(to))
+            && (connector.Bends ?? []).All(bend => bend is not null));
 
     private static DiagramShapeModel ToShape(ShapeFile shape) => new(
         shape.Id,

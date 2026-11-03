@@ -55,8 +55,15 @@ public static class DiagramTextLayout
 
                 while (rest.Length > maxCharacters)
                 {
-                    lines.Add(rest[..maxCharacters]);
-                    rest = rest[maxCharacters..];
+                    int split = SplitPoint(rest, maxCharacters);
+
+                    if (split >= rest.Length)
+                    {
+                        break;
+                    }
+
+                    lines.Add(rest[..split]);
+                    rest = rest[split..];
                 }
 
                 line = rest;
@@ -66,6 +73,20 @@ public static class DiagramTextLayout
         }
 
         return lines;
+    }
+
+    /// <summary>
+    ///     Where to break a word, without splitting a surrogate pair such as an emoji, which can't be written to a file.
+    ///     One wider than the whole line stays whole.
+    /// </summary>
+    private static int SplitPoint(string word, int maxCharacters)
+    {
+        if (!char.IsSurrogatePair(word[maxCharacters - 1], word[maxCharacters]))
+        {
+            return maxCharacters;
+        }
+
+        return maxCharacters > 1 ? maxCharacters - 1 : maxCharacters + 1;
     }
 
     private static DiagramTextBlockModel Place(IReadOnlyList<string> lines, float centerX, float centerY, int fontSize)

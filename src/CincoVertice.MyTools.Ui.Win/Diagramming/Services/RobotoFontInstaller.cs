@@ -69,11 +69,7 @@ public sealed class RobotoFontInstaller
             if (!File.Exists(path))
             {
                 Directory.CreateDirectory(_fontsFolder);
-
-                using Stream font = _openFont();
-                using FileStream file = File.Create(path);
-
-                font.CopyTo(file);
+                CopyFont(path);
             }
 
             _register(RegistryValueName, path);
@@ -84,6 +80,27 @@ public sealed class RobotoFontInstaller
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
         {
             return false;
+        }
+    }
+
+    /// <summary>Through a temporary file: a partial font at the real path would count as installed from then on.</summary>
+    private void CopyFont(string path)
+    {
+        string temporaryPath = path + ".tmp";
+
+        try
+        {
+            using (Stream font = _openFont())
+            using (FileStream file = File.Create(temporaryPath))
+            {
+                font.CopyTo(file);
+            }
+
+            File.Move(temporaryPath, path);
+        }
+        finally
+        {
+            File.Delete(temporaryPath);
         }
     }
 

@@ -127,4 +127,34 @@ public sealed class DiagramFontsTests : IDisposable
         Assert.False(result);
         Assert.Empty(_registered);
     }
+
+    [Fact]
+    public void EnsureInstalled_WhenTheCopyFailsHalfway_LeavesNothing_AndCanTryAgain()
+    {
+        // Act
+        bool failed = Installer(openFont: () => new FailsHalfwayStream()).EnsureInstalled();
+
+        // Assert: a partial file would count as installed from then on
+        Assert.False(failed);
+        Assert.Empty(_registered);
+        Assert.Empty(Directory.GetFiles(_folder));
+
+        // Act
+        bool retried = Installer().EnsureInstalled();
+
+        // Assert
+        Assert.True(retried);
+        Assert.Equal(new byte[] { 1, 2, 3 }, File.ReadAllBytes(Path.Combine(_folder, "Roboto.ttf")));
+        Assert.Single(Directory.GetFiles(_folder));
+    }
+
+    private sealed class FailsHalfwayStream : MemoryStream
+    {
+        public override void CopyTo(Stream destination, int bufferSize)
+        {
+            destination.WriteByte(1);
+
+            throw new IOException("Disk full");
+        }
+    }
 }

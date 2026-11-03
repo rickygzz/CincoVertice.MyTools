@@ -650,8 +650,10 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     private void CommandButton_Click(object? sender, EventArgs e)
     {
         CommitText();
-        CommandRequested?.Invoke(this, CommandOf(sender));
+
+        // First: a toolbar button doesn't take the focus, and leaving a panel field is what applies what was typed
         Canvas.Focus();
+        CommandRequested?.Invoke(this, CommandOf(sender));
     }
 
     private void FillPalette_ColorPicked(object? sender, Color color)
@@ -815,6 +817,9 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     private void DiagramEditorForm_FormClosing(object? sender, FormClosingEventArgs e)
     {
         CommitText();
+
+        // Applies what was typed in a panel field, so it counts as a change to ask about
+        Canvas.Focus();
 
         var closing = new CancelEventArgs();
 

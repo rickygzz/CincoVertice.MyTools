@@ -105,7 +105,7 @@ public static class DiagramSvg
         }
 
         RectangleF area = diagram.Shapes
-            .Select(shape => (RectangleF)shape.Bounds)
+            .Select(BoundsWithText)
             .Aggregate(RectangleF.Union);
 
         foreach (DiagramConnectorModel connector in diagram.Connectors)
@@ -133,6 +133,21 @@ public static class DiagramSvg
         whole.Inflate(Margin, Margin);
 
         return whole;
+    }
+
+    /// <summary>A shape's text isn't cut at its edges, so it can go past them.</summary>
+    private static RectangleF BoundsWithText(DiagramShapeModel shape)
+    {
+        if (shape.Text.Length == 0)
+        {
+            return shape.Bounds;
+        }
+
+        RectangleF textArea = DiagramFigures.TextArea(shape.Kind, shape.Bounds);
+
+        return RectangleF.Union(
+            shape.Bounds,
+            DiagramTextLayout.Layout(shape.Text, textArea, shape.Style.FontSize).Bounds);
     }
 
     private static XElement ShapeElement(DiagramShapeModel shape)
@@ -218,9 +233,28 @@ public static class DiagramSvg
         }
     }
 
-    /// <summary>XML can't hold some control characters, and writing them would fail the whole save.</summary>
-    private static string WithoutInvalidCharacters(string line) =>
-        string.Concat(line.Where(c => char.IsSurrogate(c) || XmlConvert.IsXmlChar(c)));
+    /// <summary>
+    ///     XML can't hold some control characters, or half of a surrogate pair, and writing them would fail the whole save.
+    /// </summary>
+    private static string WithoutInvalidCharacters(string line)
+    {
+        var valid = new StringBuilder(line.Length);
+
+        for (int i = 0; i < line.Length; i++)
+        {
+            if (i + 1 < line.Length && char.IsSurrogatePair(line[i], line[i + 1]))
+            {
+                valid.Append(line[i]).Append(line[i + 1]);
+                i++;
+            }
+            else if (XmlConvert.IsXmlChar(line[i]))
+            {
+                valid.Append(line[i]);
+            }
+        }
+
+        return valid.ToString();
+    }
 
     private static XElement TextElement(DiagramTextBlockModel block, DiagramStyleModel style)
     {

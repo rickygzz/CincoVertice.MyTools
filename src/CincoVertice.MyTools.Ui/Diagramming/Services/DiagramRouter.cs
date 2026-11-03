@@ -29,6 +29,12 @@ public static class DiagramRouter
         PointF labelCenter = PointAlong(route, 0.5f);
         float headLength = 8 + 2 * connector.Style.LineWidth;
 
+        // On a single piece, the first head would otherwise take the direction the second one needs
+        if (connector.Heads == DiagramArrowHeads.Both && route.Count == 2)
+        {
+            headLength = Math.Min(headLength, Distance(route[0], route[1]) / 2);
+        }
+
         IReadOnlyList<PointF>? startHead = connector.Heads is DiagramArrowHeads.Start or DiagramArrowHeads.Both
             ? AddHead(route, headLength, atEnd: false)
             : null;
@@ -190,12 +196,7 @@ public static class DiagramRouter
         DiagramSide endSide = connector.ToSide ?? FacingSide(to.Bounds, last);
         PointF start = LinedUpWith(AnchorPoint(from, startSide), first);
         PointF end = LinedUpWith(AnchorPoint(to, endSide), last);
-        List<PointF> route = [start];
-
-        if (!IsLevelOrUpright(start, first))
-        {
-            route.Add(DirectionOf(startSide).X != 0 ? new PointF(first.X, start.Y) : new PointF(start.X, first.Y));
-        }
+        List<PointF> route = [start, .. PointsToBend(start, startSide, from.Bounds, first)];
 
         for (int i = 0; i < bends.Count; i++)
         {
@@ -209,14 +210,51 @@ public static class DiagramRouter
             }
         }
 
-        if (!IsLevelOrUpright(last, end))
-        {
-            route.Add(DirectionOf(endSide).X != 0 ? new PointF(last.X, end.Y) : new PointF(end.X, last.Y));
-        }
-
+        route.AddRange(Enumerable.Reverse(PointsToBend(end, endSide, to.Bounds, last)));
         route.Add(end);
 
         return WithoutExtraPoints(route);
+    }
+
+    /// <summary>
+    ///     The turns between a side of a shape and the nearest corner, going straight out of that side. A corner can be
+    ///     behind the side after the shape moved past it, so the line first goes out, and around the shape if the corner
+    ///     is right behind it. A corner inside the shape can't be reached without going in, so it just goes there.
+    /// </summary>
+    private static List<PointF> PointsToBend(PointF anchor, DiagramSide side, Rectangle box, PointF bend)
+    {
+        (int x, int y) = DirectionOf(side);
+        float ahead = (bend.X - anchor.X) * x + (bend.Y - anchor.Y) * y;
+
+        if (ahead > 0 || ((RectangleF)box).Contains(bend))
+        {
+            return IsLevelOrUpright(anchor, bend)
+                ? []
+                : [x != 0 ? new PointF(bend.X, anchor.Y) : new PointF(anchor.X, bend.Y)];
+        }
+
+        var stub = new PointF(anchor.X + x * ElbowStub, anchor.Y + y * ElbowStub);
+
+        if (x != 0)
+        {
+            if (bend.Y < box.Top || bend.Y > box.Bottom)
+            {
+                return [stub, new PointF(stub.X, bend.Y)];
+            }
+
+            float past = bend.Y - box.Top <= box.Bottom - bend.Y ? box.Top - ElbowStub : box.Bottom + ElbowStub;
+
+            return [stub, new PointF(stub.X, past), new PointF(bend.X, past)];
+        }
+
+        if (bend.X < box.Left || bend.X > box.Right)
+        {
+            return [stub, new PointF(bend.X, stub.Y)];
+        }
+
+        float beside = bend.X - box.Left <= box.Right - bend.X ? box.Left - ElbowStub : box.Right + ElbowStub;
+
+        return [stub, new PointF(beside, stub.Y), new PointF(beside, bend.Y)];
     }
 
     /// <summary>
