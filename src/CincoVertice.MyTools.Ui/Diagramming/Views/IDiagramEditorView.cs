@@ -1,0 +1,111 @@
+using System.ComponentModel;
+using System.Drawing;
+using CincoVertice.MyTools.Ui.Diagramming.Models;
+
+namespace CincoVertice.MyTools.Ui.Diagramming.Views;
+
+/// <summary>
+///     Shows a diagram on a canvas, with toolbars to pick the tool and the style. Points in the events are canvas
+///     pixels; the presenter converts them with the viewport it keeps.
+/// </summary>
+public interface IDiagramEditorView
+{
+    /// <summary>Raised when the user presses a mouse button on the canvas.</summary>
+    event EventHandler<DiagramPointerModel>? PointerPressed;
+
+    /// <summary>Raised when the mouse moves on the canvas, with or without a button down.</summary>
+    event EventHandler<DiagramPointerModel>? PointerMoved;
+
+    /// <summary>Raised when the user releases the button.</summary>
+    event EventHandler<DiagramPointerModel>? PointerReleased;
+
+    /// <summary>Raised when the user double-clicks on the canvas, after the press.</summary>
+    event EventHandler<DiagramPointerModel>? PointerDoubleClicked;
+
+    /// <summary>Raised when the mouse leaves the canvas.</summary>
+    event EventHandler? PointerLeft;
+
+    event EventHandler<DiagramWheelModel>? WheelTurned;
+
+    event EventHandler<DiagramTool>? ToolSelected;
+
+    event EventHandler<DiagramCommand>? CommandRequested;
+
+    /// <summary>Raised with how far to move the selection, in diagram pixels.</summary>
+    event EventHandler<Size>? NudgeRequested;
+
+    event EventHandler<DiagramColorChoiceModel>? ColorSelected;
+
+    /// <summary>Raised when the user wants a color that isn't in the palette.</summary>
+    event EventHandler<DiagramColorTarget>? MoreColorsRequested;
+
+    event EventHandler<int>? LineWidthSelected;
+
+    event EventHandler<bool>? DashedSelected;
+
+    event EventHandler<int>? FontSizeSelected;
+
+    event EventHandler<DiagramRouting>? RoutingSelected;
+
+    event EventHandler<DiagramArrowHeads>? ArrowHeadsSelected;
+
+    /// <summary>Raised when the user ends a text begun by <see cref="BeginTextEdit"/>, not when they cancel it.</summary>
+    event EventHandler<string>? TextCommitted;
+
+    /// <summary>Raised before the window closes; cancel to keep it open.</summary>
+    event EventHandler<CancelEventArgs>? Closing;
+
+    /// <summary>Draws these instead of what was shown before.</summary>
+    void ShowScene(DiagramSceneModel scene);
+
+    void ShowTool(DiagramTool tool);
+
+    /// <summary>Shows the colors to choose from. Called once, before the first <see cref="ShowStyle"/>.</summary>
+    void ShowPalette(IReadOnlyList<Color> colors);
+
+    /// <summary>Shows the choices for line widths and font sizes, in pixels. Called once.</summary>
+    void ShowSizes(IReadOnlyList<int> lineWidths, IReadOnlyList<int> fontSizes);
+
+    /// <summary>Shows the style of what's selected, or of what comes next when nothing is.</summary>
+    void ShowStyle(DiagramStyleModel style, DiagramRouting routing, DiagramArrowHeads heads);
+
+    void ShowUndoRedo(bool canUndo, bool canRedo);
+
+    /// <summary>Shows the name of the diagram.</summary>
+    /// <param name="name">The file's name, or a default.</param>
+    /// <param name="hasChanges">True when it has unsaved changes.</param>
+    void ShowDocument(string name, bool hasChanges);
+
+    /// <summary>Shows how large the diagram is drawn, in percent.</summary>
+    void ShowZoom(int percent);
+
+    void ShowCursor(DiagramCursor cursor);
+
+    /// <summary>Lets the user type over a part of the canvas; ends with <see cref="TextCommitted"/>.</summary>
+    /// <param name="bounds">Where, in canvas pixels.</param>
+    /// <param name="text">The text to start from, selected.</param>
+    /// <param name="fontSize">In canvas pixels.</param>
+    /// <param name="color">The color of the text.</param>
+    void BeginTextEdit(Rectangle bounds, string text, int fontSize, Color color);
+
+    /// <summary>Lets the user pick any color.</summary>
+    /// <returns>The color; null when the user cancels.</returns>
+    Color? AskColor(Color current);
+
+    /// <returns>The file to save to; null when the user cancels.</returns>
+    string? AskSavePath(string suggestedFileName);
+
+    /// <returns>The file to open; null when the user cancels.</returns>
+    string? AskOpenPath();
+
+    /// <summary>Asks what to do with the unsaved changes.</summary>
+    /// <param name="name">The name of the diagram.</param>
+    DiagramSaveChoice AskSaveChanges(string name);
+
+    void ShowError(string message);
+
+    void SetClipboardText(string text);
+
+    /// <returns>The text on the clipboard; null when there's none.</returns>
+    string? GetClipboardText();
+}

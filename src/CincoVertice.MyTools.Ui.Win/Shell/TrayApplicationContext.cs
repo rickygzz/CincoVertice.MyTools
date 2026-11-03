@@ -3,6 +3,7 @@ using CincoVertice.MyTools.Ui.Shell.Presenters;
 using CincoVertice.MyTools.Ui.Shell.Views;
 using CincoVertice.MyTools.Ui.Win.Behaviors;
 using CincoVertice.MyTools.Ui.Win.CodeReview.Actions;
+using CincoVertice.MyTools.Ui.Win.Diagramming.Actions;
 using CincoVertice.MyTools.Ui.Win.Scripting.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Models;
@@ -39,7 +40,8 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView
         FixFolderAction fixFolderAction,
         EditHotkeysAction editHotkeysAction,
         EditActivitySettingsAction editActivitySettingsAction,
-        OpenScriptsFolderAction openScriptsFolderAction)
+        OpenScriptsFolderAction openScriptsFolderAction,
+        OpenDiagramEditorAction openDiagramEditorAction)
     {
         _mainForm = mainForm;
         _appIconService = appIconService;
@@ -56,6 +58,7 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView
         var menu = new ContextMenuStrip();
         var open = AddItem(menu.Items, "&Open", ShowMainForm);
         open.Font = new Font(open.Font, FontStyle.Bold);
+        AddAction(menu.Items, "&Diagram editor", openDiagramEditorAction);
         AddAction(menu.Items, "Check folder for &standard...", checkFolderAction);
         AddAction(menu.Items, "&Fix folder for standard...", fixFolderAction);
         menu.Items.Add(new ToolStripSeparator());

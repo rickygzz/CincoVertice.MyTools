@@ -30,6 +30,33 @@ Add a unit and `to` to convert the result: `10 km to mi`, `100 C to F`, `(2+3)*4
 Long names like `meters` or `hours` work too. Any case works, unless it could mean two units: `mb` is an error because
 `MB` is megabytes and `Mb` is megabits. Results are rounded to 10 significant digits.
 
+## Diagram editor
+
+Draw diagrams without opening a browser: Ctrl+Alt+D, or **Diagram editor** in the tray menu. They're saved as SVG images
+that open anywhere, and open again here to keep editing them. SVG files from other programs can't be opened.
+
+| To | Do |
+|---|---|
+| Add a shape | Pick it on the left (`R` rectangle, `U` rounded, `O` ellipse, `D` diamond, `P` parallelogram, `H` hexagon, `Y` cylinder, `M` document) and drag, or click for the usual size |
+| Add a text | `T` and click, or double-click on nothing. Enter ends it, Shift+Enter starts a new line |
+| Write in a shape, or label a connector | Double-click it |
+| Connect two shapes | Hover a shape and drag from one of the circles around it to another shape; drop on a circle there to pick that side too. Or `C`, then drag from one shape to the other, and the sides are picked for you. The connector follows them when they move. `V` or Esc goes back to selecting |
+| Attach a connector somewhere else | Click it, then drag one of the dots at its ends to another shape, or to a circle on it to pick the side. Dropped on nothing, it stays where it was. Dropped on the middle of its own shape, the side is picked for you again |
+| Change a connector's path | Click it, then drag its line anywhere to add a bend, or drag a diamond to move one. Double-click a diamond to remove it. **Reset line** takes them all off, and so does choosing Elbow or Straight |
+| Select | Click, Shift+click to add, or drag on nothing around them. Ctrl+A for all |
+| Move | Drag, or the arrow keys (Shift for one pixel at a time) |
+| Scale | Drag a square around the selection, with Shift to keep the proportions |
+| Line up | Dragging snaps to other shapes' edges and middles, showing a guide, and otherwise to the grid. Alt turns it off |
+| Change colors, line, text size or connector style | Use the top bar, for what's selected and for what comes next |
+| Copy, paste, duplicate | Ctrl+C, Ctrl+V, Ctrl+D, also between editor windows. Ctrl+X cuts |
+| Group, ungroup | Ctrl+G, Ctrl+Shift+G |
+| Bring to front, send to back | Ctrl+], Ctrl+[ |
+| Zoom | Ctrl+wheel, Ctrl+plus, Ctrl+minus, Ctrl+0 for 100% |
+| Move the view | Wheel (Shift for sideways), or drag with the middle button or Space held |
+| Undo, redo, save | Ctrl+Z, Ctrl+Y, Ctrl+S (Ctrl+Shift+S to save as) |
+
+If you already have a `config\hotkeys.cfg`, add `DiagramEditor = Ctrl+Alt+D` to it to get the hotkey.
+
 ## Scripts
 
 Hotkeys can run your own scripts: ask something, open a web page, start a program, type text, and more. See

@@ -5,6 +5,8 @@ using CincoVertice.Common.Application.Setup;
 using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.MyTools.Ui.Calculator.Views;
 using CincoVertice.MyTools.Ui.CodeReview.Views;
+using CincoVertice.MyTools.Ui.Diagramming.Interfaces;
+using CincoVertice.MyTools.Ui.Diagramming.Services;
 using CincoVertice.MyTools.Ui.Setup;
 using CincoVertice.MyTools.Ui.Shell.Interfaces;
 using CincoVertice.MyTools.Ui.Shell.Views;
@@ -15,6 +17,7 @@ using CincoVertice.MyTools.Ui.Win.Calculator.Actions;
 using CincoVertice.MyTools.Ui.Win.CodeReview;
 using CincoVertice.MyTools.Ui.Win.CodeReview.Actions;
 using CincoVertice.MyTools.Ui.Win.CodeReview.Services;
+using CincoVertice.MyTools.Ui.Win.Diagramming.Actions;
 using CincoVertice.MyTools.Ui.Win.Scripting.Actions;
 using CincoVertice.MyTools.Ui.Win.Scripting.Services;
 using CincoVertice.MyTools.Ui.Win.Shell;
@@ -56,6 +59,8 @@ public static class UiWinSetupExtensions
             new JsonFileSnipEditorSettingsStore(SnipAndEditAction.SettingsFilePath));
         services.AddSingleton<SnipRegionAction>();
         services.AddSingleton<SnipAndEditAction>();
+        services.AddSingleton<IDiagramFileStore, SvgDiagramFileStore>();
+        services.AddSingleton<OpenDiagramEditorAction>();
 
         // Every action can be bound to a shortcut in hotkeys.cfg; same instances as above
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ShowCalculatorAction>());
@@ -67,6 +72,7 @@ public static class UiWinSetupExtensions
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<OpenScriptsFolderAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<SnipRegionAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<SnipAndEditAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<OpenDiagramEditorAction>());
 
         // The built-in actions above, plus one per script in config\scripts, read again on every hotkey reload
         services.AddSingleton(_ => new ScriptEngine(
