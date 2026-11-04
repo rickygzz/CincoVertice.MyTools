@@ -162,6 +162,13 @@ public partial class SnipEditorForm : Form, ISnipEditorView
             transparency => $"{transparency}%");
     }
 
+    public void ShowDrawingChoices(bool isVisible)
+    {
+        ColorDropDownButton.Visible = isVisible;
+        SizeComboBox.Visible = isVisible;
+        TransparencyComboBox.Visible = isVisible;
+    }
+
     public void ShowArrowHeads(SnipArrowHeads? selected)
     {
         foreach (ToolStripButton button in ArrowHeadsButtons())
@@ -355,7 +362,8 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         }
     }
 
-    private ToolStripButton[] ToolButtons() => [PenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton];
+    private ToolStripButton[] ToolButtons() =>
+        [PenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, BlurButton];
 
     private ToolStripButton[] ArrowHeadsButtons() => [ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton];
 
@@ -381,7 +389,7 @@ public partial class SnipEditorForm : Form, ISnipEditorView
 
         // GraphicsUnit.Pixel: pixel for pixel, never scaled by the bitmap's resolution
         graphics.DrawImage(_snip, whole, whole, GraphicsUnit.Pixel);
-        AnnotationRenderer.Draw(graphics, _annotations);
+        AnnotationRenderer.Draw(graphics, _annotations, _snip);
 
         return image;
     }
@@ -495,7 +503,7 @@ public partial class SnipEditorForm : Form, ISnipEditorView
 
     private void Canvas_Paint(object? sender, PaintEventArgs e)
     {
-        AnnotationRenderer.Draw(e.Graphics, _annotations);
+        AnnotationRenderer.Draw(e.Graphics, _annotations, _snip);
     }
 
     private void Canvas_MouseDown(object? sender, MouseEventArgs e)
@@ -566,6 +574,7 @@ public partial class SnipEditorForm : Form, ISnipEditorView
             (Keys.None, Keys.A) => () => ToolSelected?.Invoke(this, SnipTool.Arrow),
             (Keys.None, Keys.R) => () => ToolSelected?.Invoke(this, SnipTool.Rectangle),
             (Keys.None, Keys.T) => () => ToolSelected?.Invoke(this, SnipTool.Text),
+            (Keys.None, Keys.B) => () => ToolSelected?.Invoke(this, SnipTool.Blur),
             // - and + where the keyboard has them, [ and ] as in other drawing programs
             (Keys.None, Keys.OemMinus or Keys.Subtract or Keys.OemOpenBrackets) => () => StepSize(-1),
             (Keys.None or Keys.Shift, Keys.Oemplus or Keys.Add) or (Keys.None, Keys.OemCloseBrackets) =>

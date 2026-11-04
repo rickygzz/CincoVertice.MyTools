@@ -57,6 +57,9 @@ public sealed class SnipEditorPresenter
         [SnipTool.Arrow] = new SnipToolSettingsModel(4, 0, Palette[0]),
         [SnipTool.Rectangle] = new SnipToolSettingsModel(4, 0, Palette[0]),
         [SnipTool.Text] = new SnipToolSettingsModel(24, 0, Palette[0]),
+
+        // Not used: a blur has no color, size or transparency
+        [SnipTool.Blur] = new SnipToolSettingsModel(4, 0, Palette[0]),
     };
 
     // Colors picked with More colors that aren't in the palette, newest first, at most MaxCustomColors
@@ -222,6 +225,7 @@ public sealed class SnipEditorPresenter
     private void ShowTool()
     {
         _view.ShowTool(_tool);
+        _view.ShowDrawingChoices(_tool != SnipTool.Blur);
         _view.ShowColor(Settings.Color);
         _view.ShowSizes(SizesOf(_tool), Settings.Size);
         _view.ShowTransparencies(Transparencies, Settings.Transparency);
@@ -456,17 +460,20 @@ public sealed class SnipEditorPresenter
         {
             SnipTool.Arrow => new ArrowAnnotationModel(start, end, color, width, _arrowHeads),
             SnipTool.Rectangle => new RectangleAnnotationModel(FromCorners(start, end), color, width),
+            SnipTool.Blur => new BlurAnnotationModel(FromCorners(start, end)),
             _ => new StrokeAnnotationModel([.. _points], color, width),
         };
     }
 
     /// <summary>
-    ///     A click with the pen or the highlighter leaves a dot; with the arrow or the rectangle it leaves nothing.
+    ///     A click with the pen or the highlighter leaves a dot; with the arrow, the rectangle or the blur it leaves
+    ///     nothing.
     /// </summary>
     private static bool IsVisible(AnnotationModel annotation) => annotation switch
     {
         ArrowAnnotationModel arrow => Math.Abs(arrow.To.X - arrow.From.X) + Math.Abs(arrow.To.Y - arrow.From.Y) >= 4,
         RectangleAnnotationModel rectangle => rectangle.Bounds.Width >= 2 && rectangle.Bounds.Height >= 2,
+        BlurAnnotationModel blur => blur.Bounds.Width >= 2 && blur.Bounds.Height >= 2,
         _ => true,
     };
 

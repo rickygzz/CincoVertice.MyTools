@@ -12,10 +12,15 @@ public static class AnnotationRenderer
 {
     public const string FontFamilyName = "Segoe UI";
 
-    public static void Draw(Graphics graphics, IReadOnlyList<AnnotationModel> annotations)
+    /// <param name="graphics">Where to draw them.</param>
+    /// <param name="annotations">What to draw, in order.</param>
+    /// <param name="snip">The snip they go over, without annotations; blurs take their color from around them on it.</param>
+    public static void Draw(Graphics graphics, IReadOnlyList<AnnotationModel> annotations, Bitmap snip)
     {
         SmoothingMode smoothing = graphics.SmoothingMode;
         graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
+        List<Rectangle> blurs = [.. annotations.OfType<BlurAnnotationModel>().Select(blur => blur.Bounds)];
 
         foreach (AnnotationModel annotation in annotations)
         {
@@ -32,6 +37,9 @@ public static class AnnotationRenderer
                     break;
                 case TextAnnotationModel text:
                     DrawText(graphics, text);
+                    break;
+                case BlurAnnotationModel blur:
+                    BlurRenderer.Draw(graphics, blur, blurs, snip);
                     break;
             }
         }

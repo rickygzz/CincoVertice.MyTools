@@ -683,6 +683,91 @@ public class SnipEditorPresenterTests
         Assert.IsType<StrokeAnnotationModel>(annotation).Points;
 
     [Fact]
+    public void Blur_DragHidesThatArea_WhicheverWayItsDragged()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Blur);
+
+        // Act
+        _view.Press(110, 70);
+        _view.Move(50, 50);
+        _view.Release(10, 20);
+
+        // Assert
+        Assert.Equal(new BlurAnnotationModel(new Rectangle(10, 20, 100, 50)), Assert.Single(_presenter.Annotations));
+    }
+
+    [Fact]
+    public void Blur_ShowsWhileDragging()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Blur);
+
+        // Act
+        _view.Press(10, 10);
+        _view.Move(60, 40);
+
+        // Assert
+        Assert.Equal(new BlurAnnotationModel(new Rectangle(10, 10, 50, 30)), Assert.Single(_view.Annotations));
+        Assert.Empty(_presenter.Annotations);
+    }
+
+    [Fact]
+    public void Blur_Click_LeavesNothing()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Blur);
+
+        // Act
+        _view.Press(10, 10);
+        _view.Release(10, 10);
+
+        // Assert
+        Assert.Empty(_presenter.Annotations);
+    }
+
+    [Fact]
+    public void Blur_IsCopiedAtOnce_SoTheClipboardDoesntKeepWhatItHides()
+    {
+        // Arrange
+        int copies = _view.CopyCount;
+        _view.SelectTool(SnipTool.Blur);
+
+        // Act
+        _view.Press(10, 10);
+        _view.Release(60, 40);
+
+        // Assert
+        Assert.Equal(copies + 1, _view.CopyCount);
+    }
+
+    [Fact]
+    public void BlurTool_HidesTheChoicesItDoesntHave_AndOtherToolsShowThemAgain()
+    {
+        // Act
+        _view.SelectTool(SnipTool.Blur);
+
+        // Assert
+        Assert.False(_view.DrawingChoicesVisible);
+
+        // Act
+        _view.SelectTool(SnipTool.Pen);
+
+        // Assert
+        Assert.True(_view.DrawingChoicesVisible);
+    }
+
+    [Fact]
+    public void BlurTool_IsRememberedLikeTheOthers()
+    {
+        // Act
+        _view.SelectTool(SnipTool.Blur);
+
+        // Assert
+        Assert.Equal(SnipTool.Blur, _store.Saved[^1].Tool);
+    }
+
+    [Fact]
     public void TextOutline_IsOffAtFirst_AndOnlyShownForTheTextTool()
     {
         // Assert: the pen is the first tool
@@ -983,6 +1068,10 @@ public class SnipEditorPresenterTests
             (TransparencyChoices, Transparency) = (transparencies, selected);
 
         public void ShowArrowHeads(SnipArrowHeads? selected) => ArrowHeads = selected;
+
+        public bool DrawingChoicesVisible { get; private set; }
+
+        public void ShowDrawingChoices(bool isVisible) => DrawingChoicesVisible = isVisible;
 
         public void ShowTextOutline(IReadOnlyList<int> widths, SnipTextOutlineModel? outline) =>
             (TextOutlineWidths, TextOutline) = (widths, outline);

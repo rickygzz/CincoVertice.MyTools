@@ -77,6 +77,9 @@ public interface ISnipEditorView
     /// <summary>Shows the transparencies to choose from, in percent, and selects one of them.</summary>
     void ShowTransparencies(IReadOnlyList<int> transparencies, int selected);
 
+    /// <summary>Shows or hides the choices of color, size and transparency, which the blur tool doesn't have.</summary>
+    void ShowDrawingChoices(bool isVisible);
+
     /// <summary>Shows the choice of arrow heads with one selected; null hides it, for the other tools.</summary>
     void ShowArrowHeads(SnipArrowHeads? selected);
 

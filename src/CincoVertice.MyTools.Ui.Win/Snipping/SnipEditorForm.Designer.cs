@@ -43,6 +43,7 @@ partial class SnipEditorForm
         ArrowButton = new ToolStripButton();
         RectangleButton = new ToolStripButton();
         TextButton = new ToolStripButton();
+        BlurButton = new ToolStripButton();
         ToolsSeparator = new ToolStripSeparator();
         ColorDropDownButton = new ToolStripDropDownButton();
         Palette = new ColorPaletteControl();
@@ -76,7 +77,7 @@ partial class SnipEditorForm
         // Tools
         //
         Tools.GripStyle = ToolStripGripStyle.Hidden;
-        Tools.Items.AddRange(new ToolStripItem[] { PenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, ToolsSeparator, ColorDropDownButton, SizeComboBox, TransparencyComboBox, ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton, TextOutlineDropDownButton, TextOutlineWidthComboBox, ColorsSeparator, UndoButton, RedoButton, HistorySeparator, CopyButton, SaveButton });
+        Tools.Items.AddRange(new ToolStripItem[] { PenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, BlurButton, ToolsSeparator, ColorDropDownButton, SizeComboBox, TransparencyComboBox, ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton, TextOutlineDropDownButton, TextOutlineWidthComboBox, ColorsSeparator, UndoButton, RedoButton, HistorySeparator, CopyButton, SaveButton });
         Tools.Location = new Point(0, 0);
         Tools.Name = "Tools";
         Tools.Padding = new Padding(4, 2, 4, 2);
@@ -127,6 +128,15 @@ partial class SnipEditorForm
         TextButton.Text = "Text";
         TextButton.ToolTipText = "Text (T): click where it goes, Enter to end, Shift+Enter for a new line";
         TextButton.Click += ToolButton_Click;
+        //
+        // BlurButton
+        //
+        BlurButton.DisplayStyle = ToolStripItemDisplayStyle.Image;
+        BlurButton.Name = "BlurButton";
+        BlurButton.Tag = "Blur";
+        BlurButton.Text = "Blur";
+        BlurButton.ToolTipText = "Blur (B): drag over what to hide. It can't be recovered from the copied or saved image";
+        BlurButton.Click += ToolButton_Click;
         //
         // ToolsSeparator
         //
@@ -341,6 +351,7 @@ partial class SnipEditorForm
     private ToolStripButton ArrowButton;
     private ToolStripButton RectangleButton;
     private ToolStripButton TextButton;
+    private ToolStripButton BlurButton;
     private ToolStripSeparator ToolsSeparator;
     private ToolStripDropDownButton ColorDropDownButton;
     private ColorPaletteControl Palette;

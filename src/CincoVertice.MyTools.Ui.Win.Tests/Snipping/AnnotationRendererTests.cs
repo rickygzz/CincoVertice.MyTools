@@ -17,7 +17,7 @@ public class AnnotationRendererTests
         using var graphics = Graphics.FromImage(image);
 
         graphics.Clear(Color.White);
-        AnnotationRenderer.Draw(graphics, [text]);
+        AnnotationRenderer.Draw(graphics, [text], image);
 
         return image;
     }

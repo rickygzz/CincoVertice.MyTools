@@ -44,6 +44,9 @@ public static class ToolIcons
             case SnipTool.Text:
                 DrawText(graphics);
                 break;
+            case SnipTool.Blur:
+                DrawBlur(graphics);
+                break;
         }
 
         return icon;
@@ -158,6 +161,19 @@ public static class ToolIcons
 
         path.AddRoundedRectangle(new RectangleF(2, 3.5f, 12, 9), new SizeF(5, 5));
         graphics.DrawPath(pen, path);
+    }
+
+    /// <summary>A square of blocks in different grays, as a blurred picture looks.</summary>
+    private static void DrawBlur(Graphics graphics)
+    {
+        int[] grays = [70, 170, 110, 200, 90, 140, 190, 60, 150];
+
+        for (int i = 0; i < grays.Length; i++)
+        {
+            using var brush = new SolidBrush(Color.FromArgb(grays[i], grays[i], grays[i]));
+
+            graphics.FillRectangle(brush, 2.5f + 3.67f * (i % 3), 2.5f + 3.67f * (i / 3), 3.67f, 3.67f);
+        }
     }
 
     private static void DrawText(Graphics graphics)
