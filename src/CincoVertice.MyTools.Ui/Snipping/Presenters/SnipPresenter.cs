@@ -13,8 +13,16 @@ public sealed class SnipPresenter
     /// <summary>The smallest width and height of a snip, in pixels.</summary>
     public const int MinimumSize = 2;
 
+    /// <summary>
+    ///     How long after opening losing the focus isn't the user switching windows. A window opened from a global hotkey
+    ///     can lose it right away, as it takes it from the application in front, and closing then shows only a flicker.
+    /// </summary>
+    public static readonly TimeSpan FocusGracePeriod = TimeSpan.FromSeconds(1);
+
     private readonly ISnipView _view;
     private readonly Size _screenshotSize;
+    private readonly TimeProvider _time;
+    private readonly long _openedAt;
 
     // Continuations run later, not inside the view's ViewClosed event
     private readonly TaskCompletionSource<Rectangle?> _completion =
@@ -24,15 +32,21 @@ public sealed class SnipPresenter
     private Rectangle? _result;
     private bool _isClosing;
 
-    public SnipPresenter(ISnipView view, Size screenshotSize)
+    /// <param name="view">The view, about to be shown.</param>
+    /// <param name="screenshotSize">The size of the screenshot it shows.</param>
+    /// <param name="time">The clock for <see cref="FocusGracePeriod"/>, which starts now.</param>
+    public SnipPresenter(ISnipView view, Size screenshotSize, TimeProvider time)
     {
         _view = view;
         _screenshotSize = screenshotSize;
+        _time = time;
+        _openedAt = time.GetTimestamp();
 
         _view.SelectionStarted += OnSelectionStarted;
         _view.SelectionMoved += OnSelectionMoved;
         _view.SelectionEnded += OnSelectionEnded;
         _view.CancelRequested += OnCancelRequested;
+        _view.FocusLost += OnFocusLost;
         _view.ViewClosed += OnViewClosed;
     }
 
@@ -85,6 +99,23 @@ public sealed class SnipPresenter
     private void OnCancelRequested(object? sender, EventArgs e)
     {
         Finish(null);
+    }
+
+    private void OnFocusLost(object? sender, EventArgs e)
+    {
+        if (_isClosing)
+        {
+            return;
+        }
+
+        if (_time.GetElapsedTime(_openedAt) < FocusGracePeriod)
+        {
+            _view.TakeFocus();
+        }
+        else
+        {
+            Finish(null);
+        }
     }
 
     private void OnViewClosed(object? sender, EventArgs e)

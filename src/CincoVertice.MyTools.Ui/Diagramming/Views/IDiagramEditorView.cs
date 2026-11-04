@@ -48,6 +48,9 @@ public interface IDiagramEditorView
     /// <summary>Raised with the name of the font the text should have.</summary>
     event EventHandler<string>? FontFamilySelected;
 
+    /// <summary>Raised with how wide the edge around the text's letters should be, in pixels; 0 for none.</summary>
+    event EventHandler<int>? TextOutlineWidthSelected;
+
     event EventHandler<DiagramRouting>? RoutingSelected;
 
     event EventHandler<DiagramArrowHeads>? ArrowHeadsSelected;
@@ -81,8 +84,8 @@ public interface IDiagramEditorView
     /// <summary>Shows the colors to choose from. Called once, before the first <see cref="ShowStyle"/>.</summary>
     void ShowPalette(IReadOnlyList<Color> colors);
 
-    /// <summary>Shows the choices for line widths and font sizes, in pixels. Called once.</summary>
-    void ShowSizes(IReadOnlyList<int> lineWidths, IReadOnlyList<int> fontSizes);
+    /// <summary>Shows the choices for line widths, font sizes and text edges, in pixels. Called once.</summary>
+    void ShowSizes(IReadOnlyList<int> lineWidths, IReadOnlyList<int> fontSizes, IReadOnlyList<int> textOutlineWidths);
 
     /// <summary>Shows the style of what's selected, or of what comes next when nothing is.</summary>
     void ShowStyle(DiagramStyleModel style, DiagramRouting routing, DiagramArrowHeads heads);

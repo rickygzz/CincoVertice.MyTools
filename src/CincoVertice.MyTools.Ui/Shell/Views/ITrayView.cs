@@ -10,6 +10,14 @@ public interface ITrayView
     /// <summary>Raised when the user asks to reload the hotkeys, e.g. with the menu's Reload hotkeys.</summary>
     event EventHandler? ReloadHotkeysRequested;
 
+    /// <summary>Raised when the menu is about to open, since what it shows may have changed elsewhere.</summary>
+    event EventHandler? MenuOpening;
+
+    /// <summary>Raised with what the user asked for with the menu's Start with Windows.</summary>
+    event EventHandler<bool>? StartWithWindowsRequested;
+
+    void ShowStartWithWindows(bool isEnabled);
+
     /// <summary>Fills the Scripts menu with one item per script, in order.</summary>
     void ShowScripts(IReadOnlyList<ScriptMenuItemModel> scripts);
 

@@ -8,4 +8,5 @@ public enum DiagramColorTarget
     Fill,
     Line,
     Text,
+    TextOutline,
 }

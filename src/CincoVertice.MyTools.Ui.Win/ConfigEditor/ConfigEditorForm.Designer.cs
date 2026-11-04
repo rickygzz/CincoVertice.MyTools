@@ -33,6 +33,7 @@ partial class ConfigEditorForm
         ToolStrip = new ToolStrip();
         NewScriptButton = new ToolStripButton();
         SaveButton = new ToolStripButton();
+        ZoomButton = new ToolStripButton();
         MainSplit = new SplitContainer();
         FilesList = new ListBox();
         CodeEditor = new CincoVertice.Common.Ui.Win.Controls.Rtf.CodeTextControl();
@@ -48,7 +49,7 @@ partial class ConfigEditorForm
         // ToolStrip
         //
         ToolStrip.GripStyle = ToolStripGripStyle.Hidden;
-        ToolStrip.Items.AddRange(new ToolStripItem[] { NewScriptButton, SaveButton });
+        ToolStrip.Items.AddRange(new ToolStripItem[] { NewScriptButton, SaveButton, ZoomButton });
         ToolStrip.Location = new Point(0, 0);
         ToolStrip.Name = "ToolStrip";
         ToolStrip.Size = new Size(884, 25);
@@ -70,6 +71,16 @@ partial class ConfigEditorForm
         SaveButton.Text = "Save";
         SaveButton.ToolTipText = "Save (Ctrl+S)";
         SaveButton.Click += SaveButton_Click;
+        //
+        // ZoomButton
+        //
+        ZoomButton.Alignment = ToolStripItemAlignment.Right;
+        ZoomButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
+        ZoomButton.Name = "ZoomButton";
+        ZoomButton.Overflow = ToolStripItemOverflow.Never;
+        ZoomButton.Text = "100%";
+        ZoomButton.ToolTipText = "Ctrl+wheel to zoom. Click, or Ctrl+0, for 100%";
+        ZoomButton.Click += ZoomButton_Click;
         //
         // MainSplit
         //
@@ -108,6 +119,7 @@ partial class ConfigEditorForm
         CodeEditor.TabIndex = 0;
         CodeEditor.Text = "";
         CodeEditor.TextChanged += CodeEditor_TextChanged;
+        CodeEditor.ZoomChanged += CodeEditor_ZoomChanged;
         //
         // ProblemsList
         //
@@ -152,6 +164,7 @@ partial class ConfigEditorForm
     private ToolStrip ToolStrip;
     private ToolStripButton NewScriptButton;
     private ToolStripButton SaveButton;
+    private ToolStripButton ZoomButton;
     private SplitContainer MainSplit;
     private ListBox FilesList;
     private CincoVertice.Common.Ui.Win.Controls.Rtf.CodeTextControl CodeEditor;

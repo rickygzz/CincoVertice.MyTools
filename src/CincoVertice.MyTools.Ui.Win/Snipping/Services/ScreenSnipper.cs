@@ -58,7 +58,7 @@ public sealed class ScreenSnipper
             using (DpiAwarenessScope.PerMonitorV2())
             {
                 overlay = new SnipOverlayForm(screenshot, bounds);
-                presenter = new SnipPresenter(overlay, screenshot.Size);
+                presenter = new SnipPresenter(overlay, screenshot.Size, TimeProvider.System);
                 overlay.Show();
             }
 

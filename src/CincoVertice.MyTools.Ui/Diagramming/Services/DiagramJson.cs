@@ -142,7 +142,9 @@ public static class DiagramJson
         style?.Dashed ?? false,
         ParseColor(style?.TextColor, Color.Black),
         Math.Clamp(style?.FontSize ?? 14, MinFontSize, MaxFontSize),
-        string.IsNullOrWhiteSpace(style?.FontFamily) ? OlderFilesFontFamily : style.FontFamily);
+        string.IsNullOrWhiteSpace(style?.FontFamily) ? OlderFilesFontFamily : style.FontFamily,
+        Math.Clamp(style?.TextOutlineWidth ?? 0, 0, DiagramStyleModel.MaxTextOutlineWidth),
+        ParseColor(style?.TextOutlineColor, DiagramStyleModel.DefaultTextOutlineColor));
 
     private static string? FormatColor(Color color) =>
         color.IsEmpty ? null : $"#{color.R:X2}{color.G:X2}{color.B:X2}";
@@ -198,7 +200,9 @@ public static class DiagramJson
         bool Dashed,
         string? TextColor,
         int FontSize,
-        string? FontFamily)
+        string? FontFamily,
+        int TextOutlineWidth = 0,
+        string? TextOutlineColor = null)
     {
         public static StyleFile From(DiagramStyleModel style) => new(
             FormatColor(style.Fill),
@@ -207,6 +211,8 @@ public static class DiagramJson
             style.Dashed,
             FormatColor(style.TextColor),
             style.FontSize,
-            style.FontFamily);
+            style.FontFamily,
+            style.TextOutlineWidth,
+            FormatColor(style.TextOutlineColor));
     }
 }

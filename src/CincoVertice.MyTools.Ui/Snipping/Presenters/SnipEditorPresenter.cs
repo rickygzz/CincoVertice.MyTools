@@ -41,6 +41,9 @@ public sealed class SnipEditorPresenter
     /// <summary>The transparencies to choose from, in percent; 100 would be invisible.</summary>
     public static IReadOnlyList<int> Transparencies { get; } = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90];
 
+    /// <summary>The widths of the edge around a text's letters to choose from, in pixels; 0 is no edge.</summary>
+    public static IReadOnlyList<int> TextOutlineWidths { get; } = [0, 1, 2, 3, 4, 5, 6, 8, 10, 12];
+
     private readonly ISnipEditorView _view;
     private readonly TimeProvider _timeProvider;
     private readonly ISnipEditorSettingsStore _settingsStore;
@@ -54,6 +57,9 @@ public sealed class SnipEditorPresenter
         [SnipTool.Arrow] = new SnipToolSettingsModel(4, 0, Palette[0]),
         [SnipTool.Rectangle] = new SnipToolSettingsModel(4, 0, Palette[0]),
         [SnipTool.Text] = new SnipToolSettingsModel(24, 0, Palette[0]),
+
+        // Not used: a blur has no color, size or transparency
+        [SnipTool.Blur] = new SnipToolSettingsModel(4, 0, Palette[0]),
     };
 
     // Colors picked with More colors that aren't in the palette, newest first, at most MaxCustomColors
@@ -61,6 +67,9 @@ public sealed class SnipEditorPresenter
 
     private SnipTool _tool = SnipTool.Pen;
     private SnipArrowHeads _arrowHeads = SnipArrowHeads.End;
+
+    // Off until a width is chosen; white shows on most of what a text is written over
+    private SnipTextOutlineModel _textOutline = new(0, Rgb(0xFFFFFF));
 
     // The drag in progress: where it started, the points of a freehand line, and what it would add
     private Point? _start;
@@ -91,6 +100,9 @@ public sealed class SnipEditorPresenter
         _view.SizeSelected += OnSizeSelected;
         _view.TransparencySelected += OnTransparencySelected;
         _view.ArrowHeadsSelected += OnArrowHeadsSelected;
+        _view.TextOutlineWidthSelected += OnTextOutlineWidthSelected;
+        _view.TextOutlineColorSelected += OnTextOutlineColorSelected;
+        _view.MoreTextOutlineColorsRequested += OnMoreTextOutlineColorsRequested;
         _view.TextCommitted += OnTextCommitted;
         _view.UndoRequested += OnUndoRequested;
         _view.RedoRequested += OnRedoRequested;
@@ -147,6 +159,13 @@ public sealed class SnipEditorPresenter
             _arrowHeads = saved.ArrowHeads;
         }
 
+        if (saved.TextOutline is { } outline)
+        {
+            _textOutline = new SnipTextOutlineModel(
+                TextOutlineWidths.Contains(outline.Width) ? outline.Width : _textOutline.Width,
+                outline.Color.IsEmpty ? _textOutline.Color : Solid(outline.Color));
+        }
+
         foreach (var (tool, settings) in saved.Tools)
         {
             if (!_settings.TryGetValue(tool, out SnipToolSettingsModel? defaults))
@@ -174,7 +193,8 @@ public sealed class SnipEditorPresenter
             _tool,
             _settings.ToDictionary(),
             [.. _customColors],
-            _arrowHeads));
+            _arrowHeads,
+            _textOutline));
     }
 
     /// <summary>
@@ -205,10 +225,17 @@ public sealed class SnipEditorPresenter
     private void ShowTool()
     {
         _view.ShowTool(_tool);
+        _view.ShowDrawingChoices(_tool != SnipTool.Blur);
         _view.ShowColor(Settings.Color);
         _view.ShowSizes(SizesOf(_tool), Settings.Size);
         _view.ShowTransparencies(Transparencies, Settings.Transparency);
         _view.ShowArrowHeads(_tool == SnipTool.Arrow ? _arrowHeads : null);
+        ShowTextOutline();
+    }
+
+    private void ShowTextOutline()
+    {
+        _view.ShowTextOutline(TextOutlineWidths, _tool == SnipTool.Text ? _textOutline : null);
     }
 
     /// <summary>The color without transparency, compared by its value only, as palette colors are.</summary>
@@ -288,9 +315,18 @@ public sealed class SnipEditorPresenter
 
     private void OnMoreColorsRequested(object? sender, EventArgs e)
     {
-        if (_view.AskColor(Settings.Color, [.. _customColors]) is not Color color)
+        if (AskColor(Settings.Color) is Color color)
         {
-            return;
+            OnColorSelected(sender, color);
+        }
+    }
+
+    /// <returns>The color picked, now kept among the custom colors; null when the user cancels.</returns>
+    private Color? AskColor(Color current)
+    {
+        if (_view.AskColor(current, [.. _customColors]) is not Color color)
+        {
+            return null;
         }
 
         // Kept in the palette, so it's one click away next time, in this editor and the next ones
@@ -299,7 +335,7 @@ public sealed class SnipEditorPresenter
             _view.ShowPalette(Palette, [.. _customColors]);
         }
 
-        OnColorSelected(sender, color);
+        return color;
     }
 
     private void OnSizeSelected(object? sender, int size)
@@ -331,6 +367,33 @@ public sealed class SnipEditorPresenter
         SaveSettings();
     }
 
+    private void OnTextOutlineWidthSelected(object? sender, int width)
+    {
+        if (!TextOutlineWidths.Contains(width))
+        {
+            return;
+        }
+
+        _textOutline = _textOutline with { Width = width };
+        ShowTextOutline();
+        SaveSettings();
+    }
+
+    private void OnTextOutlineColorSelected(object? sender, Color color)
+    {
+        _textOutline = _textOutline with { Color = Solid(color) };
+        ShowTextOutline();
+        SaveSettings();
+    }
+
+    private void OnMoreTextOutlineColorsRequested(object? sender, EventArgs e)
+    {
+        if (AskColor(_textOutline.Color) is Color color)
+        {
+            OnTextOutlineColorSelected(sender, color);
+        }
+    }
+
     private void OnTextCommitted(object? sender, TextInputModel input)
     {
         // Spaces at the end would only make the text wider; an empty text adds nothing
@@ -338,7 +401,12 @@ public sealed class SnipEditorPresenter
 
         if (text.Length > 0)
         {
-            Add(new TextAnnotationModel(input.Location, text, DrawingColor, Settings.Size));
+            Add(new TextAnnotationModel(
+                input.Location,
+                text,
+                DrawingColor,
+                Settings.Size,
+                _textOutline.Width > 0 ? _textOutline : null));
         }
     }
 
@@ -392,17 +460,20 @@ public sealed class SnipEditorPresenter
         {
             SnipTool.Arrow => new ArrowAnnotationModel(start, end, color, width, _arrowHeads),
             SnipTool.Rectangle => new RectangleAnnotationModel(FromCorners(start, end), color, width),
+            SnipTool.Blur => new BlurAnnotationModel(FromCorners(start, end)),
             _ => new StrokeAnnotationModel([.. _points], color, width),
         };
     }
 
     /// <summary>
-    ///     A click with the pen or the highlighter leaves a dot; with the arrow or the rectangle it leaves nothing.
+    ///     A click with the pen or the highlighter leaves a dot; with the arrow, the rectangle or the blur it leaves
+    ///     nothing.
     /// </summary>
     private static bool IsVisible(AnnotationModel annotation) => annotation switch
     {
         ArrowAnnotationModel arrow => Math.Abs(arrow.To.X - arrow.From.X) + Math.Abs(arrow.To.Y - arrow.From.Y) >= 4,
         RectangleAnnotationModel rectangle => rectangle.Bounds.Width >= 2 && rectangle.Bounds.Height >= 2,
+        BlurAnnotationModel blur => blur.Bounds.Width >= 2 && blur.Bounds.Height >= 2,
         _ => true,
     };
 

@@ -19,6 +19,7 @@ partial class SnipEditorForm
             _snip.Dispose();
             _textFont?.Dispose();
             _colorSwatch?.Dispose();
+            _textOutlineSwatch?.Dispose();
 
             foreach (Image image in _images)
             {
@@ -42,6 +43,7 @@ partial class SnipEditorForm
         ArrowButton = new ToolStripButton();
         RectangleButton = new ToolStripButton();
         TextButton = new ToolStripButton();
+        BlurButton = new ToolStripButton();
         ToolsSeparator = new ToolStripSeparator();
         ColorDropDownButton = new ToolStripDropDownButton();
         Palette = new ColorPaletteControl();
@@ -52,6 +54,11 @@ partial class SnipEditorForm
         ArrowHeadEndButton = new ToolStripButton();
         ArrowHeadStartButton = new ToolStripButton();
         ArrowHeadsBothButton = new ToolStripButton();
+        TextOutlineDropDownButton = new ToolStripDropDownButton();
+        TextOutlinePalette = new ColorPaletteControl();
+        TextOutlinePaletteHost = new ToolStripControlHost(TextOutlinePalette);
+        MoreTextOutlineColorsMenuItem = new ToolStripMenuItem();
+        TextOutlineWidthComboBox = new ToolStripComboBox();
         ColorsSeparator = new ToolStripSeparator();
         UndoButton = new ToolStripButton();
         RedoButton = new ToolStripButton();
@@ -70,7 +77,7 @@ partial class SnipEditorForm
         // Tools
         //
         Tools.GripStyle = ToolStripGripStyle.Hidden;
-        Tools.Items.AddRange(new ToolStripItem[] { PenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, ToolsSeparator, ColorDropDownButton, SizeComboBox, TransparencyComboBox, ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton, ColorsSeparator, UndoButton, RedoButton, HistorySeparator, CopyButton, SaveButton });
+        Tools.Items.AddRange(new ToolStripItem[] { PenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, BlurButton, ToolsSeparator, ColorDropDownButton, SizeComboBox, TransparencyComboBox, ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton, TextOutlineDropDownButton, TextOutlineWidthComboBox, ColorsSeparator, UndoButton, RedoButton, HistorySeparator, CopyButton, SaveButton });
         Tools.Location = new Point(0, 0);
         Tools.Name = "Tools";
         Tools.Padding = new Padding(4, 2, 4, 2);
@@ -121,6 +128,15 @@ partial class SnipEditorForm
         TextButton.Text = "Text";
         TextButton.ToolTipText = "Text (T): click where it goes, Enter to end, Shift+Enter for a new line";
         TextButton.Click += ToolButton_Click;
+        //
+        // BlurButton
+        //
+        BlurButton.DisplayStyle = ToolStripItemDisplayStyle.Image;
+        BlurButton.Name = "BlurButton";
+        BlurButton.Tag = "Blur";
+        BlurButton.Text = "Blur";
+        BlurButton.ToolTipText = "Blur (B): drag over what to hide. It can't be recovered from the copied or saved image";
+        BlurButton.Click += ToolButton_Click;
         //
         // ToolsSeparator
         //
@@ -191,6 +207,37 @@ partial class SnipEditorForm
         ArrowHeadsBothButton.Text = "Heads at both ends";
         ArrowHeadsBothButton.ToolTipText = "Arrow heads at both ends";
         ArrowHeadsBothButton.Click += ArrowHeadsButton_Click;
+        //
+        // TextOutlineDropDownButton
+        //
+        TextOutlineDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { TextOutlinePaletteHost, MoreTextOutlineColorsMenuItem });
+        TextOutlineDropDownButton.Name = "TextOutlineDropDownButton";
+        TextOutlineDropDownButton.Text = "Edge";
+        TextOutlineDropDownButton.ToolTipText = "Color of the edge around the text's letters";
+        //
+        // TextOutlinePalette
+        //
+        TextOutlinePalette.Name = "TextOutlinePalette";
+        TextOutlinePalette.ColorPicked += TextOutlinePalette_ColorPicked;
+        //
+        // TextOutlinePaletteHost
+        //
+        TextOutlinePaletteHost.AutoSize = true;
+        TextOutlinePaletteHost.Name = "TextOutlinePaletteHost";
+        //
+        // MoreTextOutlineColorsMenuItem
+        //
+        MoreTextOutlineColorsMenuItem.Name = "MoreTextOutlineColorsMenuItem";
+        MoreTextOutlineColorsMenuItem.Text = "More colors...";
+        MoreTextOutlineColorsMenuItem.Click += MoreTextOutlineColorsMenuItem_Click;
+        //
+        // TextOutlineWidthComboBox
+        //
+        TextOutlineWidthComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+        TextOutlineWidthComboBox.Name = "TextOutlineWidthComboBox";
+        TextOutlineWidthComboBox.Size = new Size(70, 23);
+        TextOutlineWidthComboBox.ToolTipText = "Width of the edge around the text's letters";
+        TextOutlineWidthComboBox.SelectedIndexChanged += TextOutlineWidthComboBox_SelectedIndexChanged;
         //
         // ColorsSeparator
         //
@@ -304,6 +351,7 @@ partial class SnipEditorForm
     private ToolStripButton ArrowButton;
     private ToolStripButton RectangleButton;
     private ToolStripButton TextButton;
+    private ToolStripButton BlurButton;
     private ToolStripSeparator ToolsSeparator;
     private ToolStripDropDownButton ColorDropDownButton;
     private ColorPaletteControl Palette;
@@ -314,6 +362,11 @@ partial class SnipEditorForm
     private ToolStripButton ArrowHeadEndButton;
     private ToolStripButton ArrowHeadStartButton;
     private ToolStripButton ArrowHeadsBothButton;
+    private ToolStripDropDownButton TextOutlineDropDownButton;
+    private ColorPaletteControl TextOutlinePalette;
+    private ToolStripControlHost TextOutlinePaletteHost;
+    private ToolStripMenuItem MoreTextOutlineColorsMenuItem;
+    private ToolStripComboBox TextOutlineWidthComboBox;
     private ToolStripSeparator ColorsSeparator;
     private ToolStripButton UndoButton;
     private ToolStripButton RedoButton;

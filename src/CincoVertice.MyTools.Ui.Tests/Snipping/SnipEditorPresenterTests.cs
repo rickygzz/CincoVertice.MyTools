@@ -682,6 +682,226 @@ public class SnipEditorPresenterTests
     private static IReadOnlyList<Point> Points(AnnotationModel annotation) =>
         Assert.IsType<StrokeAnnotationModel>(annotation).Points;
 
+    [Fact]
+    public void Blur_DragHidesThatArea_WhicheverWayItsDragged()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Blur);
+
+        // Act
+        _view.Press(110, 70);
+        _view.Move(50, 50);
+        _view.Release(10, 20);
+
+        // Assert
+        Assert.Equal(new BlurAnnotationModel(new Rectangle(10, 20, 100, 50)), Assert.Single(_presenter.Annotations));
+    }
+
+    [Fact]
+    public void Blur_ShowsWhileDragging()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Blur);
+
+        // Act
+        _view.Press(10, 10);
+        _view.Move(60, 40);
+
+        // Assert
+        Assert.Equal(new BlurAnnotationModel(new Rectangle(10, 10, 50, 30)), Assert.Single(_view.Annotations));
+        Assert.Empty(_presenter.Annotations);
+    }
+
+    [Fact]
+    public void Blur_Click_LeavesNothing()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Blur);
+
+        // Act
+        _view.Press(10, 10);
+        _view.Release(10, 10);
+
+        // Assert
+        Assert.Empty(_presenter.Annotations);
+    }
+
+    [Fact]
+    public void Blur_IsCopiedAtOnce_SoTheClipboardDoesntKeepWhatItHides()
+    {
+        // Arrange
+        int copies = _view.CopyCount;
+        _view.SelectTool(SnipTool.Blur);
+
+        // Act
+        _view.Press(10, 10);
+        _view.Release(60, 40);
+
+        // Assert
+        Assert.Equal(copies + 1, _view.CopyCount);
+    }
+
+    [Fact]
+    public void BlurTool_HidesTheChoicesItDoesntHave_AndOtherToolsShowThemAgain()
+    {
+        // Act
+        _view.SelectTool(SnipTool.Blur);
+
+        // Assert
+        Assert.False(_view.DrawingChoicesVisible);
+
+        // Act
+        _view.SelectTool(SnipTool.Pen);
+
+        // Assert
+        Assert.True(_view.DrawingChoicesVisible);
+    }
+
+    [Fact]
+    public void BlurTool_IsRememberedLikeTheOthers()
+    {
+        // Act
+        _view.SelectTool(SnipTool.Blur);
+
+        // Assert
+        Assert.Equal(SnipTool.Blur, _store.Saved[^1].Tool);
+    }
+
+    [Fact]
+    public void TextOutline_IsOffAtFirst_AndOnlyShownForTheTextTool()
+    {
+        // Assert: the pen is the first tool
+        Assert.Null(_view.TextOutline);
+
+        // Act
+        _view.SelectTool(SnipTool.Text);
+
+        // Assert
+        Assert.Equal(new SnipTextOutlineModel(0, Solid(Color.White)), _view.TextOutline);
+        Assert.Equal(SnipEditorPresenter.TextOutlineWidths, _view.TextOutlineWidths);
+
+        // Act
+        _view.SelectTool(SnipTool.Arrow);
+
+        // Assert
+        Assert.Null(_view.TextOutline);
+    }
+
+    [Fact]
+    public void Text_WithoutAnOutlineWidth_HasNoOutline()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Text);
+        _view.SelectTextOutlineColor(Color.Blue);
+
+        // Act
+        _view.CommitText(1, 2, "hi");
+
+        // Assert
+        Assert.Null(Assert.IsType<TextAnnotationModel>(_presenter.Annotations[^1]).Outline);
+    }
+
+    [Fact]
+    public void Text_GetsTheChosenOutline_AndKeepsItWhenTheChoiceChanges()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Text);
+        _view.SelectTextOutlineWidth(3);
+        _view.SelectTextOutlineColor(Color.Blue);
+
+        // Act
+        _view.CommitText(1, 2, "first");
+        _view.SelectTextOutlineWidth(0);
+        _view.CommitText(1, 2, "second");
+
+        // Assert
+        Assert.Equal(new SnipTextOutlineModel(3, Solid(Color.Blue)), Assert.IsType<TextAnnotationModel>(_presenter.Annotations[0]).Outline);
+        Assert.Null(Assert.IsType<TextAnnotationModel>(_presenter.Annotations[1]).Outline);
+    }
+
+    [Fact]
+    public void TextOutlineChoices_AreShownAndSaved()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Text);
+
+        // Act
+        _view.SelectTextOutlineWidth(4);
+        _view.SelectTextOutlineColor(Color.Blue);
+
+        // Assert
+        var expected = new SnipTextOutlineModel(4, Solid(Color.Blue));
+        Assert.Equal(expected, _view.TextOutline);
+        Assert.Equal(expected, _store.Saved[^1].TextOutline);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(7)]
+    public void TextOutlineWidth_ThatIsntOffered_IsIgnored(int width)
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Text);
+
+        // Act
+        _view.SelectTextOutlineWidth(width);
+
+        // Assert
+        Assert.Equal(0, _view.TextOutline!.Width);
+    }
+
+    [Fact]
+    public void MoreTextOutlineColors_StartsFromTheOutlineColor_AndKeepsTheCustomColor()
+    {
+        // Arrange
+        Color picked = Color.FromArgb(255, 18, 52, 86);
+        _view.SelectTool(SnipTool.Text);
+        _view.SelectTextOutlineColor(Color.Blue);
+        _view.ColorToPick = picked;
+
+        // Act
+        _view.RequestMoreTextOutlineColors();
+
+        // Assert
+        Assert.Equal(Solid(Color.Blue), _view.AskedFrom);
+        Assert.Equal(picked, _view.TextOutline!.Color);
+        Assert.Equal([picked], _view.CustomColors);
+    }
+
+    [Fact]
+    public void MoreTextOutlineColors_Cancelled_KeepsTheColor()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Text);
+        _view.SelectTextOutlineColor(Color.Blue);
+
+        // Act
+        _view.RequestMoreTextOutlineColors();
+
+        // Assert
+        Assert.Equal(Solid(Color.Blue), _view.TextOutline!.Color);
+    }
+
+    [Theory]
+    [InlineData(4, 4)]
+    [InlineData(7, 0)]
+    public void SavedTextOutline_IsUsed_OrItsDefaultWhenNotOffered(int saved, int expected)
+    {
+        // Arrange
+        var view = new FakeSnipEditorView();
+        var settings = new SnipEditorSettingsModel(
+            SnipTool.Text,
+            new Dictionary<SnipTool, SnipToolSettingsModel>(),
+            [],
+            TextOutline: new SnipTextOutlineModel(saved, Color.Empty));
+
+        // Act
+        new SnipEditorPresenter(view, _time, new FakeSettingsStore(settings)).Start();
+
+        // Assert: an unknown color keeps the default too
+        Assert.Equal(new SnipTextOutlineModel(expected, Solid(Color.White)), view.TextOutline);
+    }
+
     private void Draw(int at)
     {
         _view.Press(at, at);
@@ -724,6 +944,12 @@ public class SnipEditorPresenterTests
 
         public event EventHandler<SnipArrowHeads>? ArrowHeadsSelected;
 
+        public event EventHandler<int>? TextOutlineWidthSelected;
+
+        public event EventHandler<Color>? TextOutlineColorSelected;
+
+        public event EventHandler? MoreTextOutlineColorsRequested;
+
         public event EventHandler<TextInputModel>? TextCommitted;
 
         public event EventHandler? UndoRequested;
@@ -763,6 +989,10 @@ public class SnipEditorPresenterTests
 
         public SnipArrowHeads? ArrowHeads { get; private set; }
 
+        public IReadOnlyList<int> TextOutlineWidths { get; private set; } = [];
+
+        public SnipTextOutlineModel? TextOutline { get; private set; }
+
         public IReadOnlyList<AnnotationModel> Annotations { get; private set; } = [];
 
         public bool CanUndo { get; private set; }
@@ -798,6 +1028,12 @@ public class SnipEditorPresenterTests
 
         public void SelectArrowHeads(SnipArrowHeads heads) => ArrowHeadsSelected?.Invoke(this, heads);
 
+        public void SelectTextOutlineWidth(int width) => TextOutlineWidthSelected?.Invoke(this, width);
+
+        public void SelectTextOutlineColor(Color color) => TextOutlineColorSelected?.Invoke(this, color);
+
+        public void RequestMoreTextOutlineColors() => MoreTextOutlineColorsRequested?.Invoke(this, EventArgs.Empty);
+
         public void CommitText(int x, int y, string text) =>
             TextCommitted?.Invoke(this, new TextInputModel(new Point(x, y), text));
 
@@ -832,6 +1068,13 @@ public class SnipEditorPresenterTests
             (TransparencyChoices, Transparency) = (transparencies, selected);
 
         public void ShowArrowHeads(SnipArrowHeads? selected) => ArrowHeads = selected;
+
+        public bool DrawingChoicesVisible { get; private set; }
+
+        public void ShowDrawingChoices(bool isVisible) => DrawingChoicesVisible = isVisible;
+
+        public void ShowTextOutline(IReadOnlyList<int> widths, SnipTextOutlineModel? outline) =>
+            (TextOutlineWidths, TextOutline) = (widths, outline);
 
         public void ShowAnnotations(IReadOnlyList<AnnotationModel> annotations) => Annotations = annotations;
 

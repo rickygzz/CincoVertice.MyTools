@@ -48,6 +48,7 @@ public static class UiWinSetupExtensions
 
         services.AddSingleton<GlobalHotkeyService>();
         services.AddSingleton<IHotkeyRegistrar>(sp => sp.GetRequiredService<GlobalHotkeyService>());
+        services.AddSingleton<IStartWithWindows>(_ => StartWithWindowsService.ForCurrentUser());
         services.AddSingleton<AppIconService>();
         services.AddSingleton<MouseMoveSimulator>();
         services.AddSingleton<CodeReviewWindowService>();

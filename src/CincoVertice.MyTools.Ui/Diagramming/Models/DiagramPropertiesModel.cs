@@ -19,6 +19,8 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 /// <param name="Routing">How the selected connectors go between shapes.</param>
 /// <param name="Heads">Which of their ends have a head.</param>
 /// <param name="FontFamily">The font of the text.</param>
+/// <param name="TextOutlineWidth">The edge around the text's letters, in pixels; 0 for none.</param>
+/// <param name="TextOutlineColor">The color of that edge.</param>
 public sealed record DiagramPropertiesModel(
     string Title,
     Rectangle? Bounds = null,
@@ -32,4 +34,6 @@ public sealed record DiagramPropertiesModel(
     string? Text = null,
     DiagramRouting? Routing = null,
     DiagramArrowHeads? Heads = null,
-    string? FontFamily = null);
+    string? FontFamily = null,
+    int? TextOutlineWidth = null,
+    Color? TextOutlineColor = null);

@@ -45,6 +45,86 @@ public class DiagramEditorPresenterTests
     private void ClickEmpty() => _view.Click(5000, 5000);
 
     [Fact]
+    public void TextOutline_IsOffAtFirst()
+    {
+        // Act
+        DiagramShapeModel shape = AddShape(100, 100);
+
+        // Assert
+        Assert.Equal(0, shape.Style.TextOutlineWidth);
+        Assert.Equal(DiagramStyleModel.DefaultTextOutlineColor, shape.Style.TextOutlineColor);
+        Assert.Equal(0, _view.Properties!.TextOutlineWidth);
+        Assert.Equal(DiagramStyleModel.DefaultTextOutlineColor, _view.Properties.TextOutlineColor);
+    }
+
+    [Fact]
+    public void TextOutlineChoices_ChangeTheSelection_AndCanBeUndone()
+    {
+        // Arrange
+        Color blue = Color.FromArgb(255, 0, 0, 255);
+        AddShape(100, 100);
+
+        // Act
+        _view.SelectTextOutlineWidth(3);
+        _view.SelectColor(DiagramColorTarget.TextOutline, Color.Blue);
+
+        // Assert
+        DiagramStyleModel style = Diagram.Shapes[0].Style;
+        Assert.Equal((3, blue), (style.TextOutlineWidth, style.TextOutlineColor));
+        Assert.Equal((3, blue), (_view.ShownStyle!.TextOutlineWidth, _view.ShownStyle.TextOutlineColor));
+        Assert.Equal(3, _view.Properties!.TextOutlineWidth);
+
+        // Act
+        _view.Command(DiagramCommand.Undo);
+
+        // Assert: the color was the last step, and the width stays
+        Assert.Equal(3, Diagram.Shapes[0].Style.TextOutlineWidth);
+        Assert.Equal(DiagramStyleModel.DefaultTextOutlineColor, Diagram.Shapes[0].Style.TextOutlineColor);
+    }
+
+    [Fact]
+    public void TextOutline_ChosenWithNothingSelected_GoesToNewShapes_AndIsSaved()
+    {
+        // Act
+        _view.SelectTextOutlineWidth(2);
+
+        // Assert
+        Assert.Equal(2, AddShape(100, 100).Style.TextOutlineWidth);
+        Assert.Equal(2, _settings.Saved[^1].Style.TextOutlineWidth);
+    }
+
+    [Theory]
+    [InlineData(-5, 0)]
+    [InlineData(1000, DiagramStyleModel.MaxTextOutlineWidth)]
+    public void TextOutlineWidth_IsKeptInRange(int width, int expected)
+    {
+        // Arrange
+        AddShape(100, 100);
+
+        // Act
+        _view.SelectTextOutlineWidth(width);
+
+        // Assert
+        Assert.Equal(expected, Diagram.Shapes[0].Style.TextOutlineWidth);
+    }
+
+    [Fact]
+    public void MoreColors_ForTheTextOutline_StartsFromItAndChangesIt()
+    {
+        // Arrange
+        Color picked = Color.FromArgb(255, 18, 52, 86);
+        AddShape(100, 100);
+        _view.ColorToPick = picked;
+
+        // Act
+        _view.RequestMoreColors(DiagramColorTarget.TextOutline);
+
+        // Assert
+        Assert.Equal(DiagramStyleModel.DefaultTextOutlineColor, _view.AskedColorFrom);
+        Assert.Equal(picked, Diagram.Shapes[0].Style.TextOutlineColor);
+    }
+
+    [Fact]
     public void Start_ShowsTheChoicesAndAnEmptyDiagram()
     {
         Assert.NotEmpty(_view.Palette);
@@ -2857,6 +2937,8 @@ public class DiagramEditorPresenterTests
 
         public event EventHandler<string>? FontFamilySelected;
 
+        public event EventHandler<int>? TextOutlineWidthSelected;
+
         public event EventHandler<DiagramRouting>? RoutingSelected;
 
         public event EventHandler<DiagramArrowHeads>? ArrowHeadsSelected;
@@ -2992,6 +3074,8 @@ public class DiagramEditorPresenterTests
 
         public void SelectFontFamily(string fontFamily) => FontFamilySelected?.Invoke(this, fontFamily);
 
+        public void SelectTextOutlineWidth(int width) => TextOutlineWidthSelected?.Invoke(this, width);
+
         public void SelectRouting(DiagramRouting routing) => RoutingSelected?.Invoke(this, routing);
 
         public void SelectHeads(DiagramArrowHeads heads) => ArrowHeadsSelected?.Invoke(this, heads);
@@ -3021,7 +3105,7 @@ public class DiagramEditorPresenterTests
 
         public void ShowPalette(IReadOnlyList<Color> colors) => Palette = colors;
 
-        public void ShowSizes(IReadOnlyList<int> lineWidths, IReadOnlyList<int> fontSizes)
+        public void ShowSizes(IReadOnlyList<int> lineWidths, IReadOnlyList<int> fontSizes, IReadOnlyList<int> textOutlineWidths)
         {
         }
 
@@ -3045,7 +3129,14 @@ public class DiagramEditorPresenterTests
         public void BeginTextEdit(Rectangle bounds, string text, int fontSize, string fontFamily, Color color) =>
             (TextBounds, TextFontSize, TextFontFamily) = (bounds, fontSize, fontFamily);
 
-        public Color? AskColor(Color current) => ColorToPick;
+        public Color? AskedColorFrom { get; private set; }
+
+        public Color? AskColor(Color current)
+        {
+            AskedColorFrom = current;
+
+            return ColorToPick;
+        }
 
         public string? AskSavePath(string suggestedFileName)
         {

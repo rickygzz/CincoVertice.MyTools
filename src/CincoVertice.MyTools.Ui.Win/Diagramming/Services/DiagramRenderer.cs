@@ -208,10 +208,47 @@ public static class DiagramRenderer
             FormatFlags = StringFormatFlags.NoClip | StringFormatFlags.MeasureTrailingSpaces,
         };
 
+        if (style.TextOutlineWidth > 0)
+        {
+            DrawOutlinedLines(graphics, block, style, font, brush, format);
+
+            return;
+        }
+
         for (int i = 0; i < block.Lines.Count; i++)
         {
             graphics.DrawString(block.Lines[i], font, brush, block.CenterX, block.Top + block.LineHeight * i, format);
         }
+    }
+
+    /// <summary>The letters as a path, filled from the same path so they line up with their edge.</summary>
+    private static void DrawOutlinedLines(
+        Graphics graphics,
+        DiagramTextBlockModel block,
+        DiagramStyleModel style,
+        Font font,
+        Brush brush,
+        StringFormat format)
+    {
+        // Winding: a letter can be made of overlapping pieces, and the default fill leaves a hole where they overlap
+        using var path = new GraphicsPath(FillMode.Winding);
+
+        for (int i = 0; i < block.Lines.Count; i++)
+        {
+            path.AddString(
+                block.Lines[i],
+                font.FontFamily,
+                (int)font.Style,
+                font.Size,
+                new PointF(block.CenterX, block.Top + block.LineHeight * i),
+                format);
+        }
+
+        // Twice as wide, since the letters cover the inner half of the line
+        using var pen = new Pen(style.TextOutlineColor, style.TextOutlineWidth * 2) { LineJoin = LineJoin.Round };
+
+        graphics.DrawPath(pen, path);
+        graphics.FillPath(brush, path);
     }
 
     private static void DrawOverlay(Graphics graphics, DiagramSceneModel scene)

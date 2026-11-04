@@ -154,6 +154,13 @@ public partial class ConfigEditorForm : Form, IConfigEditorView
             return true;
         }
 
+        if (keyData is (Keys.Control | Keys.D0) or (Keys.Control | Keys.NumPad0))
+        {
+            CodeEditor.ResetZoom();
+
+            return true;
+        }
+
         return base.ProcessCmdKey(ref msg, keyData);
     }
 
@@ -186,6 +193,17 @@ public partial class ConfigEditorForm : Form, IConfigEditorView
     {
         EditedTimer.Stop();
         TextEdited?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void CodeEditor_ZoomChanged(object? sender, EventArgs e)
+    {
+        ZoomButton.Text = $"{CodeEditor.ZoomPercent}%";
+    }
+
+    private void ZoomButton_Click(object? sender, EventArgs e)
+    {
+        CodeEditor.ResetZoom();
+        CodeEditor.Focus();
     }
 
     private void SaveButton_Click(object? sender, EventArgs e) => SaveRequested?.Invoke(this, EventArgs.Empty);
