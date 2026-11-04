@@ -1,5 +1,6 @@
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.Common.WinApi.Libs.Enums;
 using CincoVertice.MyTools.Ui.Snipping.Views;
 using CincoVertice.MyTools.Ui.Win.Behaviors;
@@ -48,6 +49,8 @@ public partial class SnipOverlayForm : Form, ISnipView
 
     public event EventHandler? CancelRequested;
 
+    public event EventHandler? FocusLost;
+
     public event EventHandler? ViewClosed;
 
     public void ShowSelection(Rectangle selection, string sizeText)
@@ -67,6 +70,19 @@ public partial class SnipOverlayForm : Form, ISnipView
     {
         Invalidate(PaintedArea());
         _selection = null;
+    }
+
+    public void TakeFocus()
+    {
+        // Later: this comes from losing the focus, and Windows is still in the middle of changing it
+        BeginInvoke(() =>
+        {
+            if (!IsDisposed)
+            {
+                WindowHelper.ForceForeground(Handle);
+                Activate();
+            }
+        });
     }
 
     protected override void WndProc(ref Message m)
@@ -195,7 +211,7 @@ public partial class SnipOverlayForm : Form, ISnipView
 
     private void SnipOverlayForm_Deactivate(object? sender, EventArgs e)
     {
-        CancelRequested?.Invoke(this, EventArgs.Empty);
+        FocusLost?.Invoke(this, EventArgs.Empty);
     }
 
     private void SnipOverlayForm_FormClosed(object? sender, FormClosedEventArgs e)

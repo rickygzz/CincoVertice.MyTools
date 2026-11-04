@@ -8,11 +8,96 @@ namespace CincoVertice.MyTools.Ui.Tests.Snipping;
 public class SnipPresenterTests
 {
     private readonly FakeSnipView _view = new();
+    private readonly MovableTimeProvider _time = new();
     private readonly SnipPresenter _presenter;
 
     public SnipPresenterTests()
     {
-        _presenter = new SnipPresenter(_view, new Size(1000, 500));
+        _presenter = new SnipPresenter(_view, new Size(1000, 500), _time);
+    }
+
+    [Fact]
+    public void FocusLost_RightAfterOpening_TakesItBack_AndStaysOpen()
+    {
+        // Act: as when a window opened from a hotkey takes the focus from the application in front
+        _view.LoseFocus();
+
+        // Assert
+        Assert.Equal(1, _view.TakeFocusCount);
+        Assert.Equal(0, _view.CloseCount);
+        Assert.False(_presenter.Completion.IsCompleted);
+    }
+
+    [Fact]
+    public void FocusLost_SeveralTimesRightAfterOpening_KeepsTakingItBack()
+    {
+        // Act
+        _view.LoseFocus();
+        _time.Advance(TimeSpan.FromMilliseconds(100));
+        _view.LoseFocus();
+
+        // Assert
+        Assert.Equal(2, _view.TakeFocusCount);
+        Assert.Equal(0, _view.CloseCount);
+    }
+
+    [Fact]
+    public async Task FocusLost_Later_IsTheUserSwitchingWindows_AndCancels()
+    {
+        // Arrange
+        _time.Advance(SnipPresenter.FocusGracePeriod);
+
+        // Act
+        _view.LoseFocus();
+
+        // Assert
+        Assert.Null(await _presenter.Completion);
+        Assert.Equal(1, _view.CloseCount);
+        Assert.Equal(0, _view.TakeFocusCount);
+    }
+
+    [Fact]
+    public void FocusLost_RightAfterOpening_KeepsADragGoing()
+    {
+        // Arrange
+        _view.Start(10, 10);
+
+        // Act
+        _view.LoseFocus();
+        _view.Move(100, 100);
+
+        // Assert
+        Assert.Equal(new Rectangle(10, 10, 90, 90), _view.Selection);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(5000)]
+    public async Task FocusLost_WhileClosing_KeepsTheSnip_AndDoesntTakeItBack(int milliseconds)
+    {
+        // Arrange: a closing form loses the focus
+        _time.Advance(TimeSpan.FromMilliseconds(milliseconds));
+        _view.LoseFocusOnClose = true;
+        _view.Start(10, 10);
+
+        // Act
+        _view.End(100, 100);
+
+        // Assert
+        Assert.Equal(new Rectangle(10, 10, 90, 90), await _presenter.Completion);
+        Assert.Equal(0, _view.TakeFocusCount);
+        Assert.Equal(1, _view.CloseCount);
+    }
+
+    [Fact]
+    public async Task Cancel_RightAfterOpening_StillCancels()
+    {
+        // Act: Esc or a right click means it, however soon
+        _view.Cancel();
+
+        // Assert
+        Assert.Null(await _presenter.Completion);
+        Assert.Equal(1, _view.CloseCount);
     }
 
     [Fact]
@@ -142,8 +227,32 @@ public class SnipPresenterTests
         Assert.Equal(0, _view.CloseCount);
     }
 
+    private sealed class MovableTimeProvider : TimeProvider
+    {
+        private DateTimeOffset _now = new(2026, 11, 3, 9, 0, 0, TimeSpan.Zero);
+
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+
+        public override DateTimeOffset GetUtcNow() => _now;
+
+        public override long GetTimestamp() => _now.Ticks;
+
+        public void Advance(TimeSpan time) => _now += time;
+    }
+
     private sealed class FakeSnipView : ISnipView
     {
+        public event EventHandler? FocusLost;
+
+        public int TakeFocusCount { get; private set; }
+
+        /// <summary>Raises FocusLost while closing, as a form does.</summary>
+        public bool LoseFocusOnClose { get; set; }
+
+        public void LoseFocus() => FocusLost?.Invoke(this, EventArgs.Empty);
+
+        public void TakeFocus() => TakeFocusCount++;
+
         public event EventHandler<Point>? SelectionStarted;
 
         public event EventHandler<Point>? SelectionMoved;
@@ -192,6 +301,11 @@ public class SnipPresenterTests
             if (CancelOnClose)
             {
                 Cancel();
+            }
+
+            if (LoseFocusOnClose)
+            {
+                LoseFocus();
             }
 
             RaiseClosed();

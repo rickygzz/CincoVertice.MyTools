@@ -17,8 +17,11 @@ public interface ISnipView
     /// <summary>Raised when the user stops dragging (left button up).</summary>
     event EventHandler<Point>? SelectionEnded;
 
-    /// <summary>Raised when the user gives up, e.g. Esc, a right click, or switching to another window.</summary>
+    /// <summary>Raised when the user gives up, e.g. Esc or a right click.</summary>
     event EventHandler? CancelRequested;
+
+    /// <summary>Raised when the view loses the focus, because the user switched windows or for no reason of theirs.</summary>
+    event EventHandler? FocusLost;
 
     /// <summary>Raised once the view is closed, however it was closed.</summary>
     event EventHandler? ViewClosed;
@@ -28,6 +31,9 @@ public interface ISnipView
 
     /// <summary>Removes the selection, so the whole screenshot is dimmed again.</summary>
     void ClearSelection();
+
+    /// <summary>Takes the focus back.</summary>
+    void TakeFocus();
 
     void Close();
 }
