@@ -35,6 +35,14 @@ public interface ISnipEditorView
     /// <summary>Raised with which ends of an arrow should have a head.</summary>
     event EventHandler<SnipArrowHeads>? ArrowHeadsSelected;
 
+    /// <summary>Raised with how wide the edge around the text's letters should be, in pixels; 0 for none.</summary>
+    event EventHandler<int>? TextOutlineWidthSelected;
+
+    event EventHandler<Color>? TextOutlineColorSelected;
+
+    /// <summary>Raised when the user wants an edge color that isn't in the palette.</summary>
+    event EventHandler? MoreTextOutlineColorsRequested;
+
     /// <summary>Raised when the user ends a text begun by <see cref="BeginTextInput"/>; it can be empty.</summary>
     event EventHandler<TextInputModel>? TextCommitted;
 
@@ -71,6 +79,9 @@ public interface ISnipEditorView
 
     /// <summary>Shows the choice of arrow heads with one selected; null hides it, for the other tools.</summary>
     void ShowArrowHeads(SnipArrowHeads? selected);
+
+    /// <summary>Shows the edge of the text's letters and the widths to choose from; null hides it, for the other tools.</summary>
+    void ShowTextOutline(IReadOnlyList<int> widths, SnipTextOutlineModel? outline);
 
     /// <summary>Draws these annotations over the snip, in order, instead of the ones shown before.</summary>
     void ShowAnnotations(IReadOnlyList<AnnotationModel> annotations);

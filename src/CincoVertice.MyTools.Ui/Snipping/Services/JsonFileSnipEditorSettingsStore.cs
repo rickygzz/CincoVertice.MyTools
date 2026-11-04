@@ -11,7 +11,7 @@ namespace CincoVertice.MyTools.Ui.Snipping.Services;
 /// <summary>
 ///     The snip editor's settings in a JSON file, read when an editor opens and written on every change:
 ///     { "tool": "Arrow", "tools": { "Pen": { "size": 4, "transparency": 0, "color": "#FF0000" }, ... },
-///     "customColors": ["#123456", ...], "arrowHeads": "Both" }.
+///     "customColors": ["#123456", ...], "arrowHeads": "Both", "textOutline": { "width": 2, "color": "#FFFFFF" } }.
 ///     A missing or broken file gives no settings, so the editor starts with its defaults; a missing or broken
 ///     color gives <see cref="Color.Empty"/>, so that tool keeps its default color. A broken custom color is skipped.
 /// </summary>
@@ -58,7 +58,10 @@ public sealed class JsonFileSnipEditorSettingsStore : ISnipEditorSettingsStore
                         tool.Value.Transparency,
                         ParseColor(tool.Value.Color))),
                 [.. (file.CustomColors ?? []).Select(ParseColor).Where(color => !color.IsEmpty)],
-                file.ArrowHeads);
+                file.ArrowHeads,
+                file.TextOutline is { } outline
+                    ? new SnipTextOutlineModel(outline.Width, ParseColor(outline.Color))
+                    : null);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
@@ -74,7 +77,10 @@ public sealed class JsonFileSnipEditorSettingsStore : ISnipEditorSettingsStore
                 tool => tool.Key,
                 tool => new ToolFile(tool.Value.Size, tool.Value.Transparency, FormatColor(tool.Value.Color))),
             [.. settings.CustomColors.Select(FormatColor).OfType<string>()],
-            settings.ArrowHeads);
+            settings.ArrowHeads,
+            settings.TextOutline is { } outline
+                ? new TextOutlineFile(outline.Width, FormatColor(outline.Color))
+                : null);
 
         try
         {
@@ -108,10 +114,13 @@ public sealed class JsonFileSnipEditorSettingsStore : ISnipEditorSettingsStore
         SnipTool Tool,
         Dictionary<SnipTool, ToolFile>? Tools,
         List<string?>? CustomColors,
-        SnipArrowHeads ArrowHeads = SnipArrowHeads.End);
+        SnipArrowHeads ArrowHeads = SnipArrowHeads.End,
+        TextOutlineFile? TextOutline = null);
 
     private sealed record ToolFile(
         int Size,
         int Transparency,
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Color);
+
+    private sealed record TextOutlineFile(int Width, string? Color);
 }

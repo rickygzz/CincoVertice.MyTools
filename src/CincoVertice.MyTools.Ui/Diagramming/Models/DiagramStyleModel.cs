@@ -12,6 +12,8 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 /// <param name="TextColor">The color of a shape's text or a connector's label.</param>
 /// <param name="FontSize">In pixels.</param>
 /// <param name="FontFamily">The font of the text.</param>
+/// <param name="TextOutlineWidth">How far the edge around the text's letters goes out from them, in pixels; 0 for none.</param>
+/// <param name="TextOutlineColor">The color of that edge; <see cref="Color.Empty"/> for the default one.</param>
 public sealed record DiagramStyleModel(
     Color Fill,
     Color Line,
@@ -19,8 +21,17 @@ public sealed record DiagramStyleModel(
     bool Dashed,
     Color TextColor,
     int FontSize,
-    string FontFamily = DiagramStyleModel.DefaultFontFamily)
+    string FontFamily = DiagramStyleModel.DefaultFontFamily,
+    int TextOutlineWidth = 0,
+    Color TextOutlineColor = default)
 {
     /// <summary>The font of new text.</summary>
     public const string DefaultFontFamily = "Roboto";
+
+    public const int MaxTextOutlineWidth = 50;
+
+    public static Color DefaultTextOutlineColor { get; } = Color.FromArgb(255, 255, 255);
+
+    public Color TextOutlineColor { get; init; } =
+        TextOutlineColor.IsEmpty ? DefaultTextOutlineColor : TextOutlineColor;
 }

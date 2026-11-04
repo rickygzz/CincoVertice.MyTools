@@ -136,7 +136,10 @@ public static class DiagramSvg
         int widestLine = diagram.Shapes.Select(shape => shape.Style.LineWidth)
             .Concat(diagram.Connectors.Select(connector => connector.Style.LineWidth))
             .Max();
-        int margin = Math.Max(Margin, widestLine / 2 + 1);
+        int widestTextOutline = diagram.Shapes.Select(shape => shape.Style.TextOutlineWidth)
+            .Concat(diagram.Connectors.Select(connector => connector.Style.TextOutlineWidth))
+            .Max();
+        int margin = Math.Max(Margin, Math.Max(widestLine / 2, widestTextOutline) + 1);
         var whole = Rectangle.Ceiling(area);
 
         whole.Inflate(margin, margin);
@@ -178,7 +181,7 @@ public static class DiagramSvg
         {
             RectangleF area = DiagramFigures.TextArea(shape.Kind, shape.Bounds);
 
-            group.Add(TextElement(DiagramTextLayout.Layout(shape.Text, area, shape.Style.FontSize), shape.Style));
+            AddText(group, DiagramTextLayout.Layout(shape.Text, area, shape.Style.FontSize), shape.Style);
         }
 
         return group;
@@ -221,7 +224,7 @@ public static class DiagramSvg
                 new XAttribute("width", Number(block.Bounds.Width + 4)),
                 new XAttribute("height", Number(block.Bounds.Height)),
                 new XAttribute("fill", "#FFFFFF")));
-            group.Add(TextElement(block, connector.Style));
+            AddText(group, block, connector.Style);
         }
 
         return group;
@@ -263,6 +266,26 @@ public static class DiagramSvg
         }
 
         return valid.ToString();
+    }
+
+    private static void AddText(XElement group, DiagramTextBlockModel block, DiagramStyleModel style)
+    {
+        if (style.TextOutlineWidth > 0)
+        {
+            // A copy under the text instead of paint-order, which not every program that shows SVG knows
+            XElement outline = TextElement(block, style);
+
+            outline.SetAttributeValue("fill", Hex(style.TextOutlineColor));
+            outline.Add(
+                new XAttribute("stroke", Hex(style.TextOutlineColor)),
+
+                // Twice as wide, since the letters cover the inner half of the line
+                new XAttribute("stroke-width", style.TextOutlineWidth * 2),
+                new XAttribute("stroke-linejoin", "round"));
+            group.Add(outline);
+        }
+
+        group.Add(TextElement(block, style));
     }
 
     private static XElement TextElement(DiagramTextBlockModel block, DiagramStyleModel style)

@@ -27,6 +27,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     private DiagramSceneModel? _scene;
     private IReadOnlyList<int> _lineWidths = [];
     private IReadOnlyList<int> _fontSizes = [];
+    private IReadOnlyList<int> _textOutlineWidths = [];
 
     // Set while the toolbar is filled from the presenter, so that isn't taken as the user's choice
     private bool _isShowingChoices;
@@ -102,6 +103,8 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
 
     public event EventHandler<string>? FontFamilySelected;
 
+    public event EventHandler<int>? TextOutlineWidthSelected;
+
     public event EventHandler<DiagramRouting>? RoutingSelected;
 
     public event EventHandler<DiagramArrowHeads>? ArrowHeadsSelected;
@@ -145,15 +148,19 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         FillPalette.Colors = colors;
         LinePalette.Colors = colors;
         TextPalette.Colors = colors;
+        TextOutlinePalette.Colors = colors;
     }
 
-    public void ShowSizes(IReadOnlyList<int> lineWidths, IReadOnlyList<int> fontSizes)
+    public void ShowSizes(IReadOnlyList<int> lineWidths, IReadOnlyList<int> fontSizes, IReadOnlyList<int> textOutlineWidths)
     {
         _lineWidths = lineWidths;
         _fontSizes = fontSizes;
+        _textOutlineWidths = textOutlineWidths;
         _isShowingChoices = true;
         LineWidthComboBox.Items.AddRange([.. lineWidths.Select(width => $"{width} px")]);
         FontSizeComboBox.Items.AddRange([.. fontSizes.Select(size => $"{size} px")]);
+        TextOutlineWidthComboBox.Items.AddRange(
+            [.. textOutlineWidths.Select(width => width == 0 ? "No edge" : $"{width} px")]);
         _isShowingChoices = false;
     }
 
@@ -164,12 +171,15 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         FillPalette.SelectedColor = style.Fill;
         LinePalette.SelectedColor = style.Line;
         TextPalette.SelectedColor = style.TextColor;
+        TextOutlinePalette.SelectedColor = style.TextOutlineColor;
         ShowSwatch(FillDropDownButton, style.Fill);
         ShowSwatch(LineDropDownButton, style.Line);
         ShowSwatch(TextColorDropDownButton, style.TextColor);
+        ShowSwatch(TextOutlineDropDownButton, style.TextOutlineColor);
 
         LineWidthComboBox.SelectedIndex = _lineWidths.ToList().IndexOf(style.LineWidth);
         FontSizeComboBox.SelectedIndex = _fontSizes.ToList().IndexOf(style.FontSize);
+        TextOutlineWidthComboBox.SelectedIndex = _textOutlineWidths.ToList().IndexOf(style.TextOutlineWidth);
         DashedButton.Checked = style.Dashed;
         RoutingComboBox.SelectedIndex = routing == DiagramRouting.Elbow ? 0 : 1;
         ArrowHeadsComboBox.SelectedIndex = (int)heads;
@@ -210,10 +220,12 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         ShowNumber(CornerRadiusLabel, CornerRadiusBox, properties.CornerRadius);
         ShowNumber(LineWidthLabel, LineWidthBox, properties.LineWidth);
         ShowNumber(FontSizeLabel, FontSizeBox, properties.FontSize);
+        ShowNumber(TextOutlineWidthLabel, TextOutlineWidthBox, properties.TextOutlineWidth);
 
         ShowColor(FillLabel, FillColorButton, properties.Fill);
         ShowColor(LineLabel, LineColorButton, properties.Line);
         ShowColor(TextColorLabel, TextColorButton, properties.TextColor);
+        ShowColor(TextOutlineLabel, TextOutlineColorButton, properties.TextOutlineColor);
 
         // A connector has a line where a shape has a border
         LineLabel.Text = hasBounds ? "Border" : "Line";
@@ -386,6 +398,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         if (keyData != Keys.Escape
             || LineWidthComboBox.DroppedDown
             || FontSizeComboBox.DroppedDown
+            || TextOutlineWidthComboBox.DroppedDown
             || RoutingComboBox.DroppedDown
             || ArrowHeadsComboBox.DroppedDown
             || RoutingPropertyBox.DroppedDown
@@ -459,7 +472,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     ];
 
     private ToolStripDropDownButton[] ColorButtons() =>
-        [FillDropDownButton, LineDropDownButton, TextColorDropDownButton];
+        [FillDropDownButton, LineDropDownButton, TextColorDropDownButton, TextOutlineDropDownButton];
 
     private Image Keep(Image image)
     {
@@ -562,6 +575,14 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         }
     }
 
+    private void TextOutlineWidthBox_ValueChanged(object? sender, EventArgs e)
+    {
+        if (!_isShowingChoices)
+        {
+            TextOutlineWidthSelected?.Invoke(this, (int)TextOutlineWidthBox.Value);
+        }
+    }
+
     private void FontFamilyBox_SelectedIndexChanged(object? sender, EventArgs e)
     {
         if (!_isShowingChoices && FontFamilyBox.SelectedItem is string fontFamily)
@@ -609,6 +630,11 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     private void TextColorButton_Click(object? sender, EventArgs e)
     {
         ShowColorMenu(TextColorDropDownButton, TextColorButton);
+    }
+
+    private void TextOutlineColorButton_Click(object? sender, EventArgs e)
+    {
+        ShowColorMenu(TextOutlineDropDownButton, TextOutlineColorButton);
     }
 
     private void TextPropertyBox_KeyDown(object? sender, KeyEventArgs e)
@@ -697,6 +723,13 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         ColorSelected?.Invoke(this, new DiagramColorChoiceModel(DiagramColorTarget.Text, color));
     }
 
+    private void TextOutlinePalette_ColorPicked(object? sender, Color color)
+    {
+        TextOutlineDropDownButton.DropDown.Close();
+        Canvas.Focus();
+        ColorSelected?.Invoke(this, new DiagramColorChoiceModel(DiagramColorTarget.TextOutline, color));
+    }
+
     private void NoFillMenuItem_Click(object? sender, EventArgs e)
     {
         ColorSelected?.Invoke(this, new DiagramColorChoiceModel(DiagramColorTarget.Fill, Color.Empty));
@@ -715,6 +748,20 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     private void MoreTextColorsMenuItem_Click(object? sender, EventArgs e)
     {
         MoreColorsRequested?.Invoke(this, DiagramColorTarget.Text);
+    }
+
+    private void MoreTextOutlineColorsMenuItem_Click(object? sender, EventArgs e)
+    {
+        MoreColorsRequested?.Invoke(this, DiagramColorTarget.TextOutline);
+    }
+
+    private void TextOutlineWidthComboBox_SelectedIndexChanged(object? sender, EventArgs e)
+    {
+        if (!_isShowingChoices && TextOutlineWidthComboBox.SelectedIndex >= 0)
+        {
+            TextOutlineWidthSelected?.Invoke(this, _textOutlineWidths[TextOutlineWidthComboBox.SelectedIndex]);
+            Canvas.Focus();
+        }
     }
 
     private void LineWidthComboBox_SelectedIndexChanged(object? sender, EventArgs e)

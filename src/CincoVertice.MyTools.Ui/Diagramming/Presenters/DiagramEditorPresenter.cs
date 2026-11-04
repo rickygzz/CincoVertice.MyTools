@@ -130,6 +130,7 @@ public sealed class DiagramEditorPresenter
         _view.DashedSelected += OnDashedSelected;
         _view.FontSizeSelected += OnFontSizeSelected;
         _view.FontFamilySelected += OnFontFamilySelected;
+        _view.TextOutlineWidthSelected += OnTextOutlineWidthSelected;
         _view.RoutingSelected += OnRoutingSelected;
         _view.ArrowHeadsSelected += OnArrowHeadsSelected;
         _view.BoundsEdited += OnBoundsEdited;
@@ -158,7 +159,7 @@ public sealed class DiagramEditorPresenter
     public void Start()
     {
         _view.ShowPalette(SnipEditorPresenter.Palette);
-        _view.ShowSizes(LineWidths, FontSizes);
+        _view.ShowSizes(LineWidths, FontSizes, SnipEditorPresenter.TextOutlineWidths);
         _view.ShowPropertiesPanel(_isPropertiesPanelVisible);
 
         if (_windowSize is not null)
@@ -1471,6 +1472,7 @@ public sealed class DiagramEditorPresenter
         {
             DiagramColorTarget.Fill => style with { Fill = color },
             DiagramColorTarget.Line => style with { Line = color },
+            DiagramColorTarget.TextOutline => style with { TextOutlineColor = color },
             _ => style with { TextColor = color },
         });
     }
@@ -1482,6 +1484,7 @@ public sealed class DiagramEditorPresenter
         {
             DiagramColorTarget.Fill => style.Fill,
             DiagramColorTarget.Line => style.Line,
+            DiagramColorTarget.TextOutline => style.TextOutlineColor,
             _ => style.TextColor,
         };
 
@@ -1565,6 +1568,11 @@ public sealed class DiagramEditorPresenter
     private void OnFontSizeSelected(object? sender, int size)
     {
         ChangeStyle(style => style with { FontSize = Math.Clamp(size, MinFontSize, MaxFontSize) });
+    }
+
+    private void OnTextOutlineWidthSelected(object? sender, int width)
+    {
+        ChangeStyle(style => style with { TextOutlineWidth = Math.Clamp(width, 0, DiagramStyleModel.MaxTextOutlineWidth) });
     }
 
     private void OnFontFamilySelected(object? sender, string fontFamily)
@@ -1858,7 +1866,9 @@ public sealed class DiagramEditorPresenter
             text,
             connectors.Count > 0 ? connectors[0].Routing : null,
             connectors.Count > 0 ? connectors[0].Heads : null,
-            style.FontFamily);
+            style.FontFamily,
+            style.TextOutlineWidth,
+            style.TextOutlineColor);
     }
 
     private static string TitleOf(List<DiagramShapeModel> shapes, List<DiagramConnectorModel> connectors)

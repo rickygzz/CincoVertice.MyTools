@@ -22,11 +22,15 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     // The color button's image: the current tool's color, replaced when it changes
     private Image? _colorSwatch;
 
+    // The text outline button's image, likewise
+    private Image? _textOutlineSwatch;
+
     private IReadOnlyList<AnnotationModel> _annotations = [];
 
-    // The values behind the size and transparency lists, which show them as text
+    // The values behind the size, transparency and text outline lists, which show them as text
     private IReadOnlyList<int> _sizes = [];
     private IReadOnlyList<int> _transparencies = [];
+    private IReadOnlyList<int> _textOutlineWidths = [];
 
     // Set while the lists are filled or selected from the presenter, so that isn't taken as the user's choice
     private bool _isShowingChoices;
@@ -62,6 +66,7 @@ public partial class SnipEditorForm : Form, ISnipEditorView
 
         // The palette and More colors only, without the menu's empty image column
         ((ToolStripDropDownMenu)ColorDropDownButton.DropDown).ShowImageMargin = false;
+        ((ToolStripDropDownMenu)TextOutlineDropDownButton.DropDown).ShowImageMargin = false;
 
         FitToSnip();
         FormExtensions.CenterOnCursorScreen(this);
@@ -86,6 +91,12 @@ public partial class SnipEditorForm : Form, ISnipEditorView
 
     public event EventHandler<SnipArrowHeads>? ArrowHeadsSelected;
 
+    public event EventHandler<int>? TextOutlineWidthSelected;
+
+    public event EventHandler<Color>? TextOutlineColorSelected;
+
+    public event EventHandler? MoreTextOutlineColorsRequested;
+
     public event EventHandler<TextInputModel>? TextCommitted;
 
     public event EventHandler? UndoRequested;
@@ -108,6 +119,8 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     {
         Palette.Colors = colors;
         Palette.CustomColors = customColors;
+        TextOutlinePalette.Colors = colors;
+        TextOutlinePalette.CustomColors = customColors;
     }
 
     public void ShowColor(Color color)
@@ -156,6 +169,30 @@ public partial class SnipEditorForm : Form, ISnipEditorView
             button.Visible = selected is not null;
             button.Checked = ArrowHeadsOf(button) == selected;
         }
+    }
+
+    public void ShowTextOutline(IReadOnlyList<int> widths, SnipTextOutlineModel? outline)
+    {
+        TextOutlineDropDownButton.Visible = outline is not null;
+        TextOutlineWidthComboBox.Visible = outline is not null;
+
+        if (outline is null)
+        {
+            return;
+        }
+
+        _textOutlineWidths = ShowChoices(
+            TextOutlineWidthComboBox,
+            _textOutlineWidths,
+            widths,
+            outline.Width,
+            width => width == 0 ? "No edge" : $"{width} px");
+        TextOutlinePalette.SelectedColor = outline.Color;
+
+        Image? old = _textOutlineSwatch;
+        _textOutlineSwatch = CreateSwatch(outline.Color, _iconSize);
+        TextOutlineDropDownButton.Image = _textOutlineSwatch;
+        old?.Dispose();
     }
 
     public void ShowAnnotations(IReadOnlyList<AnnotationModel> annotations)
@@ -229,7 +266,10 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
         // An open list closes itself on Esc; the window stays
-        if (keyData != Keys.Escape || SizeComboBox.DroppedDown || TransparencyComboBox.DroppedDown)
+        if (keyData != Keys.Escape
+            || SizeComboBox.DroppedDown
+            || TransparencyComboBox.DroppedDown
+            || TextOutlineWidthComboBox.DroppedDown)
         {
             return base.ProcessCmdKey(ref msg, keyData);
         }
@@ -411,6 +451,25 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     private void ArrowHeadsButton_Click(object? sender, EventArgs e)
     {
         ArrowHeadsSelected?.Invoke(this, ArrowHeadsOf((ToolStripButton)sender!));
+    }
+
+    private void TextOutlinePalette_ColorPicked(object? sender, Color color)
+    {
+        TextOutlineDropDownButton.HideDropDown();
+        TextOutlineColorSelected?.Invoke(this, color);
+    }
+
+    private void MoreTextOutlineColorsMenuItem_Click(object? sender, EventArgs e)
+    {
+        MoreTextOutlineColorsRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void TextOutlineWidthComboBox_SelectedIndexChanged(object? sender, EventArgs e)
+    {
+        if (!_isShowingChoices && TextOutlineWidthComboBox.SelectedIndex >= 0)
+        {
+            TextOutlineWidthSelected?.Invoke(this, _textOutlineWidths[TextOutlineWidthComboBox.SelectedIndex]);
+        }
     }
 
     private void UndoButton_Click(object? sender, EventArgs e)

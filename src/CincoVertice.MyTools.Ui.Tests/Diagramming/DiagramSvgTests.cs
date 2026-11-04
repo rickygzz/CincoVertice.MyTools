@@ -32,6 +32,83 @@ public sealed class DiagramSvgTests : IDisposable
         }
     }
 
+    private static DiagramModel WithText(DiagramStyleModel style) => new(
+        [new DiagramShapeModel(1, DiagramShapeKind.Rectangle, new Rectangle(0, 0, 120, 60), "Hello", style)],
+        []);
+
+    [Fact]
+    public void Write_TextWithoutAnOutline_HasOneTextWithoutALine()
+    {
+        // Act
+        XDocument svg = XDocument.Parse(DiagramSvg.Write(WithText(_style)));
+
+        // Assert
+        XElement text = Assert.Single(svg.Descendants(_svg + "text"));
+        Assert.Null(text.Attribute("stroke"));
+    }
+
+    [Fact]
+    public void Write_TextWithAnOutline_PutsItsEdgeUnderIt()
+    {
+        // Arrange
+        DiagramStyleModel style = _style with { TextOutlineWidth = 3, TextOutlineColor = Color.FromArgb(255, 7, 8, 9) };
+
+        // Act
+        XDocument svg = XDocument.Parse(DiagramSvg.Write(WithText(style)));
+
+        // Assert: twice as wide, since the letters on top cover the inner half
+        List<XElement> texts = [.. svg.Descendants(_svg + "text")];
+        Assert.Equal(2, texts.Count);
+        Assert.Equal("#070809", (string?)texts[0].Attribute("stroke"));
+        Assert.Equal("#070809", (string?)texts[0].Attribute("fill"));
+        Assert.Equal("6", (string?)texts[0].Attribute("stroke-width"));
+        Assert.Null(texts[1].Attribute("stroke"));
+        Assert.Equal("#040506", (string?)texts[1].Attribute("fill"));
+    }
+
+    [Fact]
+    public void WriteThenRead_KeepsTheTextOutline()
+    {
+        // Arrange
+        DiagramStyleModel style = _style with { TextOutlineWidth = 3, TextOutlineColor = Color.FromArgb(255, 7, 8, 9) };
+
+        // Act
+        DiagramModel read = DiagramSvg.Read(DiagramSvg.Write(WithText(style)));
+
+        // Assert
+        Assert.Equal(style, read.Shapes[0].Style);
+    }
+
+    [Fact]
+    public void Read_ADiagramFromBeforeTextOutlines_HasNone()
+    {
+        // Arrange: as the file was written then, without the two values
+        const string json = """
+            {"format":"mytools-diagram","version":1,"shapes":[{"id":1,"kind":"Text","x":0,"y":0,"width":9,"height":9,
+            "text":"a","style":{"lineWidth":1,"fontSize":14}}]}
+            """;
+
+        // Act
+        DiagramStyleModel style = DiagramJson.Read(json).Shapes[0].Style;
+
+        // Assert
+        Assert.Equal(0, style.TextOutlineWidth);
+        Assert.Equal(DiagramStyleModel.DefaultTextOutlineColor, style.TextOutlineColor);
+    }
+
+    [Fact]
+    public void Write_AWideTextOutline_IsInsideTheImage()
+    {
+        // Arrange: text at the shape's edge would go past the usual margin
+        DiagramStyleModel style = _style with { TextOutlineWidth = DiagramStyleModel.MaxTextOutlineWidth };
+
+        // Act
+        float[] viewBox = ViewBoxOf(WithText(style));
+
+        // Assert
+        Assert.True(viewBox[0] <= -DiagramStyleModel.MaxTextOutlineWidth);
+    }
+
     [Fact]
     public void Write_TextLongerThanItsShape_IsInsideTheImage()
     {

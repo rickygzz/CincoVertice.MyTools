@@ -58,6 +58,34 @@ public sealed class JsonFileSnipEditorSettingsStoreTests : IDisposable
     }
 
     [Fact]
+    public void SaveThenLoad_KeepsTheTextOutline()
+    {
+        // Arrange
+        var outline = new SnipTextOutlineModel(3, Color.FromArgb(255, 18, 52, 86));
+
+        // Act
+        _store.Save(new SnipEditorSettingsModel(
+            SnipTool.Text,
+            new Dictionary<SnipTool, SnipToolSettingsModel>(),
+            [],
+            TextOutline: outline));
+
+        // Assert
+        Assert.Equal(outline, _store.Load()!.TextOutline);
+    }
+
+    [Fact]
+    public void Load_AFileFromBeforeTextOutlines_HasNone()
+    {
+        // Arrange
+        Directory.CreateDirectory(Path.GetDirectoryName(_store.FilePath)!);
+        File.WriteAllText(_store.FilePath, """{ "tool": "Text", "tools": {}, "customColors": [] }""");
+
+        // Assert
+        Assert.Null(_store.Load()!.TextOutline);
+    }
+
+    [Fact]
     public void SaveThenLoad_KeepsTheArrowHeads()
     {
         // Act

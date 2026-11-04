@@ -71,6 +71,11 @@ partial class DiagramEditorForm
         TextPaletteHost = new ToolStripControlHost(TextPalette);
         MoreTextColorsMenuItem = new ToolStripMenuItem();
         FontSizeComboBox = new ToolStripComboBox();
+        TextOutlineDropDownButton = new ToolStripDropDownButton();
+        TextOutlinePalette = new Snipping.ColorPaletteControl();
+        TextOutlinePaletteHost = new ToolStripControlHost(TextOutlinePalette);
+        MoreTextOutlineColorsMenuItem = new ToolStripMenuItem();
+        TextOutlineWidthComboBox = new ToolStripComboBox();
         StyleSeparator = new ToolStripSeparator();
         RoutingComboBox = new ToolStripComboBox();
         ArrowHeadsComboBox = new ToolStripComboBox();
@@ -112,6 +117,10 @@ partial class DiagramEditorForm
         FontFamilyBox = new ComboBox();
         FontSizeLabel = new Label();
         FontSizeBox = new NumericUpDown();
+        TextOutlineLabel = new Label();
+        TextOutlineColorButton = new Button();
+        TextOutlineWidthLabel = new Label();
+        TextOutlineWidthBox = new NumericUpDown();
         RoutingLabel = new Label();
         RoutingPropertyBox = new ComboBox();
         ArrowsLabel = new Label();
@@ -128,6 +137,7 @@ partial class DiagramEditorForm
         ((System.ComponentModel.ISupportInitialize)CornerRadiusBox).BeginInit();
         ((System.ComponentModel.ISupportInitialize)LineWidthBox).BeginInit();
         ((System.ComponentModel.ISupportInitialize)FontSizeBox).BeginInit();
+        ((System.ComponentModel.ISupportInitialize)TextOutlineWidthBox).BeginInit();
         SuspendLayout();
         //
         // ToolsStrip
@@ -245,7 +255,7 @@ partial class DiagramEditorForm
         // StyleStrip
         //
         StyleStrip.GripStyle = ToolStripGripStyle.Hidden;
-        StyleStrip.Items.AddRange(new ToolStripItem[] { NewButton, OpenButton, SaveButton, FileSeparator, UndoButton, RedoButton, HistorySeparator, FillDropDownButton, LineDropDownButton, LineWidthComboBox, DashedButton, TextColorDropDownButton, FontSizeComboBox, StyleSeparator, RoutingComboBox, ArrowHeadsComboBox, ResetRouteButton, ConnectorsSeparator, GroupButton, UngroupButton, FrontButton, BackButton, ZoomLabel, PropertiesButton });
+        StyleStrip.Items.AddRange(new ToolStripItem[] { NewButton, OpenButton, SaveButton, FileSeparator, UndoButton, RedoButton, HistorySeparator, FillDropDownButton, LineDropDownButton, LineWidthComboBox, DashedButton, TextColorDropDownButton, FontSizeComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, StyleSeparator, RoutingComboBox, ArrowHeadsComboBox, ResetRouteButton, ConnectorsSeparator, GroupButton, UngroupButton, FrontButton, BackButton, ZoomLabel, PropertiesButton });
         StyleStrip.Name = "StyleStrip";
         StyleStrip.Padding = new Padding(4, 2, 4, 2);
         StyleStrip.TabIndex = 1;
@@ -396,6 +406,37 @@ partial class DiagramEditorForm
         FontSizeComboBox.ToolTipText = "Text size";
         FontSizeComboBox.SelectedIndexChanged += FontSizeComboBox_SelectedIndexChanged;
         //
+        // TextOutlineDropDownButton
+        //
+        TextOutlineDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { TextOutlinePaletteHost, MoreTextOutlineColorsMenuItem });
+        TextOutlineDropDownButton.Name = "TextOutlineDropDownButton";
+        TextOutlineDropDownButton.Text = "Edge";
+        TextOutlineDropDownButton.ToolTipText = "Color of the edge around the text's letters";
+        //
+        // TextOutlinePalette
+        //
+        TextOutlinePalette.Name = "TextOutlinePalette";
+        TextOutlinePalette.ColorPicked += TextOutlinePalette_ColorPicked;
+        //
+        // TextOutlinePaletteHost
+        //
+        TextOutlinePaletteHost.AutoSize = true;
+        TextOutlinePaletteHost.Name = "TextOutlinePaletteHost";
+        //
+        // MoreTextOutlineColorsMenuItem
+        //
+        MoreTextOutlineColorsMenuItem.Name = "MoreTextOutlineColorsMenuItem";
+        MoreTextOutlineColorsMenuItem.Text = "More colors...";
+        MoreTextOutlineColorsMenuItem.Click += MoreTextOutlineColorsMenuItem_Click;
+        //
+        // TextOutlineWidthComboBox
+        //
+        TextOutlineWidthComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+        TextOutlineWidthComboBox.Name = "TextOutlineWidthComboBox";
+        TextOutlineWidthComboBox.Size = new Size(70, 23);
+        TextOutlineWidthComboBox.ToolTipText = "Width of the edge around the text's letters";
+        TextOutlineWidthComboBox.SelectedIndexChanged += TextOutlineWidthComboBox_SelectedIndexChanged;
+        //
         // StyleSeparator
         //
         StyleSeparator.Name = "StyleSeparator";
@@ -514,14 +555,18 @@ partial class DiagramEditorForm
         PropertiesTable.Controls.Add(FontFamilyBox, 1, 12);
         PropertiesTable.Controls.Add(FontSizeLabel, 0, 13);
         PropertiesTable.Controls.Add(FontSizeBox, 1, 13);
-        PropertiesTable.Controls.Add(RoutingLabel, 0, 14);
-        PropertiesTable.Controls.Add(RoutingPropertyBox, 1, 14);
-        PropertiesTable.Controls.Add(ArrowsLabel, 0, 15);
-        PropertiesTable.Controls.Add(ArrowsPropertyBox, 1, 15);
+        PropertiesTable.Controls.Add(TextOutlineLabel, 0, 14);
+        PropertiesTable.Controls.Add(TextOutlineColorButton, 1, 14);
+        PropertiesTable.Controls.Add(TextOutlineWidthLabel, 0, 15);
+        PropertiesTable.Controls.Add(TextOutlineWidthBox, 1, 15);
+        PropertiesTable.Controls.Add(RoutingLabel, 0, 16);
+        PropertiesTable.Controls.Add(RoutingPropertyBox, 1, 16);
+        PropertiesTable.Controls.Add(ArrowsLabel, 0, 17);
+        PropertiesTable.Controls.Add(ArrowsPropertyBox, 1, 17);
         PropertiesTable.Dock = DockStyle.Top;
         PropertiesTable.Name = "PropertiesTable";
         PropertiesTable.Padding = new Padding(6);
-        PropertiesTable.RowCount = 16;
+        PropertiesTable.RowCount = 18;
         PropertiesTable.TabIndex = 0;
         //
         // PropertiesTitleLabel
@@ -730,6 +775,36 @@ partial class DiagramEditorForm
         FontSizeBox.Value = new decimal(new int[] { 6, 0, 0, 0 });
         FontSizeBox.ValueChanged += FontSizeBox_ValueChanged;
         //
+        // TextOutlineLabel
+        //
+        TextOutlineLabel.Anchor = AnchorStyles.Left;
+        TextOutlineLabel.AutoSize = true;
+        TextOutlineLabel.Name = "TextOutlineLabel";
+        TextOutlineLabel.Text = "Text edge";
+        //
+        // TextOutlineColorButton
+        //
+        TextOutlineColorButton.Dock = DockStyle.Fill;
+        TextOutlineColorButton.FlatStyle = FlatStyle.Flat;
+        TextOutlineColorButton.Name = "TextOutlineColorButton";
+        TextOutlineColorButton.TabIndex = 15;
+        TextOutlineColorButton.Click += TextOutlineColorButton_Click;
+        //
+        // TextOutlineWidthLabel
+        //
+        TextOutlineWidthLabel.Anchor = AnchorStyles.Left;
+        TextOutlineWidthLabel.AutoSize = true;
+        TextOutlineWidthLabel.Name = "TextOutlineWidthLabel";
+        TextOutlineWidthLabel.Text = "Edge width";
+        //
+        // TextOutlineWidthBox
+        //
+        TextOutlineWidthBox.Dock = DockStyle.Fill;
+        TextOutlineWidthBox.Maximum = new decimal(new int[] { 50, 0, 0, 0 });
+        TextOutlineWidthBox.Name = "TextOutlineWidthBox";
+        TextOutlineWidthBox.TabIndex = 16;
+        TextOutlineWidthBox.ValueChanged += TextOutlineWidthBox_ValueChanged;
+        //
         // RoutingLabel
         //
         RoutingLabel.Anchor = AnchorStyles.Left;
@@ -827,6 +902,7 @@ partial class DiagramEditorForm
         ((System.ComponentModel.ISupportInitialize)CornerRadiusBox).EndInit();
         ((System.ComponentModel.ISupportInitialize)LineWidthBox).EndInit();
         ((System.ComponentModel.ISupportInitialize)FontSizeBox).EndInit();
+        ((System.ComponentModel.ISupportInitialize)TextOutlineWidthBox).EndInit();
         PropertiesTable.ResumeLayout(false);
         PropertiesTable.PerformLayout();
         PropertiesPanel.ResumeLayout(false);
@@ -874,6 +950,11 @@ partial class DiagramEditorForm
     private ToolStripControlHost TextPaletteHost;
     private ToolStripMenuItem MoreTextColorsMenuItem;
     private ToolStripComboBox FontSizeComboBox;
+    private ToolStripDropDownButton TextOutlineDropDownButton;
+    private Snipping.ColorPaletteControl TextOutlinePalette;
+    private ToolStripControlHost TextOutlinePaletteHost;
+    private ToolStripMenuItem MoreTextOutlineColorsMenuItem;
+    private ToolStripComboBox TextOutlineWidthComboBox;
     private ToolStripSeparator StyleSeparator;
     private ToolStripComboBox RoutingComboBox;
     private ToolStripComboBox ArrowHeadsComboBox;
@@ -915,6 +996,10 @@ partial class DiagramEditorForm
     private ComboBox FontFamilyBox;
     private Label FontSizeLabel;
     private NumericUpDown FontSizeBox;
+    private Label TextOutlineLabel;
+    private Button TextOutlineColorButton;
+    private Label TextOutlineWidthLabel;
+    private NumericUpDown TextOutlineWidthBox;
     private Label RoutingLabel;
     private ComboBox RoutingPropertyBox;
     private Label ArrowsLabel;

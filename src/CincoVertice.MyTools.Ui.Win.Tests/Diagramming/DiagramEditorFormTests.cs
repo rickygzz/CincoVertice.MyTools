@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Reflection;
 using System.Windows.Forms;
 using CincoVertice.MyTools.Ui.Diagramming.Interfaces;
 using CincoVertice.MyTools.Ui.Diagramming.Models;
@@ -42,6 +43,143 @@ public class DiagramEditorFormTests
         DiagramRenderer.Draw(graphics, scene, image.Size);
 
         return image;
+    }
+
+    private static int CountOf(Bitmap image, Color color)
+    {
+        int count = 0;
+
+        for (int x = 0; x < image.Width; x++)
+        {
+            for (int y = 0; y < image.Height; y++)
+            {
+                if (image.GetPixel(x, y).ToArgb() == color.ToArgb())
+                {
+                    count++;
+                }
+            }
+        }
+
+        return count;
+    }
+
+    private static DiagramModel TextDiagram(DiagramStyleModel style) => new(
+        [new DiagramShapeModel(1, DiagramShapeKind.Text, new Rectangle(20, 20, 260, 120), "Hello\n\nworld", style)],
+        []);
+
+    [Theory]
+    [InlineData("Roboto")]
+    [InlineData("Segoe UI")]
+    public void TextOutline_DrawsItsColorAroundTheLetters(string fontFamily)
+    {
+        // Arrange
+        Color edge = Color.FromArgb(255, 0, 200, 0);
+        DiagramStyleModel style = _style with { FontSize = 36, FontFamily = fontFamily, TextOutlineColor = edge };
+
+        // Act
+        using Bitmap without = Render(Scene(TextDiagram(style)));
+        using Bitmap with = Render(Scene(TextDiagram(style with { TextOutlineWidth = 3 })));
+
+        // Assert: the letters are still there, on top of it
+        Assert.Equal(0, CountOf(without, edge));
+        Assert.True(CountOf(with, edge) > 100);
+        Assert.True(CountOf(with, Color.Black) > 100);
+    }
+
+    [Fact]
+    public void TextOutline_LeavesTheLettersSolid()
+    {
+        // Arrange: Roboto's letters are made of pieces that overlap, like the bar and the stems of an H
+        Color edge = Color.FromArgb(255, 0, 200, 0);
+        DiagramStyleModel style = _style with { FontSize = 200, FontFamily = "Roboto", TextOutlineColor = edge };
+        DiagramModel Diagram(DiagramStyleModel withStyle) => new(
+            [new DiagramShapeModel(1, DiagramShapeKind.Text, new Rectangle(20, 20, 260, 160), "H", withStyle)],
+            []);
+
+        // Act
+        using Bitmap plain = Render(Scene(Diagram(style)));
+        using Bitmap outlined = Render(Scene(Diagram(style with { TextOutlineWidth = 11 })));
+
+        // Assert: well inside a letter, where small differences in how it's drawn don't count, there's no edge
+        const int inset = 1;
+        int inLetters = 0;
+        int edgeInLetters = 0;
+
+        for (int x = inset; x < plain.Width - inset; x++)
+        {
+            for (int y = inset; y < plain.Height - inset; y++)
+            {
+                bool isInside = true;
+
+                for (int i = -inset; i <= inset; i++)
+                {
+                    for (int j = -inset; j <= inset; j++)
+                    {
+                        isInside &= plain.GetPixel(x + i, y + j).ToArgb() == Color.Black.ToArgb();
+                    }
+                }
+
+                if (isInside)
+                {
+                    inLetters++;
+                    edgeInLetters += outlined.GetPixel(x, y).ToArgb() == edge.ToArgb() ? 1 : 0;
+                }
+            }
+        }
+
+        Assert.True(inLetters > 100);
+        Assert.Equal(0, edgeInLetters);
+    }
+
+    [Fact]
+    public void TextOutline_FollowsTheZoom()
+    {
+        // Arrange
+        Color edge = Color.FromArgb(255, 0, 200, 0);
+        DiagramStyleModel style = _style with { FontSize = 18, TextOutlineWidth = 2, TextOutlineColor = edge };
+
+        // Small and near the corner, so it's still inside the image when zoomed
+        DiagramSceneModel scene = Scene(new DiagramModel(
+            [new DiagramShapeModel(1, DiagramShapeKind.Text, new Rectangle(5, 5, 60, 30), "Hello", style)],
+            []));
+
+        // Act
+        using Bitmap normal = Render(scene);
+        using Bitmap zoomed = Render(scene with { Viewport = new DiagramViewportModel(2, Point.Empty) });
+
+        // Assert
+        Assert.True(CountOf(zoomed, edge) > CountOf(normal, edge) * 2);
+    }
+
+    [Fact]
+    public void Form_ShowsATextOutline_AndPassesOnItsWidth()
+    {
+        // Arrange
+        using var form = new DiagramEditorForm();
+        var presenter = new DiagramEditorPresenter(form, new NoStore(), new NoSettings());
+        var list = (ToolStripComboBox)typeof(DiagramEditorForm)
+            .GetField("TextOutlineWidthComboBox", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(form)!;
+        int? selected = null;
+
+        presenter.Start();
+        form.TextOutlineWidthSelected += (_, width) => selected = width;
+
+        // Assert: starts with no edge, and showing that wasn't taken as the user's choice
+        Assert.Equal("No edge", list.SelectedItem);
+        Assert.Null(selected);
+
+        // Act
+        list.SelectedItem = "3 px";
+
+        // Assert
+        Assert.Equal(3, selected);
+
+        // Act
+        form.ShowStyle(_style, DiagramRouting.Elbow, DiagramArrowHeads.End);
+
+        // Assert: the list follows the style shown
+        Assert.Equal("No edge", list.SelectedItem);
     }
 
     [Fact]

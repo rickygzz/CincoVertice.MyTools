@@ -1,4 +1,5 @@
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Drawing.Text;
 using CincoVertice.MyTools.Ui.Snipping.Models;
 
@@ -104,6 +105,14 @@ public static class AnnotationRenderer
     private static void DrawText(Graphics graphics, TextAnnotationModel text)
     {
         using var font = CreateFont(text.FontSize);
+
+        if (text.Outline is { } outline)
+        {
+            DrawOutlinedText(graphics, text, font, outline);
+
+            return;
+        }
+
         using var brush = new SolidBrush(text.Color);
         TextRenderingHint hint = graphics.TextRenderingHint;
 
@@ -111,5 +120,49 @@ public static class AnnotationRenderer
         graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
         graphics.DrawString(text.Text, font, brush, text.Location, StringFormat.GenericTypographic);
         graphics.TextRenderingHint = hint;
+    }
+
+    /// <summary>
+    ///     Solid on a layer of its own, which goes on as see-through as the text as a whole: drawn directly, the edge
+    ///     would show through see-through letters.
+    /// </summary>
+    private static void DrawOutlinedText(
+        Graphics graphics,
+        TextAnnotationModel text,
+        Font font,
+        SnipTextOutlineModel outline)
+    {
+        // Winding: a letter can be made of overlapping pieces, and the default fill leaves a hole where they overlap
+        using var path = new GraphicsPath(FillMode.Winding);
+
+        path.AddString(
+            text.Text,
+            font.FontFamily,
+            (int)font.Style,
+            font.Size,
+            text.Location,
+            StringFormat.GenericTypographic);
+
+        // Twice as wide, since the letters cover the inner half of the line
+        using var pen = new Pen(outline.Color, outline.Width * 2) { LineJoin = LineJoin.Round };
+        using var brush = new SolidBrush(Color.FromArgb(255, text.Color));
+        var area = Rectangle.Ceiling(path.GetBounds(null, pen));
+
+        area.Inflate(1, 1);
+
+        using var layer = new Bitmap(area.Width, area.Height, PixelFormat.Format32bppPArgb);
+
+        using (var layerGraphics = Graphics.FromImage(layer))
+        {
+            layerGraphics.SmoothingMode = SmoothingMode.AntiAlias;
+            layerGraphics.TranslateTransform(-area.X, -area.Y);
+            layerGraphics.DrawPath(pen, path);
+            layerGraphics.FillPath(brush, path);
+        }
+
+        using var attributes = new ImageAttributes();
+
+        attributes.SetColorMatrix(new ColorMatrix { Matrix33 = text.Color.A / 255f });
+        graphics.DrawImage(layer, area, 0, 0, area.Width, area.Height, GraphicsUnit.Pixel, attributes);
     }
 }
