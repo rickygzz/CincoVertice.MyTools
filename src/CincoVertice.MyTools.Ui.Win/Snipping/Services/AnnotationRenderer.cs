@@ -158,6 +158,18 @@ public static class AnnotationRenderer
 
         area.Inflate(1, 1);
 
+        // Only what can show: a long pasted text can be larger than any bitmap can be. With a margin, since GDI+ fades
+        // the outer pixels of an image, which would show as lines where the layer ends in the middle of a letter
+        var visible = Rectangle.Ceiling(graphics.VisibleClipBounds);
+
+        visible.Inflate(2, 2);
+        area.Intersect(visible);
+
+        if (area.Width <= 0 || area.Height <= 0)
+        {
+            return;
+        }
+
         using var layer = new Bitmap(area.Width, area.Height, PixelFormat.Format32bppPArgb);
 
         using (var layerGraphics = Graphics.FromImage(layer))

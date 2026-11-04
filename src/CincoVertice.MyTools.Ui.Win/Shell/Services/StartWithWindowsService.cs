@@ -57,9 +57,6 @@ public sealed class StartWithWindowsService : IStartWithWindows
 
     public void SetEnabled(bool enabled)
     {
-        // Asking for it here overrules having turned it off in Windows, and turning it off leaves nothing behind
-        ForgetTurnedOffInWindows();
-
         using RegistryKey run = Registry.CurrentUser.CreateSubKey(_runKey);
 
         if (enabled)
@@ -70,6 +67,10 @@ public sealed class StartWithWindowsService : IStartWithWindows
         {
             run.DeleteValue(ValueName, throwOnMissingValue: false);
         }
+
+        // Asking for it here overrules having turned it off in Windows, and turning it off leaves nothing behind. Last:
+        // if the Run key can't be changed, forgetting this would turn back on an older command that's still in it
+        ForgetTurnedOffInWindows();
     }
 
     // An odd first byte means turned off: Windows writes 3 for that and 2 for on

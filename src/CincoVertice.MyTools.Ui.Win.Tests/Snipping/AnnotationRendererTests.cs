@@ -72,6 +72,59 @@ public class AnnotationRendererTests
     }
 
     [Fact]
+    public void Outline_OnAVeryLongText_DrawsWhatsOnTheSnip()
+    {
+        // Arrange: as when a long text is pasted. As a whole, it's far larger than any bitmap can be
+        string text = new string('M', 3000) + new string('\n', 3000) + "M";
+
+        // Act
+        using Bitmap image = Render(Text(_letters, 3) with { Text = text });
+
+        // Assert
+        Assert.True(CountOf(image, color => color.ToArgb() == _letters.ToArgb()) > 100);
+    }
+
+    [Theory]
+    [InlineData(5000, 5000)]
+    [InlineData(-5000, -5000)]
+    [InlineData(310, 20)]
+    public void Outline_OnATextOutsideTheSnip_DrawsNothing(int x, int y)
+    {
+        // Act
+        using Bitmap image = Render(Text(_letters, 3) with { Location = new Point(x, y) });
+
+        // Assert
+        Assert.Equal(0, CountOf(image, color => color.ToArgb() != Color.White.ToArgb()));
+    }
+
+    [Fact]
+    public void Outline_RepaintingOnlyAPart_DrawsThatPartTheSame()
+    {
+        // Arrange: a window repaints only what needs it
+        var part = new Rectangle(40, 30, 50, 40);
+        TextAnnotationModel text = Text(Color.FromArgb(128, _letters), 3);
+        using Bitmap whole = Render(text);
+        using var clipped = new Bitmap(whole.Width, whole.Height);
+
+        // Act
+        using (var graphics = Graphics.FromImage(clipped))
+        {
+            graphics.Clear(Color.White);
+            graphics.SetClip(part);
+            AnnotationRenderer.Draw(graphics, [text], clipped);
+        }
+
+        // Assert
+        for (int y = part.Top; y < part.Bottom; y++)
+        {
+            for (int x = part.Left; x < part.Right; x++)
+            {
+                Assert.Equal(whole.GetPixel(x, y).ToArgb(), clipped.GetPixel(x, y).ToArgb());
+            }
+        }
+    }
+
+    [Fact]
     public void NoOutline_DrawsNoEdge()
     {
         // Act

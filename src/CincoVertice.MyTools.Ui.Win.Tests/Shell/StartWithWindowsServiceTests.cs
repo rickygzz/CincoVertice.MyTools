@@ -118,6 +118,36 @@ public sealed class StartWithWindowsServiceTests : IDisposable
         Assert.Null(ApprovedValue());
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void SetEnabled_WhenTheRunKeyCantBeChanged_KeepsItTurnedOffInWindows(bool enabled)
+    {
+        // Arrange: a name the registry refuses stands for a Run key that can't be written. Forgetting the mark anyway
+        // would turn back on an older command that's still in the real key
+        SetApproved(3, 0, 0, 0);
+        var service = new StartWithWindowsService(ExePath, new string('x', 300), _approvedKey);
+
+        // Act & Assert
+        Assert.ThrowsAny<Exception>(() => service.SetEnabled(enabled));
+        Assert.NotNull(ApprovedValue());
+    }
+
+    [Fact]
+    public void SetEnabled_Off_ForgetsHavingBeenTurnedOffInWindows()
+    {
+        // Arrange
+        _service.SetEnabled(true);
+        SetApproved(3, 0, 0, 0);
+
+        // Act
+        _service.SetEnabled(false);
+
+        // Assert
+        Assert.Null(RunValue());
+        Assert.Null(ApprovedValue());
+    }
+
     [Fact]
     public void IsEnabled_ForAnotherCopyOfTheApp_IsOff_AndTurningItOnReplacesIt()
     {
