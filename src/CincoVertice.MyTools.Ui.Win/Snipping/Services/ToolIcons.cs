@@ -47,6 +47,9 @@ public static class ToolIcons
             case SnipTool.Blur:
                 DrawBlur(graphics);
                 break;
+            case SnipTool.Select:
+                DrawSelect(graphics, pen);
+                break;
         }
 
         return icon;
@@ -161,6 +164,18 @@ public static class ToolIcons
 
         path.AddRoundedRectangle(new RectangleF(2, 3.5f, 12, 9), new SizeF(5, 5));
         graphics.DrawPath(pen, path);
+    }
+
+    /// <summary>A mouse pointer.</summary>
+    private static void DrawSelect(Graphics graphics, Pen pen)
+    {
+        PointF[] pointer =
+        [
+            new(4, 2), new(4, 13), new(6.8f, 10.5f), new(8.7f, 14.5f), new(10.6f, 13.6f), new(8.7f, 9.7f), new(12.2f, 9.5f),
+        ];
+
+        graphics.FillPolygon(Brushes.White, pointer);
+        graphics.DrawPolygon(pen, pointer);
     }
 
     /// <summary>A square of blocks in different grays, as a blurred picture looks.</summary>

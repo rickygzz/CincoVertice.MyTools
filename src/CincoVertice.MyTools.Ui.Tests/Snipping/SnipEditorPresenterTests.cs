@@ -682,6 +682,1260 @@ public class SnipEditorPresenterTests
     private static IReadOnlyList<Point> Points(AnnotationModel annotation) =>
         Assert.IsType<StrokeAnnotationModel>(annotation).Points;
 
+    private static readonly Color _red = Color.FromArgb(255, 255, 0, 0);
+
+    /// <summary>Draws a rectangle from (100, 100) to (200, 180) and an arrow, then picks the select tool.</summary>
+    private void DrawRectangleAndArrow()
+    {
+        _view.SelectTool(SnipTool.Rectangle);
+        _view.Press(100, 100);
+        _view.Release(200, 180);
+        _view.SelectTool(SnipTool.Arrow);
+        _view.Press(300, 300);
+        _view.Release(400, 300);
+        _view.SelectTool(SnipTool.Select);
+    }
+
+    private void Click(int x, int y)
+    {
+        _view.Press(x, y);
+        _view.Release(x, y);
+    }
+
+    private void Drag(int fromX, int fromY, int toX, int toY)
+    {
+        _view.Press(fromX, fromY);
+        _view.Move(toX, toY);
+        _view.Release(toX, toY);
+    }
+
+    private RectangleAnnotationModel TheRectangle => Assert.IsType<RectangleAnnotationModel>(_presenter.Annotations[0]);
+
+    private ArrowAnnotationModel TheArrow => Assert.IsType<ArrowAnnotationModel>(_presenter.Annotations[1]);
+
+    [Fact]
+    public void Select_DrawsNothing()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Select);
+
+        // Act
+        Drag(10, 10, 100, 100);
+
+        // Assert
+        Assert.Empty(_presenter.Annotations);
+        Assert.Null(_view.Selection);
+    }
+
+    [Fact]
+    public void Click_OnALine_SelectsIt_ShowingAFrameWithHandles()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+
+        // Act
+        Click(100, 140);
+
+        // Assert
+        Assert.Equal(new Rectangle(100, 100, 100, 80), _view.Selection!.Box);
+        Assert.Equal(8, _view.Selection.Handles.Count);
+    }
+
+    [Fact]
+    public void Click_OnAnArrow_ShowsOnlyItsEnds()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+
+        // Act
+        Click(350, 300);
+
+        // Assert
+        Assert.Null(_view.Selection!.Box);
+        Assert.Equal([new Point(300, 300), new Point(400, 300)], _view.Selection.Handles);
+    }
+
+    [Fact]
+    public void Click_InTheEmptyPartOfARectangle_SelectsNothing()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+
+        // Act
+        Click(150, 140);
+
+        // Assert
+        Assert.Null(_view.Selection);
+    }
+
+    [Fact]
+    public void Click_WhereTwoOverlap_SelectsTheOneOnTop()
+    {
+        // Arrange: a second rectangle exactly over the first
+        _view.SelectTool(SnipTool.Rectangle);
+        _view.Press(100, 100);
+        _view.Release(200, 180);
+        _view.SelectColor(Color.Blue);
+        _view.Press(100, 100);
+        _view.Release(200, 180);
+        _view.SelectTool(SnipTool.Select);
+
+        // Act
+        Click(100, 140);
+
+        // Assert
+        Assert.Equal(Solid(Color.Blue), _view.Color);
+    }
+
+    [Fact]
+    public void Click_Elsewhere_Deselects()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        Click(100, 140);
+
+        // Act
+        Click(600, 600);
+
+        // Assert
+        Assert.Null(_view.Selection);
+    }
+
+    [Fact]
+    public void Drag_MovesIt_ShowingItOnTheWay_AndKeepingItOnRelease()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        int copies = _view.CopyCount;
+
+        // Act
+        _view.Press(100, 140);
+        _view.Move(110, 150);
+
+        // Assert: only a preview so far
+        Assert.Equal(new Rectangle(110, 110, 100, 80), Assert.IsType<RectangleAnnotationModel>(_view.Annotations[0]).Bounds);
+        Assert.Equal(new Rectangle(100, 100, 100, 80), TheRectangle.Bounds);
+        Assert.Equal(copies, _view.CopyCount);
+
+        // Act
+        _view.Release(130, 170);
+
+        // Assert
+        Assert.Equal(new Rectangle(130, 130, 100, 80), TheRectangle.Bounds);
+        Assert.Equal(copies + 1, _view.CopyCount);
+    }
+
+    [Fact]
+    public void Drag_InsideTheFrameOfWhatsSelected_MovesIt()
+    {
+        // Arrange: nothing is drawn there, but it's what the frame holds
+        DrawRectangleAndArrow();
+        Click(100, 140);
+
+        // Act
+        Drag(150, 140, 160, 150);
+
+        // Assert
+        Assert.Equal(new Rectangle(110, 110, 100, 80), TheRectangle.Bounds);
+    }
+
+    [Fact]
+    public void Drag_EveryKindOfAnnotation_Moves()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Pen);
+        _view.Press(10, 10);
+        _view.Move(20, 10);
+        _view.Release(30, 10);
+        _view.SelectTool(SnipTool.Blur);
+        _view.Press(100, 100);
+        _view.Release(150, 150);
+        _view.SelectTool(SnipTool.Text);
+        _view.CommitText(300, 300, "hi");
+        _view.SelectTool(SnipTool.Select);
+
+        // Act
+        Drag(20, 10, 25, 15);
+        Drag(120, 120, 125, 125);
+        Drag(305, 305, 310, 310);
+
+        // Assert
+        Assert.Equal([new Point(15, 15), new Point(25, 15), new Point(35, 15)], Assert.IsType<StrokeAnnotationModel>(_presenter.Annotations[0]).Points);
+        Assert.Equal(new Rectangle(105, 105, 50, 50), Assert.IsType<BlurAnnotationModel>(_presenter.Annotations[1]).Bounds);
+        Assert.Equal(new Point(305, 305), Assert.IsType<TextAnnotationModel>(_presenter.Annotations[2]).Location);
+    }
+
+    [Fact]
+    public void Click_ChangesNothing_AndLeavesNothingToUndo()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        int copies = _view.CopyCount;
+
+        // Act
+        Click(100, 140);
+        _view.Undo();
+
+        // Assert: the undo took away the arrow, not a change the click made
+        Assert.Single(_presenter.Annotations);
+        Assert.Equal(copies + 1, _view.CopyCount);
+    }
+
+    [Theory]
+    [InlineData(200, 180, 240, 200, 100, 100, 140, 100)]
+    [InlineData(100, 100, 80, 90, 80, 90, 120, 90)]
+    [InlineData(150, 180, 999, 220, 100, 100, 100, 120)]
+    [InlineData(200, 140, 260, 999, 100, 100, 160, 80)]
+    public void DragAHandle_ScalesFromTheOtherSide(int fromX, int fromY, int toX, int toY, int x, int y, int width, int height)
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        Click(100, 140);
+
+        // Act
+        Drag(fromX, fromY, toX, toY);
+
+        // Assert
+        Assert.Equal(new Rectangle(x, y, width, height), TheRectangle.Bounds);
+    }
+
+    [Fact]
+    public void DragAHandle_PastTheOtherSide_StopsThere()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        Click(100, 140);
+
+        // Act
+        Drag(200, 180, 10, 10);
+
+        // Assert
+        Assert.Equal(new Rectangle(100, 100, 2, 2), TheRectangle.Bounds);
+    }
+
+    /// <summary>Draws with the pen, 16 wide, through these points, then selects it at the first one.</summary>
+    private void ThickLine(params Point[] points)
+    {
+        _view.SelectTool(SnipTool.Pen);
+        _view.SelectSize(16);
+        _view.Press(points[0].X, points[0].Y);
+
+        foreach (Point point in points.Skip(1))
+        {
+            _view.Move(point.X, point.Y);
+        }
+
+        _view.Release(points[^1].X, points[^1].Y);
+        _view.SelectTool(SnipTool.Select);
+        Click(points[0].X, points[0].Y);
+    }
+
+    private StrokeAnnotationModel TheStroke => Assert.IsType<StrokeAnnotationModel>(_presenter.Annotations[0]);
+
+    [Fact]
+    public void StrokesFrame_GoesAroundItsThickness()
+    {
+        // Act
+        ThickLine(new Point(100, 100), new Point(300, 100));
+
+        // Assert: what's drawn, not only the line down its middle
+        Assert.Equal(new Rectangle(92, 92, 216, 16), _view.Selection!.Box);
+    }
+
+    [Fact]
+    public void DragAHandle_ScalesAPenLine_AndItsWidth()
+    {
+        // Arrange: 4 wide, so the frame is (98, 98) to (202, 202)
+        _view.SelectTool(SnipTool.Pen);
+        _view.Press(100, 100);
+        _view.Move(150, 150);
+        _view.Release(200, 200);
+        _view.SelectTool(SnipTool.Select);
+        Click(150, 150);
+
+        // Act: twice as large
+        Drag(202, 202, 306, 306);
+
+        // Assert
+        Assert.Equal([new Point(102, 102), new Point(202, 202), new Point(302, 302)], TheStroke.Points);
+        Assert.Equal(8, TheStroke.Width);
+    }
+
+    [Fact]
+    public void DragAcrossALevelLine_MakesItThicker_AndKeepsItLevel()
+    {
+        // Arrange: its frame is 16 tall
+        ThickLine(new Point(100, 100), new Point(300, 100));
+
+        // Act: the bottom middle handle, to twice the height
+        Drag(200, 108, 200, 124);
+
+        // Assert
+        Assert.Equal(32, TheStroke.Width);
+        Assert.Equal([new Point(108, 108), new Point(292, 108)], TheStroke.Points);
+
+        // Its top and its sides stay where they were, as dragging only the bottom should do
+        Assert.Equal(new Rectangle(92, 92, 216, 32), _view.Selection!.Box);
+    }
+
+    [Fact]
+    public void DragAlongALevelLine_MakesItLonger_KeepingItsThickness()
+    {
+        // Arrange: its frame is 216 wide
+        ThickLine(new Point(100, 100), new Point(300, 100));
+
+        // Act: the right middle handle
+        Drag(308, 100, 524, 100);
+
+        // Assert
+        Assert.Equal(16, TheStroke.Width);
+        Assert.Equal(100, TheStroke.Points[0].Y);
+        Assert.Equal(100, TheStroke.Points[^1].Y);
+        Assert.True(TheStroke.Points[^1].X > 500);
+    }
+
+    [Fact]
+    public void DragAcrossALine_DoesntStretchTheWobbleOfTheHand()
+    {
+        // Arrange: nearly level, drawn by hand
+        ThickLine(new Point(100, 100), new Point(150, 102), new Point(200, 100), new Point(250, 102), new Point(300, 100));
+
+        // Act: to about 3 times the height
+        Drag(200, 110, 200, 140);
+
+        // Assert: the thickness grows, and the line stays nearly level
+        Assert.True(TheStroke.Width >= 40, $"Width {TheStroke.Width}");
+        Assert.True(TheStroke.Points.Max(point => point.Y) - TheStroke.Points.Min(point => point.Y) <= 6);
+    }
+
+    [Fact]
+    public void DragDownAVerticalLine_MakesItLonger_KeepingItsThickness()
+    {
+        // Arrange
+        ThickLine(new Point(100, 100), new Point(100, 300));
+
+        // Act: the bottom middle handle
+        Drag(100, 308, 100, 524);
+
+        // Assert
+        Assert.Equal(16, TheStroke.Width);
+    }
+
+    [Fact]
+    public void DragAHandleOfADot_ScalesItInPlace()
+    {
+        // Arrange: a click with a thick pen
+        ThickLine(new Point(100, 100));
+
+        // Act: its frame is (92, 92) to (108, 108), and this makes it twice as large
+        Drag(108, 108, 124, 124);
+
+        // Assert
+        Assert.Equal(32, TheStroke.Width);
+        Assert.Equal(new Point(108, 108), Assert.Single(TheStroke.Points));
+    }
+
+    /// <summary>Draws with the highlighter, 16 wide, through these points, then selects it at the first one.</summary>
+    private void DrawHighlight(params Point[] points)
+    {
+        _view.SelectTool(SnipTool.Highlighter);
+        _view.Press(points[0].X, points[0].Y);
+
+        foreach (Point point in points.Skip(1))
+        {
+            _view.Move(point.X, point.Y);
+        }
+
+        _view.Release(points[^1].X, points[^1].Y);
+        _view.SelectTool(SnipTool.Select);
+        Click(points[0].X, points[0].Y);
+    }
+
+    [Fact]
+    public void ScalingAHighlight_HighlightsTheWholeFrame_InItsColor()
+    {
+        // Arrange: drawn by hand, nearly level, in yellow and half see-through
+        DrawHighlight(new Point(100, 100), new Point(150, 103), new Point(200, 100));
+
+        // Assert: its frame is (92, 92) to (208, 111)
+        Assert.Equal(new Rectangle(92, 92, 116, 19), _view.Selection!.Box);
+        Color color = TheStroke.Color;
+
+        // Act: the bottom middle handle
+        Drag(150, 111, 150, 151);
+
+        // Assert
+        HighlightAnnotationModel highlight = Assert.IsType<HighlightAnnotationModel>(_presenter.Annotations[0]);
+        Assert.Equal(new Rectangle(92, 92, 116, 59), highlight.Bounds);
+        Assert.Equal(color, highlight.Color);
+        Assert.Equal(highlight.Bounds, _view.Selection!.Box);
+    }
+
+    [Fact]
+    public void ScalingAHighlight_ShowsTheWholeFrameWhileDragging()
+    {
+        // Arrange
+        DrawHighlight(new Point(100, 100), new Point(200, 100));
+
+        // Act
+        _view.Press(150, 108);
+        _view.Move(150, 148);
+
+        // Assert
+        Assert.IsType<HighlightAnnotationModel>(Assert.Single(_view.Annotations));
+        Assert.IsType<StrokeAnnotationModel>(_presenter.Annotations[0]);
+    }
+
+    [Fact]
+    public void MovingAHighlight_LeavesItAsDrawn()
+    {
+        // Arrange
+        DrawHighlight(new Point(100, 100), new Point(200, 100));
+
+        // Act
+        Drag(150, 100, 160, 110);
+
+        // Assert
+        Assert.Equal(new Point(110, 110), TheStroke.Points[0]);
+    }
+
+    [Fact]
+    public void AScaledHighlight_ScalesMovesAndChangesColorAsABox_WithNoSizeToChoose()
+    {
+        // Arrange
+        DrawHighlight(new Point(100, 100), new Point(200, 100));
+        Drag(150, 108, 150, 148);
+
+        // Assert
+        Assert.Empty(_view.Sizes);
+        Assert.Equal(50, _view.Transparency);
+
+        // Act
+        Drag(150, 148, 150, 158);
+        Drag(150, 120, 160, 130);
+        _view.SelectColor(Color.Blue);
+
+        // Assert
+        HighlightAnnotationModel highlight = Assert.IsType<HighlightAnnotationModel>(_presenter.Annotations[0]);
+        Assert.Equal(new Rectangle(102, 102, 116, 66), highlight.Bounds);
+        Assert.Equal(Color.FromArgb(128, Solid(Color.Blue)), highlight.Color);
+    }
+
+    [Fact]
+    public void AScaledHighlight_IsSelectedByClickingAnywhereInIt()
+    {
+        // Arrange
+        DrawHighlight(new Point(100, 100), new Point(200, 100));
+        Drag(150, 108, 150, 148);
+        Click(5000, 5000);
+
+        // Act
+        Click(150, 130);
+
+        // Assert
+        Assert.NotNull(_view.Selection);
+    }
+
+    [Fact]
+    public void Undo_TakesAScaledHighlightBackToItsLine()
+    {
+        // Arrange
+        DrawHighlight(new Point(100, 100), new Point(200, 100));
+        Drag(150, 108, 150, 148);
+
+        // Act
+        _view.Undo();
+
+        // Assert
+        Assert.IsType<StrokeAnnotationModel>(_presenter.Annotations[0]);
+    }
+
+    [Fact]
+    public void RightClick_OnSomething_SelectsItAndShowsTheMenu()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+
+        // Act
+        _view.RightClick(100, 140);
+
+        // Assert: nothing to reset, as it's as drawn
+        Assert.Equal((new Point(100, 140), false), _view.ContextMenu);
+        Assert.Equal(new Rectangle(100, 100, 100, 80), _view.Selection!.Box);
+    }
+
+    [Fact]
+    public void RightClick_OnNothing_ShowsNoMenu_AndKeepsTheSelection()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        Click(100, 140);
+
+        // Act
+        _view.RightClick(600, 600);
+
+        // Assert
+        Assert.Null(_view.ContextMenu);
+        Assert.NotNull(_view.Selection);
+    }
+
+    [Fact]
+    public void RightClick_InsideTheFrameOrOnAHandleOfWhatsSelected_ShowsTheMenu()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        Click(100, 140);
+
+        // Act & Assert
+        _view.RightClick(150, 140);
+        Assert.Equal(new Point(150, 140), _view.ContextMenu!.Value.Location);
+
+        _view.RightClick(200, 180);
+        Assert.Equal(new Point(200, 180), _view.ContextMenu!.Value.Location);
+    }
+
+    [Fact]
+    public void RightClick_WithADrawingTool_DoesNothing()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        _view.SelectTool(SnipTool.Pen);
+
+        // Act
+        _view.RightClick(100, 140);
+
+        // Assert
+        Assert.Null(_view.ContextMenu);
+    }
+
+    [Fact]
+    public void RightClick_AfterAChange_OffersTheReset()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        Drag(100, 140, 110, 150);
+
+        // Act
+        _view.RightClick(110, 150);
+
+        // Assert
+        Assert.True(_view.ContextMenu!.Value.CanReset);
+    }
+
+    [Fact]
+    public void Reset_AfterSeveralChanges_GoesBackToAsDrawn_AndCanBeUndone()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        Drag(100, 140, 110, 150);
+        Drag(200, 190, 300, 290);
+        _view.SelectColor(Color.Blue);
+        _view.SelectSize(20);
+        Rectangle changed = TheRectangle.Bounds;
+
+        // Act
+        _view.Reset();
+
+        // Assert
+        Assert.Equal(new Rectangle(100, 100, 100, 80), TheRectangle.Bounds);
+        Assert.Equal(SnipEditorPresenter.Palette[0], TheRectangle.Color);
+        Assert.Equal(4, TheRectangle.Width);
+        Assert.Equal(4, _view.Size);
+        Assert.Null(TheRectangle.Original);
+
+        // Act
+        _view.Undo();
+
+        // Assert
+        Assert.Equal(changed, TheRectangle.Bounds);
+    }
+
+    [Fact]
+    public void Reset_TakesAScaledHighlightBackToItsLine()
+    {
+        // Arrange
+        DrawHighlight(new Point(100, 100), new Point(200, 100));
+        Drag(150, 108, 150, 148);
+
+        // Act
+        _view.Reset();
+
+        // Assert
+        Assert.Equal([new Point(100, 100), new Point(200, 100)], TheStroke.Points);
+    }
+
+    [Fact]
+    public void Reset_TakesAnEditedTextBack()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Text);
+        _view.CommitText(100, 100, "hi");
+        _view.SelectTool(SnipTool.Select);
+        Click(110, 110);
+        _view.DoubleClick(110, 110);
+        _view.CommitText(100, 100, "changed");
+
+        // Act
+        _view.Reset();
+
+        // Assert
+        Assert.Equal("hi", Assert.IsType<TextAnnotationModel>(_presenter.Annotations[0]).Text);
+    }
+
+    [Fact]
+    public void Reset_OfWhatHasntChanged_LeavesNothingToUndo()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        Click(100, 140);
+        int copies = _view.CopyCount;
+
+        // Act
+        _view.Reset();
+
+        // Assert
+        Assert.Equal(copies, _view.CopyCount);
+    }
+
+    [Fact]
+    public void DragAnArrowsEnd_MovesOnlyThatEnd()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        Click(350, 300);
+
+        // Act
+        Drag(400, 300, 450, 380);
+
+        // Assert
+        Assert.Equal((new Point(300, 300), new Point(450, 380)), (TheArrow.From, TheArrow.To));
+    }
+
+    [Fact]
+    public void DragAHandle_ScalesATextsFont_KeepingTheOtherCornerInPlace()
+    {
+        // Arrange: 2 characters at 24 is 24 by 24 here
+        _view.SelectTool(SnipTool.Text);
+        _view.CommitText(100, 100, "hi");
+        _view.SelectTool(SnipTool.Select);
+        Click(110, 110);
+
+        // Act: from the top left, to twice the height
+        Drag(100, 100, 76, 76);
+
+        // Assert
+        TextAnnotationModel text = Assert.IsType<TextAnnotationModel>(_presenter.Annotations[0]);
+        Assert.Equal(48, text.FontSize);
+        Assert.Equal(new Point(76, 76), text.Location);
+        Assert.Equal(new Rectangle(76, 76, 48, 48), _view.Selection!.Box);
+    }
+
+    [Fact]
+    public void Undo_TakesBackAMove_AndRedoDoesItAgain()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        Drag(100, 140, 110, 150);
+
+        // Act
+        _view.Undo();
+
+        // Assert
+        Assert.Equal(new Rectangle(100, 100, 100, 80), TheRectangle.Bounds);
+        Assert.Null(_view.Selection);
+
+        // Act
+        _view.Redo();
+
+        // Assert
+        Assert.Equal(new Rectangle(110, 110, 100, 80), TheRectangle.Bounds);
+    }
+
+    [Fact]
+    public void Delete_RemovesIt_AndUndoBringsItBack()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        Click(100, 140);
+
+        // Act
+        _view.Delete();
+
+        // Assert
+        Assert.IsType<ArrowAnnotationModel>(Assert.Single(_presenter.Annotations));
+        Assert.Null(_view.Selection);
+
+        // Act
+        _view.Undo();
+
+        // Assert
+        Assert.Equal(2, _presenter.Annotations.Count);
+    }
+
+    [Fact]
+    public void Delete_WithNothingSelected_DoesNothing()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+
+        // Act
+        _view.Delete();
+
+        // Assert
+        Assert.Equal(2, _presenter.Annotations.Count);
+    }
+
+    [Fact]
+    public void Nudge_MovesWhatsSelected()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        Click(100, 140);
+
+        // Act
+        _view.Nudge(10, -1);
+
+        // Assert
+        Assert.Equal(new Rectangle(110, 99, 100, 80), TheRectangle.Bounds);
+    }
+
+    [Fact]
+    public void Toolbar_ShowsWhatsSelected_AndChangesOnlyIt()
+    {
+        // Arrange: the arrow is drawn with its own settings
+        _view.SelectTool(SnipTool.Arrow);
+        _view.SelectColor(Color.Blue);
+        _view.SelectSize(10);
+        _view.SelectTransparency(30);
+        _view.Press(300, 300);
+        _view.Release(400, 300);
+        _view.SelectColor(Color.Green);
+        _view.SelectTool(SnipTool.Select);
+
+        // Act
+        Click(350, 300);
+
+        // Assert
+        Assert.True(_view.DrawingChoicesVisible);
+        Assert.Equal(Solid(Color.Blue), _view.Color);
+        Assert.Equal(10, _view.Size);
+        Assert.Equal(30, _view.Transparency);
+
+        // Act
+        _view.SelectColor(_red);
+        _view.SelectSize(16);
+        _view.SelectTransparency(50);
+
+        // Assert: its color is see-through as chosen, and the arrow tool keeps what it had
+        ArrowAnnotationModel arrow = Assert.IsType<ArrowAnnotationModel>(_presenter.Annotations[0]);
+        Assert.Equal(Color.FromArgb(128, _red), arrow.Color);
+        Assert.Equal(16, arrow.Width);
+
+        _view.SelectTool(SnipTool.Arrow);
+        Assert.Equal(Solid(Color.Green), _view.Color);
+        Assert.Equal(10, _view.Size);
+        Assert.Equal(30, _view.Transparency);
+    }
+
+    [Fact]
+    public void MoreColors_OnWhatsSelected_StartsFromItsColor_AndKeepsTheCustomColor()
+    {
+        // Arrange
+        Color picked = Color.FromArgb(255, 18, 52, 86);
+        DrawRectangleAndArrow();
+        Click(100, 140);
+        _view.ColorToPick = picked;
+
+        // Act
+        _view.RequestMoreColors();
+
+        // Assert
+        Assert.Equal(SnipEditorPresenter.Palette[0], _view.AskedFrom);
+        Assert.Equal(picked, TheRectangle.Color);
+        Assert.Equal([picked], _store.Saved[^1].CustomColors);
+    }
+
+    [Fact]
+    public void Toolbar_ChangesASelectedArrowsHeads()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        Click(350, 300);
+
+        // Assert
+        Assert.Equal(SnipArrowHeads.End, _view.ArrowHeads);
+
+        // Act
+        _view.SelectArrowHeads(SnipArrowHeads.Both);
+
+        // Assert
+        Assert.Equal(SnipArrowHeads.Both, TheArrow.Heads);
+    }
+
+    [Fact]
+    public void Toolbar_ChangesASelectedTextsSizeAndEdge()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Text);
+        _view.CommitText(100, 100, "hi");
+        _view.SelectTool(SnipTool.Select);
+        Click(110, 110);
+
+        // Assert
+        Assert.Equal(SnipEditorPresenter.FontSizes, _view.Sizes);
+        Assert.Equal(0, _view.TextOutline!.Width);
+
+        // Act: the color first, as it should wait for a width
+        _view.SelectTextOutlineColor(Color.Blue);
+        _view.SelectTextOutlineWidth(3);
+        _view.SelectSize(36);
+
+        // Assert
+        TextAnnotationModel text = Assert.IsType<TextAnnotationModel>(_presenter.Annotations[0]);
+        Assert.Equal(new SnipTextOutlineModel(3, Solid(Color.Blue)), text.Outline);
+        Assert.Equal(36, text.FontSize);
+    }
+
+    [Fact]
+    public void ABlur_HasNoChoices_ButCanBeMovedAndDeleted()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Blur);
+        _view.Press(100, 100);
+        _view.Release(150, 150);
+        _view.SelectTool(SnipTool.Select);
+
+        // Assert
+        Assert.False(_view.DrawingChoicesVisible);
+
+        // Act
+        Click(120, 120);
+
+        // Assert
+        Assert.False(_view.DrawingChoicesVisible);
+        Assert.NotNull(_view.Selection);
+
+        // Act
+        _view.Delete();
+
+        // Assert
+        Assert.Empty(_presenter.Annotations);
+    }
+
+    [Fact]
+    public void DoubleClick_OnAText_LetsYouTypeOverIt()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Text);
+        _view.SelectTransparency(50);
+        _view.CommitText(100, 100, "hi");
+        _view.SelectTool(SnipTool.Select);
+        Click(110, 110);
+
+        // Act
+        _view.DoubleClick(110, 110);
+
+        // Assert: from its text, solid in the box, and hidden meanwhile
+        Assert.Equal((new Point(100, 100), SnipEditorPresenter.Palette[0], 24), _view.TextInput);
+        Assert.Equal("hi", _view.TextInputText);
+        Assert.Empty(_view.Annotations);
+        Assert.Null(_view.Selection);
+
+        // Act
+        _view.CommitText(100, 100, "hello");
+
+        // Assert: the one text, with its text changed and the rest as it was
+        TextAnnotationModel text = Assert.IsType<TextAnnotationModel>(Assert.Single(_presenter.Annotations));
+        Assert.Equal("hello", text.Text);
+        Assert.Equal(128, text.Color.A);
+        Assert.Single(_view.Annotations);
+    }
+
+    [Fact]
+    public void DoubleClick_ThenEmptyingTheText_DeletesIt()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Text);
+        _view.CommitText(100, 100, "hi");
+        _view.SelectTool(SnipTool.Select);
+        Click(110, 110);
+        _view.DoubleClick(110, 110);
+
+        // Act
+        _view.CommitText(100, 100, "  ");
+
+        // Assert
+        Assert.Empty(_presenter.Annotations);
+        Assert.Null(_view.Selection);
+    }
+
+    [Fact]
+    public void Esc_OnANewTextWithSomethingInIt_KeepsIt_SelectedWithTheSelectTool()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Text);
+        _view.Press(100, 100);
+
+        // Act
+        _view.EscapeText(100, 100, "hi");
+
+        // Assert
+        Assert.Equal("hi", Assert.IsType<TextAnnotationModel>(Assert.Single(_presenter.Annotations)).Text);
+        Assert.Equal(SnipTool.Select, _view.Tool);
+        Assert.Equal(SnipTool.Select, _store.Saved[^1].Tool);
+        Assert.Equal(SnipCursor.Default, _view.Cursor);
+        Assert.Equal(new Rectangle(100, 100, 24, 24), _view.Selection!.Box);
+
+        // The toolbar is the text's, so it's ready to change too
+        Assert.Equal(SnipEditorPresenter.FontSizes, _view.Sizes);
+    }
+
+    [Fact]
+    public void Esc_OnANewText_SelectsThatOne_NotAnEarlierOne()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        _view.SelectTool(SnipTool.Text);
+
+        // Act
+        _view.EscapeText(500, 500, "hi");
+
+        // Assert
+        Assert.Equal(new Rectangle(500, 500, 24, 24), _view.Selection!.Box);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\r\n")]
+    public void Esc_OnAnEmptyNewText_AddsNothing_AndStaysWithTheTextTool(string text)
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Text);
+
+        // Act
+        _view.EscapeText(100, 100, text);
+
+        // Assert
+        Assert.Empty(_presenter.Annotations);
+        Assert.Equal(SnipTool.Text, _view.Tool);
+        Assert.Null(_view.Selection);
+    }
+
+    [Fact]
+    public void Esc_OnATextBeingEdited_KeepsWhatWasTyped_AndItStaysSelected()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        _view.SelectTool(SnipTool.Text);
+        _view.CommitText(500, 500, "hi");
+        _view.SelectTool(SnipTool.Select);
+        Click(510, 510);
+        _view.DoubleClick(510, 510);
+
+        // Act
+        _view.EscapeText(500, 500, "changed");
+
+        // Assert
+        Assert.Equal("changed", Assert.IsType<TextAnnotationModel>(_presenter.Annotations[2]).Text);
+        Assert.Equal(3, _view.Annotations.Count);
+        Assert.Equal(new Rectangle(500, 500, 84, 24), _view.Selection!.Box);
+        Assert.Equal(SnipTool.Select, _view.Tool);
+    }
+
+    [Fact]
+    public void Esc_OnATextEmptiedWhileEditing_DeletesIt()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Text);
+        _view.CommitText(100, 100, "hi");
+        _view.SelectTool(SnipTool.Select);
+        Click(110, 110);
+        _view.DoubleClick(110, 110);
+
+        // Act
+        _view.EscapeText(100, 100, string.Empty);
+
+        // Assert
+        Assert.Empty(_presenter.Annotations);
+        Assert.Null(_view.Selection);
+    }
+
+    [Fact]
+    public void Esc_OnATextBeingEdited_Unchanged_ShowsItAgain_WithNothingToUndo()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Text);
+        _view.CommitText(100, 100, "hi");
+        _view.SelectTool(SnipTool.Select);
+        Click(110, 110);
+        int copies = _view.CopyCount;
+        _view.DoubleClick(110, 110);
+
+        // Act
+        _view.EscapeText(100, 100, "hi");
+
+        // Assert
+        Assert.Single(_view.Annotations);
+        Assert.NotNull(_view.Selection);
+        Assert.Equal(copies, _view.CopyCount);
+    }
+
+    [Fact]
+    public void Esc_AfterAKeptText_CanBeUndone()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Text);
+        _view.EscapeText(100, 100, "hi");
+
+        // Act
+        _view.Undo();
+
+        // Assert
+        Assert.Empty(_presenter.Annotations);
+        Assert.Null(_view.Selection);
+    }
+
+    [Fact]
+    public void DoubleClick_ThenTheSameText_LeavesNothingToUndo()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Text);
+        _view.CommitText(100, 100, "hi");
+        _view.SelectTool(SnipTool.Select);
+        Click(110, 110);
+        int copies = _view.CopyCount;
+        _view.DoubleClick(110, 110);
+
+        // Act
+        _view.CommitText(100, 100, "hi");
+
+        // Assert
+        Assert.Equal(copies, _view.CopyCount);
+        Assert.Single(_view.Annotations);
+    }
+
+    [Fact]
+    public void ChangingTool_Deselects_AndGoesBackToTheToolsChoices()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        Click(100, 140);
+
+        // Act
+        _view.SelectTool(SnipTool.Text);
+
+        // Assert
+        Assert.Null(_view.Selection);
+        Assert.Equal(SnipEditorPresenter.FontSizes, _view.Sizes);
+    }
+
+    [Fact]
+    public void Deselect_ClearsTheSelection()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        Click(100, 140);
+
+        // Act
+        _view.Deselect();
+
+        // Assert
+        Assert.Null(_view.Selection);
+    }
+
+    [Fact]
+    public void GoingToAnotherSnip_Deselects()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        Click(100, 140);
+
+        // Act
+        _view.AddSnip();
+
+        // Assert
+        Assert.Null(_view.Selection);
+    }
+
+    [Fact]
+    public void Hover_ShowsWhatADragWouldDo()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+
+        // Act & Assert
+        _view.Hover(600, 600);
+        Assert.Equal(SnipCursor.Default, _view.Cursor);
+
+        _view.Hover(100, 140);
+        Assert.Equal(SnipCursor.Move, _view.Cursor);
+
+        Click(100, 140);
+        _view.Hover(200, 180);
+        Assert.Equal(SnipCursor.SizeTopLeftBottomRight, _view.Cursor);
+
+        _view.Hover(150, 180);
+        Assert.Equal(SnipCursor.SizeVertical, _view.Cursor);
+
+        _view.Hover(200, 140);
+        Assert.Equal(SnipCursor.SizeHorizontal, _view.Cursor);
+
+        _view.Hover(150, 140);
+        Assert.Equal(SnipCursor.Move, _view.Cursor);
+    }
+
+    [Fact]
+    public void DrawingTools_ShowACross()
+    {
+        // Act
+        _view.SelectTool(SnipTool.Select);
+        _view.SelectTool(SnipTool.Pen);
+
+        // Assert
+        Assert.Equal(SnipCursor.Cross, _view.Cursor);
+    }
+
+    [Fact]
+    public void Start_ShowsTheFirstSnip()
+    {
+        Assert.Equal((0, 1), (_view.SnipIndex, _view.SnipCount));
+    }
+
+    [Fact]
+    public void NewSnip_IsShownWithNothingOnIt_AndCopied()
+    {
+        // Arrange
+        Draw(10);
+        int copies = _view.CopyCount;
+
+        // Act
+        _view.AddSnip();
+
+        // Assert
+        Assert.Equal((1, 2), (_view.SnipIndex, _view.SnipCount));
+        Assert.Empty(_view.Annotations);
+        Assert.Empty(_presenter.Annotations);
+        Assert.False(_view.CanUndo);
+        Assert.Equal(copies + 1, _view.CopyCount);
+    }
+
+    [Fact]
+    public void GoingBack_ShowsThatSnipsAnnotations_AndCopiesIt()
+    {
+        // Arrange
+        Draw(10);
+        AnnotationModel first = _presenter.Annotations[0];
+        _view.AddSnip();
+        Draw(20);
+        AnnotationModel second = _presenter.Annotations[0];
+        int copies = _view.CopyCount;
+
+        // Act
+        _view.StepSnip(-1);
+
+        // Assert
+        Assert.Equal((0, 2), (_view.SnipIndex, _view.SnipCount));
+        Assert.Equal([first], _view.Annotations);
+        Assert.Equal(copies + 1, _view.CopyCount);
+
+        // Act
+        _view.StepSnip(1);
+
+        // Assert
+        Assert.Equal([second], _view.Annotations);
+    }
+
+    [Fact]
+    public void EachSnip_KeepsItsOwnUndoAndRedo()
+    {
+        // Arrange: the first has something to redo, the second something to undo
+        Draw(10);
+        _view.Undo();
+        _view.AddSnip();
+        Draw(20);
+
+        // Assert
+        Assert.Equal((true, false), (_view.CanUndo, _view.CanRedo));
+
+        // Act
+        _view.StepSnip(-1);
+
+        // Assert
+        Assert.Equal((false, true), (_view.CanUndo, _view.CanRedo));
+
+        // Act
+        _view.Redo();
+
+        // Assert
+        Assert.Single(_presenter.Annotations);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(2)]
+    public void Step_PastTheEnds_DoesNothing(int step)
+    {
+        // Arrange
+        _view.AddSnip();
+        _view.StepSnip(-1);
+        int copies = _view.CopyCount;
+
+        // Act
+        _view.StepSnip(step);
+
+        // Assert
+        Assert.Equal(0, _view.SnipIndex);
+        Assert.Equal(copies, _view.CopyCount);
+    }
+
+    [Fact]
+    public void NewSnip_WhileDragging_DropsTheDrag()
+    {
+        // Arrange
+        _view.Press(10, 10);
+        _view.Move(50, 50);
+
+        // Act
+        _view.AddSnip();
+        _view.Move(60, 60);
+        _view.Release(70, 70);
+
+        // Assert
+        Assert.Empty(_view.Annotations);
+        Assert.Empty(_presenter.Annotations);
+    }
+
+    [Fact]
+    public void ToolAndSettings_StayWhenASnipArrives()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Arrow);
+        _view.SelectColor(Color.Blue);
+
+        // Act
+        _view.AddSnip();
+
+        // Assert
+        Assert.Equal(SnipTool.Arrow, _view.Tool);
+        Assert.Equal(Solid(Color.Blue), _view.Color);
+    }
+
+    [Fact]
+    public void Save_WhenASnipArrivesDuringTheDialog_SavesTheOneItAskedAbout()
+    {
+        // Arrange
+        _view.SavePath = @"C:\x.png";
+        _view.DuringAskSavePath = _view.AddSnip;
+
+        // Act
+        _view.Save();
+
+        // Assert
+        Assert.Equal(0, _view.SnipIndexWhenSaved);
+        Assert.Equal(2, _view.SnipCount);
+    }
+
     [Fact]
     public void Blur_DragHidesThatArea_WhicheverWayItsDragged()
     {
@@ -952,6 +2206,25 @@ public class SnipEditorPresenterTests
 
         public event EventHandler<TextInputModel>? TextCommitted;
 
+        public event EventHandler? SnipAdded;
+
+        public event EventHandler<int>? SnipStepRequested;
+
+        public int SnipIndex { get; private set; }
+
+        public int SnipCount { get; private set; }
+
+        public int? SnipIndexWhenSaved { get; private set; }
+
+        /// <summary>Runs while the save dialog is open, as a global hotkey can.</summary>
+        public Action? DuringAskSavePath { get; set; }
+
+        public void AddSnip() => SnipAdded?.Invoke(this, EventArgs.Empty);
+
+        public void StepSnip(int step) => SnipStepRequested?.Invoke(this, step);
+
+        public void ShowSnip(int index, int count) => (SnipIndex, SnipCount) = (index, count);
+
         public event EventHandler? UndoRequested;
 
         public event EventHandler? RedoRequested;
@@ -1080,18 +2353,86 @@ public class SnipEditorPresenterTests
 
         public void ShowUndoRedo(bool canUndo, bool canRedo) => (CanUndo, CanRedo) = (canUndo, canRedo);
 
-        public void BeginTextInput(Point location, Color color, int fontSize) =>
+        public void BeginTextInput(Point location, Color color, int fontSize, string text)
+        {
             TextInput = (location, color, fontSize);
+            TextInputText = text;
+        }
+
+        public string? TextInputText { get; private set; }
+
+        public event EventHandler<Point>? PointerDoubleClicked;
+
+        public event EventHandler<Point>? PointerHovered;
+
+        public event EventHandler<Point>? PointerRightClicked;
+
+        public event EventHandler? ResetRequested;
+
+        public (Point Location, bool CanReset)? ContextMenu { get; private set; }
+
+        public void RightClick(int x, int y) => PointerRightClicked?.Invoke(this, new Point(x, y));
+
+        public void Reset() => ResetRequested?.Invoke(this, EventArgs.Empty);
+
+        public void ShowContextMenu(Point location, bool canReset) => ContextMenu = (location, canReset);
+
+        public event EventHandler? DeleteRequested;
+
+        public event EventHandler<Size>? NudgeRequested;
+
+        public event EventHandler? DeselectRequested;
+
+        public event EventHandler<TextInputModel>? TextEscaped;
+
+        public SnipSelectionModel? Selection { get; private set; }
+
+        public SnipCursor Cursor { get; private set; } = SnipCursor.Cross;
+
+        public void DoubleClick(int x, int y)
+        {
+            Press(x, y);
+            PointerDoubleClicked?.Invoke(this, new Point(x, y));
+            Release(x, y);
+        }
+
+        public void Hover(int x, int y) => PointerHovered?.Invoke(this, new Point(x, y));
+
+        public void Delete() => DeleteRequested?.Invoke(this, EventArgs.Empty);
+
+        public void Nudge(int x, int y) => NudgeRequested?.Invoke(this, new Size(x, y));
+
+        public void Deselect() => DeselectRequested?.Invoke(this, EventArgs.Empty);
+
+        public void EscapeText(int x, int y, string text) =>
+            TextEscaped?.Invoke(this, new TextInputModel(new Point(x, y), text));
+
+        public void ShowSelection(SnipSelectionModel? selection) => Selection = selection;
+
+        public void ShowCursor(SnipCursor cursor) => Cursor = cursor;
+
+        /// <summary>Every character is half as wide as the font is tall.</summary>
+        public Size MeasureText(string text, int fontSize)
+        {
+            string[] lines = text.Split('\n');
+
+            return new Size(lines.Max(line => line.Length) * fontSize / 2, lines.Length * fontSize);
+        }
 
         public void CopyImageToClipboard() => CopyCount++;
 
         public string? AskSavePath(string suggestedFileName)
         {
             SuggestedFileName = suggestedFileName;
+            DuringAskSavePath?.Invoke();
 
             return SavePath;
         }
 
-        public void SaveImage(string path) => SavedPath = path;
+        public void SaveImage(string path)
+        {
+            SavedPath = path;
+            SnipIndexWhenSaved = SnipIndex;
+        }
     }
 }

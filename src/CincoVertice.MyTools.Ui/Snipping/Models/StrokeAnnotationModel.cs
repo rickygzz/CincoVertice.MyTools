@@ -7,5 +7,6 @@ namespace CincoVertice.MyTools.Ui.Snipping.Models;
 /// </summary>
 /// <param name="Points">The points in the order they were drawn; at least one.</param>
 /// <param name="Width">The line width, in pixels.</param>
-public sealed record StrokeAnnotationModel(IReadOnlyList<Point> Points, Color Color, int Width)
+/// <param name="IsHighlight">True when it's from the highlighter, so scaling it highlights the whole area.</param>
+public sealed record StrokeAnnotationModel(IReadOnlyList<Point> Points, Color Color, int Width, bool IsHighlight = false)
     : AnnotationModel(Color);

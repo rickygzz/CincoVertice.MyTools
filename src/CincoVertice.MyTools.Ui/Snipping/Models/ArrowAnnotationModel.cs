@@ -15,4 +15,8 @@ public sealed record ArrowAnnotationModel(
     Color Color,
     int Width,
     SnipArrowHeads Heads = SnipArrowHeads.End)
-    : AnnotationModel(Color);
+    : AnnotationModel(Color)
+{
+    /// <summary>How long and how wide a head is, in line widths; thin lines get a larger head, so it can be seen.</summary>
+    public float HeadSize => Width <= 2 ? 5 : 3.5f;
+}

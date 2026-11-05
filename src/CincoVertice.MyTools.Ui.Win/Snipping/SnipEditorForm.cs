@@ -13,7 +13,11 @@ namespace CincoVertice.MyTools.Ui.Win.Snipping;
 /// </summary>
 public partial class SnipEditorForm : Form, ISnipEditorView
 {
-    private readonly Bitmap _snip;
+    // How many pixels the arrow keys move what's selected; with Shift, one
+    private const int NudgeStep = 10;
+
+    // Every snip of this window, oldest first, which the form owns and disposes
+    private readonly List<Bitmap> _snips = [];
 
     // The toolbar's icons, made here, so disposed with the form
     private readonly List<Image> _images = [];
@@ -26,6 +30,15 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     private Image? _textOutlineSwatch;
 
     private IReadOnlyList<AnnotationModel> _annotations = [];
+
+    // Which of the snips is shown
+    private int _shownSnip;
+
+    // What shows the selected annotation; null when nothing is selected
+    private SnipSelectionModel? _selection;
+
+    // False while the choices of color, size and transparency are hidden
+    private bool _showsDrawingChoices = true;
 
     // The values behind the size, transparency and text outline lists, which show them as text
     private IReadOnlyList<int> _sizes = [];
@@ -44,7 +57,7 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     {
         InitializeComponent();
 
-        _snip = snip;
+        _snips.Add(snip);
         Canvas.Image = snip;
 
         // 16 pixels at 100% scaling, drawn at the screen's size rather than stretched, so they stay sharp
@@ -79,6 +92,22 @@ public partial class SnipEditorForm : Form, ISnipEditorView
 
     public event EventHandler<Point>? PointerReleased;
 
+    public event EventHandler<Point>? PointerDoubleClicked;
+
+    public event EventHandler<Point>? PointerHovered;
+
+    public event EventHandler<Point>? PointerRightClicked;
+
+    public event EventHandler? DeleteRequested;
+
+    public event EventHandler? ResetRequested;
+
+    public event EventHandler<Size>? NudgeRequested;
+
+    public event EventHandler? DeselectRequested;
+
+    public event EventHandler<TextInputModel>? TextEscaped;
+
     public event EventHandler<SnipTool>? ToolSelected;
 
     public event EventHandler<Color>? ColorSelected;
@@ -99,6 +128,10 @@ public partial class SnipEditorForm : Form, ISnipEditorView
 
     public event EventHandler<TextInputModel>? TextCommitted;
 
+    public event EventHandler? SnipAdded;
+
+    public event EventHandler<int>? SnipStepRequested;
+
     public event EventHandler? UndoRequested;
 
     public event EventHandler? RedoRequested;
@@ -107,11 +140,54 @@ public partial class SnipEditorForm : Form, ISnipEditorView
 
     public event EventHandler? SaveRequested;
 
+    /// <summary>Takes another snip to edit, and fits the window to it as a new window would be.</summary>
+    /// <param name="snip">The image; the form owns it and disposes it.</param>
+    public void AddSnip(Bitmap snip)
+    {
+        // Into the snip it was typed over
+        CommitText();
+
+        _snips.Add(snip);
+        SnipAdded?.Invoke(this, EventArgs.Empty);
+
+        // A maximized window is already as large as it gets
+        if (WindowState == FormWindowState.Normal)
+        {
+            FitToSnip();
+            FormExtensions.CenterOnCursorScreen(this);
+        }
+    }
+
     public void ShowTool(SnipTool tool)
     {
         foreach (ToolStripButton button in ToolButtons())
         {
             button.Checked = ToolOf(button) == tool;
+        }
+    }
+
+    public void ShowSnip(int index, int count)
+    {
+        bool isAnotherSnip = index != _shownSnip;
+
+        _shownSnip = index;
+        Canvas.Image = _snips[index];
+        CanvasPanel.AutoScrollPosition = Point.Empty;
+
+        // Nothing to go back to with only one
+        SnipsSeparator.Visible = count > 1;
+        PreviousSnipButton.Visible = count > 1;
+        SnipPositionLabel.Visible = count > 1;
+        NextSnipButton.Visible = count > 1;
+
+        PreviousSnipButton.Enabled = index > 0;
+        NextSnipButton.Enabled = index < count - 1;
+        SnipPositionLabel.Text = $"{index + 1} / {count}";
+
+        // Last, since the toolbar's width counts. Not for the same snip: that would undo the user's resizing
+        if (isAnotherSnip && WindowState == FormWindowState.Normal)
+        {
+            FitToSnipFromUpperLeft();
         }
     }
 
@@ -150,6 +226,7 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     public void ShowSizes(IReadOnlyList<int> sizes, int selected)
     {
         _sizes = ShowChoices(SizeComboBox, _sizes, sizes, selected, size => $"{size} px");
+        SizeComboBox.Visible = _showsDrawingChoices && sizes.Count > 0;
     }
 
     public void ShowTransparencies(IReadOnlyList<int> transparencies, int selected)
@@ -164,6 +241,7 @@ public partial class SnipEditorForm : Form, ISnipEditorView
 
     public void ShowDrawingChoices(bool isVisible)
     {
+        _showsDrawingChoices = isVisible;
         ColorDropDownButton.Visible = isVisible;
         SizeComboBox.Visible = isVisible;
         TransparencyComboBox.Visible = isVisible;
@@ -208,13 +286,41 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         Canvas.Invalidate();
     }
 
+    public void ShowSelection(SnipSelectionModel? selection)
+    {
+        _selection = selection;
+        Canvas.Invalidate();
+    }
+
+    public void ShowCursor(SnipCursor cursor)
+    {
+        Canvas.Cursor = cursor switch
+        {
+            SnipCursor.Cross => Cursors.Cross,
+            SnipCursor.Move => Cursors.SizeAll,
+            SnipCursor.SizeVertical => Cursors.SizeNS,
+            SnipCursor.SizeHorizontal => Cursors.SizeWE,
+            SnipCursor.SizeTopLeftBottomRight => Cursors.SizeNWSE,
+            SnipCursor.SizeTopRightBottomLeft => Cursors.SizeNESW,
+            _ => Cursors.Default,
+        };
+    }
+
+    public void ShowContextMenu(Point location, bool canReset)
+    {
+        ResetMenuItem.Enabled = canReset;
+        SelectionMenu.Show(Canvas, location);
+    }
+
+    public Size MeasureText(string text, int fontSize) => AnnotationRenderer.MeasureText(text, fontSize);
+
     public void ShowUndoRedo(bool canUndo, bool canRedo)
     {
         UndoButton.Enabled = canUndo;
         RedoButton.Enabled = canRedo;
     }
 
-    public void BeginTextInput(Point location, Color color, int fontSize)
+    public void BeginTextInput(Point location, Color color, int fontSize, string text)
     {
         CommitText();
 
@@ -227,11 +333,12 @@ public partial class SnipEditorForm : Form, ISnipEditorView
 
         // A light text on a light box couldn't be read while typing
         TextInputBox.BackColor = color.GetBrightness() > 0.7f ? Color.FromArgb(64, 64, 64) : Color.White;
-        TextInputBox.Text = string.Empty;
+        TextInputBox.Text = text.ReplaceLineEndings(Environment.NewLine);
         TextInputBox.Location = location;
         FitTextInput();
         TextInputBox.Visible = true;
         TextInputBox.Focus();
+        TextInputBox.Select(TextInputBox.TextLength, 0);
     }
 
     public void CopyImageToClipboard()
@@ -281,10 +388,14 @@ public partial class SnipEditorForm : Form, ISnipEditorView
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
-        // Esc never reaches the text box's KeyDown: it is a dialog key. While typing, it only drops the text
+        // Esc never reaches the text box's KeyDown: it is a dialog key. While typing, it only ends the text
         if (_textLocation is not null)
         {
-            CancelText();
+            EscapeText();
+        }
+        else if (_selection is not null)
+        {
+            DeselectRequested?.Invoke(this, EventArgs.Empty);
         }
         else
         {
@@ -356,14 +467,15 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     {
         int index = SizeComboBox.SelectedIndex + step;
 
-        if (index >= 0 && index < SizeComboBox.Items.Count)
+        // None is selected on a text scaled to a size that isn't in the list
+        if (SizeComboBox.SelectedIndex >= 0 && index >= 0 && index < SizeComboBox.Items.Count)
         {
             SizeComboBox.SelectedIndex = index;
         }
     }
 
     private ToolStripButton[] ToolButtons() =>
-        [PenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, BlurButton];
+        [SelectButton, PenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, BlurButton];
 
     private ToolStripButton[] ArrowHeadsButtons() => [ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton];
 
@@ -373,23 +485,43 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     private void FitToSnip()
     {
         Rectangle area = Screen.FromPoint(Cursor.Position).WorkingArea;
-        int width = Math.Max(_snip.Width, Tools.PreferredSize.Width);
-        int height = _snip.Height + Tools.Height;
 
-        ClientSize = new Size(Math.Min(width, area.Width * 9 / 10), Math.Min(height, area.Height * 9 / 10));
+        FitToSnip(new Size(area.Width * 9 / 10, area.Height * 9 / 10));
+    }
+
+    /// <summary>
+    ///     Makes the window as large as the snip without moving its upper left corner, up to the edges of its screen; a
+    ///     larger snip scrolls.
+    /// </summary>
+    private void FitToSnipFromUpperLeft()
+    {
+        Rectangle area = Screen.FromControl(this).WorkingArea;
+        Size frame = Size - ClientSize;
+
+        FitToSnip(new Size(area.Right - Left - frame.Width, area.Bottom - Top - frame.Height));
+    }
+
+    private void FitToSnip(Size largest)
+    {
+        Bitmap snip = _snips[_shownSnip];
+        int width = Math.Max(snip.Width, Tools.PreferredSize.Width);
+        int height = snip.Height + Tools.Height;
+
+        ClientSize = new Size(Math.Min(width, largest.Width), Math.Min(height, largest.Height));
     }
 
     /// <summary>The snip with the annotations, as it is copied or saved; the caller disposes it.</summary>
     private Bitmap RenderImage()
     {
-        var image = new Bitmap(_snip.Width, _snip.Height, PixelFormat.Format24bppRgb);
-        var whole = new Rectangle(Point.Empty, _snip.Size);
+        Bitmap snip = _snips[_shownSnip];
+        var image = new Bitmap(snip.Width, snip.Height, PixelFormat.Format24bppRgb);
+        var whole = new Rectangle(Point.Empty, snip.Size);
 
         using var graphics = Graphics.FromImage(image);
 
         // GraphicsUnit.Pixel: pixel for pixel, never scaled by the bitmap's resolution
-        graphics.DrawImage(_snip, whole, whole, GraphicsUnit.Pixel);
-        AnnotationRenderer.Draw(graphics, _annotations, _snip);
+        graphics.DrawImage(snip, whole, whole, GraphicsUnit.Pixel);
+        AnnotationRenderer.Draw(graphics, _annotations, snip);
 
         return image;
     }
@@ -412,15 +544,34 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         // Cleared first: hiding the focused box raises Leave, which commits again
         _textLocation = null;
         string text = TextInputBox.Text;
-        TextInputBox.Visible = false;
+        HideTextInput();
 
         TextCommitted?.Invoke(this, new TextInputModel(location, text));
     }
 
-    private void CancelText()
+    /// <summary>
+    ///     Gives the focus back to the window: nothing else on it can take it, so the hidden box would keep it, and the
+    ///     keys with it.
+    /// </summary>
+    private void HideTextInput()
     {
-        _textLocation = null;
         TextInputBox.Visible = false;
+        ActiveControl = null;
+    }
+
+    private void EscapeText()
+    {
+        if (_textLocation is not Point location)
+        {
+            return;
+        }
+
+        // Cleared first: hiding the focused box raises Leave, which commits
+        _textLocation = null;
+        string text = TextInputBox.Text;
+        HideTextInput();
+
+        TextEscaped?.Invoke(this, new TextInputModel(location, text));
     }
 
     private void ToolButton_Click(object? sender, EventArgs e)
@@ -480,18 +631,43 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         }
     }
 
+    private void ResetMenuItem_Click(object? sender, EventArgs e)
+    {
+        ResetRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void DeleteMenuItem_Click(object? sender, EventArgs e)
+    {
+        DeleteRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void PreviousSnipButton_Click(object? sender, EventArgs e)
+    {
+        CommitText();
+        SnipStepRequested?.Invoke(this, -1);
+    }
+
+    private void NextSnipButton_Click(object? sender, EventArgs e)
+    {
+        CommitText();
+        SnipStepRequested?.Invoke(this, 1);
+    }
+
     private void UndoButton_Click(object? sender, EventArgs e)
     {
+        CommitText();
         UndoRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void RedoButton_Click(object? sender, EventArgs e)
     {
+        CommitText();
         RedoRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void CopyButton_Click(object? sender, EventArgs e)
     {
+        CommitText();
         CopyRequested?.Invoke(this, EventArgs.Empty);
     }
 
@@ -503,19 +679,23 @@ public partial class SnipEditorForm : Form, ISnipEditorView
 
     private void Canvas_Paint(object? sender, PaintEventArgs e)
     {
-        AnnotationRenderer.Draw(e.Graphics, _annotations, _snip);
+        AnnotationRenderer.Draw(e.Graphics, _annotations, _snips[_shownSnip]);
+
+        if (_selection is not null)
+        {
+            AnnotationRenderer.DrawSelection(e.Graphics, _selection);
+        }
     }
 
     private void Canvas_MouseDown(object? sender, MouseEventArgs e)
     {
-        if (e.Button != MouseButtons.Left)
-        {
-            return;
-        }
-
         // The canvas can't take the focus, so clicking it doesn't end the text by itself
         CommitText();
-        PointerPressed?.Invoke(this, e.Location);
+
+        if (e.Button == MouseButtons.Left)
+        {
+            PointerPressed?.Invoke(this, e.Location);
+        }
     }
 
     private void Canvas_MouseMove(object? sender, MouseEventArgs e)
@@ -524,6 +704,18 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         {
             PointerMoved?.Invoke(this, e.Location);
         }
+        else if (e.Button == MouseButtons.None)
+        {
+            PointerHovered?.Invoke(this, e.Location);
+        }
+    }
+
+    private void Canvas_MouseDoubleClick(object? sender, MouseEventArgs e)
+    {
+        if (e.Button == MouseButtons.Left)
+        {
+            PointerDoubleClicked?.Invoke(this, e.Location);
+        }
     }
 
     private void Canvas_MouseUp(object? sender, MouseEventArgs e)
@@ -531,6 +723,10 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         if (e.Button == MouseButtons.Left)
         {
             PointerReleased?.Invoke(this, e.Location);
+        }
+        else if (e.Button == MouseButtons.Right)
+        {
+            PointerRightClicked?.Invoke(this, e.Location);
         }
     }
 
@@ -554,21 +750,51 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         CommitText();
     }
 
+    /// <returns>What a key does to what's selected: delete it, or move it; null without either.</returns>
+    private Action? SelectionKeyCommand(KeyEventArgs e)
+    {
+        if (_selection is null)
+        {
+            return null;
+        }
+
+        // Far with the arrows alone, and by a pixel with Shift, as in the diagram editor
+        int step = e.Shift ? 1 : NudgeStep;
+        Size? delta = (e.Control || e.Alt ? Keys.None : e.KeyCode) switch
+        {
+            Keys.Left => new Size(-step, 0),
+            Keys.Right => new Size(step, 0),
+            Keys.Up => new Size(0, -step),
+            Keys.Down => new Size(0, step),
+            _ => null,
+        };
+
+        if (delta is Size nudge)
+        {
+            return () => NudgeRequested?.Invoke(this, nudge);
+        }
+
+        return e.KeyData is Keys.Delete or Keys.Back ? () => DeleteRequested?.Invoke(this, EventArgs.Empty) : null;
+    }
+
     private void SnipEditorForm_KeyDown(object? sender, KeyEventArgs e)
     {
         // While typing a text, keys are the text's
-        if (TextInputBox.Focused)
+        if (_textLocation is not null)
         {
             return;
         }
 
-        Action? command = (e.Modifiers, e.KeyCode) switch
+        Action? command = SelectionKeyCommand(e) ?? (e.Modifiers, e.KeyCode) switch
         {
             (Keys.Control, Keys.Z) => () => UndoRequested?.Invoke(this, EventArgs.Empty),
             (Keys.Control | Keys.Shift, Keys.Z) or (Keys.Control, Keys.Y) =>
                 () => RedoRequested?.Invoke(this, EventArgs.Empty),
             (Keys.Control, Keys.C) => () => CopyRequested?.Invoke(this, EventArgs.Empty),
             (Keys.Control, Keys.S) => () => SaveRequested?.Invoke(this, EventArgs.Empty),
+            (Keys.Alt, Keys.Left) => () => SnipStepRequested?.Invoke(this, -1),
+            (Keys.Alt, Keys.Right) => () => SnipStepRequested?.Invoke(this, 1),
+            (Keys.None, Keys.V) => () => ToolSelected?.Invoke(this, SnipTool.Select),
             (Keys.None, Keys.P) => () => ToolSelected?.Invoke(this, SnipTool.Pen),
             (Keys.None, Keys.H) => () => ToolSelected?.Invoke(this, SnipTool.Highlighter),
             (Keys.None, Keys.A) => () => ToolSelected?.Invoke(this, SnipTool.Arrow),
