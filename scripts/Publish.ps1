@@ -1,10 +1,11 @@
 <#
 .SYNOPSIS
-    Increases the app's version and publishes it as one self-contained exe.
+    Increases the app's version, publishes it as one self-contained exe and zips it for a release.
 
 .DESCRIPTION
     Changes <Version> in the Ui.Win csproj, then runs dotnet publish into artifacts\MyTools-<version>. If the publish
-    fails, the csproj goes back to the old version. The script commits nothing.
+    fails, the csproj goes back to the old version. The exe then goes in artifacts\MyTools-<version>-win-x64.zip, and
+    the zip's SHA-256 hash is shown, for the release notes. The script commits nothing.
 
     Files already in the output folder are kept, so a config folder from trying the app there isn't lost.
 
@@ -88,3 +89,11 @@ finally {
 }
 
 Write-Host "Published $version to $outputFolder" -ForegroundColor Green
+
+# Only the exe: the output folder can also have a config folder from trying the app there
+$zip = Join-Path $repoRoot "artifacts\MyTools-$version-win-x64.zip"
+
+Compress-Archive -Path (Join-Path $outputFolder '*.exe') -DestinationPath $zip -Force
+
+Write-Host "Zipped to $zip" -ForegroundColor Green
+Write-Host "SHA-256: $((Get-FileHash $zip -Algorithm SHA256).Hash)" -ForegroundColor Green
