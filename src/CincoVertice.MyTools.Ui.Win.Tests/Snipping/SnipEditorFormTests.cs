@@ -338,6 +338,136 @@ public sealed class SnipEditorFormTests : IDisposable
         Assert.False(Field<TextBox>(form, "TextInputBox").Focused);
     }
 
+    /// <summary>The window in front with something selected, and nothing being typed.</summary>
+    private static SnipEditorForm SelectedInTheForeground()
+    {
+        SnipEditorForm form = TypingInTheForeground();
+
+        PressKey(Keys.Enter);
+        form.ShowSelection(new SnipSelectionModel(new Rectangle(20, 20, 50, 50), []));
+        Pump();
+
+        return form;
+    }
+
+    [Theory]
+    [InlineData(Keys.Left, -10, 0)]
+    [InlineData(Keys.Right, 10, 0)]
+    [InlineData(Keys.Up, 0, -10)]
+    [InlineData(Keys.Down, 0, 10)]
+    public void ArrowKeys_NudgeWhatsSelected(Keys key, int x, int y)
+    {
+        // Arrange
+        using SnipEditorForm form = SelectedInTheForeground();
+        List<Size> nudges = [];
+        form.NudgeRequested += (_, delta) => nudges.Add(delta);
+
+        // Act
+        PressKey(key);
+
+        // Assert
+        Assert.Equal([new Size(x, y)], nudges);
+    }
+
+    [Theory]
+    [InlineData(Keys.Left, -10, 0)]
+    [InlineData(Keys.Down, 0, 10)]
+    [InlineData(Keys.Left | Keys.Shift, -1, 0)]
+    public void ArrowKeys_NudgeWhatsSelected_InANewWindowWithNothingTyped(Keys key, int x, int y)
+    {
+        // Arrange: the window just as it opens, where the canvas's panel and lists are what arrows could go to
+        using var form = new SnipEditorForm(Solid(300, 200, Color.White));
+        form.ShowInTaskbar = false;
+        form.Show();
+        form.Location = new Point(-5000, 100);
+        WindowHelper.ForceForeground(form.Handle);
+        form.Activate();
+        Pump();
+        Assert.SkipWhen(GetFocus() == 0, "This window can't get the keyboard focus.");
+        form.ShowSelection(new SnipSelectionModel(new Rectangle(20, 20, 50, 50), []));
+        List<Size> nudges = [];
+        form.NudgeRequested += (_, delta) => nudges.Add(delta);
+
+        // Act: Shift held, as the keyboard would have it, for what the key says about it
+        if ((key & Keys.Shift) != 0)
+        {
+            InvokeKeyDown(form, new KeyEventArgs(key));
+        }
+        else
+        {
+            PressKey(key);
+        }
+
+        // Assert
+        Assert.Equal([new Size(x, y)], nudges);
+    }
+
+    private static void InvokeKeyDown(SnipEditorForm form, KeyEventArgs e)
+    {
+        typeof(SnipEditorForm)
+            .GetMethod("SnipEditorForm_KeyDown", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .Invoke(form, [form, e]);
+    }
+
+    [Fact]
+    public void ArrowKeys_NudgeWhatsSelected_AfterChoosingFromAList()
+    {
+        // Arrange: a choice from the toolbar shouldn't leave the keys with the list
+        using SnipEditorForm form = SelectedInTheForeground();
+        form.ShowSizes([1, 2, 3], 2);
+        List<Size> nudges = [];
+        int? picked = null;
+        form.NudgeRequested += (_, delta) => nudges.Add(delta);
+        form.SizeSelected += (_, size) => picked = size;
+        var sizes = Field<ToolStripComboBox>(form, "SizeComboBox");
+        sizes.Focus();
+        Pump();
+
+        // Act
+        sizes.SelectedIndex = 2;
+        Pump();
+        PressKey(Keys.Left);
+
+        // Assert
+        Assert.Equal(3, picked);
+        Assert.Equal([new Size(-10, 0)], nudges);
+        Assert.Equal(2, sizes.SelectedIndex);
+    }
+
+    [Fact]
+    public void ArrowKeys_AreTheTextsWhileTyping()
+    {
+        // Arrange
+        using SnipEditorForm form = TypingInTheForeground();
+        form.ShowSelection(new SnipSelectionModel(new Rectangle(20, 20, 50, 50), []));
+        List<Size> nudges = [];
+        form.NudgeRequested += (_, delta) => nudges.Add(delta);
+
+        // Act
+        PressKey(Keys.Left);
+
+        // Assert
+        Assert.Empty(nudges);
+    }
+
+    [Fact]
+    public void AltArrowKeys_StillGoToAnotherSnip_WithSomethingSelected()
+    {
+        // Arrange
+        using SnipEditorForm form = SelectedInTheForeground();
+        List<Size> nudges = [];
+        form.NudgeRequested += (_, delta) => nudges.Add(delta);
+
+        // Act: what ProcessCmdKey is given for Alt+Left
+        var message = default(Message);
+        typeof(SnipEditorForm)
+            .GetMethod("ProcessCmdKey", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .Invoke(form, [message, Keys.Alt | Keys.Left]);
+
+        // Assert
+        Assert.Empty(nudges);
+    }
+
     [Fact]
     public void ToolKeys_ArePartOfTheTextWhileTyping()
     {

@@ -134,9 +134,8 @@ public static class AnnotationRenderer
     {
         using var pen = CreatePen(arrow.Color, arrow.Width);
 
-        // Scaled by the pen width; thin lines get a larger head, so it can be seen
-        float headSize = arrow.Width <= 2 ? 5 : 3.5f;
-        using var head = new AdjustableArrowCap(headSize, headSize, isFilled: true);
+        // Scaled by the pen width
+        using var head = new AdjustableArrowCap(arrow.HeadSize, arrow.HeadSize, isFilled: true);
 
         if (arrow.Heads is SnipArrowHeads.Start or SnipArrowHeads.Both)
         {

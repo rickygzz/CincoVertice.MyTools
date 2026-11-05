@@ -62,20 +62,29 @@ public static class AnnotationGeometry
             ]);
     }
 
-    /// <returns>Which of the selection's handles is at the point; null when none is.</returns>
+    /// <returns>
+    ///     Which of the selection's handles is at the point, the nearest one when they overlap, as they do on a thin line;
+    ///     null when none is.
+    /// </returns>
     public static int? HandleAt(SnipSelectionModel selection, Point point)
     {
+        int? nearest = null;
+        int nearestDistance = int.MaxValue;
+
         for (int i = 0; i < selection.Handles.Count; i++)
         {
-            Point handle = selection.Handles[i];
+            int dx = Math.Abs(selection.Handles[i].X - point.X);
+            int dy = Math.Abs(selection.Handles[i].Y - point.Y);
+            int distance = dx * dx + dy * dy;
 
-            if (Math.Abs(handle.X - point.X) <= HandleDistance && Math.Abs(handle.Y - point.Y) <= HandleDistance)
+            if (dx <= HandleDistance && dy <= HandleDistance && distance < nearestDistance)
             {
-                return i;
+                nearest = i;
+                nearestDistance = distance;
             }
         }
 
-        return null;
+        return nearest;
     }
 
     /// <summary>
@@ -89,7 +98,9 @@ public static class AnnotationGeometry
             case StrokeAnnotationModel stroke:
                 return IsNearLine(stroke.Points, point, stroke.Width);
             case ArrowAnnotationModel arrow:
-                return IsNearLine([arrow.From, arrow.To], point, arrow.Width);
+                return IsNearLine([arrow.From, arrow.To], point, arrow.Width)
+                    || (arrow.Heads is SnipArrowHeads.Start or SnipArrowHeads.Both && IsOnHead(arrow, arrow.To, arrow.From, point))
+                    || (arrow.Heads is SnipArrowHeads.End or SnipArrowHeads.Both && IsOnHead(arrow, arrow.From, arrow.To, point));
             case RectangleAnnotationModel rectangle:
                 Rectangle bounds = rectangle.Bounds;
 
@@ -294,6 +305,29 @@ public static class AnnotationGeometry
         }
 
         return false;
+    }
+
+    /// <summary>Whether the point is on a head: a triangle with its tip at the line's end, as long as it's wide.</summary>
+    private static bool IsOnHead(ArrowAnnotationModel arrow, Point tail, Point tip, Point point)
+    {
+        double dx = tip.X - tail.X;
+        double dy = tip.Y - tail.Y;
+        double lineLength = Math.Sqrt(dx * dx + dy * dy);
+
+        if (lineLength == 0)
+        {
+            return false;
+        }
+
+        double headLength = arrow.HeadSize * arrow.Width;
+
+        // How far back from the tip the point is, and how far to the side of the line
+        double back = ((tip.X - point.X) * dx + (tip.Y - point.Y) * dy) / lineLength;
+        double side = Math.Abs((point.X - tip.X) * dy - (point.Y - tip.Y) * dx) / lineLength;
+
+        return back >= -HitDistance
+            && back <= headLength + HitDistance
+            && side <= Math.Clamp(back, 0, headLength) / 2 + HitDistance;
     }
 
     /// <summary>From a point to the nearest point of a line between two others.</summary>

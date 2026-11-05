@@ -1,5 +1,6 @@
 using System.Drawing;
 using CincoVertice.MyTools.Ui.Snipping.Models;
+using CincoVertice.MyTools.Ui.Snipping.Services;
 using CincoVertice.MyTools.Ui.Win.Snipping.Services;
 using Xunit;
 
@@ -122,6 +123,48 @@ public class AnnotationRendererTests
                 Assert.Equal(whole.GetPixel(x, y).ToArgb(), clipped.GetPixel(x, y).ToArgb());
             }
         }
+    }
+
+    [Theory]
+    [InlineData(1, SnipArrowHeads.End)]
+    [InlineData(2, SnipArrowHeads.Start)]
+    [InlineData(4, SnipArrowHeads.Both)]
+    [InlineData(16, SnipArrowHeads.End)]
+    [InlineData(16, SnipArrowHeads.Both)]
+    public void Arrow_EveryPixelDrawn_CanBeClicked(int width, SnipArrowHeads heads)
+    {
+        // Arrange
+        var arrow = new ArrowAnnotationModel(new Point(80, 120), new Point(400, 200), Color.Black, width, heads);
+        using var image = new Bitmap(520, 320);
+        using (var graphics = Graphics.FromImage(image))
+        {
+            graphics.Clear(Color.White);
+            AnnotationRenderer.Draw(graphics, [arrow], image);
+        }
+
+        // Act: as what's drawn matters, the faint pixels at the edges are left out
+        List<Point> missed = [];
+        int drawn = 0;
+
+        for (int x = 0; x < image.Width; x++)
+        {
+            for (int y = 0; y < image.Height; y++)
+            {
+                if (image.GetPixel(x, y).R < 128)
+                {
+                    drawn++;
+
+                    if (!AnnotationGeometry.Hits(arrow, new Point(x, y), (_, _) => Size.Empty))
+                    {
+                        missed.Add(new Point(x, y));
+                    }
+                }
+            }
+        }
+
+        // Assert
+        Assert.True(drawn > 100);
+        Assert.Empty(missed);
     }
 
     [Fact]
