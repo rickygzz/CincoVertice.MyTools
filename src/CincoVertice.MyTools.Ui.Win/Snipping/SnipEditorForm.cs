@@ -13,7 +13,8 @@ namespace CincoVertice.MyTools.Ui.Win.Snipping;
 /// </summary>
 public partial class SnipEditorForm : Form, ISnipEditorView
 {
-    private readonly Bitmap _snip;
+    // Every snip of this window, oldest first, which the form owns and disposes
+    private readonly List<Bitmap> _snips = [];
 
     // The toolbar's icons, made here, so disposed with the form
     private readonly List<Image> _images = [];
@@ -26,6 +27,9 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     private Image? _textOutlineSwatch;
 
     private IReadOnlyList<AnnotationModel> _annotations = [];
+
+    // Which of the snips is shown
+    private int _shownSnip;
 
     // The values behind the size, transparency and text outline lists, which show them as text
     private IReadOnlyList<int> _sizes = [];
@@ -44,7 +48,7 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     {
         InitializeComponent();
 
-        _snip = snip;
+        _snips.Add(snip);
         Canvas.Image = snip;
 
         // 16 pixels at 100% scaling, drawn at the screen's size rather than stretched, so they stay sharp
@@ -99,6 +103,10 @@ public partial class SnipEditorForm : Form, ISnipEditorView
 
     public event EventHandler<TextInputModel>? TextCommitted;
 
+    public event EventHandler? SnipAdded;
+
+    public event EventHandler<int>? SnipStepRequested;
+
     public event EventHandler? UndoRequested;
 
     public event EventHandler? RedoRequested;
@@ -107,11 +115,54 @@ public partial class SnipEditorForm : Form, ISnipEditorView
 
     public event EventHandler? SaveRequested;
 
+    /// <summary>Takes another snip to edit, and fits the window to it as a new window would be.</summary>
+    /// <param name="snip">The image; the form owns it and disposes it.</param>
+    public void AddSnip(Bitmap snip)
+    {
+        // Into the snip it was typed over
+        CommitText();
+
+        _snips.Add(snip);
+        SnipAdded?.Invoke(this, EventArgs.Empty);
+
+        // A maximized window is already as large as it gets
+        if (WindowState == FormWindowState.Normal)
+        {
+            FitToSnip();
+            FormExtensions.CenterOnCursorScreen(this);
+        }
+    }
+
     public void ShowTool(SnipTool tool)
     {
         foreach (ToolStripButton button in ToolButtons())
         {
             button.Checked = ToolOf(button) == tool;
+        }
+    }
+
+    public void ShowSnip(int index, int count)
+    {
+        bool isAnotherSnip = index != _shownSnip;
+
+        _shownSnip = index;
+        Canvas.Image = _snips[index];
+        CanvasPanel.AutoScrollPosition = Point.Empty;
+
+        // Nothing to go back to with only one
+        SnipsSeparator.Visible = count > 1;
+        PreviousSnipButton.Visible = count > 1;
+        SnipPositionLabel.Visible = count > 1;
+        NextSnipButton.Visible = count > 1;
+
+        PreviousSnipButton.Enabled = index > 0;
+        NextSnipButton.Enabled = index < count - 1;
+        SnipPositionLabel.Text = $"{index + 1} / {count}";
+
+        // Last, since the toolbar's width counts. Not for the same snip: that would undo the user's resizing
+        if (isAnotherSnip && WindowState == FormWindowState.Normal)
+        {
+            FitToSnipFromUpperLeft();
         }
     }
 
@@ -373,23 +424,43 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     private void FitToSnip()
     {
         Rectangle area = Screen.FromPoint(Cursor.Position).WorkingArea;
-        int width = Math.Max(_snip.Width, Tools.PreferredSize.Width);
-        int height = _snip.Height + Tools.Height;
 
-        ClientSize = new Size(Math.Min(width, area.Width * 9 / 10), Math.Min(height, area.Height * 9 / 10));
+        FitToSnip(new Size(area.Width * 9 / 10, area.Height * 9 / 10));
+    }
+
+    /// <summary>
+    ///     Makes the window as large as the snip without moving its upper left corner, up to the edges of its screen; a
+    ///     larger snip scrolls.
+    /// </summary>
+    private void FitToSnipFromUpperLeft()
+    {
+        Rectangle area = Screen.FromControl(this).WorkingArea;
+        Size frame = Size - ClientSize;
+
+        FitToSnip(new Size(area.Right - Left - frame.Width, area.Bottom - Top - frame.Height));
+    }
+
+    private void FitToSnip(Size largest)
+    {
+        Bitmap snip = _snips[_shownSnip];
+        int width = Math.Max(snip.Width, Tools.PreferredSize.Width);
+        int height = snip.Height + Tools.Height;
+
+        ClientSize = new Size(Math.Min(width, largest.Width), Math.Min(height, largest.Height));
     }
 
     /// <summary>The snip with the annotations, as it is copied or saved; the caller disposes it.</summary>
     private Bitmap RenderImage()
     {
-        var image = new Bitmap(_snip.Width, _snip.Height, PixelFormat.Format24bppRgb);
-        var whole = new Rectangle(Point.Empty, _snip.Size);
+        Bitmap snip = _snips[_shownSnip];
+        var image = new Bitmap(snip.Width, snip.Height, PixelFormat.Format24bppRgb);
+        var whole = new Rectangle(Point.Empty, snip.Size);
 
         using var graphics = Graphics.FromImage(image);
 
         // GraphicsUnit.Pixel: pixel for pixel, never scaled by the bitmap's resolution
-        graphics.DrawImage(_snip, whole, whole, GraphicsUnit.Pixel);
-        AnnotationRenderer.Draw(graphics, _annotations, _snip);
+        graphics.DrawImage(snip, whole, whole, GraphicsUnit.Pixel);
+        AnnotationRenderer.Draw(graphics, _annotations, snip);
 
         return image;
     }
@@ -480,6 +551,18 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         }
     }
 
+    private void PreviousSnipButton_Click(object? sender, EventArgs e)
+    {
+        CommitText();
+        SnipStepRequested?.Invoke(this, -1);
+    }
+
+    private void NextSnipButton_Click(object? sender, EventArgs e)
+    {
+        CommitText();
+        SnipStepRequested?.Invoke(this, 1);
+    }
+
     private void UndoButton_Click(object? sender, EventArgs e)
     {
         UndoRequested?.Invoke(this, EventArgs.Empty);
@@ -503,7 +586,7 @@ public partial class SnipEditorForm : Form, ISnipEditorView
 
     private void Canvas_Paint(object? sender, PaintEventArgs e)
     {
-        AnnotationRenderer.Draw(e.Graphics, _annotations, _snip);
+        AnnotationRenderer.Draw(e.Graphics, _annotations, _snips[_shownSnip]);
     }
 
     private void Canvas_MouseDown(object? sender, MouseEventArgs e)
@@ -569,6 +652,8 @@ public partial class SnipEditorForm : Form, ISnipEditorView
                 () => RedoRequested?.Invoke(this, EventArgs.Empty),
             (Keys.Control, Keys.C) => () => CopyRequested?.Invoke(this, EventArgs.Empty),
             (Keys.Control, Keys.S) => () => SaveRequested?.Invoke(this, EventArgs.Empty),
+            (Keys.Alt, Keys.Left) => () => SnipStepRequested?.Invoke(this, -1),
+            (Keys.Alt, Keys.Right) => () => SnipStepRequested?.Invoke(this, 1),
             (Keys.None, Keys.P) => () => ToolSelected?.Invoke(this, SnipTool.Pen),
             (Keys.None, Keys.H) => () => ToolSelected?.Invoke(this, SnipTool.Highlighter),
             (Keys.None, Keys.A) => () => ToolSelected?.Invoke(this, SnipTool.Arrow),

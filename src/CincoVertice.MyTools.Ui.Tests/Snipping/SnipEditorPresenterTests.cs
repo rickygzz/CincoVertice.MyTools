@@ -683,6 +683,146 @@ public class SnipEditorPresenterTests
         Assert.IsType<StrokeAnnotationModel>(annotation).Points;
 
     [Fact]
+    public void Start_ShowsTheFirstSnip()
+    {
+        Assert.Equal((0, 1), (_view.SnipIndex, _view.SnipCount));
+    }
+
+    [Fact]
+    public void NewSnip_IsShownWithNothingOnIt_AndCopied()
+    {
+        // Arrange
+        Draw(10);
+        int copies = _view.CopyCount;
+
+        // Act
+        _view.AddSnip();
+
+        // Assert
+        Assert.Equal((1, 2), (_view.SnipIndex, _view.SnipCount));
+        Assert.Empty(_view.Annotations);
+        Assert.Empty(_presenter.Annotations);
+        Assert.False(_view.CanUndo);
+        Assert.Equal(copies + 1, _view.CopyCount);
+    }
+
+    [Fact]
+    public void GoingBack_ShowsThatSnipsAnnotations_AndCopiesIt()
+    {
+        // Arrange
+        Draw(10);
+        AnnotationModel first = _presenter.Annotations[0];
+        _view.AddSnip();
+        Draw(20);
+        AnnotationModel second = _presenter.Annotations[0];
+        int copies = _view.CopyCount;
+
+        // Act
+        _view.StepSnip(-1);
+
+        // Assert
+        Assert.Equal((0, 2), (_view.SnipIndex, _view.SnipCount));
+        Assert.Equal([first], _view.Annotations);
+        Assert.Equal(copies + 1, _view.CopyCount);
+
+        // Act
+        _view.StepSnip(1);
+
+        // Assert
+        Assert.Equal([second], _view.Annotations);
+    }
+
+    [Fact]
+    public void EachSnip_KeepsItsOwnUndoAndRedo()
+    {
+        // Arrange: the first has something to redo, the second something to undo
+        Draw(10);
+        _view.Undo();
+        _view.AddSnip();
+        Draw(20);
+
+        // Assert
+        Assert.Equal((true, false), (_view.CanUndo, _view.CanRedo));
+
+        // Act
+        _view.StepSnip(-1);
+
+        // Assert
+        Assert.Equal((false, true), (_view.CanUndo, _view.CanRedo));
+
+        // Act
+        _view.Redo();
+
+        // Assert
+        Assert.Single(_presenter.Annotations);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(2)]
+    public void Step_PastTheEnds_DoesNothing(int step)
+    {
+        // Arrange
+        _view.AddSnip();
+        _view.StepSnip(-1);
+        int copies = _view.CopyCount;
+
+        // Act
+        _view.StepSnip(step);
+
+        // Assert
+        Assert.Equal(0, _view.SnipIndex);
+        Assert.Equal(copies, _view.CopyCount);
+    }
+
+    [Fact]
+    public void NewSnip_WhileDragging_DropsTheDrag()
+    {
+        // Arrange
+        _view.Press(10, 10);
+        _view.Move(50, 50);
+
+        // Act
+        _view.AddSnip();
+        _view.Move(60, 60);
+        _view.Release(70, 70);
+
+        // Assert
+        Assert.Empty(_view.Annotations);
+        Assert.Empty(_presenter.Annotations);
+    }
+
+    [Fact]
+    public void ToolAndSettings_StayWhenASnipArrives()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Arrow);
+        _view.SelectColor(Color.Blue);
+
+        // Act
+        _view.AddSnip();
+
+        // Assert
+        Assert.Equal(SnipTool.Arrow, _view.Tool);
+        Assert.Equal(Solid(Color.Blue), _view.Color);
+    }
+
+    [Fact]
+    public void Save_WhenASnipArrivesDuringTheDialog_SavesTheOneItAskedAbout()
+    {
+        // Arrange
+        _view.SavePath = @"C:\x.png";
+        _view.DuringAskSavePath = _view.AddSnip;
+
+        // Act
+        _view.Save();
+
+        // Assert
+        Assert.Equal(0, _view.SnipIndexWhenSaved);
+        Assert.Equal(2, _view.SnipCount);
+    }
+
+    [Fact]
     public void Blur_DragHidesThatArea_WhicheverWayItsDragged()
     {
         // Arrange
@@ -952,6 +1092,25 @@ public class SnipEditorPresenterTests
 
         public event EventHandler<TextInputModel>? TextCommitted;
 
+        public event EventHandler? SnipAdded;
+
+        public event EventHandler<int>? SnipStepRequested;
+
+        public int SnipIndex { get; private set; }
+
+        public int SnipCount { get; private set; }
+
+        public int? SnipIndexWhenSaved { get; private set; }
+
+        /// <summary>Runs while the save dialog is open, as a global hotkey can.</summary>
+        public Action? DuringAskSavePath { get; set; }
+
+        public void AddSnip() => SnipAdded?.Invoke(this, EventArgs.Empty);
+
+        public void StepSnip(int step) => SnipStepRequested?.Invoke(this, step);
+
+        public void ShowSnip(int index, int count) => (SnipIndex, SnipCount) = (index, count);
+
         public event EventHandler? UndoRequested;
 
         public event EventHandler? RedoRequested;
@@ -1088,10 +1247,15 @@ public class SnipEditorPresenterTests
         public string? AskSavePath(string suggestedFileName)
         {
             SuggestedFileName = suggestedFileName;
+            DuringAskSavePath?.Invoke();
 
             return SavePath;
         }
 
-        public void SaveImage(string path) => SavedPath = path;
+        public void SaveImage(string path)
+        {
+            SavedPath = path;
+            SnipIndexWhenSaved = SnipIndex;
+        }
     }
 }

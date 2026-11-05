@@ -5,7 +5,7 @@ namespace CincoVertice.MyTools.Ui.Snipping.Views;
 
 /// <summary>
 ///     Shows a snip with the annotations drawn over it, and a toolbar to pick the tool and its color, size and
-///     transparency.
+///     transparency. It keeps the images of all its snips, in the order they arrived, and shows one at a time.
 ///     Points are in snip pixels: (0, 0) is the snip's top left corner.
 /// </summary>
 public interface ISnipEditorView
@@ -46,6 +46,12 @@ public interface ISnipEditorView
     /// <summary>Raised when the user ends a text begun by <see cref="BeginTextInput"/>; it can be empty.</summary>
     event EventHandler<TextInputModel>? TextCommitted;
 
+    /// <summary>Raised when the view was given another snip, after any text being typed has ended.</summary>
+    event EventHandler? SnipAdded;
+
+    /// <summary>Raised to go to another snip: -1 for the one before, 1 for the one after.</summary>
+    event EventHandler<int>? SnipStepRequested;
+
     event EventHandler? UndoRequested;
 
     event EventHandler? RedoRequested;
@@ -55,6 +61,11 @@ public interface ISnipEditorView
     event EventHandler? SaveRequested;
 
     void ShowTool(SnipTool tool);
+
+    /// <summary>Shows one of the snips, and which one it is. Its annotations follow in <see cref="ShowAnnotations"/>.</summary>
+    /// <param name="index">Which one, from 0.</param>
+    /// <param name="count">How many there are.</param>
+    void ShowSnip(int index, int count);
 
     /// <summary>
     ///     Shows the colors to choose from: the fixed ones, and below them the ones picked with More colors. Called

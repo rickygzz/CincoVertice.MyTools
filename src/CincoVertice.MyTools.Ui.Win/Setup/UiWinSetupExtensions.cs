@@ -74,6 +74,7 @@ public static class UiWinSetupExtensions
         services.AddSingleton<ScreenSnipper>();
         services.AddSingleton<ISnipEditorSettingsStore>(_ =>
             new JsonFileSnipEditorSettingsStore(SnipAndEditAction.SettingsFilePath));
+        services.AddSingleton<SnipEditorWindowService>();
         services.AddSingleton<SnipRegionAction>();
         services.AddSingleton<SnipAndEditAction>();
         services.AddSingleton<IDiagramFileStore, SvgDiagramFileStore>();

@@ -8,9 +8,10 @@ namespace CincoVertice.MyTools.Ui.Snipping.Presenters;
 
 /// <summary>
 ///     One snip editor: turns drags on the view into annotations with the current tool, and keeps them with undo and
-///     redo. Each tool keeps its own size, transparency and color; these and the tool are saved
-///     (<see cref="ISnipEditorSettingsStore"/>), so the next editor starts with them. After every change the edited
-///     snip is copied to the clipboard again, so it can be pasted right away.
+///     redo. It can hold several snips, each with its own annotations and undo; the view keeps their images. Each tool
+///     keeps its own size, transparency and color; these and the tool are saved
+///     (<see cref="ISnipEditorSettingsStore"/>), so the next editor starts with them. After every change, and when
+///     another snip is shown, the snip shown is copied to the clipboard again, so it can be pasted right away.
 /// </summary>
 public sealed class SnipEditorPresenter
 {
@@ -47,8 +48,11 @@ public sealed class SnipEditorPresenter
     private readonly ISnipEditorView _view;
     private readonly TimeProvider _timeProvider;
     private readonly ISnipEditorSettingsStore _settingsStore;
-    private readonly List<AnnotationModel> _annotations = [];
-    private readonly Stack<AnnotationModel> _undone = new();
+
+    // Every snip of the window, oldest first; starts with the one it opened with
+    private readonly List<SnipPage> _pages = [new SnipPage()];
+
+    private int _current;
 
     private readonly Dictionary<SnipTool, SnipToolSettingsModel> _settings = new()
     {
@@ -103,6 +107,8 @@ public sealed class SnipEditorPresenter
         _view.TextOutlineWidthSelected += OnTextOutlineWidthSelected;
         _view.TextOutlineColorSelected += OnTextOutlineColorSelected;
         _view.MoreTextOutlineColorsRequested += OnMoreTextOutlineColorsRequested;
+        _view.SnipAdded += OnSnipAdded;
+        _view.SnipStepRequested += OnSnipStepRequested;
         _view.TextCommitted += OnTextCommitted;
         _view.UndoRequested += OnUndoRequested;
         _view.RedoRequested += OnRedoRequested;
@@ -110,8 +116,10 @@ public sealed class SnipEditorPresenter
         _view.SaveRequested += OnSaveRequested;
     }
 
-    /// <summary>The annotations kept, oldest first; without the one being drawn.</summary>
-    public IReadOnlyList<AnnotationModel> Annotations => _annotations;
+    /// <summary>The annotations kept on the snip shown, oldest first; without the one being drawn.</summary>
+    public IReadOnlyList<AnnotationModel> Annotations => Page.Annotations;
+
+    private SnipPage Page => _pages[_current];
 
     private SnipToolSettingsModel Settings => _settings[_tool];
 
@@ -131,8 +139,7 @@ public sealed class SnipEditorPresenter
     {
         _view.ShowPalette(Palette, [.. _customColors]);
         ShowTool();
-        Refresh();
-        _view.CopyImageToClipboard();
+        ShowPage(0);
     }
 
     /// <summary>The sizes a tool can use: font sizes for the text tool, line widths for the others.</summary>
@@ -412,24 +419,52 @@ public sealed class SnipEditorPresenter
 
     private void OnUndoRequested(object? sender, EventArgs e)
     {
-        if (_annotations.Count == 0)
+        if (Page.Annotations.Count == 0)
         {
             return;
         }
 
-        _undone.Push(_annotations[^1]);
-        _annotations.RemoveAt(_annotations.Count - 1);
+        Page.Undone.Push(Page.Annotations[^1]);
+        Page.Annotations.RemoveAt(Page.Annotations.Count - 1);
         Changed();
     }
 
     private void OnRedoRequested(object? sender, EventArgs e)
     {
-        if (_undone.Count == 0)
+        if (Page.Undone.Count == 0)
         {
             return;
         }
 
-        _annotations.Add(_undone.Pop());
+        Page.Annotations.Add(Page.Undone.Pop());
+        Changed();
+    }
+
+    private void OnSnipAdded(object? sender, EventArgs e)
+    {
+        _pages.Add(new SnipPage());
+        ShowPage(_pages.Count - 1);
+    }
+
+    private void OnSnipStepRequested(object? sender, int step)
+    {
+        int page = _current + step;
+
+        if (page >= 0 && page < _pages.Count && page != _current)
+        {
+            ShowPage(page);
+        }
+    }
+
+    private void ShowPage(int page)
+    {
+        // A drag can't go on over another snip
+        _start = null;
+        _points = [];
+        _drawing = null;
+
+        _current = page;
+        _view.ShowSnip(page, _pages.Count);
         Changed();
     }
 
@@ -441,13 +476,22 @@ public sealed class SnipEditorPresenter
     private void OnSaveRequested(object? sender, EventArgs e)
     {
         DateTimeOffset now = _timeProvider.GetLocalNow();
+        int page = _current;
         string? path = _view.AskSavePath(
             $"Snip {now.ToString("yyyy-MM-dd HHmmss", CultureInfo.InvariantCulture)}.png");
 
-        if (path is not null)
+        if (path is null)
         {
-            _view.SaveImage(path);
+            return;
         }
+
+        // A new snip can arrive while the dialog is open, from a global hotkey; the one asked about is what's saved
+        if (_current != page)
+        {
+            ShowPage(page);
+        }
+
+        _view.SaveImage(path);
     }
 
     private AnnotationModel CreateAnnotation(Point start, Point end)
@@ -480,8 +524,8 @@ public sealed class SnipEditorPresenter
     /// <summary>Keeps a new annotation; what was undone can't be redone after it.</summary>
     private void Add(AnnotationModel annotation)
     {
-        _annotations.Add(annotation);
-        _undone.Clear();
+        Page.Annotations.Add(annotation);
+        Page.Undone.Clear();
         Changed();
     }
 
@@ -493,8 +537,8 @@ public sealed class SnipEditorPresenter
 
     private void Refresh()
     {
-        _view.ShowAnnotations(_drawing is null ? [.. _annotations] : [.. _annotations, _drawing]);
-        _view.ShowUndoRedo(_annotations.Count > 0, _undone.Count > 0);
+        _view.ShowAnnotations(_drawing is null ? [.. Page.Annotations] : [.. Page.Annotations, _drawing]);
+        _view.ShowUndoRedo(Page.Annotations.Count > 0, Page.Undone.Count > 0);
     }
 
     private static Rectangle FromCorners(Point a, Point b) => Rectangle.FromLTRB(
@@ -502,4 +546,12 @@ public sealed class SnipEditorPresenter
         Math.Min(a.Y, b.Y),
         Math.Max(a.X, b.X),
         Math.Max(a.Y, b.Y));
+
+    /// <summary>What a snip of the window has drawn over it.</summary>
+    private sealed class SnipPage
+    {
+        public List<AnnotationModel> Annotations { get; } = [];
+
+        public Stack<AnnotationModel> Undone { get; } = new();
+    }
 }
