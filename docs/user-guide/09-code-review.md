@@ -1,0 +1,77 @@
+# Code Review: Check and Fix a Folder
+
+This tool checks C# source files against a fixed set of formatting rules and can rewrite the files to follow them. The rules are built in and cannot be configured. It works on files in the folder you choose and all its subfolders. It skips the folders `bin`, `obj`, `.git` and `.vs`, and files ending `.Designer.cs`, `.g.cs` and `.g.i.cs`.
+
+Use the tray items **Check folder for standard...** and **Fix folder for standard...**. You can also give them hotkeys with the actions `CheckFolder` and `FixFolder`. Do not use **File > Code review** in the main window; it opens an empty window.
+
+## Check a folder
+
+1. Choose **Check folder for standard...**.
+2. A folder picker titled "Select the folder to check for the code standard" opens. It remembers your last folder while the app runs.
+3. A new window titled "Code standard - <folder>" opens and shows "Code standard check", the folder, then "Checking...".
+4. The result lists each file with issues as `<relative path> (<count>)`, with one line per issue: `<line>  <code>  <message>`. A summary ends the list: `No C# files found.`, `No issues found in N file(s).` or `N issue(s) in M of K file(s).`
+
+The window stays responsive while it works. There is no cancel button and no progress bar. You can select text and copy it with Ctrl+C. The output box is not read-only, so you can also type over the results. Right-click offers one entry, "Clear Text". There is no save or export command. A missing folder shows `Folder not found: <path>`.
+
+## Fix a folder
+
+**Fix rewrites your files in place, and there is no backup, log or undo.** Commit or back up your work first.
+
+1. Choose **Fix folder for standard...**.
+2. A folder picker titled "Select the folder to fix for the code standard" opens.
+3. A warning box titled "Fix folder for code standard" asks for confirmation. **No** is the default button. It reads:
+
+```
+This rewrites the C# files in
+<folder>
+in place.
+
+Commit or back up your changes first, so you can review the fixes and undo them.
+
+Fix the folder now?
+```
+
+4. If you click **Yes**, a new window titled "Code standard fix - <folder>" opens. It shows "Code standard fix", the folder and "Fixing...". Then it lists one `Fixed  <relative path>` line for each changed file and `Skipped  <relative path>: <reason>` for each skipped file. A summary follows: `Fixed X of Y file(s).`, with ` Skipped N.` added when some files were skipped, or `No C# files found.`
+5. Last, under "Issues left (not fixable automatically)", it lists the issues that remain.
+
+A file is rewritten only if its content changes, and it keeps its own encoding and byte-order mark. A file without a byte-order mark must be valid UTF-8, otherwise it is skipped with `Not valid UTF-8; add a BOM or convert the file to UTF-8.` Text inside string and character literals is protected. Line endings are never converted.
+
+Two things are changed even though they are not listed as rules: typographic punctuation (curly quotes, dashes, the minus sign, the ellipsis) becomes plain ASCII outside string and character literals, and every file ends with exactly one line break.
+
+## The rules
+
+| Code | Message | Fixed by the tool? |
+|---|---|---|
+| CH0001 | `File not found.` | not applicable |
+| CH0002 | `Error reading file: {message}` | not applicable |
+| CH0010 | `Line contains whitespaces only.` | yes |
+| CH0011 | `Line ends with whitespace.` | yes |
+| CH0012 | `Line is tab indented.` | yes (4 spaces per level) |
+| CH0013 | `Line should have four spaces per indentation level.` | yes |
+| CH0014 | `Additional indentation should be four spaces only.` | yes |
+| CH0016 | `No lines should be greater than 120 characters.` | no, reported only |
+| CH0017 | `Line starts with forbidden token: '{token}'` | yes (the token moves to the end of the previous line; not after a line ending in `;` or `{`) |
+| CH0018 | `Line ends with forbidden token: '{token}'` | yes for most (the operator moves to the start of the next line); a lone `!` is reported only |
+| CH0019 | `Line contains forbidden token: '{token}'` | no, reported only (for example `this.`) |
+| CH0020 | `Character immediately following /// is not a space.` | yes |
+| CH0021 | `Character immediately following // is not a space.` | yes |
+| CH0022 | `Keyword '{keyword}' lacks space before parenthesis.` | yes (for, foreach, if, do, while) |
+| CH0023 | `Keyword '{keyword}' has spaces before parenthesis.` | no, reported only (the keyword `new`) |
+| CH0024 | `Keyword '{keyword}' should have only one space before parenthesis.` | yes |
+| CH0025 | `Line contains invisible character {character} at column {column}.` | yes (removed) |
+| CH0026 | `Line contains Unicode space {character} at column {column}; use a normal space.` | yes |
+| CH0027 | `Line is a consecutive blank line.` | yes |
+| CH0028 | `Blank line before closing brace.` | yes |
+| CH0029 | `Namespace should be file-scoped: namespace Name;` | yes, when the braces are on their own lines |
+| CH0030 | `Empty XML comments.` | yes |
+| CH0031 | `if / else / loop body must be in braces.` | yes |
+| CH0032 | `Line contains consecutive spaces.` | yes |
+| CH0033 | `Braces need a space before and inside them: get { return x; }` | yes |
+| CH0034 | `Block braces go on their own lines: "if (x) {" and "} else" are not allowed.` | yes |
+| CH0035 | `No space after ( or before ): Read(a), not Read( a ).` | yes |
+
+Typical examples: `int a;  ` (trailing spaces) becomes `int a;`; `if(x)` becomes `if (x)`; `//text` becomes `// text`; `namespace N { ... }` becomes `namespace N;`; `get{return x;}` becomes `get { return x; }`.
+
+---
+
+← Previous: [Scripts](08-scripts.md) | [Contents](README.md) | Next: [Files and Updates](10-files-and-updates.md) →
