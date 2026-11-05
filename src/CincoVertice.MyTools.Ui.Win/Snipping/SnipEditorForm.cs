@@ -544,9 +544,19 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         // Cleared first: hiding the focused box raises Leave, which commits again
         _textLocation = null;
         string text = TextInputBox.Text;
-        TextInputBox.Visible = false;
+        HideTextInput();
 
         TextCommitted?.Invoke(this, new TextInputModel(location, text));
+    }
+
+    /// <summary>
+    ///     Gives the focus back to the window: nothing else on it can take it, so the hidden box would keep it, and the
+    ///     keys with it.
+    /// </summary>
+    private void HideTextInput()
+    {
+        TextInputBox.Visible = false;
+        ActiveControl = null;
     }
 
     private void EscapeText()
@@ -559,7 +569,7 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         // Cleared first: hiding the focused box raises Leave, which commits
         _textLocation = null;
         string text = TextInputBox.Text;
-        TextInputBox.Visible = false;
+        HideTextInput();
 
         TextEscaped?.Invoke(this, new TextInputModel(location, text));
     }
@@ -770,7 +780,7 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     private void SnipEditorForm_KeyDown(object? sender, KeyEventArgs e)
     {
         // While typing a text, keys are the text's
-        if (TextInputBox.Focused)
+        if (_textLocation is not null)
         {
             return;
         }

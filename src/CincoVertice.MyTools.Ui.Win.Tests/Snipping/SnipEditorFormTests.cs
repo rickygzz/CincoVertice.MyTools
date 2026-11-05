@@ -1,6 +1,8 @@
 using System.Drawing;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
+using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.MyTools.Ui.Snipping.Models;
 using CincoVertice.MyTools.Ui.Win.Snipping;
 using Xunit;
@@ -259,6 +261,96 @@ public sealed class SnipEditorFormTests : IDisposable
 
         // Assert
         Assert.Equal(new Size(1000, 600), form.ClientSize);
+    }
+
+    [DllImport("user32.dll")]
+    private static extern nint GetFocus();
+
+    [DllImport("user32.dll")]
+    private static extern bool PostMessage(nint hwnd, int msg, nint wParam, nint lParam);
+
+    private static void Pump()
+    {
+        for (int i = 0; i < 30; i++)
+        {
+            Application.DoEvents();
+        }
+    }
+
+    /// <summary>Sends a key where the keyboard would: to whatever has the focus.</summary>
+    private static void PressKey(Keys key)
+    {
+        const int WM_KEYDOWN = 0x0100;
+        const int WM_KEYUP = 0x0101;
+
+        nint focused = GetFocus();
+
+        PostMessage(focused, WM_KEYDOWN, (nint)key, 1);
+        PostMessage(focused, WM_KEYUP, (nint)key, unchecked((nint)0xC0000001));
+        Pump();
+    }
+
+    /// <summary>The window in front with a text being typed, so the keyboard goes where it really would.</summary>
+    private static SnipEditorForm TypingInTheForeground()
+    {
+        var form = new SnipEditorForm(Solid(300, 200, Color.White));
+
+        form.ShowInTaskbar = false;
+        form.Show();
+        form.Location = new Point(-5000, 100);
+        WindowHelper.ForceForeground(form.Handle);
+        form.Activate();
+        Pump();
+        form.BeginTextInput(new Point(10, 10), Color.Black, 14, "abc");
+        Pump();
+
+        // Without the focus nothing here would mean anything, e.g. with the computer locked
+        Assert.SkipUnless(Field<TextBox>(form, "TextInputBox").Focused, "This window can't get the keyboard focus.");
+
+        return form;
+    }
+
+    [Theory]
+    [InlineData(Keys.Enter)]
+    [InlineData(Keys.Escape)]
+    public void ToolKeys_WorkAfterTheTextEnds(Keys endingKey)
+    {
+        // Arrange
+        using SnipEditorForm form = TypingInTheForeground();
+        List<SnipTool> tools = [];
+        form.ToolSelected += (_, tool) => tools.Add(tool);
+
+        if (endingKey == Keys.Escape)
+        {
+            PressEsc(form);
+        }
+        else
+        {
+            PressKey(endingKey);
+        }
+
+        // Act
+        PressKey(Keys.V);
+        PressKey(Keys.P);
+
+        // Assert: and the box they'd have gone to is empty of them
+        Assert.Equal([SnipTool.Select, SnipTool.Pen], tools);
+        Assert.False(Field<TextBox>(form, "TextInputBox").Focused);
+    }
+
+    [Fact]
+    public void ToolKeys_ArePartOfTheTextWhileTyping()
+    {
+        // Arrange
+        using SnipEditorForm form = TypingInTheForeground();
+        List<SnipTool> tools = [];
+        form.ToolSelected += (_, tool) => tools.Add(tool);
+
+        // Act
+        PressKey(Keys.V);
+
+        // Assert
+        Assert.Empty(tools);
     }
 
     private static void PressEsc(SnipEditorForm form)
