@@ -19,6 +19,30 @@ public interface ISnipEditorView
     /// <summary>Raised when the user releases the left button.</summary>
     event EventHandler<Point>? PointerReleased;
 
+    /// <summary>Raised when the user double-clicks with the left button, after the press.</summary>
+    event EventHandler<Point>? PointerDoubleClicked;
+
+    /// <summary>Raised while the user moves the mouse with no button down.</summary>
+    event EventHandler<Point>? PointerHovered;
+
+    /// <summary>Raised when the user clicks with the right button, as it's released.</summary>
+    event EventHandler<Point>? PointerRightClicked;
+
+    /// <summary>Raised when the user wants what's selected gone.</summary>
+    event EventHandler? DeleteRequested;
+
+    /// <summary>Raised when the user wants what's selected as it was when first drawn.</summary>
+    event EventHandler? ResetRequested;
+
+    /// <summary>Raised with how far to move what's selected, in pixels.</summary>
+    event EventHandler<Size>? NudgeRequested;
+
+    /// <summary>Raised when the user wants nothing selected.</summary>
+    event EventHandler? DeselectRequested;
+
+    /// <summary>Raised when the user ends a text begun by <see cref="BeginTextInput"/> with Esc; it can be empty.</summary>
+    event EventHandler<TextInputModel>? TextEscaped;
+
     event EventHandler<SnipTool>? ToolSelected;
 
     event EventHandler<Color>? ColorSelected;
@@ -100,10 +124,27 @@ public interface ISnipEditorView
     /// <summary>Draws these annotations over the snip, in order, instead of the ones shown before.</summary>
     void ShowAnnotations(IReadOnlyList<AnnotationModel> annotations);
 
+    /// <summary>Shows what's selected, on screen only: it's never part of the copied or saved image. Null for nothing.</summary>
+    void ShowSelection(SnipSelectionModel? selection);
+
+    void ShowCursor(SnipCursor cursor);
+
+    /// <summary>Shows what can be done to what's selected, at a point of the snip.</summary>
+    /// <param name="location">Where to show it.</param>
+    /// <param name="canReset">True when it has changed since it was drawn.</param>
+    void ShowContextMenu(Point location, bool canReset);
+
+    /// <returns>How large a text is when drawn with this font size.</returns>
+    Size MeasureText(string text, int fontSize);
+
     void ShowUndoRedo(bool canUndo, bool canRedo);
 
     /// <summary>Lets the user type a text at the location; ends with <see cref="TextCommitted"/>.</summary>
-    void BeginTextInput(Point location, Color color, int fontSize);
+    /// <param name="location">Where it goes.</param>
+    /// <param name="color">The color of the text.</param>
+    /// <param name="fontSize">In pixels.</param>
+    /// <param name="text">The text to start from.</param>
+    void BeginTextInput(Point location, Color color, int fontSize, string text);
 
     /// <summary>Copies the snip with the annotations shown to the clipboard.</summary>
     void CopyImageToClipboard();

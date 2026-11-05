@@ -12,6 +12,10 @@ public static class AnnotationRenderer
 {
     public const string FontFamilyName = "Segoe UI";
 
+    private const int HandleSize = 8;
+
+    private static readonly Color _selectionColor = Color.FromArgb(0, 120, 215);
+
     /// <param name="graphics">Where to draw them.</param>
     /// <param name="annotations">What to draw, in order.</param>
     /// <param name="snip">The snip they go over, without annotations; blurs take their color from around them on it.</param>
@@ -41,6 +45,9 @@ public static class AnnotationRenderer
                 case BlurAnnotationModel blur:
                     BlurRenderer.Draw(graphics, blur, blurs, snip);
                     break;
+                case HighlightAnnotationModel highlight:
+                    DrawHighlight(graphics, highlight);
+                    break;
             }
         }
 
@@ -50,12 +57,56 @@ public static class AnnotationRenderer
     /// <summary>The font of a text annotation, sized in pixels; the caller disposes it.</summary>
     public static Font CreateFont(int fontSize) => new(FontFamilyName, fontSize, FontStyle.Bold, GraphicsUnit.Pixel);
 
+    /// <returns>How large a text annotation is, measured the way it's drawn.</returns>
+    public static Size MeasureText(string text, int fontSize)
+    {
+        using var image = new Bitmap(1, 1);
+        using var graphics = Graphics.FromImage(image);
+        using Font font = CreateFont(fontSize);
+
+        return Size.Ceiling(graphics.MeasureString(text, font, PointF.Empty, StringFormat.GenericTypographic));
+    }
+
+    /// <summary>What shows an annotation is selected; on the editor's screen only, never in the image.</summary>
+    public static void DrawSelection(Graphics graphics, SnipSelectionModel selection)
+    {
+        using var pen = new Pen(_selectionColor);
+
+        if (selection.Box is Rectangle box)
+        {
+            graphics.DrawRectangle(pen, box);
+        }
+
+        foreach (Point handle in selection.Handles)
+        {
+            var square = new Rectangle(
+                handle.X - HandleSize / 2,
+                handle.Y - HandleSize / 2,
+                HandleSize,
+                HandleSize);
+
+            graphics.FillRectangle(Brushes.White, square);
+            graphics.DrawRectangle(pen, square);
+        }
+    }
+
     private static Pen CreatePen(Color color, int width) => new(color, width)
     {
         StartCap = LineCap.Round,
         EndCap = LineCap.Round,
         LineJoin = LineJoin.Round,
     };
+
+    private static void DrawHighlight(Graphics graphics, HighlightAnnotationModel highlight)
+    {
+        using var brush = new SolidBrush(highlight.Color);
+        SmoothingMode smoothing = graphics.SmoothingMode;
+
+        // Smoothed, its edges would be fainter than the rest
+        graphics.SmoothingMode = SmoothingMode.None;
+        graphics.FillRectangle(brush, highlight.Bounds);
+        graphics.SmoothingMode = smoothing;
+    }
 
     private static void DrawStroke(Graphics graphics, StrokeAnnotationModel stroke)
     {
@@ -114,7 +165,8 @@ public static class AnnotationRenderer
     {
         using var font = CreateFont(text.FontSize);
 
-        if (text.Outline is { } outline)
+        // A width of 0 is what a text keeps when its edge is taken off, with the color for when it's put back
+        if (text.Outline is { Width: > 0 } outline)
         {
             DrawOutlinedText(graphics, text, font, outline);
 

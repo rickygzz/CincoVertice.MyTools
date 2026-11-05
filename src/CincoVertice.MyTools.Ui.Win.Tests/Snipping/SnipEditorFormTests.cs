@@ -110,8 +110,7 @@ public sealed class SnipEditorFormTests : IDisposable
         List<string> happened = [];
         form.TextCommitted += (_, input) => happened.Add($"text {input.Text}");
         form.SnipAdded += (_, _) => happened.Add("snip");
-        form.BeginTextInput(new Point(1, 2), Color.Black, 14);
-        Field<TextBox>(form, "TextInputBox").Text = "typed";
+        form.BeginTextInput(new Point(1, 2), Color.Black, 14, "typed");
 
         // Act
         form.AddSnip(Solid(60, 30, Color.Blue));
@@ -260,6 +259,213 @@ public sealed class SnipEditorFormTests : IDisposable
 
         // Assert
         Assert.Equal(new Size(1000, 600), form.ClientSize);
+    }
+
+    private static void PressEsc(SnipEditorForm form)
+    {
+        var message = default(Message);
+
+        typeof(SnipEditorForm)
+            .GetMethod("ProcessCmdKey", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .Invoke(form, [message, Keys.Escape]);
+    }
+
+    [Theory]
+    [InlineData("typed")]
+    [InlineData("")]
+    public void Esc_WhileTyping_EndsTheTextOnce_AndLeavesTheWindowOpen(string text)
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        List<TextInputModel> escaped = [];
+        int committed = 0;
+        form.TextEscaped += (_, input) => escaped.Add(input);
+        form.TextCommitted += (_, _) => committed++;
+        form.BeginTextInput(new Point(1, 2), Color.Black, 14, text);
+
+        // Act
+        PressEsc(form);
+
+        // Assert
+        Assert.Equal([new TextInputModel(new Point(1, 2), text)], escaped);
+        Assert.Equal(0, committed);
+        Assert.False(form.IsDisposed);
+        Assert.False(Field<TextBox>(form, "TextInputBox").Visible);
+    }
+
+    [Fact]
+    public void Esc_AfterTheTextEnded_ThenDeselects_AndOnlyThenCloses()
+    {
+        // Arrange: shown, as closing needs
+        var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        form.ShowInTaskbar = false;
+        form.Show();
+        form.Location = new Point(-5000, 100);
+        int deselected = 0;
+        form.DeselectRequested += (_, _) =>
+        {
+            deselected++;
+            form.ShowSelection(null);
+        };
+        form.ShowSelection(new SnipSelectionModel(new Rectangle(1, 1, 5, 5), []));
+
+        // Act & Assert
+        PressEsc(form);
+        Assert.Equal(1, deselected);
+        Assert.False(form.IsDisposed);
+
+        PressEsc(form);
+        Assert.True(form.IsDisposed);
+    }
+
+    [Fact]
+    public void ContextMenu_OnlyOffersTheResetWhenThereIsOne_AndPassesOnWhatsPicked()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        form.ShowInTaskbar = false;
+        form.Show();
+        form.Location = new Point(-5000, 100);
+        var menu = Field<ContextMenuStrip>(form, "SelectionMenu");
+        var reset = Field<ToolStripMenuItem>(form, "ResetMenuItem");
+        var delete = Field<ToolStripMenuItem>(form, "DeleteMenuItem");
+        List<string> asked = [];
+        form.ResetRequested += (_, _) => asked.Add("reset");
+        form.DeleteRequested += (_, _) => asked.Add("delete");
+
+        // Act
+        form.ShowContextMenu(new Point(10, 10), canReset: false);
+        bool wasShown = menu.Visible;
+        bool couldReset = reset.Enabled;
+        menu.Close();
+        form.ShowContextMenu(new Point(10, 10), canReset: true);
+        bool canReset = reset.Enabled;
+        menu.Close();
+        reset.PerformClick();
+        delete.PerformClick();
+
+        // Assert
+        Assert.True(wasShown);
+        Assert.False(couldReset);
+        Assert.True(canReset);
+        Assert.Equal(["reset", "delete"], asked);
+    }
+
+    [Fact]
+    public void HighlightedArea_FillsItsFrameExactly_SeeThrough()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        string path = SavedImagePath();
+        form.ShowAnnotations([new HighlightAnnotationModel(new Rectangle(20, 30, 40, 20), Color.FromArgb(128, 0, 0, 255))]);
+
+        // Act
+        form.SaveImage(path);
+
+        // Assert: blue over white, the same in its corners as in its middle, and nothing around it
+        using var saved = new Bitmap(path);
+        int inside = saved.GetPixel(40, 40).ToArgb();
+
+        Assert.NotEqual(Color.White.ToArgb(), inside);
+        Assert.Equal(inside, saved.GetPixel(20, 30).ToArgb());
+        Assert.Equal(inside, saved.GetPixel(59, 49).ToArgb());
+        Assert.Equal(Color.White.ToArgb(), saved.GetPixel(19, 30).ToArgb());
+        Assert.Equal(Color.White.ToArgb(), saved.GetPixel(60, 49).ToArgb());
+    }
+
+    [Fact]
+    public void ToolWithNoSizes_HidesTheSizeList_UntilOneHasThem()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        var sizes = Field<ToolStripComboBox>(form, "SizeComboBox");
+
+        // Act & Assert
+        form.ShowSizes([], 0);
+        Assert.False(sizes.Available);
+
+        form.ShowSizes([1, 2], 2);
+        Assert.True(sizes.Available);
+
+        form.ShowDrawingChoices(false);
+        form.ShowSizes([1, 2], 2);
+        Assert.False(sizes.Available);
+    }
+
+    [Fact]
+    public void Selection_IsNeverInTheSavedImage()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        string path = SavedImagePath();
+        form.ShowSelection(new SnipSelectionModel(new Rectangle(10, 10, 50, 50), [new Point(10, 10)]));
+
+        // Act
+        form.SaveImage(path);
+
+        // Assert
+        using var saved = new Bitmap(path);
+        Assert.Equal(Color.White.ToArgb(), saved.GetPixel(10, 10).ToArgb());
+        Assert.Equal(Color.White.ToArgb(), saved.GetPixel(35, 10).ToArgb());
+    }
+
+    [Fact]
+    public void TextWithAnEdgeOfNoWidth_DrawsNoEdge()
+    {
+        // Arrange: what a selected text keeps when its edge is taken off
+        using var form = new SnipEditorForm(Solid(200, 100, Color.White));
+        string path = SavedImagePath();
+        form.ShowAnnotations(
+        [
+            new TextAnnotationModel(new Point(5, 5), "Hello", Color.Black, 36, new SnipTextOutlineModel(0, Color.Lime)),
+        ]);
+
+        // Act
+        form.SaveImage(path);
+
+        // Assert
+        using var saved = new Bitmap(path);
+
+        for (int x = 0; x < saved.Width; x++)
+        {
+            for (int y = 0; y < saved.Height; y++)
+            {
+                Color pixel = saved.GetPixel(x, y);
+
+                Assert.True(pixel.G <= pixel.R + 2, $"Edge color at {x}, {y}: {pixel}");
+            }
+        }
+    }
+
+    [Fact]
+    public void BeginTextInput_StartsFromTheTextGiven()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        TextInputModel? committed = null;
+        form.TextCommitted += (_, input) => committed = input;
+
+        // Act
+        form.BeginTextInput(new Point(1, 2), Color.Black, 14, "old\nline");
+        form.AddSnip(Solid(100, 100, Color.White));
+
+        // Assert: a new snip ends the text
+        Assert.Equal("old\r\nline", committed!.Text);
+    }
+
+    [Fact]
+    public void MeasureText_GrowsWithTheFont_AndTheLines()
+    {
+        // Act
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        Size small = form.MeasureText("Hello", 20);
+        Size large = form.MeasureText("Hello", 40);
+        Size lines = form.MeasureText("Hello\nHello", 20);
+
+        // Assert
+        Assert.True(large.Width > small.Width && large.Height > small.Height);
+        Assert.True(lines.Height > small.Height);
+        Assert.Equal(small.Width, lines.Width);
     }
 
     [Fact]

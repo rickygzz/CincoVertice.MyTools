@@ -11,4 +11,7 @@ public enum SnipTool
     Rectangle,
     Text,
     Blur,
+
+    /// <summary>Doesn't draw: a click selects what's there, to move, scale, change or delete it.</summary>
+    Select,
 }
