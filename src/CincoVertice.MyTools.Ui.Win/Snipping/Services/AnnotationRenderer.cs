@@ -14,6 +14,8 @@ public static class AnnotationRenderer
 
     private const int HandleSize = 8;
 
+    private const int HighlightCornerRadius = 8;
+
     private static readonly Color _selectionColor = Color.FromArgb(0, 120, 215);
 
     /// <param name="graphics">Where to draw them.</param>
@@ -97,15 +99,23 @@ public static class AnnotationRenderer
         LineJoin = LineJoin.Round,
     };
 
+    /// <summary>
+    ///     With rounded corners, as a highlighter's line has round ends; a small or thin one is as round as it can be.
+    /// </summary>
     private static void DrawHighlight(Graphics graphics, HighlightAnnotationModel highlight)
     {
+        Rectangle bounds = highlight.Bounds;
+        int diameter = Math.Min(2 * HighlightCornerRadius, Math.Min(bounds.Width, bounds.Height));
         using var brush = new SolidBrush(highlight.Color);
-        SmoothingMode smoothing = graphics.SmoothingMode;
+        using var path = new GraphicsPath();
+        PixelOffsetMode offset = graphics.PixelOffsetMode;
 
-        // Smoothed, its edges would be fainter than the rest
-        graphics.SmoothingMode = SmoothingMode.None;
-        graphics.FillRectangle(brush, highlight.Bounds);
-        graphics.SmoothingMode = smoothing;
+        path.AddRoundedRectangle(bounds, new Size(diameter, diameter));
+
+        // Half: the straight edges then fall on the pixels' edges, so they're as strong as the rest, not fainter
+        graphics.PixelOffsetMode = PixelOffsetMode.Half;
+        graphics.FillPath(brush, path);
+        graphics.PixelOffsetMode = offset;
     }
 
     private static void DrawStroke(Graphics graphics, StrokeAnnotationModel stroke)

@@ -573,26 +573,85 @@ public sealed class SnipEditorFormTests : IDisposable
         Assert.Equal(["reset", "delete"], asked);
     }
 
-    [Fact]
-    public void HighlightedArea_FillsItsFrameExactly_SeeThrough()
+    private static Bitmap SavedHighlight(SnipEditorForm form, Rectangle bounds)
     {
-        // Arrange
-        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
-        string path = SavedImagePath();
-        form.ShowAnnotations([new HighlightAnnotationModel(new Rectangle(20, 30, 40, 20), Color.FromArgb(128, 0, 0, 255))]);
+        string path = Path.Combine(Path.GetTempPath(), "SnipEditorFormTests_" + Guid.NewGuid() + ".png");
 
-        // Act
+        form.ShowAnnotations([new HighlightAnnotationModel(bounds, Color.FromArgb(128, 0, 0, 255))]);
         form.SaveImage(path);
 
-        // Assert: blue over white, the same in its corners as in its middle, and nothing around it
-        using var saved = new Bitmap(path);
-        int inside = saved.GetPixel(40, 40).ToArgb();
+        try
+        {
+            using var saved = new Bitmap(path);
+
+            return new Bitmap(saved);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void HighlightedArea_FillsItsFrameEvenly_UpToItsStraightEdges()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(200, 200, Color.White));
+
+        // Act
+        using Bitmap saved = SavedHighlight(form, new Rectangle(20, 30, 120, 80));
+
+        // Assert: blue over white, as strong on the edges as in the middle, and nothing outside them
+        int inside = saved.GetPixel(80, 70).ToArgb();
 
         Assert.NotEqual(Color.White.ToArgb(), inside);
-        Assert.Equal(inside, saved.GetPixel(20, 30).ToArgb());
-        Assert.Equal(inside, saved.GetPixel(59, 49).ToArgb());
-        Assert.Equal(Color.White.ToArgb(), saved.GetPixel(19, 30).ToArgb());
-        Assert.Equal(Color.White.ToArgb(), saved.GetPixel(60, 49).ToArgb());
+
+        foreach (Point edge in new Point[] { new(80, 30), new(80, 109), new(20, 70), new(139, 70) })
+        {
+            Assert.Equal(inside, saved.GetPixel(edge.X, edge.Y).ToArgb());
+        }
+
+        foreach (Point outside in new Point[] { new(80, 29), new(80, 110), new(19, 70), new(140, 70) })
+        {
+            Assert.Equal(Color.White.ToArgb(), saved.GetPixel(outside.X, outside.Y).ToArgb());
+        }
+    }
+
+    [Fact]
+    public void HighlightedArea_HasRoundedCorners()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(200, 200, Color.White));
+
+        // Act
+        using Bitmap saved = SavedHighlight(form, new Rectangle(20, 30, 120, 80));
+
+        // Assert: the very corners are left out, and a little way in it's full again
+        int inside = saved.GetPixel(80, 70).ToArgb();
+
+        foreach (Point corner in new Point[] { new(20, 30), new(139, 30), new(20, 109), new(139, 109) })
+        {
+            Assert.Equal(Color.White.ToArgb(), saved.GetPixel(corner.X, corner.Y).ToArgb());
+        }
+
+        Assert.Equal(inside, saved.GetPixel(28, 38).ToArgb());
+        Assert.Equal(inside, saved.GetPixel(131, 101).ToArgb());
+    }
+
+    [Theory]
+    [InlineData(4, 4)]
+    [InlineData(200, 3)]
+    [InlineData(1, 1)]
+    public void HighlightedArea_SmallOrThin_StillDraws(int width, int height)
+    {
+        // Arrange: smaller than its corners would be
+        using var form = new SnipEditorForm(Solid(300, 100, Color.White));
+
+        // Act
+        using Bitmap saved = SavedHighlight(form, new Rectangle(10, 10, width, height));
+
+        // Assert
+        Assert.NotEqual(Color.White.ToArgb(), saved.GetPixel(10 + width / 2, 10 + height / 2).ToArgb());
     }
 
     [Fact]
