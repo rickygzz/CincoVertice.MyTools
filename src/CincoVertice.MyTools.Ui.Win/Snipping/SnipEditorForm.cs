@@ -138,6 +138,8 @@ public partial class SnipEditorForm : Form, ISnipEditorView
 
     public event EventHandler<CancelEventArgs>? CloseRequested;
 
+    public event EventHandler<bool>? HideWhileSnippingSelected;
+
     public event EventHandler? UndoRequested;
 
     public event EventHandler? RedoRequested;
@@ -339,6 +341,11 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     {
         UndoButton.Enabled = canUndo;
         RedoButton.Enabled = canRedo;
+    }
+
+    public void ShowHideWhileSnipping(bool isHidden)
+    {
+        HideWhileSnippingMenuItem.Checked = isHidden;
     }
 
     public void BeginTextInput(Point location, Color color, int fontSize, string text)
@@ -674,6 +681,11 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         {
             TextOutlineWidthSelected?.Invoke(this, _textOutlineWidths[TextOutlineWidthComboBox.SelectedIndex]);
         }
+    }
+
+    private void HideWhileSnippingMenuItem_Click(object? sender, EventArgs e)
+    {
+        HideWhileSnippingSelected?.Invoke(this, !HideWhileSnippingMenuItem.Checked);
     }
 
     private void ResetMenuItem_Click(object? sender, EventArgs e)

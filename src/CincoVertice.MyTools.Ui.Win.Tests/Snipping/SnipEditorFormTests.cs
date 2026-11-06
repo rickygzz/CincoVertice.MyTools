@@ -629,6 +629,26 @@ public sealed class SnipEditorFormTests : IDisposable
         form.Dispose();
     }
 
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public void HideWhileSnipping_ShowsAsChecked_AndClickingAsksForTheOpposite(bool shown, bool asked)
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        var item = Field<ToolStripMenuItem>(form, "HideWhileSnippingMenuItem");
+        bool? selected = null;
+        form.HideWhileSnippingSelected += (_, isHidden) => selected = isHidden;
+
+        // Act
+        form.ShowHideWhileSnipping(shown);
+        item.PerformClick();
+
+        // Assert: the presenter says what's checked, not the click
+        Assert.Equal(asked, selected);
+        Assert.Equal(shown, item.Checked);
+    }
+
     [Fact]
     public void ContextMenu_OnlyOffersTheResetWhenThereIsOne_AndPassesOnWhatsPicked()
     {

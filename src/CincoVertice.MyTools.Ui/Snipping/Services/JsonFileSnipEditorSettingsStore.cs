@@ -12,7 +12,7 @@ namespace CincoVertice.MyTools.Ui.Snipping.Services;
 ///     The snip editor's settings in a JSON file, read when an editor opens and written on every change:
 ///     { "tool": "Arrow", "tools": { "Pen": { "size": 4, "transparency": 0, "color": "#FF0000" }, ... },
 ///     "customColors": ["#123456", ...], "arrowHeads": "Both", "textOutline": { "width": 2, "color": "#FFFFFF" },
-///     "cornerRadius": 12 }.
+///     "cornerRadius": 12, "hideWhileSnipping": true }.
 ///     A missing or broken file gives no settings, so the editor starts with its defaults; a missing or broken
 ///     color gives <see cref="Color.Empty"/>, so that tool keeps its default color. A broken custom color is skipped.
 /// </summary>
@@ -63,7 +63,8 @@ public sealed class JsonFileSnipEditorSettingsStore : ISnipEditorSettingsStore
                 file.TextOutline is { } outline
                     ? new SnipTextOutlineModel(outline.Width, ParseColor(outline.Color))
                     : null,
-                file.CornerRadius);
+                file.CornerRadius,
+                file.HideWhileSnipping ?? true);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
@@ -83,7 +84,8 @@ public sealed class JsonFileSnipEditorSettingsStore : ISnipEditorSettingsStore
             settings.TextOutline is { } outline
                 ? new TextOutlineFile(outline.Width, FormatColor(outline.Color))
                 : null,
-            settings.CornerRadius);
+            settings.CornerRadius,
+            settings.HideWhileSnipping);
 
         try
         {
@@ -119,7 +121,8 @@ public sealed class JsonFileSnipEditorSettingsStore : ISnipEditorSettingsStore
         List<string?>? CustomColors,
         SnipArrowHeads ArrowHeads = SnipArrowHeads.End,
         TextOutlineFile? TextOutline = null,
-        int? CornerRadius = null);
+        int? CornerRadius = null,
+        bool? HideWhileSnipping = null);
 
     private sealed record ToolFile(
         int Size,

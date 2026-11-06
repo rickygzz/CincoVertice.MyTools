@@ -1964,6 +1964,56 @@ public class SnipEditorPresenterTests
         Assert.Equal(SnipCursor.Cross, _view.Cursor);
     }
 
+    [Fact]
+    public void HideWhileSnipping_IsOnAtFirst()
+    {
+        Assert.True(_view.HidesWhileSnipping);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HideWhileSnipping_IsShownAndSaved(bool isHidden)
+    {
+        // Act
+        _view.SelectHideWhileSnipping(isHidden);
+
+        // Assert
+        Assert.Equal(isHidden, _view.HidesWhileSnipping);
+        Assert.Equal(isHidden, _store.Saved[^1].HideWhileSnipping);
+    }
+
+    [Fact]
+    public void HideWhileSnipping_TurnedOffBefore_StaysOff()
+    {
+        // Arrange
+        var view = new FakeSnipEditorView();
+        var settings = new SnipEditorSettingsModel(
+            SnipTool.Pen,
+            new Dictionary<SnipTool, SnipToolSettingsModel>(),
+            [],
+            HideWhileSnipping: false);
+
+        // Act
+        new SnipEditorPresenter(view, _time, new FakeSettingsStore(settings)).Start();
+
+        // Assert
+        Assert.False(view.HidesWhileSnipping);
+    }
+
+    [Fact]
+    public void HideWhileSnipping_IsKeptWhenOtherSettingsAreSaved()
+    {
+        // Arrange
+        _view.SelectHideWhileSnipping(false);
+
+        // Act
+        _view.SelectTool(SnipTool.Arrow);
+
+        // Assert
+        Assert.False(_store.Saved[^1].HideWhileSnipping);
+    }
+
     private void SaveThisSnip()
     {
         _view.SavePath = @"C:\snips\x.png";
@@ -2496,6 +2546,14 @@ public class SnipEditorPresenterTests
         public event EventHandler<TextInputModel>? TextCommitted;
 
         public event EventHandler<CancelEventArgs>? CloseRequested;
+
+        public event EventHandler<bool>? HideWhileSnippingSelected;
+
+        public bool? HidesWhileSnipping { get; private set; }
+
+        public void SelectHideWhileSnipping(bool isHidden) => HideWhileSnippingSelected?.Invoke(this, isHidden);
+
+        public void ShowHideWhileSnipping(bool isHidden) => HidesWhileSnipping = isHidden;
 
         /// <summary>What AskDiscardSnips answers.</summary>
         public bool DiscardAnswer { get; set; }

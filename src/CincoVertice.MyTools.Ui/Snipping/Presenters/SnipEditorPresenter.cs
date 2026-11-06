@@ -83,6 +83,9 @@ public sealed class SnipEditorPresenter
     // What the rectangle tool's corners get
     private int _cornerRadius = 12;
 
+    // A snip is mostly of something else; the editor in it would be in the way
+    private bool _hideWhileSnipping = true;
+
     // Off until a width is chosen; white shows on most of what a text is written over
     private SnipTextOutlineModel _textOutline = new(0, Rgb(0xFFFFFF));
 
@@ -145,6 +148,7 @@ public sealed class SnipEditorPresenter
         _view.CopyRequested += OnCopyRequested;
         _view.SaveRequested += OnSaveRequested;
         _view.CloseRequested += OnCloseRequested;
+        _view.HideWhileSnippingSelected += OnHideWhileSnippingSelected;
     }
 
     /// <summary>The annotations kept on the snip shown, oldest first; without the one being drawn.</summary>
@@ -168,6 +172,7 @@ public sealed class SnipEditorPresenter
     public void Start()
     {
         _view.ShowPalette(Palette, [.. _customColors]);
+        _view.ShowHideWhileSnipping(_hideWhileSnipping);
         ShowTool();
         ShowPage(0);
     }
@@ -195,6 +200,8 @@ public sealed class SnipEditorPresenter
         {
             _arrowHeads = saved.ArrowHeads;
         }
+
+        _hideWhileSnipping = saved.HideWhileSnipping;
 
         if (saved.CornerRadius is int radius && CornerRadii.Contains(radius))
         {
@@ -237,7 +244,8 @@ public sealed class SnipEditorPresenter
             [.. _customColors],
             _arrowHeads,
             _textOutline,
-            _cornerRadius));
+            _cornerRadius,
+            _hideWhileSnipping));
     }
 
     /// <summary>
@@ -999,6 +1007,14 @@ public sealed class SnipEditorPresenter
 
         _view.SaveImage(path);
         Page.Saved = Page.Annotations;
+    }
+
+    /// <summary>Saved, as it's what the next snips read, whether this editor is still open then or not.</summary>
+    private void OnHideWhileSnippingSelected(object? sender, bool isHidden)
+    {
+        _hideWhileSnipping = isHidden;
+        _view.ShowHideWhileSnipping(isHidden);
+        SaveSettings();
     }
 
     /// <summary>

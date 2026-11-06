@@ -80,6 +80,9 @@ public interface ISnipEditorView
     /// <summary>Raised to go to another snip: -1 for the one before, 1 for the one after.</summary>
     event EventHandler<int>? SnipStepRequested;
 
+    /// <summary>Raised with true when the user wants the window kept out of the next snips' screenshots.</summary>
+    event EventHandler<bool>? HideWhileSnippingSelected;
+
     /// <summary>Raised when the user closes the window; cancel to keep it open.</summary>
     event EventHandler<CancelEventArgs>? CloseRequested;
 
@@ -148,6 +151,9 @@ public interface ISnipEditorView
     Size MeasureText(string text, int fontSize);
 
     void ShowUndoRedo(bool canUndo, bool canRedo);
+
+    /// <summary>Shows whether the window is kept out of the next snips' screenshots.</summary>
+    void ShowHideWhileSnipping(bool isHidden);
 
     /// <summary>Lets the user type a text at the location; ends with <see cref="TextCommitted"/>.</summary>
     /// <param name="location">Where it goes.</param>

@@ -9,10 +9,12 @@ namespace CincoVertice.MyTools.Ui.Win.Snipping.Actions;
 public sealed class SnipRegionAction : IAppAction
 {
     private readonly ScreenSnipper _snipper;
+    private readonly SnipEditorWindowService _editorWindow;
 
-    public SnipRegionAction(ScreenSnipper snipper)
+    public SnipRegionAction(ScreenSnipper snipper, SnipEditorWindowService editorWindow)
     {
         _snipper = snipper;
+        _editorWindow = editorWindow;
     }
 
     public string Name => "SnipRegion";
@@ -21,11 +23,20 @@ public sealed class SnipRegionAction : IAppAction
 
     public async Task ExecuteAsync()
     {
-        using Bitmap? snip = await _snipper.SnipAsync();
+        Bitmap? snip;
+
+        // The open snip editor, if any, stays out of this one too
+        using (_editorWindow.KeepOutOfSnip())
+        {
+            snip = await _snipper.SnipAsync();
+        }
 
         if (snip is not null)
         {
-            Clipboard.SetImage(snip);
+            using (snip)
+            {
+                Clipboard.SetImage(snip);
+            }
         }
     }
 }

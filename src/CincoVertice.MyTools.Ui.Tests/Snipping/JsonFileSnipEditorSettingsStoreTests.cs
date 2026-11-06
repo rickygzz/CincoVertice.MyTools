@@ -88,6 +88,22 @@ public sealed class JsonFileSnipEditorSettingsStoreTests : IDisposable
         Assert.Equal(0, _store.Load()!.CornerRadius);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SaveThenLoad_KeepsHideWhileSnipping(bool isHidden)
+    {
+        // Act
+        _store.Save(new SnipEditorSettingsModel(
+            SnipTool.Pen,
+            new Dictionary<SnipTool, SnipToolSettingsModel>(),
+            [],
+            HideWhileSnipping: isHidden));
+
+        // Assert
+        Assert.Equal(isHidden, _store.Load()!.HideWhileSnipping);
+    }
+
     [Fact]
     public void Load_AFileFromBeforeTextOutlines_HasNone()
     {
@@ -98,6 +114,9 @@ public sealed class JsonFileSnipEditorSettingsStoreTests : IDisposable
         // Assert
         Assert.Null(_store.Load()!.TextOutline);
         Assert.Null(_store.Load()!.CornerRadius);
+
+        // On, as for anyone who never chose
+        Assert.True(_store.Load()!.HideWhileSnipping);
     }
 
     [Fact]

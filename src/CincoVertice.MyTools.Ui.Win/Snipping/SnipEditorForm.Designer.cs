@@ -77,6 +77,8 @@ partial class SnipEditorForm
         PreviousSnipButton = new ToolStripButton();
         SnipPositionLabel = new ToolStripLabel();
         NextSnipButton = new ToolStripButton();
+        OptionsDropDownButton = new ToolStripDropDownButton();
+        HideWhileSnippingMenuItem = new ToolStripMenuItem();
         SelectionMenu = new ContextMenuStrip();
         ResetMenuItem = new ToolStripMenuItem();
         DeleteMenuItem = new ToolStripMenuItem();
@@ -92,7 +94,7 @@ partial class SnipEditorForm
         // Tools
         //
         Tools.GripStyle = ToolStripGripStyle.Hidden;
-        Tools.Items.AddRange(new ToolStripItem[] { SelectButton, PenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, BlurButton, ToolsSeparator, ColorDropDownButton, SizeComboBox, TransparencyComboBox, ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton, CornerRadiusComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, ColorsSeparator, UndoButton, RedoButton, HistorySeparator, CopyButton, SaveButton, SnipsSeparator, PreviousSnipButton, SnipPositionLabel, NextSnipButton });
+        Tools.Items.AddRange(new ToolStripItem[] { SelectButton, PenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, BlurButton, ToolsSeparator, ColorDropDownButton, SizeComboBox, TransparencyComboBox, ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton, CornerRadiusComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, ColorsSeparator, UndoButton, RedoButton, HistorySeparator, CopyButton, SaveButton, SnipsSeparator, PreviousSnipButton, SnipPositionLabel, NextSnipButton, OptionsDropDownButton });
         Tools.Location = new Point(0, 0);
         Tools.Name = "Tools";
         Tools.Padding = new Padding(4, 2, 4, 2);
@@ -336,6 +338,20 @@ partial class SnipEditorForm
         NextSnipButton.Visible = false;
         NextSnipButton.Click += NextSnipButton_Click;
         //
+        // OptionsDropDownButton
+        //
+        OptionsDropDownButton.Alignment = ToolStripItemAlignment.Right;
+        OptionsDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { HideWhileSnippingMenuItem });
+        OptionsDropDownButton.Name = "OptionsDropDownButton";
+        OptionsDropDownButton.Text = "Options";
+        //
+        // HideWhileSnippingMenuItem
+        //
+        HideWhileSnippingMenuItem.Name = "HideWhileSnippingMenuItem";
+        HideWhileSnippingMenuItem.Text = "Leave this window out of new snips";
+        HideWhileSnippingMenuItem.ToolTipText = "It stays on the screen, but isn't in the screenshot. Turn it off to snip the editor itself";
+        HideWhileSnippingMenuItem.Click += HideWhileSnippingMenuItem_Click;
+        //
         // SelectionMenu
         //
         SelectionMenu.Items.AddRange(new ToolStripItem[] { ResetMenuItem, DeleteMenuItem });
@@ -458,6 +474,8 @@ partial class SnipEditorForm
     private ToolStripButton PreviousSnipButton;
     private ToolStripLabel SnipPositionLabel;
     private ToolStripButton NextSnipButton;
+    private ToolStripDropDownButton OptionsDropDownButton;
+    private ToolStripMenuItem HideWhileSnippingMenuItem;
     private ContextMenuStrip SelectionMenu;
     private ToolStripMenuItem ResetMenuItem;
     private ToolStripMenuItem DeleteMenuItem;
