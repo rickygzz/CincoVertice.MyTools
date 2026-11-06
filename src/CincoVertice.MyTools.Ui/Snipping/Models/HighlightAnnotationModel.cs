@@ -7,4 +7,5 @@ namespace CincoVertice.MyTools.Ui.Snipping.Models;
 /// </summary>
 /// <param name="Bounds">The area.</param>
 /// <param name="Color">Its color, see-through.</param>
-public sealed record HighlightAnnotationModel(Rectangle Bounds, Color Color) : AnnotationModel(Color);
+/// <param name="CornerRadius">How round its corners are, in pixels; 0 for square ones.</param>
+public sealed record HighlightAnnotationModel(Rectangle Bounds, Color Color, int CornerRadius = 8) : AnnotationModel(Color);

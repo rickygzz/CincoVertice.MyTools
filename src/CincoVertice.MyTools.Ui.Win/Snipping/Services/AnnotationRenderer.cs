@@ -14,8 +14,6 @@ public static class AnnotationRenderer
 
     private const int HandleSize = 8;
 
-    private const int HighlightCornerRadius = 8;
-
     private static readonly Color _selectionColor = Color.FromArgb(0, 120, 215);
 
     /// <param name="graphics">Where to draw them.</param>
@@ -99,18 +97,30 @@ public static class AnnotationRenderer
         LineJoin = LineJoin.Round,
     };
 
-    /// <summary>
-    ///     With rounded corners, as a highlighter's line has round ends; a small or thin one is as round as it can be.
-    /// </summary>
+    /// <summary>A rectangle with corners this round; one too small for them is as round as it can be.</summary>
+    private static GraphicsPath RoundedRectangle(Rectangle bounds, int radius)
+    {
+        var path = new GraphicsPath();
+        int diameter = Math.Min(2 * radius, Math.Min(bounds.Width, bounds.Height));
+
+        if (diameter > 0)
+        {
+            path.AddRoundedRectangle(bounds, new Size(diameter, diameter));
+        }
+        else
+        {
+            path.AddRectangle(bounds);
+        }
+
+        return path;
+    }
+
+    /// <summary>With rounded corners, as a highlighter's line has round ends.</summary>
     private static void DrawHighlight(Graphics graphics, HighlightAnnotationModel highlight)
     {
-        Rectangle bounds = highlight.Bounds;
-        int diameter = Math.Min(2 * HighlightCornerRadius, Math.Min(bounds.Width, bounds.Height));
         using var brush = new SolidBrush(highlight.Color);
-        using var path = new GraphicsPath();
+        using GraphicsPath path = RoundedRectangle(highlight.Bounds, highlight.CornerRadius);
         PixelOffsetMode offset = graphics.PixelOffsetMode;
-
-        path.AddRoundedRectangle(bounds, new Size(diameter, diameter));
 
         // Half: the straight edges then fall on the pixels' edges, so they're as strong as the rest, not fainter
         graphics.PixelOffsetMode = PixelOffsetMode.Half;
@@ -162,11 +172,9 @@ public static class AnnotationRenderer
 
     private static void DrawRectangle(Graphics graphics, RectangleAnnotationModel rectangle)
     {
-        int corner = 2 * (6 + 2 * rectangle.Width);
         using var pen = CreatePen(rectangle.Color, rectangle.Width);
-        using var path = new GraphicsPath();
+        using GraphicsPath path = RoundedRectangle(rectangle.Bounds, rectangle.CornerRadius);
 
-        path.AddRoundedRectangle(rectangle.Bounds, new Size(corner, corner));
         graphics.DrawPath(pen, path);
     }
 

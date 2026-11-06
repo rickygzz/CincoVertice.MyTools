@@ -44,6 +44,7 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     private IReadOnlyList<int> _sizes = [];
     private IReadOnlyList<int> _transparencies = [];
     private IReadOnlyList<int> _textOutlineWidths = [];
+    private IReadOnlyList<int> _cornerRadii = [];
 
     // Set while the lists are filled or selected from the presenter, so that isn't taken as the user's choice
     private bool _isShowingChoices;
@@ -119,6 +120,8 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     public event EventHandler<int>? TransparencySelected;
 
     public event EventHandler<SnipArrowHeads>? ArrowHeadsSelected;
+
+    public event EventHandler<int>? CornerRadiusSelected;
 
     public event EventHandler<int>? TextOutlineWidthSelected;
 
@@ -256,6 +259,21 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         }
     }
 
+    public void ShowCornerRadius(IReadOnlyList<int> radii, int? selected)
+    {
+        CornerRadiusComboBox.Visible = selected is not null;
+
+        if (selected is int radius)
+        {
+            _cornerRadii = ShowChoices(
+                CornerRadiusComboBox,
+                _cornerRadii,
+                radii,
+                radius,
+                value => value == 0 ? "Square" : $"{value} px");
+        }
+    }
+
     public void ShowTextOutline(IReadOnlyList<int> widths, SnipTextOutlineModel? outline)
     {
         TextOutlineDropDownButton.Visible = outline is not null;
@@ -383,7 +401,8 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         if (keyData != Keys.Escape
             || SizeComboBox.DroppedDown
             || TransparencyComboBox.DroppedDown
-            || TextOutlineWidthComboBox.DroppedDown)
+            || TextOutlineWidthComboBox.DroppedDown
+            || CornerRadiusComboBox.DroppedDown)
         {
             return base.ProcessCmdKey(ref msg, keyData);
         }
@@ -621,6 +640,14 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     private void MoreTextOutlineColorsMenuItem_Click(object? sender, EventArgs e)
     {
         MoreTextOutlineColorsRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void CornerRadiusComboBox_SelectedIndexChanged(object? sender, EventArgs e)
+    {
+        if (!_isShowingChoices && CornerRadiusComboBox.SelectedIndex >= 0)
+        {
+            CornerRadiusSelected?.Invoke(this, _cornerRadii[CornerRadiusComboBox.SelectedIndex]);
+        }
     }
 
     private void TextOutlineWidthComboBox_SelectedIndexChanged(object? sender, EventArgs e)

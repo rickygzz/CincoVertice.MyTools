@@ -59,6 +59,9 @@ public interface ISnipEditorView
     /// <summary>Raised with which ends of an arrow should have a head.</summary>
     event EventHandler<SnipArrowHeads>? ArrowHeadsSelected;
 
+    /// <summary>Raised with how round corners should be, in pixels; 0 for square ones.</summary>
+    event EventHandler<int>? CornerRadiusSelected;
+
     /// <summary>Raised with how wide the edge around the text's letters should be, in pixels; 0 for none.</summary>
     event EventHandler<int>? TextOutlineWidthSelected;
 
@@ -117,6 +120,9 @@ public interface ISnipEditorView
 
     /// <summary>Shows the choice of arrow heads with one selected; null hides it, for the other tools.</summary>
     void ShowArrowHeads(SnipArrowHeads? selected);
+
+    /// <summary>Shows how round corners are, and the radii to choose from; null hides it, for what has no corners.</summary>
+    void ShowCornerRadius(IReadOnlyList<int> radii, int? selected);
 
     /// <summary>Shows the edge of the text's letters and the widths to choose from; null hides it, for the other tools.</summary>
     void ShowTextOutline(IReadOnlyList<int> widths, SnipTextOutlineModel? outline);

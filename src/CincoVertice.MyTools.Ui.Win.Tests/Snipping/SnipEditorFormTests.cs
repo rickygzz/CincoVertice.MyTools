@@ -290,6 +290,15 @@ public sealed class SnipEditorFormTests : IDisposable
         Pump();
     }
 
+    /// <summary>
+    ///     The keys sent here come with the real keyboard's Shift, Ctrl and Alt, as typed keys do: with one held, as
+    ///     while someone uses the computer, they would mean something else.
+    /// </summary>
+    private static void SkipWhileAModifierIsHeld()
+    {
+        Assert.SkipWhen(Control.ModifierKeys != Keys.None, "Shift, Ctrl or Alt is held on the keyboard.");
+    }
+
     /// <summary>The window in front with a text being typed, so the keyboard goes where it really would.</summary>
     private static SnipEditorForm TypingInTheForeground()
     {
@@ -306,6 +315,7 @@ public sealed class SnipEditorFormTests : IDisposable
 
         // Without the focus nothing here would mean anything, e.g. with the computer locked
         Assert.SkipUnless(Field<TextBox>(form, "TextInputBox").Focused, "This window can't get the keyboard focus.");
+        SkipWhileAModifierIsHeld();
 
         return form;
     }
@@ -384,6 +394,7 @@ public sealed class SnipEditorFormTests : IDisposable
         form.Activate();
         Pump();
         Assert.SkipWhen(GetFocus() == 0, "This window can't get the keyboard focus.");
+        SkipWhileAModifierIsHeld();
         form.ShowSelection(new SnipSelectionModel(new Rectangle(20, 20, 50, 50), []));
         List<Size> nudges = [];
         form.NudgeRequested += (_, delta) => nudges.Add(delta);
@@ -636,6 +647,96 @@ public sealed class SnipEditorFormTests : IDisposable
 
         Assert.Equal(inside, saved.GetPixel(28, 38).ToArgb());
         Assert.Equal(inside, saved.GetPixel(131, 101).ToArgb());
+    }
+
+    [Fact]
+    public void HighlightedArea_WithNoRadius_HasSquareCorners()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(200, 200, Color.White));
+        string path = SavedImagePath();
+        form.ShowAnnotations([new HighlightAnnotationModel(new Rectangle(20, 30, 120, 80), Color.FromArgb(128, 0, 0, 255), 0)]);
+
+        // Act
+        form.SaveImage(path);
+
+        // Assert
+        using var saved = new Bitmap(path);
+        Assert.Equal(saved.GetPixel(80, 70).ToArgb(), saved.GetPixel(20, 30).ToArgb());
+        Assert.Equal(saved.GetPixel(80, 70).ToArgb(), saved.GetPixel(139, 109).ToArgb());
+    }
+
+    /// <summary>How far in from a rectangle's top left corner its outline crosses the diagonal.</summary>
+    private int CornerInset(int radius)
+    {
+        using var form = new SnipEditorForm(Solid(200, 200, Color.White));
+        string path = SavedImagePath();
+        form.ShowAnnotations([new RectangleAnnotationModel(new Rectangle(20, 20, 150, 150), Color.Black, 2, radius)]);
+        form.SaveImage(path);
+
+        using var saved = new Bitmap(path);
+
+        for (int i = 0; i < 80; i++)
+        {
+            if (saved.GetPixel(20 + i, 20 + i).R < 128)
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    [Fact]
+    public void Rectangle_CornerRadius_RoundsItsCorners()
+    {
+        // Act
+        int square = CornerInset(0);
+        int round = CornerInset(16);
+        int rounder = CornerInset(48);
+
+        // Assert: the rounder, the farther in along the diagonal
+        Assert.Equal(0, square);
+        Assert.True(round > square, $"Radius 16 at {round}");
+        Assert.True(rounder > round, $"Radius 48 at {rounder}");
+    }
+
+    [Fact]
+    public void Rectangle_SmallerThanItsCorners_StillDraws()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        string path = SavedImagePath();
+        form.ShowAnnotations([new RectangleAnnotationModel(new Rectangle(10, 10, 20, 6), Color.Black, 2, 48)]);
+
+        // Act
+        form.SaveImage(path);
+
+        // Assert
+        using var saved = new Bitmap(path);
+        Assert.True(saved.GetPixel(20, 10).R < 128);
+    }
+
+    [Fact]
+    public void CornerRadius_ShowsOnlyForWhatHasCorners_AndPassesOnTheChoice()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        var list = Field<ToolStripComboBox>(form, "CornerRadiusComboBox");
+        int? picked = null;
+        form.CornerRadiusSelected += (_, radius) => picked = radius;
+
+        // Act & Assert
+        form.ShowCornerRadius([0, 12, 48], null);
+        Assert.False(list.Available);
+
+        form.ShowCornerRadius([0, 12, 48], 12);
+        Assert.True(list.Available);
+        Assert.Equal("12 px", list.SelectedItem);
+        Assert.Null(picked);
+
+        list.SelectedItem = "Square";
+        Assert.Equal(0, picked);
     }
 
     [Theory]

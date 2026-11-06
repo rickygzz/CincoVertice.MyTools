@@ -1151,6 +1151,173 @@ public class SnipEditorPresenterTests
     }
 
     [Fact]
+    public void CornerRadius_IsOnlyShownForTheRectangleTool()
+    {
+        // Assert: the pen is the first tool
+        Assert.Null(_view.CornerRadius);
+
+        // Act
+        _view.SelectTool(SnipTool.Rectangle);
+
+        // Assert
+        Assert.Equal(12, _view.CornerRadius);
+        Assert.Equal(SnipEditorPresenter.CornerRadii, _view.CornerRadii);
+
+        // Act
+        _view.SelectTool(SnipTool.Text);
+
+        // Assert
+        Assert.Null(_view.CornerRadius);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(32)]
+    public void CornerRadius_GoesToNewRectangles_AndIsSaved(int radius)
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Rectangle);
+
+        // Act
+        _view.SelectCornerRadius(radius);
+        _view.Press(10, 10);
+        _view.Release(100, 100);
+
+        // Assert
+        Assert.Equal(radius, Assert.IsType<RectangleAnnotationModel>(_presenter.Annotations[0]).CornerRadius);
+        Assert.Equal(radius, _view.CornerRadius);
+        Assert.Equal(radius, _store.Saved[^1].CornerRadius);
+    }
+
+    [Fact]
+    public void CornerRadius_ThatIsntOffered_IsIgnored()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Rectangle);
+        int saves = _store.Saved.Count;
+
+        // Act
+        _view.SelectCornerRadius(7);
+
+        // Assert
+        Assert.Equal(12, _view.CornerRadius);
+        Assert.Equal(saves, _store.Saved.Count);
+    }
+
+    [Theory]
+    [InlineData(24, 24)]
+    [InlineData(5, 12)]
+    public void SavedCornerRadius_IsUsed_OrTheDefaultWhenNotOffered(int saved, int expected)
+    {
+        // Arrange
+        var view = new FakeSnipEditorView();
+        var settings = new SnipEditorSettingsModel(
+            SnipTool.Rectangle,
+            new Dictionary<SnipTool, SnipToolSettingsModel>(),
+            [],
+            CornerRadius: saved);
+
+        // Act
+        new SnipEditorPresenter(view, _time, new FakeSettingsStore(settings)).Start();
+
+        // Assert
+        Assert.Equal(expected, view.CornerRadius);
+    }
+
+    [Fact]
+    public void CornerRadius_OfASelectedRectangle_IsShownAndChanged_LeavingTheTools()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+
+        // Act
+        Click(100, 140);
+
+        // Assert
+        Assert.Equal(12, _view.CornerRadius);
+
+        // Act
+        _view.SelectCornerRadius(48);
+
+        // Assert
+        Assert.Equal(48, TheRectangle.CornerRadius);
+        _view.SelectTool(SnipTool.Rectangle);
+        Assert.Equal(12, _view.CornerRadius);
+    }
+
+    [Fact]
+    public void CornerRadius_OfASelectedRectangle_CanBeUndoneAndReset()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        Click(100, 140);
+        _view.SelectCornerRadius(0);
+
+        // Act
+        _view.Reset();
+
+        // Assert
+        Assert.Equal(12, TheRectangle.CornerRadius);
+
+        // Act
+        _view.Undo();
+
+        // Assert
+        Assert.Equal(0, TheRectangle.CornerRadius);
+    }
+
+    [Fact]
+    public void CornerRadius_OfAScaledHighlight_StartsAt8_AndCanBeChanged()
+    {
+        // Arrange
+        DrawHighlight(new Point(100, 100), new Point(200, 100));
+        Drag(150, 108, 150, 148);
+
+        // Assert
+        Assert.Equal(8, _view.CornerRadius);
+
+        // Act
+        _view.SelectCornerRadius(0);
+
+        // Assert
+        Assert.Equal(0, Assert.IsType<HighlightAnnotationModel>(_presenter.Annotations[0]).CornerRadius);
+    }
+
+    [Fact]
+    public void CornerRadius_IsHiddenForWhatHasNoCorners()
+    {
+        // Arrange: an arrow, and a highlight not yet scaled
+        DrawRectangleAndArrow();
+        _view.SelectTool(SnipTool.Highlighter);
+        _view.Press(500, 500);
+        _view.Release(600, 500);
+        _view.SelectTool(SnipTool.Select);
+
+        // Act & Assert
+        Click(350, 300);
+        Assert.Null(_view.CornerRadius);
+
+        Click(550, 500);
+        Assert.Null(_view.CornerRadius);
+    }
+
+    [Fact]
+    public void CornerRadius_OfSomethingWithout_ChangesNothing()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        Click(350, 300);
+        int copies = _view.CopyCount;
+
+        // Act
+        _view.SelectCornerRadius(48);
+
+        // Assert
+        Assert.Equal(copies, _view.CopyCount);
+        Assert.Null(TheArrow.Original);
+    }
+
+    [Fact]
     public void RightClick_OnSomething_SelectsItAndShowsTheMenu()
     {
         // Arrange
@@ -2341,6 +2508,16 @@ public class SnipEditorPresenterTests
             (TransparencyChoices, Transparency) = (transparencies, selected);
 
         public void ShowArrowHeads(SnipArrowHeads? selected) => ArrowHeads = selected;
+
+        public event EventHandler<int>? CornerRadiusSelected;
+
+        public IReadOnlyList<int> CornerRadii { get; private set; } = [];
+
+        public int? CornerRadius { get; private set; }
+
+        public void SelectCornerRadius(int radius) => CornerRadiusSelected?.Invoke(this, radius);
+
+        public void ShowCornerRadius(IReadOnlyList<int> radii, int? selected) => (CornerRadii, CornerRadius) = (radii, selected);
 
         public bool DrawingChoicesVisible { get; private set; }
 

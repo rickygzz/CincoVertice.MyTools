@@ -61,6 +61,7 @@ partial class SnipEditorForm
         ArrowHeadEndButton = new ToolStripButton();
         ArrowHeadStartButton = new ToolStripButton();
         ArrowHeadsBothButton = new ToolStripButton();
+        CornerRadiusComboBox = new ToolStripComboBox();
         TextOutlineDropDownButton = new ToolStripDropDownButton();
         TextOutlinePalette = new ColorPaletteControl();
         TextOutlinePaletteHost = new ToolStripControlHost(TextOutlinePalette);
@@ -91,7 +92,7 @@ partial class SnipEditorForm
         // Tools
         //
         Tools.GripStyle = ToolStripGripStyle.Hidden;
-        Tools.Items.AddRange(new ToolStripItem[] { SelectButton, PenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, BlurButton, ToolsSeparator, ColorDropDownButton, SizeComboBox, TransparencyComboBox, ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton, TextOutlineDropDownButton, TextOutlineWidthComboBox, ColorsSeparator, UndoButton, RedoButton, HistorySeparator, CopyButton, SaveButton, SnipsSeparator, PreviousSnipButton, SnipPositionLabel, NextSnipButton });
+        Tools.Items.AddRange(new ToolStripItem[] { SelectButton, PenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, BlurButton, ToolsSeparator, ColorDropDownButton, SizeComboBox, TransparencyComboBox, ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton, CornerRadiusComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, ColorsSeparator, UndoButton, RedoButton, HistorySeparator, CopyButton, SaveButton, SnipsSeparator, PreviousSnipButton, SnipPositionLabel, NextSnipButton });
         Tools.Location = new Point(0, 0);
         Tools.Name = "Tools";
         Tools.Padding = new Padding(4, 2, 4, 2);
@@ -230,6 +231,14 @@ partial class SnipEditorForm
         ArrowHeadsBothButton.Text = "Heads at both ends";
         ArrowHeadsBothButton.ToolTipText = "Arrow heads at both ends";
         ArrowHeadsBothButton.Click += ArrowHeadsButton_Click;
+        //
+        // CornerRadiusComboBox
+        //
+        CornerRadiusComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+        CornerRadiusComboBox.Name = "CornerRadiusComboBox";
+        CornerRadiusComboBox.Size = new Size(70, 23);
+        CornerRadiusComboBox.ToolTipText = "How round the corners are";
+        CornerRadiusComboBox.SelectedIndexChanged += CornerRadiusComboBox_SelectedIndexChanged;
         //
         // TextOutlineDropDownButton
         //
@@ -432,6 +441,7 @@ partial class SnipEditorForm
     private ToolStripButton ArrowHeadEndButton;
     private ToolStripButton ArrowHeadStartButton;
     private ToolStripButton ArrowHeadsBothButton;
+    private ToolStripComboBox CornerRadiusComboBox;
     private ToolStripDropDownButton TextOutlineDropDownButton;
     private ColorPaletteControl TextOutlinePalette;
     private ToolStripControlHost TextOutlinePaletteHost;

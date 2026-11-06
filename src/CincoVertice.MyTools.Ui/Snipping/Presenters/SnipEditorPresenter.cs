@@ -45,6 +45,9 @@ public sealed class SnipEditorPresenter
     /// <summary>The transparencies to choose from, in percent; 100 would be invisible.</summary>
     public static IReadOnlyList<int> Transparencies { get; } = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90];
 
+    /// <summary>How round corners can be, in pixels; 0 is square.</summary>
+    public static IReadOnlyList<int> CornerRadii { get; } = [0, 4, 8, 12, 16, 24, 32, 48];
+
     /// <summary>The widths of the edge around a text's letters to choose from, in pixels; 0 is no edge.</summary>
     public static IReadOnlyList<int> TextOutlineWidths { get; } = [0, 1, 2, 3, 4, 5, 6, 8, 10, 12];
 
@@ -75,6 +78,9 @@ public sealed class SnipEditorPresenter
 
     private SnipTool _tool = SnipTool.Pen;
     private SnipArrowHeads _arrowHeads = SnipArrowHeads.End;
+
+    // What the rectangle tool's corners get
+    private int _cornerRadius = 12;
 
     // Off until a width is chosen; white shows on most of what a text is written over
     private SnipTextOutlineModel _textOutline = new(0, Rgb(0xFFFFFF));
@@ -126,6 +132,7 @@ public sealed class SnipEditorPresenter
         _view.SizeSelected += OnSizeSelected;
         _view.TransparencySelected += OnTransparencySelected;
         _view.ArrowHeadsSelected += OnArrowHeadsSelected;
+        _view.CornerRadiusSelected += OnCornerRadiusSelected;
         _view.TextOutlineWidthSelected += OnTextOutlineWidthSelected;
         _view.TextOutlineColorSelected += OnTextOutlineColorSelected;
         _view.MoreTextOutlineColorsRequested += OnMoreTextOutlineColorsRequested;
@@ -187,6 +194,11 @@ public sealed class SnipEditorPresenter
             _arrowHeads = saved.ArrowHeads;
         }
 
+        if (saved.CornerRadius is int radius && CornerRadii.Contains(radius))
+        {
+            _cornerRadius = radius;
+        }
+
         if (saved.TextOutline is { } outline)
         {
             _textOutline = new SnipTextOutlineModel(
@@ -222,7 +234,8 @@ public sealed class SnipEditorPresenter
             _settings.ToDictionary(),
             [.. _customColors],
             _arrowHeads,
-            _textOutline));
+            _textOutline,
+            _cornerRadius));
     }
 
     /// <summary>
@@ -284,10 +297,17 @@ public sealed class SnipEditorPresenter
         if (selected is null)
         {
             _view.ShowArrowHeads(_tool == SnipTool.Arrow ? _arrowHeads : null);
+            _view.ShowCornerRadius(CornerRadii, _tool == SnipTool.Rectangle ? _cornerRadius : null);
         }
         else
         {
             _view.ShowArrowHeads(selected is ArrowAnnotationModel arrow ? arrow.Heads : null);
+            _view.ShowCornerRadius(CornerRadii, selected switch
+            {
+                RectangleAnnotationModel rectangle => rectangle.CornerRadius,
+                HighlightAnnotationModel highlight => highlight.CornerRadius,
+                _ => null,
+            });
         }
 
         ShowTextOutline();
@@ -766,6 +786,30 @@ public sealed class SnipEditorPresenter
         SaveSettings();
     }
 
+    private void OnCornerRadiusSelected(object? sender, int radius)
+    {
+        if (!CornerRadii.Contains(radius))
+        {
+            return;
+        }
+
+        if (Selected is not null)
+        {
+            ChangeSelected(annotation => annotation switch
+            {
+                RectangleAnnotationModel rectangle => rectangle with { CornerRadius = radius },
+                HighlightAnnotationModel highlight => highlight with { CornerRadius = radius },
+                _ => annotation,
+            });
+
+            return;
+        }
+
+        _cornerRadius = radius;
+        _view.ShowCornerRadius(CornerRadii, radius);
+        SaveSettings();
+    }
+
     private void OnTextOutlineWidthSelected(object? sender, int width)
     {
         if (!TextOutlineWidths.Contains(width))
@@ -963,7 +1007,7 @@ public sealed class SnipEditorPresenter
         return _tool switch
         {
             SnipTool.Arrow => new ArrowAnnotationModel(start, end, color, width, _arrowHeads),
-            SnipTool.Rectangle => new RectangleAnnotationModel(FromCorners(start, end), color, width),
+            SnipTool.Rectangle => new RectangleAnnotationModel(FromCorners(start, end), color, width, _cornerRadius),
             SnipTool.Blur => new BlurAnnotationModel(FromCorners(start, end)),
             _ => new StrokeAnnotationModel([.. _points], color, width, _tool == SnipTool.Highlighter),
         };

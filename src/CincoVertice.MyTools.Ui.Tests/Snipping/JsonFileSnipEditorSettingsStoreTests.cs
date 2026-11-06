@@ -75,6 +75,20 @@ public sealed class JsonFileSnipEditorSettingsStoreTests : IDisposable
     }
 
     [Fact]
+    public void SaveThenLoad_KeepsTheCornerRadius()
+    {
+        // Act
+        _store.Save(new SnipEditorSettingsModel(
+            SnipTool.Rectangle,
+            new Dictionary<SnipTool, SnipToolSettingsModel>(),
+            [],
+            CornerRadius: 0));
+
+        // Assert: 0 is square corners, not a missing value
+        Assert.Equal(0, _store.Load()!.CornerRadius);
+    }
+
+    [Fact]
     public void Load_AFileFromBeforeTextOutlines_HasNone()
     {
         // Arrange
@@ -83,6 +97,7 @@ public sealed class JsonFileSnipEditorSettingsStoreTests : IDisposable
 
         // Assert
         Assert.Null(_store.Load()!.TextOutline);
+        Assert.Null(_store.Load()!.CornerRadius);
     }
 
     [Fact]
