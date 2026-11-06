@@ -618,7 +618,7 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     }
 
     private ToolStripButton[] ToolButtons() =>
-        [SelectButton, PenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, StepButton, BlurButton, CropButton];
+        [SelectButton, PenButton, SmoothPenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, StepButton, BlurButton, CropButton];
 
     private ToolStripButton[] ArrowHeadsButtons() => [ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton];
 
@@ -1112,6 +1112,7 @@ public partial class SnipEditorForm : Form, ISnipEditorView
             (Keys.Alt, Keys.Right) => () => SnipStepRequested?.Invoke(this, 1),
             (Keys.None, Keys.V) => () => ToolSelected?.Invoke(this, SnipTool.Select),
             (Keys.None, Keys.P) => () => ToolSelected?.Invoke(this, SnipTool.Pen),
+            (Keys.None, Keys.S) => () => ToolSelected?.Invoke(this, SnipTool.SmoothPen),
             (Keys.None, Keys.H) => () => ToolSelected?.Invoke(this, SnipTool.Highlighter),
             (Keys.None, Keys.A) => () => ToolSelected?.Invoke(this, SnipTool.Arrow),
             (Keys.None, Keys.R) => () => ToolSelected?.Invoke(this, SnipTool.Rectangle),

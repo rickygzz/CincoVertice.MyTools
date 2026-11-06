@@ -46,6 +46,7 @@ partial class SnipEditorForm
         Tools = new ToolStrip();
         SelectButton = new ToolStripButton();
         PenButton = new ToolStripButton();
+        SmoothPenButton = new ToolStripButton();
         HighlighterButton = new ToolStripButton();
         ArrowButton = new ToolStripButton();
         RectangleButton = new ToolStripButton();
@@ -103,7 +104,7 @@ partial class SnipEditorForm
         // Tools
         //
         Tools.GripStyle = ToolStripGripStyle.Hidden;
-        Tools.Items.AddRange(new ToolStripItem[] { SelectButton, PenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, StepButton, BlurButton, CropButton, ApplyCropButton, CancelCropButton, ToolsSeparator, ColorDropDownButton, SizeComboBox, TransparencyComboBox, ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton, CornerRadiusComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, ColorsSeparator, UndoButton, RedoButton, HistorySeparator, CopyButton, SaveButton, SnipsSeparator, PreviousSnipButton, SnipPositionLabel, NextSnipButton, OptionsDropDownButton, ZoomLabel });
+        Tools.Items.AddRange(new ToolStripItem[] { SelectButton, PenButton, SmoothPenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, StepButton, BlurButton, CropButton, ApplyCropButton, CancelCropButton, ToolsSeparator, ColorDropDownButton, SizeComboBox, TransparencyComboBox, ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton, CornerRadiusComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, ColorsSeparator, UndoButton, RedoButton, HistorySeparator, CopyButton, SaveButton, SnipsSeparator, PreviousSnipButton, SnipPositionLabel, NextSnipButton, OptionsDropDownButton, ZoomLabel });
         Tools.Location = new Point(0, 0);
         Tools.Name = "Tools";
         Tools.Padding = new Padding(4, 2, 4, 2);
@@ -127,6 +128,15 @@ partial class SnipEditorForm
         PenButton.Text = "Pen";
         PenButton.ToolTipText = "Pen (P)";
         PenButton.Click += ToolButton_Click;
+        //
+        // SmoothPenButton
+        //
+        SmoothPenButton.DisplayStyle = ToolStripItemDisplayStyle.Image;
+        SmoothPenButton.Name = "SmoothPenButton";
+        SmoothPenButton.Tag = "SmoothPen";
+        SmoothPenButton.Text = "Smooth pen";
+        SmoothPenButton.ToolTipText = "Smooth pen (S): like the pen, with the wobble of the hand evened out";
+        SmoothPenButton.Click += ToolButton_Click;
         //
         // HighlighterButton
         //
@@ -523,6 +533,7 @@ partial class SnipEditorForm
     private ToolStrip Tools;
     private ToolStripButton SelectButton;
     private ToolStripButton PenButton;
+    private ToolStripButton SmoothPenButton;
     private ToolStripButton HighlighterButton;
     private ToolStripButton ArrowButton;
     private ToolStripButton RectangleButton;

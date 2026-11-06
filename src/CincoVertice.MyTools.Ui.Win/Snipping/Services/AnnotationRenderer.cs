@@ -14,6 +14,9 @@ public static class AnnotationRenderer
 
     private const int HandleSize = 8;
 
+    // How tightly a smooth pen's curve follows its points: 0 is straight lines, and GDI+'s usual curve is 0.5
+    private const float SmoothTension = 0.5f;
+
     private static readonly Color _selectionColor = Color.FromArgb(0, 120, 215);
 
     /// <param name="graphics">Where to draw them.</param>
@@ -201,7 +204,16 @@ public static class AnnotationRenderer
         using var pen = CreatePen(stroke.Color, stroke.Width);
         using var path = new GraphicsPath();
 
-        path.AddLines(stroke.Points.ToArray());
+        // A smooth pen's line is a curve through its points, which are far apart where it's straight
+        if (stroke.IsSmooth && stroke.Points.Count > 2)
+        {
+            path.AddCurve(stroke.Points.ToArray(), SmoothTension);
+        }
+        else
+        {
+            path.AddLines(stroke.Points.ToArray());
+        }
+
         graphics.DrawPath(pen, path);
     }
 

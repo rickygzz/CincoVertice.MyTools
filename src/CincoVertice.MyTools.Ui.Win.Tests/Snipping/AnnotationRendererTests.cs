@@ -234,6 +234,50 @@ public class AnnotationRendererTests
     }
 
     [Fact]
+    public void SmoothStroke_IsACurveThroughItsPoints_NotStraightLinesBetweenThem()
+    {
+        // Arrange: three points of a bend; a straight line between the outer two misses where a curve goes
+        Point[] points = [new(20, 80), new(80, 20), new(140, 80)];
+        var straight = new StrokeAnnotationModel(points, Color.Black, 2);
+        var smooth = straight with { IsSmooth = true };
+
+        // Act
+        using Bitmap lines = Render(straight);
+        using Bitmap curve = Render(smooth);
+
+        // Assert: both go through the bend, and the curve rounds it, so it's above the straight lines halfway up
+        Assert.True(curve.GetPixel(80, 20).R < 128);
+        Assert.True(lines.GetPixel(80, 20).R < 128);
+        Assert.True(CountOf(curve, color => color.R < 128) != CountOf(lines, color => color.R < 128));
+        Assert.True(IsDarkBetween(curve, 50, 20, 49), "The curve isn't rounder than the lines at x 50");
+    }
+
+    private static bool IsDarkBetween(Bitmap image, int x, int fromY, int toY)
+    {
+        for (int y = fromY; y <= toY; y++)
+        {
+            if (image.GetPixel(x, y).R < 128)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static Bitmap Render(StrokeAnnotationModel stroke)
+    {
+        var image = new Bitmap(160, 100);
+
+        using var graphics = Graphics.FromImage(image);
+
+        graphics.Clear(Color.White);
+        AnnotationRenderer.Draw(graphics, [stroke], image);
+
+        return image;
+    }
+
+    [Fact]
     public void NoOutline_DrawsNoEdge()
     {
         // Act

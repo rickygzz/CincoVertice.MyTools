@@ -2127,6 +2127,111 @@ public class SnipEditorPresenterTests
         Assert.Equal(SnipCursor.Cross, _view.Cursor);
     }
 
+    /// <summary>Draws a shaky, nearly level line with a tool.</summary>
+    private void DrawShakyLine(SnipTool tool)
+    {
+        int[] wobble = [0, 3, -2, 2, -3, 1, -1, 3, -2, 0, 2, -3, 1];
+
+        _view.SelectTool(tool);
+        _view.Press(100, 100);
+
+        for (int i = 1; i < wobble.Length; i++)
+        {
+            _view.Move(100 + i * 10, 100 + wobble[i]);
+        }
+
+        _view.Release(100 + wobble.Length * 10, 100);
+    }
+
+    [Fact]
+    public void SmoothPen_EvensOutTheLine_IntoFewerPoints()
+    {
+        // Act
+        DrawShakyLine(SnipTool.SmoothPen);
+
+        // Assert
+        StrokeAnnotationModel stroke = TheStroke;
+        Assert.True(stroke.IsSmooth);
+        Assert.False(stroke.IsHighlight);
+        Assert.True(stroke.Points.Count < 13, $"{stroke.Points.Count} points");
+        Assert.Equal(new Point(100, 100), stroke.Points[0]);
+        Assert.Equal(new Point(230, 100), stroke.Points[^1]);
+    }
+
+    [Fact]
+    public void Pen_StillDrawsEveryPointAsItIs()
+    {
+        // Act
+        DrawShakyLine(SnipTool.Pen);
+
+        // Assert
+        Assert.False(TheStroke.IsSmooth);
+        Assert.Equal(14, TheStroke.Points.Count);
+    }
+
+    [Fact]
+    public void SmoothPen_ShowsTheSmoothLineWhileDrawing()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.SmoothPen);
+        _view.Press(100, 100);
+
+        // Act
+        for (int i = 1; i <= 20; i++)
+        {
+            _view.Move(100 + i * 5, 100 + (i % 2 == 0 ? 2 : -2));
+        }
+
+        // Assert
+        StrokeAnnotationModel shown = Assert.IsType<StrokeAnnotationModel>(Assert.Single(_view.Annotations));
+        Assert.True(shown.IsSmooth);
+        Assert.True(shown.Points.Count < 21, $"{shown.Points.Count} points");
+    }
+
+    [Fact]
+    public void SmoothPen_HasItsOwnSettings()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Pen);
+        _view.SelectColor(Color.Blue);
+
+        // Act
+        _view.SelectTool(SnipTool.SmoothPen);
+
+        // Assert: red, as the pen starts
+        Assert.Equal(SnipEditorPresenter.Palette[0], _view.Color);
+        Assert.Equal(SnipEditorPresenter.LineSizes, _view.Sizes);
+    }
+
+    [Fact]
+    public void SmoothPen_Click_LeavesADot()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.SmoothPen);
+
+        // Act
+        Click(100, 100);
+
+        // Assert
+        Assert.Equal([new Point(100, 100)], TheStroke.Points);
+    }
+
+    [Fact]
+    public void SmoothLine_StaysSmooth_WhenScaledOrMoved()
+    {
+        // Arrange
+        DrawShakyLine(SnipTool.SmoothPen);
+        _view.SelectTool(SnipTool.Select);
+        Click(100, 100);
+
+        // Act
+        Drag(100, 100, 120, 130);
+        _view.Nudge(5, 0);
+
+        // Assert
+        Assert.True(TheStroke.IsSmooth);
+    }
+
     /// <summary>Drags a crop and applies it.</summary>
     private void CropBy(int fromX, int fromY, int toX, int toY)
     {

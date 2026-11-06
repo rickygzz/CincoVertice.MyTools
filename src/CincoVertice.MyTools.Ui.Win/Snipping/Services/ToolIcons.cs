@@ -53,6 +53,9 @@ public static class ToolIcons
             case SnipTool.Step:
                 DrawStep(graphics);
                 break;
+            case SnipTool.SmoothPen:
+                DrawSmoothPen(graphics, pen);
+                break;
             case SnipTool.Crop:
                 DrawCrop(graphics, pen);
                 break;
@@ -170,6 +173,14 @@ public static class ToolIcons
 
         path.AddRoundedRectangle(new RectangleF(2, 3.5f, 12, 9), new SizeF(5, 5));
         graphics.DrawPath(pen, path);
+    }
+
+    /// <summary>A smooth S curve, as the line this pen draws.</summary>
+    private static void DrawSmoothPen(Graphics graphics, Pen pen)
+    {
+        using var line = new Pen(_ink, 1.8f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+
+        graphics.DrawBezier(line, 2, 12, 6, 0, 10, 16, 14, 4);
     }
 
     /// <summary>Two crossing corners, as cropping tools usually show.</summary>

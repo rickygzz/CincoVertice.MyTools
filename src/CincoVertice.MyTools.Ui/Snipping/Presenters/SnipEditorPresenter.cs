@@ -79,6 +79,7 @@ public sealed class SnipEditorPresenter
         [SnipTool.Text] = new SnipToolSettingsModel(24, 0, Palette[0]),
 
         [SnipTool.Step] = new SnipToolSettingsModel(28, 0, Palette[0]),
+        [SnipTool.SmoothPen] = new SnipToolSettingsModel(4, 0, Palette[0]),
 
         // Not used: a blur has no color, size or transparency, and the select tool doesn't draw
         [SnipTool.Blur] = new SnipToolSettingsModel(4, 0, Palette[0]),
@@ -1346,12 +1347,14 @@ public sealed class SnipEditorPresenter
         int width = Settings.Size;
         Color color = WithTransparency(Settings.Color, Settings.Transparency);
 
-        // The pen and the highlighter differ only in their settings
+        // The pen and the highlighter differ only in their settings; the smooth pen evens out the line
         return _tool switch
         {
             SnipTool.Arrow => new ArrowAnnotationModel(start, end, color, width, _arrowHeads),
             SnipTool.Rectangle => new RectangleAnnotationModel(FromCorners(start, end), color, width, _cornerRadius),
             SnipTool.Blur => new BlurAnnotationModel(FromCorners(start, end)),
+            // Smoothed again as it grows: the start of the line settles once there are points enough around it
+            SnipTool.SmoothPen => new StrokeAnnotationModel(StrokeSmoother.Smooth(_points), color, width, IsSmooth: true),
             _ => new StrokeAnnotationModel([.. _points], color, width, _tool == SnipTool.Highlighter),
         };
     }

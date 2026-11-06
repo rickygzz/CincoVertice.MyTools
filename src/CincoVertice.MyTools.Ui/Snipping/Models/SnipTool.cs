@@ -12,6 +12,9 @@ public enum SnipTool
     Text,
     Blur,
 
+    /// <summary>Like the pen, with the wobble of the hand evened out.</summary>
+    SmoothPen,
+
     /// <summary>A click drops a circle with the next number, for the steps of a how-to.</summary>
     Step,
 
