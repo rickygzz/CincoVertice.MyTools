@@ -80,6 +80,7 @@ public sealed class SnipEditorPresenter
         // Not used: a blur has no color, size or transparency, and the select tool doesn't draw
         [SnipTool.Blur] = new SnipToolSettingsModel(4, 0, Palette[0]),
         [SnipTool.Select] = new SnipToolSettingsModel(4, 0, Palette[0]),
+        [SnipTool.Crop] = new SnipToolSettingsModel(4, 0, Palette[0]),
     };
 
     // Colors picked with More colors that aren't in the palette, newest first, at most MaxCustomColors
@@ -114,6 +115,15 @@ public sealed class SnipEditorPresenter
     private bool _isEditingText;
 
     private SnipCursor _cursor = SnipCursor.Cross;
+
+    // The crop being adjusted before it's applied, and the drag of it; and the crop the view shows, to tell it only of a
+    // change
+    private Rectangle? _pendingCrop;
+    private CropDrag? _cropDrag;
+    private Rectangle? _shownCrop;
+
+    // What to go back to after cropping, which is done once
+    private SnipTool _toolBeforeCrop = SnipTool.Select;
 
     /// <param name="settingsStore">
     ///     Where the tool, each tool's settings and the custom colors are kept: the editor starts with the ones saved
@@ -161,6 +171,8 @@ public sealed class SnipEditorPresenter
         _view.CloseRequested += OnCloseRequested;
         _view.HideWhileSnippingSelected += OnHideWhileSnippingSelected;
         _view.ZoomRequested += OnZoomRequested;
+        _view.CropApplyRequested += OnCropApplyRequested;
+        _view.CropCancelRequested += OnCropCancelRequested;
     }
 
     /// <summary>The annotations kept on the snip shown, oldest first; without the one being drawn.</summary>
@@ -306,7 +318,7 @@ public sealed class SnipEditorPresenter
         AnnotationModel? selected = Selected;
 
         _view.ShowDrawingChoices(selected is null
-            ? _tool is not (SnipTool.Blur or SnipTool.Select)
+            ? _tool is not (SnipTool.Blur or SnipTool.Select or SnipTool.Crop)
             : selected is not BlurAnnotationModel);
 
         SnipToolSettingsModel settings = selected is null ? Settings : SettingsOf(selected);
@@ -481,6 +493,13 @@ public sealed class SnipEditorPresenter
             return;
         }
 
+        if (_tool == SnipTool.Crop)
+        {
+            PressWithCropTool(point);
+
+            return;
+        }
+
         if (_tool == SnipTool.Step)
         {
             Add(new StepAnnotationModel(
@@ -508,6 +527,14 @@ public sealed class SnipEditorPresenter
 
     private void OnPointerMoved(object? sender, Point point)
     {
+        if (_cropDrag is { } cropDrag)
+        {
+            _pendingCrop = DraggedCrop(cropDrag, point);
+            _view.ShowCropPreview(_pendingCrop);
+
+            return;
+        }
+
         if (_selectionDrag is { } drag)
         {
             _preview = point == drag.Start ? null : Dragged(drag, point);
@@ -532,6 +559,20 @@ public sealed class SnipEditorPresenter
 
     private void OnPointerReleased(object? sender, Point point)
     {
+        if (_cropDrag is not null)
+        {
+            OnPointerMoved(sender, point);
+            _cropDrag = null;
+
+            // A click outside, or a drag too small to keep anything, leaves nothing to crop
+            if (_pendingCrop is { Width: < 2 } or { Height: < 2 })
+            {
+                CancelCrop();
+            }
+
+            return;
+        }
+
         if (_selectionDrag is { } drag)
         {
             _selectionDrag = null;
@@ -570,6 +611,91 @@ public sealed class SnipEditorPresenter
         }
     }
 
+    /// <summary>The part of the snip shown: its crop, or all of it.</summary>
+    private Rectangle ShownArea => Page.Crop ?? new Rectangle(Point.Empty, _view.GetSnipSize(_current));
+
+    /// <summary>
+    ///     On the crop being adjusted, a handle drags that side and inside moves it; anywhere else starts another one.
+    /// </summary>
+    private void PressWithCropTool(Point point)
+    {
+        if (_pendingCrop is Rectangle pending)
+        {
+            if (AnnotationGeometry.HandleAt(AnnotationGeometry.FrameOf(pending), point, Zoom) is int handle)
+            {
+                _cropDrag = new CropDrag(point, handle, pending);
+
+                return;
+            }
+
+            if (pending.Contains(point))
+            {
+                _cropDrag = new CropDrag(point, null, pending);
+
+                return;
+            }
+        }
+
+        _cropDrag = new CropDrag(point, null, null);
+    }
+
+    /// <summary>The crop a drag makes, always inside the part of the snip shown.</summary>
+    private Rectangle DraggedCrop(CropDrag drag, Point point)
+    {
+        Rectangle shown = ShownArea;
+
+        if (drag.Original is not Rectangle original)
+        {
+            return Rectangle.Intersect(FromCorners(drag.Start, point), shown);
+        }
+
+        if (drag.Handle is int handle)
+        {
+            return Rectangle.Intersect(AnnotationGeometry.ResizedBox(original, handle, point), shown);
+        }
+
+        // Moved whole, it stops at the edges instead of getting smaller
+        int x = Math.Clamp(original.X + point.X - drag.Start.X, shown.Left, Math.Max(shown.Left, shown.Right - original.Width));
+        int y = Math.Clamp(original.Y + point.Y - drag.Start.Y, shown.Top, Math.Max(shown.Top, shown.Bottom - original.Height));
+
+        return new Rectangle(new Point(x, y), original.Size);
+    }
+
+    private void CancelCrop()
+    {
+        _cropDrag = null;
+        _pendingCrop = null;
+        _view.ShowCropPreview(null);
+    }
+
+    /// <summary>
+    ///     Keeps only the part being adjusted, as a step to undo; a crop of everything changes nothing. Then it's back to
+    ///     the tool from before, as a snip is cropped once.
+    /// </summary>
+    private void OnCropApplyRequested(object? sender, EventArgs e)
+    {
+        if (_pendingCrop is not Rectangle area)
+        {
+            return;
+        }
+
+        CancelCrop();
+
+        if (area == ShownArea)
+        {
+            return;
+        }
+
+        Deselect();
+        Commit(Page.State with { Crop = area });
+        OnToolSelected(this, _toolBeforeCrop);
+    }
+
+    private void OnCropCancelRequested(object? sender, EventArgs e)
+    {
+        CancelCrop();
+    }
+
     /// <summary>
     ///     One more than the highest on the snip shown, so each snip counts from 1, and after deleting or undoing the last
     ///     step its number is used again.
@@ -581,9 +707,16 @@ public sealed class SnipEditorPresenter
         ? AnnotationGeometry.Resized(drag.Original, handle, point, MeasureText)
         : AnnotationGeometry.Moved(drag.Original, new Size(point.X - drag.Start.X, point.Y - drag.Start.Y));
 
-    /// <summary>On a selected text, lets the user type over it.</summary>
+    /// <summary>On a selected text, lets the user type over it; inside a crop being adjusted, crops.</summary>
     private void OnPointerDoubleClicked(object? sender, Point point)
     {
+        if (_tool == SnipTool.Crop && _pendingCrop is Rectangle pending && pending.Contains(point))
+        {
+            OnCropApplyRequested(sender, EventArgs.Empty);
+
+            return;
+        }
+
         if (_tool != SnipTool.Select || Selected is not TextAnnotationModel text
             || !AnnotationGeometry.Hits(text, point, MeasureText, Zoom))
         {
@@ -601,6 +734,13 @@ public sealed class SnipEditorPresenter
 
     private void OnPointerHovered(object? sender, Point point)
     {
+        if (_tool == SnipTool.Crop)
+        {
+            ShowCursor(CropCursorAt(point));
+
+            return;
+        }
+
         if (_tool != SnipTool.Select)
         {
             return;
@@ -631,6 +771,23 @@ public sealed class SnipEditorPresenter
         }
 
         ShowCursor(cursor);
+    }
+
+    private SnipCursor CropCursorAt(Point point)
+    {
+        if (_pendingCrop is not Rectangle pending)
+        {
+            return SnipCursor.Cross;
+        }
+
+        SnipSelectionModel frame = AnnotationGeometry.FrameOf(pending);
+
+        if (AnnotationGeometry.HandleAt(frame, point, Zoom) is int handle)
+        {
+            return AnnotationGeometry.CursorOf(frame, handle);
+        }
+
+        return pending.Contains(point) ? SnipCursor.Move : SnipCursor.Cross;
     }
 
     /// <summary>Over something with the select tool, selects it and offers what can be done to it.</summary>
@@ -723,6 +880,12 @@ public sealed class SnipEditorPresenter
 
     private void OnToolSelected(object? sender, SnipTool tool)
     {
+        if (tool == SnipTool.Crop && _tool != SnipTool.Crop)
+        {
+            _toolBeforeCrop = _tool;
+        }
+
+        CancelCrop();
         _tool = tool;
         Deselect();
         ShowTool();
@@ -961,8 +1124,8 @@ public sealed class SnipEditorPresenter
             return;
         }
 
-        Page.Redo.Push(Page.Annotations);
-        Page.Annotations = Page.Undo.Pop();
+        Page.Redo.Push(Page.State);
+        Page.State = Page.Undo.Pop();
         Restored();
     }
 
@@ -973,8 +1136,8 @@ public sealed class SnipEditorPresenter
             return;
         }
 
-        Page.Undo.Push(Page.Annotations);
-        Page.Annotations = Page.Redo.Pop();
+        Page.Undo.Push(Page.State);
+        Page.State = Page.Redo.Pop();
         Restored();
     }
 
@@ -983,6 +1146,7 @@ public sealed class SnipEditorPresenter
     {
         Deselect();
         ShowChoices();
+        ShowCrop();
         Changed();
     }
 
@@ -1007,6 +1171,9 @@ public sealed class SnipEditorPresenter
     private void SetZoom(int percent)
     {
         _zoomPercent = percent;
+
+        // A crop being adjusted stays; only a drag of it stops
+        _cropDrag = null;
         _start = null;
         _points = [];
         _drawing = null;
@@ -1048,7 +1215,12 @@ public sealed class SnipEditorPresenter
         bool hadSelection = _selected is not null;
 
         Deselect();
+        CancelCrop();
         _current = page;
+
+        // Before the snip, which fits the window to the part shown
+        _shownCrop = Page.Crop;
+        _view.ShowCrop(Page.Crop);
         _view.ShowSnip(page, _pages.Count);
 
         if (hadSelection)
@@ -1083,7 +1255,7 @@ public sealed class SnipEditorPresenter
         }
 
         _view.SaveImage(path);
-        Page.Saved = Page.Annotations;
+        Page.Saved = Page.State;
     }
 
     /// <summary>Saved, as it's what the next snips read, whether this editor is still open then or not.</summary>
@@ -1100,7 +1272,7 @@ public sealed class SnipEditorPresenter
     /// </summary>
     private void OnCloseRequested(object? sender, CancelEventArgs e)
     {
-        int unsaved = _pages.Count(page => !ReferenceEquals(page.Saved, page.Annotations));
+        int unsaved = _pages.Count(page => !ReferenceEquals(page.Saved, page.State));
 
         if (unsaved > 1 && !_view.AskDiscardSnips(unsaved))
         {
@@ -1143,10 +1315,26 @@ public sealed class SnipEditorPresenter
     /// <summary>Keeps these annotations, with the earlier ones to undo to; what was undone can't be redone after it.</summary>
     private void Commit(IReadOnlyList<AnnotationModel> annotations)
     {
-        Page.Undo.Push(Page.Annotations);
+        Commit(Page.State with { Annotations = annotations });
+    }
+
+    private void Commit(SnipPageState state)
+    {
+        Page.Undo.Push(Page.State);
         Page.Redo.Clear();
-        Page.Annotations = annotations;
+        Page.State = state;
+        ShowCrop();
         Changed();
+    }
+
+    /// <summary>Only when it changed: the view fits the window to it.</summary>
+    private void ShowCrop()
+    {
+        if (_shownCrop != Page.Crop)
+        {
+            _shownCrop = Page.Crop;
+            _view.ShowCrop(Page.Crop);
+        }
     }
 
     private void Changed()
@@ -1190,25 +1378,40 @@ public sealed class SnipEditorPresenter
         Math.Max(a.X, b.X),
         Math.Max(a.Y, b.Y));
 
-    /// <summary>What a snip of the window has drawn over it.</summary>
+    /// <summary>What a snip of the window has drawn over it, and how it's cropped, with what to undo and redo.</summary>
     private sealed class SnipPage
     {
-        public IReadOnlyList<AnnotationModel> Annotations { get; set; } = [];
+        public SnipPageState State { get; set; } = new([], null);
 
-        public Stack<IReadOnlyList<AnnotationModel>> Undo { get; } = new();
+        public IReadOnlyList<AnnotationModel> Annotations => State.Annotations;
 
-        public Stack<IReadOnlyList<AnnotationModel>> Redo { get; } = new();
+        public Rectangle? Crop => State.Crop;
+
+        public Stack<SnipPageState> Undo { get; } = new();
+
+        public Stack<SnipPageState> Redo { get; } = new();
 
         /// <summary>
-        ///     The annotations it was last saved with; null when it never was. Undo can bring them back, which makes it
-        ///     saved again: the lists are kept as they are, so the same list is the same snip.
+        ///     What it was last saved as; null when it never was. Undo can bring that back, which makes it saved again:
+        ///     the states are kept as they are, so the same state is the same snip.
         /// </summary>
-        public IReadOnlyList<AnnotationModel>? Saved { get; set; }
+        public SnipPageState? Saved { get; set; }
     }
+
+    /// <summary>A snip as it is at one step of its undo.</summary>
+    /// <param name="Annotations">What's drawn over it, in the pixels of the whole snip.</param>
+    /// <param name="Crop">The part of the snip that's kept; null for all of it.</param>
+    private sealed record SnipPageState(IReadOnlyList<AnnotationModel> Annotations, Rectangle? Crop);
 
     /// <summary>A drag of the selected annotation.</summary>
     /// <param name="Start">Where the button was pressed.</param>
     /// <param name="Handle">Which handle is dragged; null when the whole annotation is moved.</param>
     /// <param name="Original">The annotation as it was before the drag.</param>
     private sealed record SelectionDrag(Point Start, int? Handle, AnnotationModel Original);
+
+    /// <summary>A drag with the crop tool.</summary>
+    /// <param name="Start">Where the button was pressed.</param>
+    /// <param name="Handle">Which handle of the crop is dragged; null when it's moved whole, or a new one is drawn.</param>
+    /// <param name="Original">The crop as it was before the drag; null when a new one is drawn.</param>
+    private sealed record CropDrag(Point Start, int? Handle, Rectangle? Original);
 }

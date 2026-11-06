@@ -26,13 +26,16 @@ public static class BlurRenderer
     /// <param name="blur">What to draw.</param>
     /// <param name="allBlurs">Every blur on the snip, whose pixels can't give it its color.</param>
     /// <param name="snip">The snip without annotations.</param>
+    /// <param name="shown">The part of the snip that's kept; what's cropped away can't give the blur its color.</param>
     public static void Draw(
         Graphics graphics,
         BlurAnnotationModel blur,
         IReadOnlyList<Rectangle> allBlurs,
-        Bitmap snip)
+        Bitmap snip,
+        Rectangle? shown = null)
     {
-        Rectangle area = Rectangle.Intersect(blur.Bounds, new Rectangle(Point.Empty, snip.Size));
+        Rectangle kept = Rectangle.Intersect(shown ?? new Rectangle(Point.Empty, snip.Size), new Rectangle(Point.Empty, snip.Size));
+        Rectangle area = Rectangle.Intersect(blur.Bounds, kept);
 
         // Not IsEmpty, which is false for no size away from (0, 0): as a blur is when the button has just been pressed
         if (area.Width == 0 || area.Height == 0)
@@ -40,7 +43,7 @@ public static class BlurRenderer
             return;
         }
 
-        using Bitmap patch = CreatePatch(area, ColorAround(area, allBlurs, snip));
+        using Bitmap patch = CreatePatch(area, ColorAround(area, allBlurs, snip, kept));
         GraphicsState state = graphics.Save();
 
         // Pixel for pixel and replacing what's there: scaling or blending would let the pixels under it show at its edges
@@ -55,7 +58,7 @@ public static class BlurRenderer
     ///     The average of the line of pixels just outside the area. Pixels under another blur don't count, or this one
     ///     would give away something of what that one hides.
     /// </summary>
-    private static Color ColorAround(Rectangle area, IReadOnlyList<Rectangle> allBlurs, Bitmap snip)
+    private static Color ColorAround(Rectangle area, IReadOnlyList<Rectangle> allBlurs, Bitmap snip, Rectangle kept)
     {
         long red = 0;
         long green = 0;
@@ -64,7 +67,8 @@ public static class BlurRenderer
 
         void Add(int x, int y)
         {
-            if (x < 0 || y < 0 || x >= snip.Width || y >= snip.Height
+            // Only what's in the image: around a blur at a crop's edge, what's cut away is as hidden as what's under it
+            if (!kept.Contains(x, y)
                 || allBlurs.Any(other => other.Contains(x, y)))
             {
                 return;

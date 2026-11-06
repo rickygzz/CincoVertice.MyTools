@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using CincoVertice.MyTools.Ui.Snipping.Models;
+using CincoVertice.MyTools.Ui.Snipping.Services;
 using CincoVertice.MyTools.Ui.Snipping.Views;
 using CincoVertice.MyTools.Ui.Win.Behaviors;
 using CincoVertice.MyTools.Ui.Win.Snipping.Services;
@@ -38,6 +39,10 @@ public partial class SnipEditorForm : Form, ISnipEditorView
 
     // How large it's shown: 1 is pixel for pixel
     private float _zoom = 1;
+
+    // The part of the snip shown that's kept, null for all of it; and the part a crop being dragged would keep
+    private Rectangle? _crop;
+    private Rectangle? _cropPreview;
 
     // Where on the canvas's panel the mouse was when it asked to zoom, to keep what's there under it
     private Point? _zoomAnchor;
@@ -149,6 +154,10 @@ public partial class SnipEditorForm : Form, ISnipEditorView
 
     public event EventHandler<int>? ZoomRequested;
 
+    public event EventHandler? CropApplyRequested;
+
+    public event EventHandler? CropCancelRequested;
+
     public event EventHandler? UndoRequested;
 
     public event EventHandler? RedoRequested;
@@ -181,6 +190,35 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         {
             button.Checked = ToolOf(button) == tool;
         }
+    }
+
+    public Size GetSnipSize(int index) => _snips[index].Size;
+
+    public void ShowCrop(Rectangle? crop)
+    {
+        if (crop == _crop)
+        {
+            return;
+        }
+
+        _crop = crop;
+        SizeCanvas();
+        CanvasPanel.AutoScrollPosition = Point.Empty;
+        Canvas.Invalidate();
+
+        // As going to another snip does: the window fits what's left, keeping its upper left corner
+        if (WindowState == FormWindowState.Normal)
+        {
+            FitToSnipFromUpperLeft();
+        }
+    }
+
+    public void ShowCropPreview(Rectangle? area)
+    {
+        _cropPreview = area;
+        ApplyCropButton.Visible = area is not null;
+        CancelCropButton.Visible = area is not null;
+        Canvas.Invalidate();
     }
 
     public void ShowSnip(int index, int count)
@@ -463,6 +501,14 @@ public partial class SnipEditorForm : Form, ISnipEditorView
 
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
+        // Enter applies a crop being adjusted; while typing, it's the text's
+        if (keyData == Keys.Enter && _cropPreview is not null && _textLocation is null)
+        {
+            CropApplyRequested?.Invoke(this, EventArgs.Empty);
+
+            return true;
+        }
+
         // An open list closes itself on Esc; the window stays
         if (keyData != Keys.Escape
             || SizeComboBox.DroppedDown
@@ -477,6 +523,10 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         if (_textLocation is not null)
         {
             EscapeText();
+        }
+        else if (_cropPreview is not null)
+        {
+            CropCancelRequested?.Invoke(this, EventArgs.Empty);
         }
         else if (_selection is not null)
         {
@@ -560,7 +610,7 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     }
 
     private ToolStripButton[] ToolButtons() =>
-        [SelectButton, PenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, StepButton, BlurButton];
+        [SelectButton, PenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, StepButton, BlurButton, CropButton];
 
     private ToolStripButton[] ArrowHeadsButtons() => [ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton];
 
@@ -595,38 +645,46 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         ClientSize = new Size(Math.Min(width, largest.Width), Math.Min(height, largest.Height));
     }
 
-    /// <summary>The canvas as large as the snip shown, at the zoom, with room for the last pixel even when it's partly shown.</summary>
+    /// <summary>The part of the snip shown that's kept: its crop, or all of it.</summary>
+    private Rectangle ShownArea => _crop ?? new Rectangle(Point.Empty, _snips[_shownSnip].Size);
+
+    /// <summary>
+    ///     The canvas as large as the part of the snip shown, at the zoom, with room for the last pixel even when it's
+    ///     partly shown.
+    /// </summary>
     private void SizeCanvas()
     {
-        Bitmap snip = _snips[_shownSnip];
+        Rectangle shown = ShownArea;
 
         Canvas.Size = new Size(
-            Math.Max(1, (int)Math.Ceiling(snip.Width * _zoom)),
-            Math.Max(1, (int)Math.Ceiling(snip.Height * _zoom)));
+            Math.Max(1, (int)Math.Ceiling(shown.Width * _zoom)),
+            Math.Max(1, (int)Math.Ceiling(shown.Height * _zoom)));
     }
 
-    /// <summary>The snip pixel under a point of the canvas.</summary>
+    /// <summary>The snip pixel under a point of the canvas, in the pixels of the whole snip.</summary>
     private Point ToSnip(Point canvas) => new(
-        (int)Math.Floor(canvas.X / _zoom),
-        (int)Math.Floor(canvas.Y / _zoom));
+        (int)Math.Floor(canvas.X / _zoom) + ShownArea.X,
+        (int)Math.Floor(canvas.Y / _zoom) + ShownArea.Y);
 
     /// <summary>Where a snip pixel's corner is on the canvas.</summary>
     private Point ToCanvas(Point snip) => new(
-        (int)Math.Round(snip.X * _zoom),
-        (int)Math.Round(snip.Y * _zoom));
+        (int)Math.Round((snip.X - ShownArea.X) * _zoom),
+        (int)Math.Round((snip.Y - ShownArea.Y) * _zoom));
 
     /// <summary>The snip with the annotations, as it is copied or saved; the caller disposes it.</summary>
     private Bitmap RenderImage()
     {
         Bitmap snip = _snips[_shownSnip];
-        var image = new Bitmap(snip.Width, snip.Height, PixelFormat.Format24bppRgb);
-        var whole = new Rectangle(Point.Empty, snip.Size);
+        Rectangle shown = ShownArea;
+        var image = new Bitmap(shown.Width, shown.Height, PixelFormat.Format24bppRgb);
 
         using var graphics = Graphics.FromImage(image);
 
-        // GraphicsUnit.Pixel: pixel for pixel, never scaled by the bitmap's resolution
-        graphics.DrawImage(snip, whole, whole, GraphicsUnit.Pixel);
-        AnnotationRenderer.Draw(graphics, _annotations, snip);
+        // GraphicsUnit.Pixel: pixel for pixel, never scaled by the bitmap's resolution. In the pixels of the whole snip,
+        // with the crop's corner at the image's
+        graphics.TranslateTransform(-shown.X, -shown.Y);
+        graphics.DrawImage(snip, shown, shown, GraphicsUnit.Pixel);
+        AnnotationRenderer.Draw(graphics, _annotations, snip, shown);
 
         return image;
     }
@@ -799,6 +857,7 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     {
         Graphics graphics = e.Graphics;
         Bitmap snip = _snips[_shownSnip];
+        Rectangle shown = ShownArea;
         GraphicsState state = graphics.Save();
 
         // Larger, each pixel a sharp square, for close work; smaller, smoothed, so it can still be read
@@ -806,21 +865,33 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         graphics.PixelOffsetMode = PixelOffsetMode.Half;
         graphics.DrawImage(
             snip,
-            new RectangleF(0, 0, snip.Width * _zoom, snip.Height * _zoom),
-            new RectangleF(0, 0, snip.Width, snip.Height),
+            new RectangleF(0, 0, shown.Width * _zoom, shown.Height * _zoom),
+            shown,
             GraphicsUnit.Pixel);
         graphics.Restore(state);
 
-        // In snip pixels, as in the copied or saved image
+        // In snip pixels, as in the copied or saved image, with the crop's corner at the canvas's
         state = graphics.Save();
         graphics.ScaleTransform(_zoom, _zoom);
-        AnnotationRenderer.Draw(graphics, _annotations, snip);
+        graphics.TranslateTransform(-shown.X, -shown.Y);
+        AnnotationRenderer.Draw(graphics, _annotations, snip, shown);
         graphics.Restore(state);
+
+        // Not scaled, so the frame and handles stay as thin and as small; only moved to the crop's corner
+        state = graphics.Save();
+        graphics.TranslateTransform(-shown.X * _zoom, -shown.Y * _zoom);
 
         if (_selection is not null)
         {
             AnnotationRenderer.DrawSelection(graphics, _selection, _zoom);
         }
+
+        if (_cropPreview is Rectangle crop)
+        {
+            DrawCropPreview(graphics, crop, shown);
+        }
+
+        graphics.Restore(state);
     }
 
     private void Canvas_MouseDown(object? sender, MouseEventArgs e)
@@ -866,6 +937,24 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         }
     }
 
+    /// <summary>What would be cut away dimmed, and the part kept framed, in the pixels of the canvas at the zoom.</summary>
+    private void DrawCropPreview(Graphics graphics, Rectangle crop, Rectangle shown)
+    {
+        RectangleF Scaled(Rectangle area) => new(area.X * _zoom, area.Y * _zoom, area.Width * _zoom, area.Height * _zoom);
+
+        using var outside = new Region(Scaled(shown));
+        using var shade = new SolidBrush(Color.FromArgb(140, Color.Black));
+        using var frame = new Pen(Color.White) { DashStyle = DashStyle.Dash };
+        RectangleF kept = Scaled(crop);
+
+        outside.Exclude(kept);
+        graphics.FillRegion(shade, outside);
+        graphics.DrawRectangle(frame, kept.X, kept.Y, kept.Width - 1, kept.Height - 1);
+
+        // The handles only: the dashed frame is the crop's own
+        AnnotationRenderer.DrawSelection(graphics, AnnotationGeometry.FrameOf(crop) with { Box = null }, _zoom);
+    }
+
     /// <summary>With Ctrl, zooms around the mouse; without, the panel scrolls as usual.</summary>
     private void Canvas_MouseWheel(object? sender, MouseEventArgs e)
     {
@@ -881,6 +970,16 @@ public partial class SnipEditorForm : Form, ISnipEditorView
 
         _zoomAnchor = CanvasPanel.PointToClient(Canvas.PointToScreen(e.Location));
         ZoomRequested?.Invoke(this, Math.Sign(e.Delta));
+    }
+
+    private void ApplyCropButton_Click(object? sender, EventArgs e)
+    {
+        CropApplyRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void CancelCropButton_Click(object? sender, EventArgs e)
+    {
+        CropCancelRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void ZoomLabel_Click(object? sender, EventArgs e)
@@ -982,6 +1081,7 @@ public partial class SnipEditorForm : Form, ISnipEditorView
             (Keys.None, Keys.T) => () => ToolSelected?.Invoke(this, SnipTool.Text),
             (Keys.None, Keys.B) => () => ToolSelected?.Invoke(this, SnipTool.Blur),
             (Keys.None, Keys.N) => () => ToolSelected?.Invoke(this, SnipTool.Step),
+            (Keys.None, Keys.C) => () => ToolSelected?.Invoke(this, SnipTool.Crop),
             // - and + where the keyboard has them, [ and ] as in other drawing programs
             (Keys.None, Keys.OemMinus or Keys.Subtract or Keys.OemOpenBrackets) => () => StepSize(-1),
             (Keys.None or Keys.Shift, Keys.Oemplus or Keys.Add) or (Keys.None, Keys.OemCloseBrackets) =>

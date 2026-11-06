@@ -53,7 +53,12 @@ public static class AnnotationGeometry
             return new SnipSelectionModel(null, [arrow.From, arrow.To]);
         }
 
-        Rectangle box = BoxOf(annotation, measure);
+        return FrameOf(BoxOf(annotation, measure));
+    }
+
+    /// <summary>A frame with 8 handles, clockwise from its top left, as for a crop being adjusted.</summary>
+    public static SnipSelectionModel FrameOf(Rectangle box)
+    {
         int middleX = box.Left + box.Width / 2;
         int middleY = box.Top + box.Height / 2;
 
@@ -175,6 +180,13 @@ public static class AnnotationGeometry
         }
 
         Rectangle box = BoxOf(annotation, measure);
+
+        return Scaled(annotation, box, ResizedBox(box, handle, point), measure);
+    }
+
+    /// <summary>A frame with one of the handles of <see cref="FrameOf"/> dragged to the point; it never turns inside out.</summary>
+    public static Rectangle ResizedBox(Rectangle box, int handle, Point point)
+    {
         int left = box.Left;
         int top = box.Top;
         int right = box.Right;
@@ -198,7 +210,7 @@ public static class AnnotationGeometry
             bottom = Math.Max(point.Y, top + MinSize);
         }
 
-        return Scaled(annotation, box, Rectangle.FromLTRB(left, top, right, bottom), measure);
+        return Rectangle.FromLTRB(left, top, right, bottom);
     }
 
     /// <returns>The pointer for a handle of <see cref="SelectionOf"/>.</returns>

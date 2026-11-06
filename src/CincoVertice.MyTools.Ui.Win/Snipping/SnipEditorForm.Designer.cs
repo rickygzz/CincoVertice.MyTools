@@ -52,6 +52,9 @@ partial class SnipEditorForm
         TextButton = new ToolStripButton();
         StepButton = new ToolStripButton();
         BlurButton = new ToolStripButton();
+        CropButton = new ToolStripButton();
+        ApplyCropButton = new ToolStripButton();
+        CancelCropButton = new ToolStripButton();
         ToolsSeparator = new ToolStripSeparator();
         ColorDropDownButton = new ToolStripDropDownButton();
         Palette = new ColorPaletteControl();
@@ -96,7 +99,7 @@ partial class SnipEditorForm
         // Tools
         //
         Tools.GripStyle = ToolStripGripStyle.Hidden;
-        Tools.Items.AddRange(new ToolStripItem[] { SelectButton, PenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, StepButton, BlurButton, ToolsSeparator, ColorDropDownButton, SizeComboBox, TransparencyComboBox, ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton, CornerRadiusComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, ColorsSeparator, UndoButton, RedoButton, HistorySeparator, CopyButton, SaveButton, SnipsSeparator, PreviousSnipButton, SnipPositionLabel, NextSnipButton, OptionsDropDownButton, ZoomLabel });
+        Tools.Items.AddRange(new ToolStripItem[] { SelectButton, PenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, StepButton, BlurButton, CropButton, ApplyCropButton, CancelCropButton, ToolsSeparator, ColorDropDownButton, SizeComboBox, TransparencyComboBox, ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton, CornerRadiusComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, ColorsSeparator, UndoButton, RedoButton, HistorySeparator, CopyButton, SaveButton, SnipsSeparator, PreviousSnipButton, SnipPositionLabel, NextSnipButton, OptionsDropDownButton, ZoomLabel });
         Tools.Location = new Point(0, 0);
         Tools.Name = "Tools";
         Tools.Padding = new Padding(4, 2, 4, 2);
@@ -156,6 +159,31 @@ partial class SnipEditorForm
         TextButton.Text = "Text";
         TextButton.ToolTipText = "Text (T): click where it goes, Enter to end, Esc to end and select it, Shift+Enter for a new line";
         TextButton.Click += ToolButton_Click;
+        //
+        // CropButton
+        //
+        CropButton.DisplayStyle = ToolStripItemDisplayStyle.Image;
+        CropButton.Name = "CropButton";
+        CropButton.Tag = "Crop";
+        CropButton.Text = "Crop";
+        CropButton.ToolTipText = "Crop (C): drag over the part to keep, adjust it with its handles, then Enter. Ctrl+Z brings back the rest";
+        CropButton.Click += ToolButton_Click;
+        //
+        // ApplyCropButton
+        //
+        ApplyCropButton.Name = "ApplyCropButton";
+        ApplyCropButton.Text = "Apply crop";
+        ApplyCropButton.ToolTipText = "Keep only the part in the frame (Enter, or double-click in it)";
+        ApplyCropButton.Visible = false;
+        ApplyCropButton.Click += ApplyCropButton_Click;
+        //
+        // CancelCropButton
+        //
+        CancelCropButton.Name = "CancelCropButton";
+        CancelCropButton.Text = "Cancel";
+        CancelCropButton.ToolTipText = "Don't crop (Esc)";
+        CancelCropButton.Visible = false;
+        CancelCropButton.Click += CancelCropButton_Click;
         //
         // StepButton
         //
@@ -472,6 +500,9 @@ partial class SnipEditorForm
     private ToolStripButton TextButton;
     private ToolStripButton StepButton;
     private ToolStripButton BlurButton;
+    private ToolStripButton CropButton;
+    private ToolStripButton ApplyCropButton;
+    private ToolStripButton CancelCropButton;
     private ToolStripSeparator ToolsSeparator;
     private ToolStripDropDownButton ColorDropDownButton;
     private ColorPaletteControl Palette;

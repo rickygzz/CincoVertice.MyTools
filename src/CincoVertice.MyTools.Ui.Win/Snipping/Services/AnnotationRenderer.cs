@@ -19,8 +19,18 @@ public static class AnnotationRenderer
     /// <param name="graphics">Where to draw them.</param>
     /// <param name="annotations">What to draw, in order.</param>
     /// <param name="snip">The snip they go over, without annotations; blurs take their color from around them on it.</param>
-    public static void Draw(Graphics graphics, IReadOnlyList<AnnotationModel> annotations, Bitmap snip)
+    /// <param name="shown">
+    ///     The part of the snip that's kept, when it's cropped: what's cut away isn't in the image, so a blur can't take
+    ///     its color from there either.
+    /// </param>
+    public static void Draw(
+        Graphics graphics,
+        IReadOnlyList<AnnotationModel> annotations,
+        Bitmap snip,
+        Rectangle? shown = null)
     {
+        Rectangle kept = shown ?? new Rectangle(Point.Empty, snip.Size);
+
         SmoothingMode smoothing = graphics.SmoothingMode;
         graphics.SmoothingMode = SmoothingMode.AntiAlias;
 
@@ -43,7 +53,7 @@ public static class AnnotationRenderer
                     DrawText(graphics, text);
                     break;
                 case BlurAnnotationModel blur:
-                    BlurRenderer.Draw(graphics, blur, blurs, snip);
+                    BlurRenderer.Draw(graphics, blur, blurs, snip, kept);
                     break;
                 case HighlightAnnotationModel highlight:
                     DrawHighlight(graphics, highlight);

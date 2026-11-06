@@ -657,6 +657,155 @@ public sealed class SnipEditorFormTests : IDisposable
             .Invoke(form, [form, new MouseEventArgs(button, 1, x, y, 0)]);
     }
 
+    /// <summary>A snip with a different color in each quarter: red, green, blue and yellow, clockwise from the top left.</summary>
+    private static Bitmap Quarters(int width, int height)
+    {
+        var snip = new Bitmap(width, height);
+
+        using var graphics = Graphics.FromImage(snip);
+
+        graphics.FillRectangle(Brushes.Red, 0, 0, width / 2, height / 2);
+        graphics.FillRectangle(Brushes.Lime, width / 2, 0, width - width / 2, height / 2);
+        graphics.FillRectangle(Brushes.Yellow, 0, height / 2, width / 2, height - height / 2);
+        graphics.FillRectangle(Brushes.Blue, width / 2, height / 2, width - width / 2, height - height / 2);
+
+        return snip;
+    }
+
+    [Fact]
+    public void Crop_SavesOnlyThatPart_WithTheAnnotationsOnWhatTheyWereDrawnOver()
+    {
+        // Arrange: kept is the bottom right quarter, blue, with a black rectangle drawn over its corner
+        using var form = new SnipEditorForm(Quarters(200, 100));
+        string path = SavedImagePath();
+        form.ShowAnnotations([new RectangleAnnotationModel(new Rectangle(110, 60, 30, 20), Color.Black, 2, 0)]);
+
+        // Act
+        form.ShowCrop(new Rectangle(100, 50, 100, 50));
+        form.SaveImage(path);
+
+        // Assert
+        using var saved = new Bitmap(path);
+        Assert.Equal(new Size(100, 50), saved.Size);
+        Assert.Equal(Color.Blue.ToArgb(), saved.GetPixel(50, 25).ToArgb());
+        Assert.True(saved.GetPixel(10, 20).R < 80 && saved.GetPixel(10, 20).B < 80, "The rectangle moved with the crop");
+    }
+
+    [Fact]
+    public void Crop_TheCanvasShowsOnlyThatPart_AndTheMouseGivesPixelsOfTheWholeSnip()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Quarters(200, 100));
+        List<Point> points = [];
+        form.PointerPressed += (_, point) => points.Add(point);
+
+        // Act
+        form.ShowCrop(new Rectangle(100, 50, 100, 50));
+        form.ShowZoom(200);
+        Mouse(form, "Canvas_MouseDown", MouseButtons.Left, 10, 6);
+
+        // Assert: (5, 3) of the crop, at 200%, is (105, 53) of the snip
+        Assert.Equal(new Size(200, 100), Field<PictureBox>(form, "Canvas").Size);
+        Assert.Equal([new Point(105, 53)], points);
+    }
+
+    [Fact]
+    public void Crop_TheCanvasDrawsThatPart()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Quarters(200, 100));
+        var canvas = Field<PictureBox>(form, "Canvas");
+
+        // Act
+        form.ShowCrop(new Rectangle(100, 0, 100, 50));
+        using var shown = new Bitmap(canvas.Width, canvas.Height);
+        canvas.DrawToBitmap(shown, new Rectangle(Point.Empty, canvas.Size));
+
+        // Assert: the top right quarter
+        Assert.Equal(Color.Lime.ToArgb(), shown.GetPixel(50, 25).ToArgb());
+    }
+
+    [Fact]
+    public void CropPreview_DimsWhatWouldBeCutAway_OnTheScreenOnly()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        var canvas = Field<PictureBox>(form, "Canvas");
+        string path = SavedImagePath();
+
+        // Act
+        form.ShowCropPreview(new Rectangle(20, 20, 50, 50));
+        using var shown = new Bitmap(canvas.Width, canvas.Height);
+        canvas.DrawToBitmap(shown, new Rectangle(Point.Empty, canvas.Size));
+        form.SaveImage(path);
+
+        // Assert
+        Assert.True(shown.GetPixel(5, 5).R < 200, "Outside isn't dimmed");
+        Assert.Equal(Color.White.ToArgb(), shown.GetPixel(45, 45).ToArgb());
+        using var saved = new Bitmap(path);
+        Assert.Equal(Color.White.ToArgb(), saved.GetPixel(5, 5).ToArgb());
+    }
+
+    [Fact]
+    public void CropPreview_ShowsItsButtons_AndTheKeysApplyOrCancelIt()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        var apply = Field<ToolStripButton>(form, "ApplyCropButton");
+        var cancel = Field<ToolStripButton>(form, "CancelCropButton");
+        List<string> asked = [];
+        form.CropApplyRequested += (_, _) => asked.Add("apply");
+        form.CropCancelRequested += (_, _) => asked.Add("cancel");
+        var process = typeof(SnipEditorForm).GetMethod("ProcessCmdKey", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+        // Assert: only with a crop to adjust
+        Assert.False(apply.Available);
+        form.ShowCropPreview(new Rectangle(10, 10, 50, 50));
+        Assert.True(apply.Available && cancel.Available);
+
+        // Act
+        process.Invoke(form, [default(Message), Keys.Enter]);
+        process.Invoke(form, [default(Message), Keys.Escape]);
+        apply.PerformClick();
+        cancel.PerformClick();
+        form.ShowCropPreview(null);
+
+        // Assert
+        Assert.Equal(["apply", "cancel", "apply", "cancel"], asked);
+        Assert.False(apply.Available);
+        Assert.False(form.IsDisposed);
+    }
+
+    [Fact]
+    public void CropPreview_HasHandles()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        var canvas = Field<PictureBox>(form, "Canvas");
+
+        // Act
+        form.ShowCropPreview(new Rectangle(20, 20, 60, 60));
+        using var shown = new Bitmap(canvas.Width, canvas.Height);
+        canvas.DrawToBitmap(shown, new Rectangle(Point.Empty, canvas.Size));
+
+        // Assert: the handle at the top middle is the selection's blue, its middle white
+        Color edge = shown.GetPixel(50 - 4, 20);
+        Assert.True(edge.B > 150 && edge.R < 100, $"No handle at the top middle: {edge}");
+    }
+
+    [Fact]
+    public void GetSnipSize_IsTheWholeSnip_WhateverTheCrop()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(120, 80, Color.White));
+
+        // Act
+        form.ShowCrop(new Rectangle(10, 10, 20, 20));
+
+        // Assert
+        Assert.Equal(new Size(120, 80), form.GetSnipSize(0));
+    }
+
     [Fact]
     public void Zoom_SizesTheCanvas_AndSaysHowLarge()
     {

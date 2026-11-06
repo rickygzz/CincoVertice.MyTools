@@ -53,6 +53,9 @@ public static class ToolIcons
             case SnipTool.Step:
                 DrawStep(graphics);
                 break;
+            case SnipTool.Crop:
+                DrawCrop(graphics, pen);
+                break;
         }
 
         return icon;
@@ -167,6 +170,13 @@ public static class ToolIcons
 
         path.AddRoundedRectangle(new RectangleF(2, 3.5f, 12, 9), new SizeF(5, 5));
         graphics.DrawPath(pen, path);
+    }
+
+    /// <summary>Two crossing corners, as cropping tools usually show.</summary>
+    private static void DrawCrop(Graphics graphics, Pen pen)
+    {
+        graphics.DrawLines(pen, [new PointF(4.5f, 1.5f), new PointF(4.5f, 11.5f), new PointF(14.5f, 11.5f)]);
+        graphics.DrawLines(pen, [new PointF(1.5f, 4.5f), new PointF(11.5f, 4.5f), new PointF(11.5f, 14.5f)]);
     }
 
     /// <summary>A circle with a 1 in it, as the steps look.</summary>

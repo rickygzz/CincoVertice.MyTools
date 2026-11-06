@@ -80,6 +80,12 @@ public interface ISnipEditorView
     /// <summary>Raised to go to another snip: -1 for the one before, 1 for the one after.</summary>
     event EventHandler<int>? SnipStepRequested;
 
+    /// <summary>Raised when the user wants the crop being adjusted applied.</summary>
+    event EventHandler? CropApplyRequested;
+
+    /// <summary>Raised when the user drops the crop being adjusted.</summary>
+    event EventHandler? CropCancelRequested;
+
     /// <summary>Raised to show the snip larger (1), smaller (-1), or at its own size (0).</summary>
     event EventHandler<int>? ZoomRequested;
 
@@ -98,6 +104,22 @@ public interface ISnipEditorView
     event EventHandler? SaveRequested;
 
     void ShowTool(SnipTool tool);
+
+    /// <returns>How large one of the snips is, in pixels, before any crop.</returns>
+    Size GetSnipSize(int index);
+
+    /// <summary>
+    ///     Shows only this part of the snip shown, the same in what's copied or saved; null shows all of it. Points stay in
+    ///     the pixels of the whole snip. Called before <see cref="ShowSnip"/> for another snip, and on its own when the crop
+    ///     changes.
+    /// </summary>
+    void ShowCrop(Rectangle? crop);
+
+    /// <summary>
+    ///     Shows the part a crop being adjusted would keep, with handles to change it and a way to apply or drop it, on the
+    ///     screen only; null for none.
+    /// </summary>
+    void ShowCropPreview(Rectangle? area);
 
     /// <summary>Shows one of the snips, and which one it is. Its annotations follow in <see cref="ShowAnnotations"/>.</summary>
     /// <param name="index">Which one, from 0.</param>

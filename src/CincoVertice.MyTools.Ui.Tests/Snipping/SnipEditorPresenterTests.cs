@@ -1964,6 +1964,344 @@ public class SnipEditorPresenterTests
         Assert.Equal(SnipCursor.Cross, _view.Cursor);
     }
 
+    /// <summary>Drags a crop and applies it.</summary>
+    private void CropBy(int fromX, int fromY, int toX, int toY)
+    {
+        Drag(fromX, fromY, toX, toY);
+        _view.ApplyCrop();
+    }
+
+    [Fact]
+    public void Crop_DragShowsWhatItWouldKeep_AndItStaysToAdjustUntilApplied()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Crop);
+        int copies = _view.CopyCount;
+
+        // Act
+        _view.Press(300, 200);
+        _view.Move(150, 100);
+        _view.Release(100, 50);
+
+        // Assert: dragged either way, only shown so far
+        Assert.Equal(Rectangle.FromLTRB(100, 50, 300, 200), _view.CropPreview);
+        Assert.Null(_view.Crop);
+        Assert.Equal(copies, _view.CopyCount);
+
+        // Act
+        _view.ApplyCrop();
+
+        // Assert
+        Assert.Equal(Rectangle.FromLTRB(100, 50, 300, 200), _view.Crop);
+        Assert.Null(_view.CropPreview);
+        Assert.Equal(copies + 1, _view.CopyCount);
+    }
+
+    [Fact]
+    public void Crop_HandlesChangeItsSides_BeforeItsApplied()
+    {
+        // Arrange: (100, 100) to (300, 200)
+        _view.SelectTool(SnipTool.Crop);
+        Drag(100, 100, 300, 200);
+
+        // Act: the bottom right corner, then the left side
+        Drag(300, 200, 400, 250);
+        Drag(100, 175, 50, 175);
+        _view.ApplyCrop();
+
+        // Assert
+        Assert.Equal(Rectangle.FromLTRB(50, 100, 400, 250), _view.Crop);
+    }
+
+    [Fact]
+    public void Crop_DraggedFromInside_MovesWhole_StoppingAtTheEdges()
+    {
+        // Arrange: 200 by 100 of the 800 by 600 snip
+        _view.SelectTool(SnipTool.Crop);
+        Drag(100, 100, 300, 200);
+
+        // Act & Assert
+        Drag(200, 150, 250, 180);
+        Assert.Equal(new Rectangle(150, 130, 200, 100), _view.CropPreview);
+
+        Drag(250, 180, 5000, 5000);
+        Assert.Equal(new Rectangle(600, 500, 200, 100), _view.CropPreview);
+    }
+
+    [Fact]
+    public void Crop_HandlesAreAsLargeOnTheScreenAtAnyZoom()
+    {
+        // Arrange: the bottom right handle is at (300, 200)
+        _view.SelectTool(SnipTool.Crop);
+        Drag(100, 100, 300, 200);
+
+        // Act & Assert
+        _view.Hover(305, 205);
+        Assert.Equal(SnipCursor.SizeTopLeftBottomRight, _view.Cursor);
+
+        _view.Hover(200, 150);
+        Assert.Equal(SnipCursor.Move, _view.Cursor);
+
+        _view.Hover(500, 500);
+        Assert.Equal(SnipCursor.Cross, _view.Cursor);
+    }
+
+    [Fact]
+    public void Crop_ClickOutside_DropsIt()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Crop);
+        Drag(100, 100, 300, 200);
+
+        // Act
+        Click(500, 500);
+
+        // Assert
+        Assert.Null(_view.CropPreview);
+    }
+
+    [Fact]
+    public void Crop_DragOutside_StartsAnotherOne()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Crop);
+        Drag(100, 100, 300, 200);
+
+        // Act
+        Drag(400, 300, 600, 500);
+
+        // Assert
+        Assert.Equal(Rectangle.FromLTRB(400, 300, 600, 500), _view.CropPreview);
+    }
+
+    [Fact]
+    public void Crop_Cancelled_ChangesNothing()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Crop);
+        Drag(100, 100, 300, 200);
+
+        // Act
+        _view.CancelCrop();
+        _view.ApplyCrop();
+
+        // Assert
+        Assert.Null(_view.CropPreview);
+        Assert.Null(_view.Crop);
+        Assert.False(_view.CanUndo);
+    }
+
+    [Fact]
+    public void Crop_DoubleClickInside_AppliesIt()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Crop);
+        Drag(100, 100, 300, 200);
+
+        // Act
+        _view.DoubleClick(200, 150);
+
+        // Assert
+        Assert.Equal(Rectangle.FromLTRB(100, 100, 300, 200), _view.Crop);
+    }
+
+    [Fact]
+    public void Crop_ChangingTool_DropsIt()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Crop);
+        Drag(100, 100, 300, 200);
+
+        // Act
+        _view.SelectTool(SnipTool.Pen);
+        _view.ApplyCrop();
+
+        // Assert
+        Assert.Null(_view.CropPreview);
+        Assert.Null(_view.Crop);
+    }
+
+    [Fact]
+    public void Crop_Zoom_KeepsItToAdjust()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Crop);
+        Drag(100, 100, 300, 200);
+
+        // Act
+        _view.Zoom(1);
+
+        // Assert
+        Assert.Equal(Rectangle.FromLTRB(100, 100, 300, 200), _view.CropPreview);
+    }
+
+    [Fact]
+    public void Crop_PastTheSnip_StopsAtItsEdges()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Crop);
+
+        // Act
+        CropBy(-50, -50, 100, 5000);
+
+        // Assert
+        Assert.Equal(Rectangle.FromLTRB(0, 0, 100, 600), _view.Crop);
+    }
+
+    [Fact]
+    public void Crop_AgainAfterACrop_StaysInsideWhatsLeft()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Crop);
+        CropBy(100, 100, 400, 400);
+        _view.SelectTool(SnipTool.Crop);
+
+        // Act
+        CropBy(0, 0, 200, 200);
+
+        // Assert
+        Assert.Equal(Rectangle.FromLTRB(100, 100, 200, 200), _view.Crop);
+    }
+
+    [Theory]
+    [InlineData(50, 50, 50, 50)]
+    [InlineData(50, 50, 51, 300)]
+    [InlineData(0, 0, 800, 600)]
+    [InlineData(-10, -10, 900, 700)]
+    public void Crop_OfNothingOrOfEverything_ChangesNothing(int fromX, int fromY, int toX, int toY)
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Crop);
+        int shows = _view.CropShowCount;
+
+        // Act
+        CropBy(fromX, fromY, toX, toY);
+
+        // Assert
+        Assert.Null(_view.Crop);
+        Assert.Equal(shows, _view.CropShowCount);
+        Assert.False(_view.CanUndo);
+        Assert.Equal(SnipTool.Crop, _view.Tool);
+    }
+
+    [Fact]
+    public void Crop_CanBeUndoneAndRedone()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Crop);
+        CropBy(100, 100, 400, 400);
+
+        // Act
+        _view.Undo();
+
+        // Assert
+        Assert.Null(_view.Crop);
+
+        // Act
+        _view.Redo();
+
+        // Assert
+        Assert.Equal(Rectangle.FromLTRB(100, 100, 400, 400), _view.Crop);
+    }
+
+    [Fact]
+    public void Crop_LeavesTheAnnotationsWhereTheyAreOnTheSnip()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        _view.SelectTool(SnipTool.Crop);
+
+        // Act
+        CropBy(50, 50, 500, 500);
+
+        // Assert: in the pixels of the whole snip, so they stay on what they were drawn over
+        Assert.Equal(new Rectangle(100, 100, 100, 80), TheRectangle.Bounds);
+        Assert.Equal(2, _view.Annotations.Count);
+    }
+
+    [Fact]
+    public void Crop_GoesBackToTheToolFromBefore()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Arrow);
+        _view.SelectTool(SnipTool.Crop);
+
+        // Act
+        CropBy(100, 100, 400, 400);
+
+        // Assert
+        Assert.Equal(SnipTool.Arrow, _view.Tool);
+    }
+
+    [Fact]
+    public void Crop_HasNoChoices_AndDropsWhatsSelected()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        Click(100, 140);
+
+        // Act
+        _view.SelectTool(SnipTool.Crop);
+
+        // Assert
+        Assert.False(_view.DrawingChoicesVisible);
+        Assert.Null(_view.Selection);
+    }
+
+    [Fact]
+    public void Crop_EachSnipHasItsOwn()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Crop);
+        CropBy(100, 100, 400, 400);
+
+        // Act
+        _view.AddSnip();
+
+        // Assert
+        Assert.Null(_view.Crop);
+
+        // Act
+        _view.StepSnip(-1);
+
+        // Assert
+        Assert.Equal(Rectangle.FromLTRB(100, 100, 400, 400), _view.Crop);
+    }
+
+    [Fact]
+    public void Crop_CountsAsAChangeToSave()
+    {
+        // Arrange: saved, then cropped
+        SaveThisSnip();
+        _view.SelectTool(SnipTool.Crop);
+        CropBy(100, 100, 400, 400);
+        _view.AddSnip();
+
+        // Act
+        _view.Close();
+
+        // Assert
+        Assert.Equal(2, _view.AskedToDiscard);
+    }
+
+    [Fact]
+    public void Crop_ZoomMidDrag_StopsTheDrag_KeepingWhatItHadReached()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Crop);
+        _view.Press(100, 100);
+        _view.Move(200, 200);
+
+        // Act: the mouse is over something else once zoomed
+        _view.Zoom(1);
+        _view.Move(300, 300);
+        _view.Release(300, 300);
+
+        // Assert
+        Assert.Equal(Rectangle.FromLTRB(100, 100, 200, 200), _view.CropPreview);
+        Assert.Null(_view.Crop);
+    }
+
     private List<StepAnnotationModel> Steps => [.. _presenter.Annotations.OfType<StepAnnotationModel>()];
 
     private void ClickSteps(params int[] xs)
@@ -2870,6 +3208,33 @@ public class SnipEditorPresenterTests
         public event EventHandler<bool>? HideWhileSnippingSelected;
 
         public event EventHandler<int>? ZoomRequested;
+
+        /// <summary>How large every snip is, before any crop.</summary>
+        public Size SnipSize { get; set; } = new(800, 600);
+
+        public Rectangle? Crop { get; private set; }
+
+        public int CropShowCount { get; private set; }
+
+        public Rectangle? CropPreview { get; private set; }
+
+        public Size GetSnipSize(int index) => SnipSize;
+
+        public void ShowCrop(Rectangle? crop)
+        {
+            Crop = crop;
+            CropShowCount++;
+        }
+
+        public void ShowCropPreview(Rectangle? area) => CropPreview = area;
+
+        public event EventHandler? CropApplyRequested;
+
+        public event EventHandler? CropCancelRequested;
+
+        public void ApplyCrop() => CropApplyRequested?.Invoke(this, EventArgs.Empty);
+
+        public void CancelCrop() => CropCancelRequested?.Invoke(this, EventArgs.Empty);
 
         public int? ZoomPercent { get; private set; }
 
