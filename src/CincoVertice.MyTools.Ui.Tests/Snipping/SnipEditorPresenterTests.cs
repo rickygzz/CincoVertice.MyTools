@@ -1319,6 +1319,169 @@ public class SnipEditorPresenterTests
     }
 
     [Fact]
+    public void Duplicate_AddsACopyOnTop_ALittleAside_Selected()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        Click(100, 140);
+        int copies = _view.CopyCount;
+
+        // Act
+        _view.Duplicate();
+
+        // Assert
+        RectangleAnnotationModel copy = Assert.IsType<RectangleAnnotationModel>(_presenter.Annotations[^1]);
+        Assert.Equal(3, _presenter.Annotations.Count);
+        Assert.Equal(new Rectangle(110, 110, 100, 80), copy.Bounds);
+        Assert.Equal(TheRectangle with { Bounds = copy.Bounds }, copy);
+        Assert.Equal(copy.Bounds, _view.Selection!.Box);
+        Assert.Equal(copies + 1, _view.CopyCount);
+    }
+
+    [Fact]
+    public void Duplicate_OfSomethingChanged_IsNewToReset()
+    {
+        // Arrange: the original was moved, so it has something to go back to
+        DrawRectangleAndArrow();
+        Drag(100, 140, 110, 150);
+
+        // Act
+        _view.Duplicate();
+
+        // Assert: the copy was never anything else
+        Assert.Null(_presenter.Annotations[^1].Original);
+        Assert.NotNull(_presenter.Annotations[0].Original);
+    }
+
+    [Fact]
+    public void Duplicate_OfAStep_HasTheNextNumber()
+    {
+        // Arrange
+        ClickSteps(100, 200);
+        _view.SelectTool(SnipTool.Select);
+        Click(100, 100);
+
+        // Act
+        _view.Duplicate();
+
+        // Assert
+        Assert.Equal([1, 2, 3], Steps.Select(step => step.Number));
+        Assert.Equal(new Point(110, 110), Steps[2].Center);
+    }
+
+    [Fact]
+    public void Duplicate_CanBeUndone()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        Click(100, 140);
+        _view.Duplicate();
+
+        // Act
+        _view.Undo();
+
+        // Assert
+        Assert.Equal(2, _presenter.Annotations.Count);
+    }
+
+    [Fact]
+    public void Duplicate_WithNothingSelected_DoesNothing()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+
+        // Act
+        _view.Duplicate();
+
+        // Assert
+        Assert.Equal(2, _presenter.Annotations.Count);
+    }
+
+    [Fact]
+    public void BringToFront_PutsItOnTop_StillSelected()
+    {
+        // Arrange: the rectangle is under the arrow
+        DrawRectangleAndArrow();
+        Click(100, 140);
+
+        // Act
+        _view.BringToFront();
+
+        // Assert
+        Assert.IsType<ArrowAnnotationModel>(_presenter.Annotations[0]);
+        Assert.IsType<RectangleAnnotationModel>(_presenter.Annotations[1]);
+        Assert.Equal(new Rectangle(100, 100, 100, 80), _view.Selection!.Box);
+
+        // Act: it follows the selection, which is what's changed
+        _view.SelectColor(Color.Blue);
+
+        // Assert
+        Assert.Equal(Solid(Color.Blue), Assert.IsType<RectangleAnnotationModel>(_presenter.Annotations[1]).Color);
+    }
+
+    [Fact]
+    public void SendToBack_PutsItUnderTheOthers_StillSelected()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        Click(350, 300);
+
+        // Act
+        _view.SendToBack();
+
+        // Assert
+        Assert.IsType<ArrowAnnotationModel>(_presenter.Annotations[0]);
+        Assert.Null(_view.Selection!.Box);
+    }
+
+    [Fact]
+    public void BringToFrontAndSendToBack_WhenItsThereAlready_LeaveNothingToUndo()
+    {
+        // Arrange: the arrow is on top
+        DrawRectangleAndArrow();
+        Click(350, 300);
+        int copies = _view.CopyCount;
+
+        // Act
+        _view.BringToFront();
+        Click(100, 140);
+        _view.SendToBack();
+
+        // Assert
+        Assert.Equal(copies, _view.CopyCount);
+    }
+
+    [Fact]
+    public void BringToFront_CanBeUndone()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        Click(100, 140);
+        _view.BringToFront();
+
+        // Act
+        _view.Undo();
+
+        // Assert
+        Assert.IsType<RectangleAnnotationModel>(_presenter.Annotations[0]);
+    }
+
+    [Theory]
+    [InlineData(100, 140, true, false)]
+    [InlineData(350, 300, false, true)]
+    public void ContextMenu_OffersOnlyTheMovesThatChangeSomething(int x, int y, bool front, bool back)
+    {
+        // Arrange: the rectangle under, the arrow on top
+        DrawRectangleAndArrow();
+
+        // Act
+        _view.RightClick(x, y);
+
+        // Assert
+        Assert.Equal(new SnipContextMenuModel(false, front, back), _view.ContextMenuModel);
+    }
+
+    [Fact]
     public void RightClick_OnSomething_SelectsItAndShowsTheMenu()
     {
         // Arrange
@@ -3446,11 +3609,29 @@ public class SnipEditorPresenterTests
 
         public (Point Location, bool CanReset)? ContextMenu { get; private set; }
 
+        public SnipContextMenuModel? ContextMenuModel { get; private set; }
+
+        public event EventHandler? DuplicateRequested;
+
+        public event EventHandler? BringToFrontRequested;
+
+        public event EventHandler? SendToBackRequested;
+
         public void RightClick(int x, int y) => PointerRightClicked?.Invoke(this, new Point(x, y));
 
         public void Reset() => ResetRequested?.Invoke(this, EventArgs.Empty);
 
-        public void ShowContextMenu(Point location, bool canReset) => ContextMenu = (location, canReset);
+        public void Duplicate() => DuplicateRequested?.Invoke(this, EventArgs.Empty);
+
+        public void BringToFront() => BringToFrontRequested?.Invoke(this, EventArgs.Empty);
+
+        public void SendToBack() => SendToBackRequested?.Invoke(this, EventArgs.Empty);
+
+        public void ShowContextMenu(Point location, SnipContextMenuModel menu)
+        {
+            ContextMenu = (location, menu.CanReset);
+            ContextMenuModel = menu;
+        }
 
         public event EventHandler? DeleteRequested;
 

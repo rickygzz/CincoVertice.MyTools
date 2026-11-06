@@ -116,6 +116,12 @@ public partial class SnipEditorForm : Form, ISnipEditorView
 
     public event EventHandler? ResetRequested;
 
+    public event EventHandler? DuplicateRequested;
+
+    public event EventHandler? BringToFrontRequested;
+
+    public event EventHandler? SendToBackRequested;
+
     public event EventHandler<Size>? NudgeRequested;
 
     public event EventHandler? DeselectRequested;
@@ -377,9 +383,11 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         };
     }
 
-    public void ShowContextMenu(Point location, bool canReset)
+    public void ShowContextMenu(Point location, SnipContextMenuModel menu)
     {
-        ResetMenuItem.Enabled = canReset;
+        ResetMenuItem.Enabled = menu.CanReset;
+        BringToFrontMenuItem.Enabled = menu.CanBringToFront;
+        SendToBackMenuItem.Enabled = menu.CanSendToBack;
         SelectionMenu.Show(Canvas, ToCanvas(location));
     }
 
@@ -817,6 +825,21 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         DeleteRequested?.Invoke(this, EventArgs.Empty);
     }
 
+    private void DuplicateMenuItem_Click(object? sender, EventArgs e)
+    {
+        DuplicateRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void BringToFrontMenuItem_Click(object? sender, EventArgs e)
+    {
+        BringToFrontRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void SendToBackMenuItem_Click(object? sender, EventArgs e)
+    {
+        SendToBackRequested?.Invoke(this, EventArgs.Empty);
+    }
+
     private void PreviousSnipButton_Click(object? sender, EventArgs e)
     {
         CommitText();
@@ -1013,6 +1036,20 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         if (_selection is null)
         {
             return null;
+        }
+
+        // As in the diagram editor
+        Action? arrange = e.KeyData switch
+        {
+            Keys.Control | Keys.D => () => DuplicateRequested?.Invoke(this, EventArgs.Empty),
+            Keys.Control | Keys.OemCloseBrackets => () => BringToFrontRequested?.Invoke(this, EventArgs.Empty),
+            Keys.Control | Keys.OemOpenBrackets => () => SendToBackRequested?.Invoke(this, EventArgs.Empty),
+            _ => null,
+        };
+
+        if (arrange is not null)
+        {
+            return arrange;
         }
 
         // Far with the arrows alone, and by a pixel with Shift, as in the diagram editor

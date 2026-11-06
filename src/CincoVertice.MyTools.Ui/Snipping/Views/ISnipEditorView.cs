@@ -35,6 +35,15 @@ public interface ISnipEditorView
     /// <summary>Raised when the user wants what's selected as it was when first drawn.</summary>
     event EventHandler? ResetRequested;
 
+    /// <summary>Raised when the user wants a copy of what's selected.</summary>
+    event EventHandler? DuplicateRequested;
+
+    /// <summary>Raised when the user wants what's selected on top of all the others.</summary>
+    event EventHandler? BringToFrontRequested;
+
+    /// <summary>Raised when the user wants what's selected under all the others.</summary>
+    event EventHandler? SendToBackRequested;
+
     /// <summary>Raised with how far to move what's selected, in pixels.</summary>
     event EventHandler<Size>? NudgeRequested;
 
@@ -169,8 +178,8 @@ public interface ISnipEditorView
 
     /// <summary>Shows what can be done to what's selected, at a point of the snip.</summary>
     /// <param name="location">Where to show it.</param>
-    /// <param name="canReset">True when it has changed since it was drawn.</param>
-    void ShowContextMenu(Point location, bool canReset);
+    /// <param name="menu">Which of the items can be used.</param>
+    void ShowContextMenu(Point location, SnipContextMenuModel menu);
 
     /// <returns>How large a text is when drawn with this font size.</returns>
     Size MeasureText(string text, int fontSize);

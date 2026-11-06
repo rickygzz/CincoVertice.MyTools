@@ -86,6 +86,10 @@ partial class SnipEditorForm
         HideWhileSnippingMenuItem = new ToolStripMenuItem();
         SelectionMenu = new ContextMenuStrip();
         ResetMenuItem = new ToolStripMenuItem();
+        DuplicateMenuItem = new ToolStripMenuItem();
+        BringToFrontMenuItem = new ToolStripMenuItem();
+        SendToBackMenuItem = new ToolStripMenuItem();
+        ArrangeSeparator = new ToolStripSeparator();
         DeleteMenuItem = new ToolStripMenuItem();
         CanvasPanel = new Panel();
         Canvas = new PictureBox();
@@ -405,7 +409,7 @@ partial class SnipEditorForm
         //
         // SelectionMenu
         //
-        SelectionMenu.Items.AddRange(new ToolStripItem[] { ResetMenuItem, DeleteMenuItem });
+        SelectionMenu.Items.AddRange(new ToolStripItem[] { DuplicateMenuItem, BringToFrontMenuItem, SendToBackMenuItem, ResetMenuItem, ArrangeSeparator, DeleteMenuItem });
         SelectionMenu.Name = "SelectionMenu";
         //
         // ResetMenuItem
@@ -413,6 +417,31 @@ partial class SnipEditorForm
         ResetMenuItem.Name = "ResetMenuItem";
         ResetMenuItem.Text = "Reset to original";
         ResetMenuItem.Click += ResetMenuItem_Click;
+        //
+        // DuplicateMenuItem
+        //
+        DuplicateMenuItem.Name = "DuplicateMenuItem";
+        DuplicateMenuItem.ShortcutKeyDisplayString = "Ctrl+D";
+        DuplicateMenuItem.Text = "Duplicate";
+        DuplicateMenuItem.Click += DuplicateMenuItem_Click;
+        //
+        // BringToFrontMenuItem
+        //
+        BringToFrontMenuItem.Name = "BringToFrontMenuItem";
+        BringToFrontMenuItem.ShortcutKeyDisplayString = "Ctrl+]";
+        BringToFrontMenuItem.Text = "Bring to front";
+        BringToFrontMenuItem.Click += BringToFrontMenuItem_Click;
+        //
+        // SendToBackMenuItem
+        //
+        SendToBackMenuItem.Name = "SendToBackMenuItem";
+        SendToBackMenuItem.ShortcutKeyDisplayString = "Ctrl+[";
+        SendToBackMenuItem.Text = "Send to back";
+        SendToBackMenuItem.Click += SendToBackMenuItem_Click;
+        //
+        // ArrangeSeparator
+        //
+        ArrangeSeparator.Name = "ArrangeSeparator";
         //
         // DeleteMenuItem
         //
@@ -534,6 +563,10 @@ partial class SnipEditorForm
     private ToolStripMenuItem HideWhileSnippingMenuItem;
     private ContextMenuStrip SelectionMenu;
     private ToolStripMenuItem ResetMenuItem;
+    private ToolStripMenuItem DuplicateMenuItem;
+    private ToolStripMenuItem BringToFrontMenuItem;
+    private ToolStripMenuItem SendToBackMenuItem;
+    private ToolStripSeparator ArrangeSeparator;
     private ToolStripMenuItem DeleteMenuItem;
     private Panel CanvasPanel;
     private PictureBox Canvas;

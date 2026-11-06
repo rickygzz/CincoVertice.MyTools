@@ -49,6 +49,9 @@ public sealed class SnipEditorPresenter
     /// <summary>The transparencies to choose from, in percent; 100 would be invisible.</summary>
     public static IReadOnlyList<int> Transparencies { get; } = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90];
 
+    // How far down and to the right a copy goes from what it's a copy of, in pixels
+    private const int DuplicateOffset = 10;
+
     /// <summary>How large the snip can be shown, in percent.</summary>
     public static IReadOnlyList<int> ZoomLevels { get; } = [25, 33, 50, 67, 75, 100, 125, 150, 200, 300, 400, 600, 800];
 
@@ -148,6 +151,9 @@ public sealed class SnipEditorPresenter
         _view.PointerRightClicked += OnPointerRightClicked;
         _view.DeleteRequested += OnDeleteRequested;
         _view.ResetRequested += OnResetRequested;
+        _view.DuplicateRequested += OnDuplicateRequested;
+        _view.BringToFrontRequested += OnBringToFrontRequested;
+        _view.SendToBackRequested += OnSendToBackRequested;
         _view.NudgeRequested += OnNudgeRequested;
         _view.DeselectRequested += OnDeselectRequested;
         _view.TextEscaped += OnTextEscaped;
@@ -811,7 +817,62 @@ public sealed class SnipEditorPresenter
             Select(target);
         }
 
-        _view.ShowContextMenu(point, Selected!.Original is not null);
+        int index = _selected!.Value;
+
+        _view.ShowContextMenu(
+            point,
+            new SnipContextMenuModel(
+                Page.Annotations[index].Original is not null,
+                index < Page.Annotations.Count - 1,
+                index > 0));
+    }
+
+    /// <summary>
+    ///     A copy a little down and to the right, so both show, on top of the others and selected, to drag where it goes.
+    ///     A step's copy has the next number, as a step added by a click does.
+    /// </summary>
+    private void OnDuplicateRequested(object? sender, EventArgs e)
+    {
+        if (_selectionDrag is not null || Selected is not { } selected)
+        {
+            return;
+        }
+
+        AnnotationModel copy = AnnotationGeometry.Moved(selected, new Size(DuplicateOffset, DuplicateOffset)) with
+        {
+            Original = null,
+        };
+
+        if (copy is StepAnnotationModel step)
+        {
+            copy = step with { Number = NextStepNumber() };
+        }
+
+        _selected = Page.Annotations.Count;
+        Commit([.. Page.Annotations, copy]);
+        ShowChoices();
+    }
+
+    private void OnBringToFrontRequested(object? sender, EventArgs e)
+    {
+        if (_selected is int index && index < Page.Annotations.Count - 1 && _selectionDrag is null)
+        {
+            AnnotationModel selected = Page.Annotations[index];
+
+            _selected = Page.Annotations.Count - 1;
+            Commit([.. Page.Annotations.Where((_, i) => i != index), selected]);
+        }
+    }
+
+    private void OnSendToBackRequested(object? sender, EventArgs e)
+    {
+        if (_selected is int index && index > 0 && _selectionDrag is null)
+        {
+            AnnotationModel selected = Page.Annotations[index];
+
+            _selected = 0;
+            Commit([selected, .. Page.Annotations.Where((_, i) => i != index)]);
+        }
     }
 
     private void OnResetRequested(object? sender, EventArgs e)

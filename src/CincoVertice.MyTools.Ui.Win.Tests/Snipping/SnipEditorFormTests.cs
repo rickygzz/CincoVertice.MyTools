@@ -959,6 +959,59 @@ public sealed class SnipEditorFormTests : IDisposable
     }
 
     [Fact]
+    public void ContextMenu_ArrangeItems_FollowWhatTheyCanDo_AndPassOnWhatsPicked()
+    {
+        // Arrange
+        using SnipEditorForm form = ShownOffScreen();
+        var menu = Field<ContextMenuStrip>(form, "SelectionMenu");
+        var front = Field<ToolStripMenuItem>(form, "BringToFrontMenuItem");
+        var back = Field<ToolStripMenuItem>(form, "SendToBackMenuItem");
+        List<string> asked = [];
+        form.DuplicateRequested += (_, _) => asked.Add("duplicate");
+        form.BringToFrontRequested += (_, _) => asked.Add("front");
+        form.SendToBackRequested += (_, _) => asked.Add("back");
+
+        // Act
+        form.ShowContextMenu(new Point(10, 10), new SnipContextMenuModel(false, false, true));
+        (bool, bool) enabled = (front.Enabled, back.Enabled);
+
+        // A greyed out item does nothing when clicked
+        front.PerformClick();
+        menu.Close();
+        form.ShowContextMenu(new Point(10, 10), new SnipContextMenuModel(false, true, true));
+        menu.Close();
+        Field<ToolStripMenuItem>(form, "DuplicateMenuItem").PerformClick();
+        front.PerformClick();
+        back.PerformClick();
+
+        // Assert
+        Assert.Equal((false, true), enabled);
+        Assert.Equal(["duplicate", "front", "back"], asked);
+    }
+
+    [Theory]
+    [InlineData(Keys.Control | Keys.D, "duplicate")]
+    [InlineData(Keys.Control | Keys.OemCloseBrackets, "front")]
+    [InlineData(Keys.Control | Keys.OemOpenBrackets, "back")]
+    public void ArrangeKeys_WorkOnlyWithSomethingSelected(Keys key, string expected)
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        List<string> asked = [];
+        form.DuplicateRequested += (_, _) => asked.Add("duplicate");
+        form.BringToFrontRequested += (_, _) => asked.Add("front");
+        form.SendToBackRequested += (_, _) => asked.Add("back");
+
+        // Act: first with nothing selected
+        InvokeKeyDown(form, new KeyEventArgs(key));
+        form.ShowSelection(new SnipSelectionModel(new Rectangle(1, 1, 5, 5), []));
+        InvokeKeyDown(form, new KeyEventArgs(key));
+
+        // Assert
+        Assert.Equal([expected], asked);
+    }
+
+    [Fact]
     public void ContextMenu_OnlyOffersTheResetWhenThereIsOne_AndPassesOnWhatsPicked()
     {
         // Arrange
@@ -974,11 +1027,11 @@ public sealed class SnipEditorFormTests : IDisposable
         form.DeleteRequested += (_, _) => asked.Add("delete");
 
         // Act
-        form.ShowContextMenu(new Point(10, 10), canReset: false);
+        form.ShowContextMenu(new Point(10, 10), new SnipContextMenuModel(false, true, true));
         bool wasShown = menu.Visible;
         bool couldReset = reset.Enabled;
         menu.Close();
-        form.ShowContextMenu(new Point(10, 10), canReset: true);
+        form.ShowContextMenu(new Point(10, 10), new SnipContextMenuModel(true, true, true));
         bool canReset = reset.Enabled;
         menu.Close();
         reset.PerformClick();
