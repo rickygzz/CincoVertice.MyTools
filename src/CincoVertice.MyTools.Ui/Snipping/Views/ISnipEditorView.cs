@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Drawing;
 using CincoVertice.MyTools.Ui.Snipping.Models;
 
@@ -78,6 +79,9 @@ public interface ISnipEditorView
 
     /// <summary>Raised to go to another snip: -1 for the one before, 1 for the one after.</summary>
     event EventHandler<int>? SnipStepRequested;
+
+    /// <summary>Raised when the user closes the window; cancel to keep it open.</summary>
+    event EventHandler<CancelEventArgs>? CloseRequested;
 
     event EventHandler? UndoRequested;
 
@@ -162,4 +166,9 @@ public interface ISnipEditorView
 
     /// <summary>Saves the snip with the annotations shown; the format follows the file extension.</summary>
     void SaveImage(string path);
+
+    /// <summary>Asks whether to close the window, losing the snips that weren't saved.</summary>
+    /// <param name="count">How many weren't.</param>
+    /// <returns>True to close it.</returns>
+    bool AskDiscardSnips(int count);
 }

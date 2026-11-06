@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Drawing;
 using System.Globalization;
 using CincoVertice.MyTools.Ui.Snipping.Interfaces;
@@ -143,6 +144,7 @@ public sealed class SnipEditorPresenter
         _view.RedoRequested += OnRedoRequested;
         _view.CopyRequested += OnCopyRequested;
         _view.SaveRequested += OnSaveRequested;
+        _view.CloseRequested += OnCloseRequested;
     }
 
     /// <summary>The annotations kept on the snip shown, oldest first; without the one being drawn.</summary>
@@ -996,6 +998,21 @@ public sealed class SnipEditorPresenter
         }
 
         _view.SaveImage(path);
+        Page.Saved = Page.Annotations;
+    }
+
+    /// <summary>
+    ///     With more than one snip that would be lost, asks first; one alone closes at once, as when a snip is taken,
+    ///     pasted and done with.
+    /// </summary>
+    private void OnCloseRequested(object? sender, CancelEventArgs e)
+    {
+        int unsaved = _pages.Count(page => !ReferenceEquals(page.Saved, page.Annotations));
+
+        if (unsaved > 1 && !_view.AskDiscardSnips(unsaved))
+        {
+            e.Cancel = true;
+        }
     }
 
     private AnnotationModel CreateAnnotation(Point start, Point end)
@@ -1088,6 +1105,12 @@ public sealed class SnipEditorPresenter
         public Stack<IReadOnlyList<AnnotationModel>> Undo { get; } = new();
 
         public Stack<IReadOnlyList<AnnotationModel>> Redo { get; } = new();
+
+        /// <summary>
+        ///     The annotations it was last saved with; null when it never was. Undo can bring them back, which makes it
+        ///     saved again: the lists are kept as they are, so the same list is the same snip.
+        /// </summary>
+        public IReadOnlyList<AnnotationModel>? Saved { get; set; }
     }
 
     /// <summary>A drag of the selected annotation.</summary>

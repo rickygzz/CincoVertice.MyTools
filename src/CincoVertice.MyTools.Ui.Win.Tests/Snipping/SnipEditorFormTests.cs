@@ -551,6 +551,84 @@ public sealed class SnipEditorFormTests : IDisposable
         Assert.True(form.IsDisposed);
     }
 
+    private static SnipEditorForm ShownOffScreen()
+    {
+        var form = new SnipEditorForm(Solid(100, 100, Color.White));
+
+        form.ShowInTaskbar = false;
+        form.Show();
+        form.Location = new Point(-5000, 100);
+
+        return form;
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Close_ByTheUser_AsksFirst_AndStaysOpenWhenCancelled(bool cancel)
+    {
+        // Arrange
+        SnipEditorForm form = ShownOffScreen();
+        int asked = 0;
+        form.CloseRequested += (_, e) =>
+        {
+            asked++;
+            e.Cancel = cancel;
+        };
+
+        // Act: as the X, Alt+F4 and Esc do
+        form.Close();
+
+        // Assert
+        Assert.Equal(1, asked);
+        Assert.Equal(!cancel, form.IsDisposed);
+        form.Dispose();
+    }
+
+    [Theory]
+    [InlineData(CloseReason.WindowsShutDown)]
+    [InlineData(CloseReason.ApplicationExitCall)]
+    [InlineData(CloseReason.TaskManagerClosing)]
+    public void Close_ForAnyOtherReason_DoesntAsk(CloseReason reason)
+    {
+        // Arrange
+        using SnipEditorForm form = ShownOffScreen();
+        int asked = 0;
+        form.CloseRequested += (_, e) =>
+        {
+            asked++;
+            e.Cancel = true;
+        };
+        var closing = new FormClosingEventArgs(reason, cancel: false);
+
+        // Act
+        typeof(Form)
+            .GetMethod("OnFormClosing", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .Invoke(form, [closing]);
+
+        // Assert
+        Assert.Equal(0, asked);
+        Assert.False(closing.Cancel);
+    }
+
+    [Fact]
+    public void Close_WhileTyping_KeepsTheTextBeforeAsking()
+    {
+        // Arrange: the text counts as a change to the snip
+        SnipEditorForm form = ShownOffScreen();
+        List<string> happened = [];
+        form.TextCommitted += (_, input) => happened.Add($"text {input.Text}");
+        form.CloseRequested += (_, _) => happened.Add("close");
+        form.BeginTextInput(new Point(1, 2), Color.Black, 14, "typed");
+
+        // Act
+        form.Close();
+
+        // Assert
+        Assert.Equal(["text typed", "close"], happened);
+        form.Dispose();
+    }
+
     [Fact]
     public void ContextMenu_OnlyOffersTheResetWhenThereIsOne_AndPassesOnWhatsPicked()
     {

@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Drawing.Imaging;
 using CincoVertice.MyTools.Ui.Snipping.Models;
 using CincoVertice.MyTools.Ui.Snipping.Views;
@@ -134,6 +135,8 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     public event EventHandler? SnipAdded;
 
     public event EventHandler<int>? SnipStepRequested;
+
+    public event EventHandler<CancelEventArgs>? CloseRequested;
 
     public event EventHandler? UndoRequested;
 
@@ -393,6 +396,21 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         using Bitmap image = RenderImage();
 
         image.Save(path, format);
+    }
+
+    public bool AskDiscardSnips(int count)
+    {
+        DialogResult answer = MessageBox.Show(
+            this,
+            $"{count} snips weren't saved. Close the snip editor and lose them?",
+            Text,
+            MessageBoxButtons.OKCancel,
+            MessageBoxIcon.Warning,
+
+            // Enter or Esc keeps them, as a quick key press shouldn't lose work
+            MessageBoxDefaultButton.Button2);
+
+        return answer == DialogResult.OK;
     }
 
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -802,6 +820,25 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         }
 
         return e.KeyData is Keys.Delete or Keys.Back ? () => DeleteRequested?.Invoke(this, EventArgs.Empty) : null;
+    }
+
+    /// <summary>
+    ///     Asks only when the user closes it: on Windows shutting down or the app exiting, a question could stop either.
+    /// </summary>
+    private void SnipEditorForm_FormClosing(object? sender, FormClosingEventArgs e)
+    {
+        if (e.CloseReason != CloseReason.UserClosing)
+        {
+            return;
+        }
+
+        // Into the snip it was typed over, so it counts
+        CommitText();
+
+        var closing = new CancelEventArgs();
+
+        CloseRequested?.Invoke(this, closing);
+        e.Cancel = closing.Cancel;
     }
 
     private void SnipEditorForm_KeyDown(object? sender, KeyEventArgs e)

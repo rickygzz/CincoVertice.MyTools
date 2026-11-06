@@ -409,6 +409,7 @@ partial class SnipEditorForm
         Name = "SnipEditorForm";
         StartPosition = FormStartPosition.Manual;
         Text = "Snip editor";
+        FormClosing += SnipEditorForm_FormClosing;
         KeyDown += SnipEditorForm_KeyDown;
         Tools.ResumeLayout(false);
         Tools.PerformLayout();

@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Drawing;
 using CincoVertice.MyTools.Ui.Snipping.Interfaces;
 using CincoVertice.MyTools.Ui.Snipping.Models;
@@ -1963,6 +1964,127 @@ public class SnipEditorPresenterTests
         Assert.Equal(SnipCursor.Cross, _view.Cursor);
     }
 
+    private void SaveThisSnip()
+    {
+        _view.SavePath = @"C:\snips\x.png";
+        _view.Save();
+    }
+
+    [Fact]
+    public void Close_WithOneSnip_ClosesWithoutAsking()
+    {
+        // Arrange
+        Draw(10);
+
+        // Act & Assert
+        Assert.False(_view.Close());
+        Assert.Null(_view.AskedToDiscard);
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public void Close_WithSeveralUnsavedSnips_AsksHowMany_AndDoesWhatsAnswered(bool discard, bool staysOpen)
+    {
+        // Arrange
+        _view.AddSnip();
+        _view.AddSnip();
+        _view.DiscardAnswer = discard;
+
+        // Act & Assert
+        Assert.Equal(staysOpen, _view.Close());
+        Assert.Equal(3, _view.AskedToDiscard);
+    }
+
+    [Fact]
+    public void Close_CountsOnlyTheSnipsThatWouldBeLost()
+    {
+        // Arrange: the first and third are saved
+        SaveThisSnip();
+        _view.AddSnip();
+        _view.AddSnip();
+        SaveThisSnip();
+        _view.AddSnip();
+
+        // Act
+        _view.Close();
+
+        // Assert
+        Assert.Equal(2, _view.AskedToDiscard);
+    }
+
+    [Fact]
+    public void Close_WithAllButOneSaved_DoesntAsk()
+    {
+        // Arrange
+        SaveThisSnip();
+        _view.AddSnip();
+
+        // Act & Assert
+        Assert.False(_view.Close());
+        Assert.Null(_view.AskedToDiscard);
+    }
+
+    [Fact]
+    public void ChangedAfterBeingSaved_CountsAsUnsavedAgain()
+    {
+        // Arrange
+        SaveThisSnip();
+        _view.AddSnip();
+        _view.StepSnip(-1);
+        Draw(10);
+
+        // Act
+        _view.Close();
+
+        // Assert
+        Assert.Equal(2, _view.AskedToDiscard);
+    }
+
+    [Fact]
+    public void UndoneBackToWhatWasSaved_CountsAsSaved()
+    {
+        // Arrange
+        Draw(10);
+        SaveThisSnip();
+        Draw(20);
+        _view.Undo();
+        _view.AddSnip();
+
+        // Act & Assert
+        Assert.False(_view.Close());
+        Assert.Null(_view.AskedToDiscard);
+    }
+
+    [Fact]
+    public void SaveCancelled_LeavesItUnsaved()
+    {
+        // Arrange: the dialog is cancelled
+        _view.Save();
+        _view.AddSnip();
+
+        // Act
+        _view.Close();
+
+        // Assert
+        Assert.Equal(2, _view.AskedToDiscard);
+    }
+
+    [Fact]
+    public void Copying_DoesntCountAsSaving()
+    {
+        // Arrange
+        _view.Copy();
+        _view.AddSnip();
+        _view.Copy();
+
+        // Act
+        _view.Close();
+
+        // Assert
+        Assert.Equal(2, _view.AskedToDiscard);
+    }
+
     [Fact]
     public void Start_ShowsTheFirstSnip()
     {
@@ -2372,6 +2494,31 @@ public class SnipEditorPresenterTests
         public event EventHandler? MoreTextOutlineColorsRequested;
 
         public event EventHandler<TextInputModel>? TextCommitted;
+
+        public event EventHandler<CancelEventArgs>? CloseRequested;
+
+        /// <summary>What AskDiscardSnips answers.</summary>
+        public bool DiscardAnswer { get; set; }
+
+        /// <summary>How many snips AskDiscardSnips was told about; null when it wasn't asked.</summary>
+        public int? AskedToDiscard { get; private set; }
+
+        public bool AskDiscardSnips(int count)
+        {
+            AskedToDiscard = count;
+
+            return DiscardAnswer;
+        }
+
+        /// <returns>True when the window stays open.</returns>
+        public bool Close()
+        {
+            var closing = new CancelEventArgs();
+
+            CloseRequested?.Invoke(this, closing);
+
+            return closing.Cancel;
+        }
 
         public event EventHandler? SnipAdded;
 
