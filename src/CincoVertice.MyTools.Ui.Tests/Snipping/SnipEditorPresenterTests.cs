@@ -1964,6 +1964,185 @@ public class SnipEditorPresenterTests
         Assert.Equal(SnipCursor.Cross, _view.Cursor);
     }
 
+    private List<StepAnnotationModel> Steps => [.. _presenter.Annotations.OfType<StepAnnotationModel>()];
+
+    private void ClickSteps(params int[] xs)
+    {
+        _view.SelectTool(SnipTool.Step);
+
+        foreach (int x in xs)
+        {
+            Click(x, 100);
+        }
+    }
+
+    [Fact]
+    public void Step_EachClickAddsTheNextNumber_WhereItWasClicked()
+    {
+        // Act
+        ClickSteps(100, 200, 300);
+
+        // Assert
+        Assert.Equal([1, 2, 3], Steps.Select(step => step.Number));
+        Assert.Equal([new Point(100, 100), new Point(200, 100), new Point(300, 100)], Steps.Select(step => step.Center));
+        Assert.All(Steps, step => Assert.Equal((28, SnipEditorPresenter.Palette[0]), (step.Diameter, step.Color)));
+    }
+
+    [Fact]
+    public void Step_UsesTheToolsSizeColorAndTransparency()
+    {
+        // Arrange
+        _view.SelectTool(SnipTool.Step);
+
+        // Assert
+        Assert.Equal(SnipEditorPresenter.StepSizes, _view.Sizes);
+
+        // Act
+        _view.SelectSize(48);
+        _view.SelectColor(Color.Blue);
+        _view.SelectTransparency(50);
+        Click(100, 100);
+
+        // Assert
+        StepAnnotationModel step = Assert.Single(Steps);
+        Assert.Equal(48, step.Diameter);
+        Assert.Equal(Color.FromArgb(128, Solid(Color.Blue)), step.Color);
+    }
+
+    [Fact]
+    public void Step_AfterTheLastIsUndone_UsesItsNumberAgain()
+    {
+        // Arrange
+        ClickSteps(100, 200, 300);
+
+        // Act
+        _view.Undo();
+        Click(400, 100);
+
+        // Assert
+        Assert.Equal([1, 2, 3], Steps.Select(step => step.Number));
+    }
+
+    [Fact]
+    public void Step_AfterOneInTheMiddleIsDeleted_GoesOnFromTheHighest()
+    {
+        // Arrange
+        ClickSteps(100, 200, 300);
+        _view.SelectTool(SnipTool.Select);
+        Click(200, 100);
+        _view.Delete();
+
+        // Act
+        ClickSteps(400);
+
+        // Assert
+        Assert.Equal([1, 3, 4], Steps.Select(step => step.Number));
+    }
+
+    [Fact]
+    public void Step_EachSnipCountsFrom1()
+    {
+        // Arrange
+        ClickSteps(100, 200);
+
+        // Act
+        _view.AddSnip();
+        Click(100, 100);
+
+        // Assert
+        Assert.Equal(1, Assert.Single(Steps).Number);
+
+        // Act: back to the first, which goes on where it was
+        _view.StepSnip(-1);
+        Click(300, 100);
+
+        // Assert
+        Assert.Equal([1, 2, 3], Steps.Select(step => step.Number));
+    }
+
+    [Fact]
+    public void Step_CountsOnlySteps()
+    {
+        // Arrange: other things drawn first
+        DrawRectangleAndArrow();
+
+        // Act
+        ClickSteps(500);
+
+        // Assert
+        Assert.Equal(1, Assert.Single(Steps).Number);
+    }
+
+    [Fact]
+    public void SelectedStep_CanBeMovedRecoloredAndResized_KeepingItsNumber()
+    {
+        // Arrange
+        ClickSteps(100, 200);
+        _view.SelectTool(SnipTool.Select);
+        Click(200, 100);
+
+        // Assert
+        Assert.Equal(SnipEditorPresenter.StepSizes, _view.Sizes);
+        Assert.Equal(28, _view.Size);
+        Assert.Equal(new Rectangle(186, 86, 28, 28), _view.Selection!.Box);
+
+        // Act
+        Drag(200, 100, 250, 150);
+        _view.SelectColor(Color.Blue);
+        _view.SelectSize(64);
+
+        // Assert
+        StepAnnotationModel step = Steps[1];
+        Assert.Equal((2, new Point(250, 150), 64), (step.Number, step.Center, step.Diameter));
+        Assert.Equal(Solid(Color.Blue), step.Color);
+    }
+
+    [Fact]
+    public void SelectedStep_ScaledByAHandle_StaysRound_FromTheOtherCorner()
+    {
+        // Arrange: its frame is (86, 86) to (114, 114)
+        ClickSteps(100);
+        _view.SelectTool(SnipTool.Select);
+        Click(100, 100);
+
+        // Act: the bottom right handle, to twice as large
+        Drag(114, 114, 142, 142);
+
+        // Assert
+        StepAnnotationModel step = Assert.Single(Steps);
+        Assert.Equal(56, step.Diameter);
+        Assert.Equal(new Rectangle(86, 86, 56, 56), _view.Selection!.Box);
+    }
+
+    [Fact]
+    public void SelectedStep_CanBeReset()
+    {
+        // Arrange
+        ClickSteps(100);
+        _view.SelectTool(SnipTool.Select);
+        Click(100, 100);
+        Drag(100, 100, 300, 300);
+
+        // Act
+        _view.Reset();
+
+        // Assert
+        Assert.Equal(new Point(100, 100), Assert.Single(Steps).Center);
+    }
+
+    [Fact]
+    public void StepTool_HasNoArrowHeadsEdgeOrCorners()
+    {
+        // Act
+        _view.SelectTool(SnipTool.Step);
+
+        // Assert
+        Assert.True(_view.DrawingChoicesVisible);
+        Assert.Null(_view.ArrowHeads);
+        Assert.Null(_view.TextOutline);
+        Assert.Null(_view.CornerRadius);
+    }
+
     [Fact]
     public void Zoom_StartsAt100()
     {

@@ -48,6 +48,9 @@ public static class AnnotationRenderer
                 case HighlightAnnotationModel highlight:
                     DrawHighlight(graphics, highlight);
                     break;
+                case StepAnnotationModel step:
+                    DrawStep(graphics, step);
+                    break;
             }
         }
 
@@ -135,6 +138,40 @@ public static class AnnotationRenderer
         graphics.FillPath(brush, path);
         graphics.PixelOffsetMode = offset;
     }
+
+    /// <summary>
+    ///     A filled circle with the number in the middle, white or black, whichever shows better on the circle's color.
+    ///     A number too wide for the circle gets a smaller font.
+    /// </summary>
+    private static void DrawStep(Graphics graphics, StepAnnotationModel step)
+    {
+        float radius = step.Diameter / 2f;
+        var circle = new RectangleF(step.Center.X - radius, step.Center.Y - radius, step.Diameter, step.Diameter);
+        Color fill = step.Color;
+        Color ink = Color.FromArgb(fill.A, IsLight(fill) ? Color.Black : Color.White);
+        string number = step.Number.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        float fontSize = step.Diameter * (number.Length <= 1 ? 0.6f : number.Length == 2 ? 0.5f : 0.38f);
+
+        using var brush = new SolidBrush(fill);
+        using var inkBrush = new SolidBrush(ink);
+        using var font = new Font(FontFamilyName, Math.Max(fontSize, 1), FontStyle.Bold, GraphicsUnit.Pixel);
+        using var format = new StringFormat(StringFormat.GenericTypographic)
+        {
+            Alignment = StringAlignment.Center,
+            LineAlignment = StringAlignment.Center,
+        };
+        TextRenderingHint hint = graphics.TextRenderingHint;
+
+        graphics.FillEllipse(brush, circle);
+
+        // GDI+, not TextRenderer: TextRenderer ignores the color's transparency
+        graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+        graphics.DrawString(number, font, inkBrush, circle, format);
+        graphics.TextRenderingHint = hint;
+    }
+
+    /// <summary>Whether black shows better on the color than white, by how light it looks to the eye.</summary>
+    private static bool IsLight(Color color) => 0.299 * color.R + 0.587 * color.G + 0.114 * color.B > 160;
 
     private static void DrawStroke(Graphics graphics, StrokeAnnotationModel stroke)
     {

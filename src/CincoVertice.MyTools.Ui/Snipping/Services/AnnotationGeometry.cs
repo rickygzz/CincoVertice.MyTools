@@ -21,6 +21,10 @@ public static class AnnotationGeometry
 
     private const int MaxLineWidth = 200;
 
+    // A number has to fit in it
+    private const int MinStepDiameter = 12;
+    private const int MaxStepDiameter = 400;
+
     /// <summary>
     ///     The frame that's scaled to scale the annotation. A freehand line's goes around its thickness: around only the
     ///     middle of a nearly level line, it would be so thin that scaling it would stretch every wobble of the hand.
@@ -32,6 +36,11 @@ public static class AnnotationGeometry
         RectangleAnnotationModel rectangle => rectangle.Bounds,
         BlurAnnotationModel blur => blur.Bounds,
         HighlightAnnotationModel highlight => highlight.Bounds,
+        StepAnnotationModel step => new Rectangle(
+            step.Center.X - step.Diameter / 2,
+            step.Center.Y - step.Diameter / 2,
+            step.Diameter,
+            step.Diameter),
         TextAnnotationModel text => new Rectangle(text.Location, measure(text.Text, text.FontSize)),
         _ => Rectangle.Empty,
     };
@@ -144,6 +153,7 @@ public static class AnnotationGeometry
         RectangleAnnotationModel rectangle => rectangle with { Bounds = Offset(rectangle.Bounds, delta) },
         BlurAnnotationModel blur => blur with { Bounds = Offset(blur.Bounds, delta) },
         HighlightAnnotationModel highlight => highlight with { Bounds = Offset(highlight.Bounds, delta) },
+        StepAnnotationModel step => step with { Center = step.Center + delta },
         TextAnnotationModel text => text with { Location = text.Location + delta },
         _ => annotation,
     };
@@ -219,9 +229,20 @@ public static class AnnotationGeometry
             RectangleAnnotationModel rectangle => rectangle with { Bounds = to },
             BlurAnnotationModel blur => blur with { Bounds = to },
             HighlightAnnotationModel highlight => highlight with { Bounds = to },
+            StepAnnotationModel step => ScaledStep(step, from, to),
             TextAnnotationModel text => ScaledText(text, from, to, measure),
             _ => annotation,
         };
+
+    /// <summary>A circle stays round: the side dragged gives its size, and the side that wasn't dragged stays.</summary>
+    private static StepAnnotationModel ScaledStep(StepAnnotationModel step, Rectangle from, Rectangle to)
+    {
+        int diameter = Math.Clamp(to.Height != from.Height ? to.Height : to.Width, MinStepDiameter, MaxStepDiameter);
+        int left = to.Left != from.Left ? to.Right - diameter : from.Left;
+        int top = to.Top != from.Top ? to.Bottom - diameter : from.Top;
+
+        return step with { Diameter = diameter, Center = new Point(left + diameter / 2, top + diameter / 2) };
+    }
 
     /// <summary>
     ///     The line's width changes with how it's scaled across its direction: dragging across a level line makes it

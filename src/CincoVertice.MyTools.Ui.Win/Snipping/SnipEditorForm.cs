@@ -560,7 +560,7 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     }
 
     private ToolStripButton[] ToolButtons() =>
-        [SelectButton, PenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, BlurButton];
+        [SelectButton, PenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, StepButton, BlurButton];
 
     private ToolStripButton[] ArrowHeadsButtons() => [ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton];
 
@@ -981,6 +981,7 @@ public partial class SnipEditorForm : Form, ISnipEditorView
             (Keys.None, Keys.R) => () => ToolSelected?.Invoke(this, SnipTool.Rectangle),
             (Keys.None, Keys.T) => () => ToolSelected?.Invoke(this, SnipTool.Text),
             (Keys.None, Keys.B) => () => ToolSelected?.Invoke(this, SnipTool.Blur),
+            (Keys.None, Keys.N) => () => ToolSelected?.Invoke(this, SnipTool.Step),
             // - and + where the keyboard has them, [ and ] as in other drawing programs
             (Keys.None, Keys.OemMinus or Keys.Subtract or Keys.OemOpenBrackets) => () => StepSize(-1),
             (Keys.None or Keys.Shift, Keys.Oemplus or Keys.Add) or (Keys.None, Keys.OemCloseBrackets) =>

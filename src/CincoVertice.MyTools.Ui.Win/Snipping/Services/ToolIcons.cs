@@ -50,6 +50,9 @@ public static class ToolIcons
             case SnipTool.Select:
                 DrawSelect(graphics, pen);
                 break;
+            case SnipTool.Step:
+                DrawStep(graphics);
+                break;
         }
 
         return icon;
@@ -164,6 +167,22 @@ public static class ToolIcons
 
         path.AddRoundedRectangle(new RectangleF(2, 3.5f, 12, 9), new SizeF(5, 5));
         graphics.DrawPath(pen, path);
+    }
+
+    /// <summary>A circle with a 1 in it, as the steps look.</summary>
+    private static void DrawStep(Graphics graphics)
+    {
+        using var brush = new SolidBrush(_ink);
+        using var font = new Font(AnnotationRenderer.FontFamilyName, 9, FontStyle.Bold, GraphicsUnit.Pixel);
+        using var format = new StringFormat
+        {
+            Alignment = StringAlignment.Center,
+            LineAlignment = StringAlignment.Center,
+        };
+
+        graphics.FillEllipse(brush, 1.5f, 1.5f, 13, 13);
+        graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+        graphics.DrawString("1", font, Brushes.White, new RectangleF(1.5f, 2, 13, 13), format);
     }
 
     /// <summary>A mouse pointer.</summary>

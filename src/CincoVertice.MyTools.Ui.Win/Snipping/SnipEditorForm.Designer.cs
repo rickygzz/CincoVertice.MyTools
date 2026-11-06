@@ -50,6 +50,7 @@ partial class SnipEditorForm
         ArrowButton = new ToolStripButton();
         RectangleButton = new ToolStripButton();
         TextButton = new ToolStripButton();
+        StepButton = new ToolStripButton();
         BlurButton = new ToolStripButton();
         ToolsSeparator = new ToolStripSeparator();
         ColorDropDownButton = new ToolStripDropDownButton();
@@ -95,7 +96,7 @@ partial class SnipEditorForm
         // Tools
         //
         Tools.GripStyle = ToolStripGripStyle.Hidden;
-        Tools.Items.AddRange(new ToolStripItem[] { SelectButton, PenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, BlurButton, ToolsSeparator, ColorDropDownButton, SizeComboBox, TransparencyComboBox, ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton, CornerRadiusComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, ColorsSeparator, UndoButton, RedoButton, HistorySeparator, CopyButton, SaveButton, SnipsSeparator, PreviousSnipButton, SnipPositionLabel, NextSnipButton, OptionsDropDownButton, ZoomLabel });
+        Tools.Items.AddRange(new ToolStripItem[] { SelectButton, PenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, StepButton, BlurButton, ToolsSeparator, ColorDropDownButton, SizeComboBox, TransparencyComboBox, ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton, CornerRadiusComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, ColorsSeparator, UndoButton, RedoButton, HistorySeparator, CopyButton, SaveButton, SnipsSeparator, PreviousSnipButton, SnipPositionLabel, NextSnipButton, OptionsDropDownButton, ZoomLabel });
         Tools.Location = new Point(0, 0);
         Tools.Name = "Tools";
         Tools.Padding = new Padding(4, 2, 4, 2);
@@ -155,6 +156,15 @@ partial class SnipEditorForm
         TextButton.Text = "Text";
         TextButton.ToolTipText = "Text (T): click where it goes, Enter to end, Esc to end and select it, Shift+Enter for a new line";
         TextButton.Click += ToolButton_Click;
+        //
+        // StepButton
+        //
+        StepButton.DisplayStyle = ToolStripItemDisplayStyle.Image;
+        StepButton.Name = "StepButton";
+        StepButton.Tag = "Step";
+        StepButton.Text = "Step";
+        StepButton.ToolTipText = "Numbered step (N): each click adds the next number";
+        StepButton.Click += ToolButton_Click;
         //
         // BlurButton
         //
@@ -460,6 +470,7 @@ partial class SnipEditorForm
     private ToolStripButton ArrowButton;
     private ToolStripButton RectangleButton;
     private ToolStripButton TextButton;
+    private ToolStripButton StepButton;
     private ToolStripButton BlurButton;
     private ToolStripSeparator ToolsSeparator;
     private ToolStripDropDownButton ColorDropDownButton;

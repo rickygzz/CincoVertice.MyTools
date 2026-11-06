@@ -167,6 +167,72 @@ public class AnnotationRendererTests
         Assert.Empty(missed);
     }
 
+    private static Bitmap RenderStep(StepAnnotationModel step)
+    {
+        var image = new Bitmap(120, 120);
+
+        using var graphics = Graphics.FromImage(image);
+
+        graphics.Clear(Color.FromArgb(0, 128, 0));
+        AnnotationRenderer.Draw(graphics, [step], image);
+
+        return image;
+    }
+
+    [Theory]
+    [InlineData(255, 0, 0, true)]
+    [InlineData(0, 0, 128, true)]
+    [InlineData(255, 255, 0, false)]
+    [InlineData(255, 255, 255, false)]
+    public void Step_IsARoundDiscWithItsNumber_InWhiteOrBlackForTheColor(int r, int g, int b, bool isWhite)
+    {
+        // Arrange
+        Color fill = Color.FromArgb(r, g, b);
+
+        // Act
+        using Bitmap image = RenderStep(new StepAnnotationModel(new Point(60, 60), 7, fill, 80));
+
+        // Assert: the disc's edge is its color, its corner box is the background, and the number is in the middle
+        Assert.Equal(fill.ToArgb(), image.GetPixel(60, 24).ToArgb());
+        Assert.Equal(Color.FromArgb(0, 128, 0).ToArgb(), image.GetPixel(24, 24).ToArgb());
+
+        Color ink = isWhite ? Color.White : Color.Black;
+        int inkPixels = CountOf(image, color => color.ToArgb() == ink.ToArgb());
+
+        Assert.True(inkPixels > 30, $"Only {inkPixels} pixels of the number");
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(12)]
+    [InlineData(123)]
+    public void Step_NumberStaysInsideItsCircle(int number)
+    {
+        // Arrange: on a black circle, the number is white, and the background is green
+        using Bitmap image = RenderStep(new StepAnnotationModel(new Point(60, 60), number, Color.Black, 40));
+
+        // Act: white pixels outside the circle
+        int outside = 0;
+
+        for (int x = 0; x < image.Width; x++)
+        {
+            for (int y = 0; y < image.Height; y++)
+            {
+                int dx = x - 60;
+                int dy = y - 60;
+
+                if (dx * dx + dy * dy > 20 * 20 && image.GetPixel(x, y).R > 200)
+                {
+                    outside++;
+                }
+            }
+        }
+
+        // Assert
+        Assert.Equal(0, outside);
+        Assert.True(CountOf(image, color => color.R > 200) > 10);
+    }
+
     [Fact]
     public void NoOutline_DrawsNoEdge()
     {

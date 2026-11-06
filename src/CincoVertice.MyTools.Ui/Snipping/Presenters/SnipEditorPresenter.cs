@@ -43,6 +43,9 @@ public sealed class SnipEditorPresenter
     /// <summary>The font sizes to choose from, in pixels.</summary>
     public static IReadOnlyList<int> FontSizes { get; } = [10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 64, 72];
 
+    /// <summary>How wide a step's circle can be, in pixels.</summary>
+    public static IReadOnlyList<int> StepSizes { get; } = [16, 20, 24, 28, 32, 40, 48, 64, 80];
+
     /// <summary>The transparencies to choose from, in percent; 100 would be invisible.</summary>
     public static IReadOnlyList<int> Transparencies { get; } = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90];
 
@@ -71,6 +74,8 @@ public sealed class SnipEditorPresenter
         [SnipTool.Arrow] = new SnipToolSettingsModel(4, 0, Palette[0]),
         [SnipTool.Rectangle] = new SnipToolSettingsModel(4, 0, Palette[0]),
         [SnipTool.Text] = new SnipToolSettingsModel(24, 0, Palette[0]),
+
+        [SnipTool.Step] = new SnipToolSettingsModel(28, 0, Palette[0]),
 
         // Not used: a blur has no color, size or transparency, and the select tool doesn't draw
         [SnipTool.Blur] = new SnipToolSettingsModel(4, 0, Palette[0]),
@@ -187,8 +192,13 @@ public sealed class SnipEditorPresenter
         ShowPage(0);
     }
 
-    /// <summary>The sizes a tool can use: font sizes for the text tool, line widths for the others.</summary>
-    public static IReadOnlyList<int> SizesOf(SnipTool tool) => tool == SnipTool.Text ? FontSizes : LineSizes;
+    /// <summary>The sizes a tool can use: font sizes for the text tool, circle sizes for steps, line widths for the others.</summary>
+    public static IReadOnlyList<int> SizesOf(SnipTool tool) => tool switch
+    {
+        SnipTool.Text => FontSizes,
+        SnipTool.Step => StepSizes,
+        _ => LineSizes,
+    };
 
     /// <summary>
     ///     Takes the saved settings that can still be used: a tool, size, transparency or color the editor doesn't
@@ -304,6 +314,7 @@ public sealed class SnipEditorPresenter
         {
             null => SizesOf(_tool),
             TextAnnotationModel => FontSizes,
+            StepAnnotationModel => StepSizes,
 
             // Its frame is its size
             HighlightAnnotationModel => [],
@@ -354,6 +365,7 @@ public sealed class SnipEditorPresenter
             ArrowAnnotationModel arrow => arrow.Width,
             RectangleAnnotationModel rectangle => rectangle.Width,
             TextAnnotationModel text => text.FontSize,
+            StepAnnotationModel step => step.Diameter,
             _ => 0,
         };
         int transparency = (int)Math.Round(100 - annotation.Color.A * 100 / 255.0, MidpointRounding.AwayFromZero);
@@ -469,6 +481,17 @@ public sealed class SnipEditorPresenter
             return;
         }
 
+        if (_tool == SnipTool.Step)
+        {
+            Add(new StepAnnotationModel(
+                point,
+                NextStepNumber(),
+                WithTransparency(Settings.Color, Settings.Transparency),
+                Settings.Size));
+
+            return;
+        }
+
         if (_tool == SnipTool.Text)
         {
             // The text box can't show transparency; the text is drawn see-through once it's added
@@ -546,6 +569,13 @@ public sealed class SnipEditorPresenter
             Refresh();
         }
     }
+
+    /// <summary>
+    ///     One more than the highest on the snip shown, so each snip counts from 1, and after deleting or undoing the last
+    ///     step its number is used again.
+    /// </summary>
+    private int NextStepNumber() =>
+        Page.Annotations.OfType<StepAnnotationModel>().Select(step => step.Number).DefaultIfEmpty(0).Max() + 1;
 
     private AnnotationModel Dragged(SelectionDrag drag, Point point) => drag.Handle is int handle
         ? AnnotationGeometry.Resized(drag.Original, handle, point, MeasureText)
@@ -764,6 +794,7 @@ public sealed class SnipEditorPresenter
                 ArrowAnnotationModel arrow => arrow with { Width = size },
                 RectangleAnnotationModel rectangle => rectangle with { Width = size },
                 TextAnnotationModel text => text with { FontSize = size },
+                StepAnnotationModel step => step with { Diameter = size },
                 _ => annotation,
             });
 
