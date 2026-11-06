@@ -50,6 +50,9 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     // What shows the selected annotation; null when nothing is selected
     private SnipSelectionModel? _selection;
 
+    // The box being dragged to select what's in it, in snip pixels
+    private Rectangle? _selectionBand;
+
     // False while the choices of color, size and transparency are hidden
     private bool _showsDrawingChoices = true;
 
@@ -100,7 +103,9 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         FormExtensions.ActivateWhenShown(this);
     }
 
-    public event EventHandler<Point>? PointerPressed;
+    public event EventHandler<SnipPointerModel>? PointerPressed;
+
+    public event EventHandler? SelectAllRequested;
 
     public event EventHandler<Point>? PointerMoved;
 
@@ -367,6 +372,15 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     {
         _selection = selection;
         Canvas.Invalidate();
+    }
+
+    public void ShowSelectionBand(Rectangle? band)
+    {
+        if (band != _selectionBand)
+        {
+            _selectionBand = band;
+            Canvas.Invalidate();
+        }
     }
 
     public void ShowCursor(SnipCursor cursor)
@@ -914,6 +928,11 @@ public partial class SnipEditorForm : Form, ISnipEditorView
             DrawCropPreview(graphics, crop, shown);
         }
 
+        if (_selectionBand is Rectangle band)
+        {
+            AnnotationRenderer.DrawSelectionBand(graphics, band, _zoom);
+        }
+
         graphics.Restore(state);
     }
 
@@ -924,7 +943,7 @@ public partial class SnipEditorForm : Form, ISnipEditorView
 
         if (e.Button == MouseButtons.Left)
         {
-            PointerPressed?.Invoke(this, ToSnip(e.Location));
+            PointerPressed?.Invoke(this, new SnipPointerModel(ToSnip(e.Location), (ModifierKeys & Keys.Shift) != 0));
         }
     }
 
@@ -1105,6 +1124,7 @@ public partial class SnipEditorForm : Form, ISnipEditorView
                 () => RedoRequested?.Invoke(this, EventArgs.Empty),
             (Keys.Control, Keys.C) => () => CopyRequested?.Invoke(this, EventArgs.Empty),
             (Keys.Control, Keys.S) => () => SaveRequested?.Invoke(this, EventArgs.Empty),
+            (Keys.Control, Keys.A) => () => SelectAllRequested?.Invoke(this, EventArgs.Empty),
             (Keys.Control, Keys.Oemplus or Keys.Add) => () => ZoomRequested?.Invoke(this, 1),
             (Keys.Control, Keys.OemMinus or Keys.Subtract) => () => ZoomRequested?.Invoke(this, -1),
             (Keys.Control, Keys.D0 or Keys.NumPad0) => () => ZoomRequested?.Invoke(this, 0),

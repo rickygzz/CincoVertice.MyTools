@@ -12,7 +12,10 @@ namespace CincoVertice.MyTools.Ui.Snipping.Views;
 public interface ISnipEditorView
 {
     /// <summary>Raised when the user presses the left button on the snip.</summary>
-    event EventHandler<Point>? PointerPressed;
+    event EventHandler<SnipPointerModel>? PointerPressed;
+
+    /// <summary>Raised when the user wants everything on the snip selected.</summary>
+    event EventHandler? SelectAllRequested;
 
     /// <summary>Raised while the user moves the mouse with the left button down.</summary>
     event EventHandler<Point>? PointerMoved;
@@ -175,6 +178,9 @@ public interface ISnipEditorView
     void ShowSelection(SnipSelectionModel? selection);
 
     void ShowCursor(SnipCursor cursor);
+
+    /// <summary>Shows the box being dragged to select what's in it, on the screen only; null for none.</summary>
+    void ShowSelectionBand(Rectangle? band);
 
     /// <summary>Shows what can be done to what's selected, at a point of the snip.</summary>
     /// <param name="location">Where to show it.</param>

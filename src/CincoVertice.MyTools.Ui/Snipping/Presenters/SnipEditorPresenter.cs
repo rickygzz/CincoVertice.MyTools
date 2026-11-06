@@ -111,9 +111,17 @@ public sealed class SnipEditorPresenter
     private AnnotationModel? _drawing;
 
     // Which annotation of the snip shown is selected, and the drag of it in progress with what it would become
-    private int? _selected;
+    private IReadOnlyList<int> _selection = [];
     private SelectionDrag? _selectionDrag;
-    private AnnotationModel? _preview;
+
+    // What the selected annotations would become, in the selection's order, while they're dragged
+    private IReadOnlyList<AnnotationModel>? _previews;
+
+    // The box being dragged to select what's in it: where it started, whether it adds to what's selected, and what it
+    // covers so far
+    private Point? _bandStart;
+    private bool _bandAdds;
+    private Rectangle? _band;
 
     // The selected text while it's being typed over, when it isn't drawn since the text box stands in for it
     private bool _isEditingText;
@@ -148,6 +156,7 @@ public sealed class SnipEditorPresenter
         _view.PointerMoved += OnPointerMoved;
         _view.PointerReleased += OnPointerReleased;
         _view.PointerDoubleClicked += OnPointerDoubleClicked;
+        _view.SelectAllRequested += OnSelectAllRequested;
         _view.PointerHovered += OnPointerHovered;
         _view.PointerRightClicked += OnPointerRightClicked;
         _view.DeleteRequested += OnDeleteRequested;
@@ -187,7 +196,18 @@ public sealed class SnipEditorPresenter
 
     private SnipPage Page => _pages[_current];
 
-    private AnnotationModel? Selected => _selected is int index ? Page.Annotations[index] : null;
+    /// <summary>The one selected, for what only one at a time can have, like handles; null with none or several.</summary>
+    private AnnotationModel? Selected => _selection.Count == 1 ? Page.Annotations[_selection[0]] : null;
+
+    private int? SelectedIndex => _selection.Count == 1 ? _selection[0] : null;
+
+    /// <summary>Everything selected, in the order they're drawn.</summary>
+    private IReadOnlyList<AnnotationModel> SelectedAll => [.. _selection.Select(index => Page.Annotations[index])];
+
+    private bool HasSelection => _selection.Count > 0;
+
+    /// <summary>What the toolbar shows when several are selected: the first that has a color and a size.</summary>
+    private AnnotationModel? Primary => SelectedAll.FirstOrDefault(annotation => annotation is not BlurAnnotationModel);
 
     private double Zoom => _zoomPercent / 100.0;
 
@@ -319,57 +339,68 @@ public sealed class SnipEditorPresenter
         ShowChoices();
     }
 
-    /// <summary>The toolbar's choices: those of what's selected, or else those of the tool.</summary>
+    /// <summary>
+    ///     The toolbar's choices: those of what's selected, or else those of the tool. With several selected, each choice
+    ///     shows when any of them has it, as the first that has it is; a change goes to all of them that have it.
+    /// </summary>
     private void ShowChoices()
     {
-        AnnotationModel? selected = Selected;
-
-        _view.ShowDrawingChoices(selected is null
-            ? _tool is not (SnipTool.Blur or SnipTool.Select or SnipTool.Crop)
-            : selected is not BlurAnnotationModel);
-
-        SnipToolSettingsModel settings = selected is null ? Settings : SettingsOf(selected);
-        IReadOnlyList<int> sizes = selected switch
+        if (!HasSelection)
         {
-            null => SizesOf(_tool),
-            TextAnnotationModel => FontSizes,
-            StepAnnotationModel => StepSizes,
-
-            // Its frame is its size
-            HighlightAnnotationModel => [],
-            _ => LineSizes,
-        };
-
-        _view.ShowColor(settings.Color);
-        _view.ShowSizes(sizes, settings.Size);
-        _view.ShowTransparencies(Transparencies, settings.Transparency);
-
-        if (selected is null)
-        {
+            _view.ShowDrawingChoices(_tool is not (SnipTool.Blur or SnipTool.Select or SnipTool.Crop));
+            _view.ShowColor(Settings.Color);
+            _view.ShowSizes(SizesOf(_tool), Settings.Size);
+            _view.ShowTransparencies(Transparencies, Settings.Transparency);
             _view.ShowArrowHeads(_tool == SnipTool.Arrow ? _arrowHeads : null);
             _view.ShowCornerRadius(CornerRadii, _tool == SnipTool.Rectangle ? _cornerRadius : null);
-        }
-        else
-        {
-            _view.ShowArrowHeads(selected is ArrowAnnotationModel arrow ? arrow.Heads : null);
-            _view.ShowCornerRadius(CornerRadii, selected switch
-            {
-                RectangleAnnotationModel rectangle => rectangle.CornerRadius,
-                HighlightAnnotationModel highlight => highlight.CornerRadius,
-                _ => null,
-            });
+            ShowTextOutline();
+
+            return;
         }
 
+        IReadOnlyList<AnnotationModel> selected = SelectedAll;
+
+        _view.ShowDrawingChoices(Primary is not null);
+
+        if (Primary is { } primary)
+        {
+            SnipToolSettingsModel settings = SettingsOf(primary);
+
+            _view.ShowColor(settings.Color);
+            _view.ShowSizes(SizesFor(primary), settings.Size);
+            _view.ShowTransparencies(Transparencies, settings.Transparency);
+        }
+
+        _view.ShowArrowHeads(selected.OfType<ArrowAnnotationModel>().FirstOrDefault()?.Heads);
+        _view.ShowCornerRadius(CornerRadii, selected.Select(CornerRadiusOf).FirstOrDefault(radius => radius is not null));
         ShowTextOutline();
     }
+
+    private static int? CornerRadiusOf(AnnotationModel annotation) => annotation switch
+    {
+        RectangleAnnotationModel rectangle => rectangle.CornerRadius,
+        HighlightAnnotationModel highlight => highlight.CornerRadius,
+        _ => null,
+    };
+
+    /// <summary>The sizes an annotation can be given; none for a scaled highlight, whose frame is its size.</summary>
+    private static IReadOnlyList<int> SizesFor(AnnotationModel annotation) => annotation switch
+    {
+        TextAnnotationModel => FontSizes,
+        StepAnnotationModel => StepSizes,
+        HighlightAnnotationModel or BlurAnnotationModel => [],
+        _ => LineSizes,
+    };
 
     private void ShowTextOutline()
     {
         SnipTextOutlineModel? outline = _tool == SnipTool.Text ? _textOutline : null;
 
-        if (Selected is { } selected)
+        if (HasSelection)
         {
-            outline = selected is TextAnnotationModel text ? text.Outline ?? _textOutline with { Width = 0 } : null;
+            outline = SelectedAll.OfType<TextAnnotationModel>().FirstOrDefault() is { } text
+                ? text.Outline ?? _textOutline with { Width = 0 }
+                : null;
         }
 
         _view.ShowTextOutline(TextOutlineWidths, outline);
@@ -405,40 +436,51 @@ public sealed class SnipEditorPresenter
 
     private void Deselect()
     {
-        _selected = null;
+        _selection = [];
         _selectionDrag = null;
-        _preview = null;
+        _previews = null;
+        _bandStart = null;
+        _band = null;
         _isEditingText = false;
     }
 
-    /// <summary>Keeps a change to the selected annotation; what was undone can't be redone after it.</summary>
+    /// <summary>
+    ///     Keeps a change to each annotation selected, as one step to undo; what was undone can't be redone after it.
+    ///     The change gives back the annotation as it is for one it doesn't apply to.
+    /// </summary>
     private void ChangeSelected(Func<AnnotationModel, AnnotationModel> change)
     {
-        if (_selected is not int index)
+        if (!HasSelection)
         {
             return;
         }
 
-        AnnotationModel current = Page.Annotations[index];
-        AnnotationModel changed = change(current);
+        List<AnnotationModel> annotations = [.. Page.Annotations];
+        bool isChanged = false;
 
-        if (changed != current)
+        foreach (int index in _selection)
         {
-            Replace(index, changed with { Original = current.Original ?? current });
+            AnnotationModel current = annotations[index];
+            AnnotationModel changed = change(current);
+
+            if (changed != current)
+            {
+                annotations[index] = changed with { Original = current.Original ?? current };
+                isChanged = true;
+            }
+        }
+
+        if (isChanged)
+        {
+            Commit(annotations);
         }
 
         ShowChoices();
     }
 
-    private void Replace(int index, AnnotationModel replacement)
+    /// <returns>The one on top at the point, which is the last one drawn; null when there's none.</returns>
+    private int? TopmostAt(Point point)
     {
-        Commit([.. Page.Annotations.Select((annotation, i) => i == index ? replacement : annotation)]);
-    }
-
-    /// <returns>What a click at the point is on: the one on top, or else what's selected, if it's inside its frame.</returns>
-    private int? TargetAt(Point point)
-    {
-        // The one on top is the last one drawn
         for (int i = Page.Annotations.Count - 1; i >= 0; i--)
         {
             if (AnnotationGeometry.Hits(Page.Annotations[i], point, MeasureText, Zoom))
@@ -447,55 +489,140 @@ public sealed class SnipEditorPresenter
             }
         }
 
-        // Inside the frame also holds what's selected, as a rectangle has only its outline to take hold of
-        return Selected is { } selected && IsInsideFrame(selected, point) ? _selected : null;
+        return null;
     }
 
-    private void PressWithSelectTool(Point point)
+    /// <summary>
+    ///     The frame around what's selected: one's own frame, or one around all of them. Null for an arrow alone, which
+    ///     has only its ends.
+    /// </summary>
+    private Rectangle? SelectionFrame(IReadOnlyList<AnnotationModel> selected) => selected.Count switch
     {
-        if (Selected is { } selected)
+        0 => null,
+        1 => AnnotationGeometry.SelectionOf(selected[0], MeasureText).Box,
+        _ => selected.Select(annotation => AnnotationGeometry.BoxOf(annotation, MeasureText)).Aggregate(Rectangle.Union),
+    };
+
+    /// <summary>Inside the frame holds what's selected, as a rectangle has only its outline to take hold of.</summary>
+    private bool IsInsideSelectionFrame(Point point) => SelectionFrame(SelectedAll)?.Contains(point) == true;
+
+    /// <summary>
+    ///     A handle of the one selected scales it. On something, it's selected, or with Shift added or taken away; a drag
+    ///     then moves all that's selected. Elsewhere, a drag draws a box that selects what's wholly inside it.
+    /// </summary>
+    private void PressWithSelectTool(Point point, bool shift)
+    {
+        if (!shift && Selected is { } selected
+            && AnnotationGeometry.HandleAt(AnnotationGeometry.SelectionOf(selected, MeasureText), point, Zoom) is int handle)
         {
-            SnipSelectionModel selection = AnnotationGeometry.SelectionOf(selected, MeasureText);
-
-            if (AnnotationGeometry.HandleAt(selection, point, Zoom) is int handle)
-            {
-                _selectionDrag = new SelectionDrag(point, handle, selected);
-
-                return;
-            }
-        }
-
-        if (TargetAt(point) is int target)
-        {
-            Select(target);
-            _selectionDrag = new SelectionDrag(point, null, Page.Annotations[target]);
+            _selectionDrag = new SelectionDrag(point, handle, [selected]);
 
             return;
         }
 
-        if (_selected is not null)
+        int? hit = TopmostAt(point);
+
+        if (shift)
+        {
+            if (hit is int toggled)
+            {
+                _selection = _selection.Contains(toggled)
+                    ? [.. _selection.Where(index => index != toggled)]
+                    : [.. _selection.Append(toggled).Order()];
+                ShowChoices();
+                Refresh();
+            }
+            else
+            {
+                StartBand(point, adds: true);
+            }
+
+            return;
+        }
+
+        if (hit is int target)
+        {
+            if (!_selection.Contains(target))
+            {
+                SelectOnly(target);
+            }
+
+            // On one of several, a drag moves them all, and a click with no drag selects that one alone
+            _selectionDrag = new SelectionDrag(point, null, SelectedAll, target);
+
+            return;
+        }
+
+        if (IsInsideSelectionFrame(point))
+        {
+            _selectionDrag = new SelectionDrag(point, null, SelectedAll);
+
+            return;
+        }
+
+        if (HasSelection)
         {
             Deselect();
             ShowChoices();
             Refresh();
         }
+
+        StartBand(point, adds: false);
     }
 
-    private bool IsInsideFrame(AnnotationModel annotation, Point point) =>
-        AnnotationGeometry.SelectionOf(annotation, MeasureText).Box?.Contains(point) == true;
-
-    private void Select(int index)
+    private void StartBand(Point point, bool adds)
     {
-        _selected = index;
+        _bandStart = point;
+        _bandAdds = adds;
+        _band = null;
+    }
+
+    /// <summary>What's wholly inside the box is selected, with what was before when it adds.</summary>
+    private void EndBand()
+    {
+        Rectangle? band = _band;
+
+        _bandStart = null;
+        _band = null;
+
+        if (band is Rectangle area)
+        {
+            IEnumerable<int> inside = Enumerable.Range(0, Page.Annotations.Count)
+                .Where(index => area.Contains(AnnotationGeometry.BoxOf(Page.Annotations[index], MeasureText)));
+
+            _selection = [.. (_bandAdds ? _selection.Union(inside) : inside).Order()];
+            ShowChoices();
+        }
+
+        Refresh();
+    }
+
+    private void SelectOnly(int index)
+    {
+        _selection = [index];
         ShowChoices();
         Refresh();
     }
 
-    private void OnPointerPressed(object? sender, Point point)
+    private void OnSelectAllRequested(object? sender, EventArgs e)
     {
+        if (_tool != SnipTool.Select)
+        {
+            OnToolSelected(sender, SnipTool.Select);
+        }
+
+        _selection = [.. Enumerable.Range(0, Page.Annotations.Count)];
+        ShowChoices();
+        Refresh();
+    }
+
+    private void OnPointerPressed(object? sender, SnipPointerModel pointer)
+    {
+        Point point = pointer.Location;
+
         if (_tool == SnipTool.Select)
         {
-            PressWithSelectTool(point);
+            PressWithSelectTool(point, pointer.Shift);
 
             return;
         }
@@ -542,9 +669,19 @@ public sealed class SnipEditorPresenter
             return;
         }
 
+        if (_bandStart is Point bandStart)
+        {
+            _band = FromCorners(bandStart, point);
+            Refresh();
+
+            return;
+        }
+
         if (_selectionDrag is { } drag)
         {
-            _preview = point == drag.Start ? null : Dragged(drag, point);
+            _previews = point == drag.Start
+                ? null
+                : [.. drag.Originals.Select(annotation => Dragged(drag, annotation, point))];
             Refresh();
 
             return;
@@ -580,18 +717,30 @@ public sealed class SnipEditorPresenter
             return;
         }
 
+        if (_bandStart is not null)
+        {
+            OnPointerMoved(sender, point);
+            EndBand();
+
+            return;
+        }
+
         if (_selectionDrag is { } drag)
         {
             _selectionDrag = null;
-            _preview = null;
+            _previews = null;
 
-            if (point == drag.Start)
+            if (point == drag.Start && drag.Clicked is int clicked && _selection.Count > 1)
+            {
+                SelectOnly(clicked);
+            }
+            else if (point == drag.Start)
             {
                 Refresh();
             }
             else
             {
-                ChangeSelected(_ => Dragged(drag, point));
+                ChangeSelected(annotation => Dragged(drag, annotation, point));
             }
 
             return;
@@ -710,9 +859,10 @@ public sealed class SnipEditorPresenter
     private int NextStepNumber() =>
         Page.Annotations.OfType<StepAnnotationModel>().Select(step => step.Number).DefaultIfEmpty(0).Max() + 1;
 
-    private AnnotationModel Dragged(SelectionDrag drag, Point point) => drag.Handle is int handle
-        ? AnnotationGeometry.Resized(drag.Original, handle, point, MeasureText)
-        : AnnotationGeometry.Moved(drag.Original, new Size(point.X - drag.Start.X, point.Y - drag.Start.Y));
+    /// <summary>What an annotation becomes with the drag: scaled by the handle of the one selected, or moved.</summary>
+    private AnnotationModel Dragged(SelectionDrag drag, AnnotationModel annotation, Point point) => drag.Handle is int handle
+        ? AnnotationGeometry.Resized(annotation, handle, point, MeasureText)
+        : AnnotationGeometry.Moved(annotation, new Size(point.X - drag.Start.X, point.Y - drag.Start.Y));
 
     /// <summary>On a selected text, lets the user type over it; inside a crop being adjusted, crops.</summary>
     private void OnPointerDoubleClicked(object? sender, Point point)
@@ -731,7 +881,7 @@ public sealed class SnipEditorPresenter
         }
 
         _selectionDrag = null;
-        _preview = null;
+        _previews = null;
         _isEditingText = true;
         Refresh();
 
@@ -753,8 +903,6 @@ public sealed class SnipEditorPresenter
             return;
         }
 
-        SnipCursor cursor = SnipCursor.Default;
-
         if (Selected is { } selected)
         {
             SnipSelectionModel selection = AnnotationGeometry.SelectionOf(selected, MeasureText);
@@ -765,19 +913,9 @@ public sealed class SnipEditorPresenter
 
                 return;
             }
-
-            if (IsInsideFrame(selected, point))
-            {
-                cursor = SnipCursor.Move;
-            }
         }
 
-        if (Page.Annotations.Any(annotation => AnnotationGeometry.Hits(annotation, point, MeasureText, Zoom)))
-        {
-            cursor = SnipCursor.Move;
-        }
-
-        ShowCursor(cursor);
+        ShowCursor(IsInsideSelectionFrame(point) || TopmostAt(point) is not null ? SnipCursor.Move : SnipCursor.Default);
     }
 
     private SnipCursor CropCursorAt(Point point)
@@ -797,103 +935,127 @@ public sealed class SnipEditorPresenter
         return pending.Contains(point) ? SnipCursor.Move : SnipCursor.Cross;
     }
 
-    /// <summary>Over something with the select tool, selects it and offers what can be done to it.</summary>
+    /// <summary>
+    ///     Over something with the select tool, offers what can be done to it: to all that's selected when it's one of
+    ///     them, or inside their frame; otherwise it's selected alone first.
+    /// </summary>
     private void OnPointerRightClicked(object? sender, Point point)
     {
-        if (_tool != SnipTool.Select || _selectionDrag is not null)
+        if (_tool != SnipTool.Select || _selectionDrag is not null || _bandStart is not null)
         {
             return;
         }
 
         bool isOnHandle = Selected is { } selected
             && AnnotationGeometry.HandleAt(AnnotationGeometry.SelectionOf(selected, MeasureText), point, Zoom) is not null;
+        int? hit = TopmostAt(point);
+        bool isOnSelection = isOnHandle || (hit is int on ? _selection.Contains(on) : IsInsideSelectionFrame(point));
 
-        if (!isOnHandle)
+        if (!isOnSelection)
         {
-            if (TargetAt(point) is not int target)
+            if (hit is not int target)
             {
                 return;
             }
 
-            Select(target);
+            SelectOnly(target);
         }
-
-        int index = _selected!.Value;
 
         _view.ShowContextMenu(
             point,
             new SnipContextMenuModel(
-                Page.Annotations[index].Original is not null,
-                index < Page.Annotations.Count - 1,
-                index > 0));
+                SelectedAll.Any(annotation => annotation.Original is not null),
+                !IsOnTop(),
+                !IsAtBottom()));
     }
 
+    /// <summary>Whether what's selected is above all the rest already, so bringing it to the front would change nothing.</summary>
+    private bool IsOnTop() =>
+        _selection.SequenceEqual(Enumerable.Range(Page.Annotations.Count - _selection.Count, _selection.Count));
+
+    private bool IsAtBottom() => _selection.SequenceEqual(Enumerable.Range(0, _selection.Count));
+
     /// <summary>
-    ///     A copy a little down and to the right, so both show, on top of the others and selected, to drag where it goes.
+    ///     Copies a little down and to the right, so both show, on top of the others and selected, to drag where they go.
     ///     A step's copy has the next number, as a step added by a click does.
     /// </summary>
     private void OnDuplicateRequested(object? sender, EventArgs e)
     {
-        if (_selectionDrag is not null || Selected is not { } selected)
+        if (_selectionDrag is not null || !HasSelection)
         {
             return;
         }
 
-        AnnotationModel copy = AnnotationGeometry.Moved(selected, new Size(DuplicateOffset, DuplicateOffset)) with
-        {
-            Original = null,
-        };
+        int nextStep = NextStepNumber();
+        List<AnnotationModel> copies = [];
 
-        if (copy is StepAnnotationModel step)
+        foreach (AnnotationModel selected in SelectedAll)
         {
-            copy = step with { Number = NextStepNumber() };
+            AnnotationModel copy = AnnotationGeometry.Moved(selected, new Size(DuplicateOffset, DuplicateOffset)) with
+            {
+                Original = null,
+            };
+
+            copies.Add(copy is StepAnnotationModel step ? step with { Number = nextStep++ } : copy);
         }
 
-        _selected = Page.Annotations.Count;
-        Commit([.. Page.Annotations, copy]);
+        _selection = [.. Enumerable.Range(Page.Annotations.Count, copies.Count)];
+        Commit([.. Page.Annotations, .. copies]);
         ShowChoices();
     }
 
+    /// <summary>Above all the rest, keeping their order among themselves.</summary>
     private void OnBringToFrontRequested(object? sender, EventArgs e)
     {
-        if (_selected is int index && index < Page.Annotations.Count - 1 && _selectionDrag is null)
+        if (!HasSelection || IsOnTop() || _selectionDrag is not null)
         {
-            AnnotationModel selected = Page.Annotations[index];
-
-            _selected = Page.Annotations.Count - 1;
-            Commit([.. Page.Annotations.Where((_, i) => i != index), selected]);
+            return;
         }
+
+        IReadOnlyList<int> moved = _selection;
+        List<AnnotationModel> annotations = [.. Page.Annotations.Where((_, i) => !moved.Contains(i)), .. SelectedAll];
+
+        _selection = [.. Enumerable.Range(annotations.Count - moved.Count, moved.Count)];
+        Commit(annotations);
     }
 
     private void OnSendToBackRequested(object? sender, EventArgs e)
     {
-        if (_selected is int index && index > 0 && _selectionDrag is null)
-        {
-            AnnotationModel selected = Page.Annotations[index];
-
-            _selected = 0;
-            Commit([selected, .. Page.Annotations.Where((_, i) => i != index)]);
-        }
-    }
-
-    private void OnResetRequested(object? sender, EventArgs e)
-    {
-        if (_selected is int index && Page.Annotations[index].Original is { } original)
-        {
-            Replace(index, original);
-            ShowChoices();
-        }
-    }
-
-    private void OnDeleteRequested(object? sender, EventArgs e)
-    {
-        if (_selected is not int index)
+        if (!HasSelection || IsAtBottom() || _selectionDrag is not null)
         {
             return;
         }
 
+        IReadOnlyList<int> moved = _selection;
+        List<AnnotationModel> annotations = [.. SelectedAll, .. Page.Annotations.Where((_, i) => !moved.Contains(i))];
+
+        _selection = [.. Enumerable.Range(0, moved.Count)];
+        Commit(annotations);
+    }
+
+    private void OnResetRequested(object? sender, EventArgs e)
+    {
+        if (!SelectedAll.Any(annotation => annotation.Original is not null))
+        {
+            return;
+        }
+
+        Commit([.. Page.Annotations.Select((annotation, i) =>
+            _selection.Contains(i) && annotation.Original is { } original ? original : annotation)]);
+        ShowChoices();
+    }
+
+    private void OnDeleteRequested(object? sender, EventArgs e)
+    {
+        if (!HasSelection)
+        {
+            return;
+        }
+
+        IReadOnlyList<int> deleted = _selection;
+
         Deselect();
-        Commit([.. Page.Annotations.Where((_, i) => i != index)]);
+        Commit([.. Page.Annotations.Where((_, i) => !deleted.Contains(i))]);
         ShowChoices();
     }
 
@@ -918,7 +1080,7 @@ public sealed class SnipEditorPresenter
     /// </summary>
     private void OnTextEscaped(object? sender, TextInputModel input)
     {
-        int? editing = _isEditingText ? _selected : null;
+        int? editing = _isEditingText ? SelectedIndex : null;
 
         OnTextCommitted(sender, input);
 
@@ -932,7 +1094,7 @@ public sealed class SnipEditorPresenter
             OnToolSelected(sender, SnipTool.Select);
         }
 
-        Select(editing ?? Page.Annotations.Count - 1);
+        SelectOnly(editing ?? Page.Annotations.Count - 1);
     }
 
     /// <summary>The color without transparency, compared by its value only, as palette colors are.</summary>
@@ -957,7 +1119,7 @@ public sealed class SnipEditorPresenter
 
     private void OnColorSelected(object? sender, Color color)
     {
-        if (Selected is not null)
+        if (HasSelection)
         {
             // As see-through as it was
             ChangeSelected(annotation => annotation with { Color = Color.FromArgb(annotation.Color.A, Solid(color)) });
@@ -973,14 +1135,14 @@ public sealed class SnipEditorPresenter
 
     private void OnMoreColorsRequested(object? sender, EventArgs e)
     {
-        Color current = Selected is { } selected ? Solid(selected.Color) : Settings.Color;
+        Color current = Primary is { } primary ? Solid(primary.Color) : Settings.Color;
 
         if (AskColor(current) is Color color)
         {
             OnColorSelected(sender, color);
 
             // A change to what's selected saves nothing by itself, and the custom color is to be kept
-            if (Selected is not null)
+            if (HasSelection)
             {
                 SaveSettings();
             }
@@ -1011,9 +1173,12 @@ public sealed class SnipEditorPresenter
             return;
         }
 
-        if (Selected is not null)
+        if (HasSelection)
         {
-            ChangeSelected(annotation => annotation switch
+            // Only to those with the same kind of size as the one shown: a line's width isn't a text's font size
+            IReadOnlyList<int> shown = Primary is { } primary ? SizesFor(primary) : [];
+
+            ChangeSelected(annotation => !ReferenceEquals(SizesFor(annotation), shown) ? annotation : annotation switch
             {
                 StrokeAnnotationModel stroke => stroke with { Width = size },
                 ArrowAnnotationModel arrow => arrow with { Width = size },
@@ -1036,7 +1201,7 @@ public sealed class SnipEditorPresenter
         // At 100% nothing would be drawn
         int clamped = Math.Clamp(transparency, 0, Transparencies[^1]);
 
-        if (Selected is not null)
+        if (HasSelection)
         {
             ChangeSelected(annotation => annotation with { Color = WithTransparency(annotation.Color, clamped) });
 
@@ -1050,7 +1215,7 @@ public sealed class SnipEditorPresenter
 
     private void OnArrowHeadsSelected(object? sender, SnipArrowHeads heads)
     {
-        if (Selected is not null)
+        if (HasSelection)
         {
             ChangeSelected(annotation => annotation is ArrowAnnotationModel arrow ? arrow with { Heads = heads } : annotation);
 
@@ -1069,7 +1234,7 @@ public sealed class SnipEditorPresenter
             return;
         }
 
-        if (Selected is not null)
+        if (HasSelection)
         {
             ChangeSelected(annotation => annotation switch
             {
@@ -1093,7 +1258,7 @@ public sealed class SnipEditorPresenter
             return;
         }
 
-        if (Selected is not null)
+        if (HasSelection)
         {
             ChangeSelectedOutline(outline => outline with { Width = width });
 
@@ -1115,7 +1280,7 @@ public sealed class SnipEditorPresenter
 
     private void OnTextOutlineColorSelected(object? sender, Color color)
     {
-        if (Selected is not null)
+        if (HasSelection)
         {
             ChangeSelectedOutline(outline => outline with { Color = Solid(color) });
 
@@ -1129,13 +1294,13 @@ public sealed class SnipEditorPresenter
 
     private void OnMoreTextOutlineColorsRequested(object? sender, EventArgs e)
     {
-        Color current = Selected is TextAnnotationModel { Outline: { } outline } ? outline.Color : _textOutline.Color;
+        Color current = SelectedAll.OfType<TextAnnotationModel>().FirstOrDefault()?.Outline?.Color ?? _textOutline.Color;
 
         if (AskColor(current) is Color color)
         {
             OnTextOutlineColorSelected(sender, color);
 
-            if (Selected is not null)
+            if (HasSelection)
             {
                 SaveSettings();
             }
@@ -1240,7 +1405,9 @@ public sealed class SnipEditorPresenter
         _points = [];
         _drawing = null;
         _selectionDrag = null;
-        _preview = null;
+        _previews = null;
+        _bandStart = null;
+        _band = null;
         _view.ShowZoom(percent);
         Refresh();
     }
@@ -1274,7 +1441,7 @@ public sealed class SnipEditorPresenter
         _points = [];
         _drawing = null;
 
-        bool hadSelection = _selected is not null;
+        bool hadSelection = HasSelection;
 
         Deselect();
         CancelCrop();
@@ -1411,15 +1578,23 @@ public sealed class SnipEditorPresenter
     {
         List<AnnotationModel> shown = [];
 
+        List<AnnotationModel> selected = [];
+
         for (int i = 0; i < Page.Annotations.Count; i++)
         {
-            if (i != _selected)
+            int place = IndexInSelection(i);
+
+            if (place < 0)
             {
                 shown.Add(Page.Annotations[i]);
             }
             else if (!_isEditingText)
             {
-                shown.Add(_preview ?? Page.Annotations[i]);
+                // While dragged, as they would be
+                AnnotationModel annotation = _previews is { } previews ? previews[place] : Page.Annotations[i];
+
+                shown.Add(annotation);
+                selected.Add(annotation);
             }
         }
 
@@ -1430,10 +1605,29 @@ public sealed class SnipEditorPresenter
 
         _view.ShowAnnotations(shown);
 
-        AnnotationModel? selected = _isEditingText ? null : _preview ?? Selected;
-
-        _view.ShowSelection(selected is null ? null : AnnotationGeometry.SelectionOf(selected, MeasureText));
+        // One shows its own frame and handles; several a frame around them all, as they can only be moved together
+        _view.ShowSelection(selected.Count switch
+        {
+            0 => null,
+            1 => AnnotationGeometry.SelectionOf(selected[0], MeasureText),
+            _ => new SnipSelectionModel(SelectionFrame(selected), []),
+        });
+        _view.ShowSelectionBand(_band);
         _view.ShowUndoRedo(Page.Undo.Count > 0, Page.Redo.Count > 0);
+    }
+
+    /// <returns>Where an annotation is in the selection; -1 when it isn't selected.</returns>
+    private int IndexInSelection(int index)
+    {
+        for (int i = 0; i < _selection.Count; i++)
+        {
+            if (_selection[i] == index)
+            {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     private static Rectangle FromCorners(Point a, Point b) => Rectangle.FromLTRB(
@@ -1467,11 +1661,16 @@ public sealed class SnipEditorPresenter
     /// <param name="Crop">The part of the snip that's kept; null for all of it.</param>
     private sealed record SnipPageState(IReadOnlyList<AnnotationModel> Annotations, Rectangle? Crop);
 
-    /// <summary>A drag of the selected annotation.</summary>
+    /// <summary>A drag of what's selected.</summary>
     /// <param name="Start">Where the button was pressed.</param>
-    /// <param name="Handle">Which handle is dragged; null when the whole annotation is moved.</param>
-    /// <param name="Original">The annotation as it was before the drag.</param>
-    private sealed record SelectionDrag(Point Start, int? Handle, AnnotationModel Original);
+    /// <param name="Handle">Which handle of the one selected is dragged; null when they're all moved.</param>
+    /// <param name="Originals">What's selected as it was before the drag, in the selection's order.</param>
+    /// <param name="Clicked">What the button was pressed on; null for the empty space inside the frame.</param>
+    private sealed record SelectionDrag(
+        Point Start,
+        int? Handle,
+        IReadOnlyList<AnnotationModel> Originals,
+        int? Clicked = null);
 
     /// <summary>A drag with the crop tool.</summary>
     /// <param name="Start">Where the button was pressed.</param>

@@ -697,7 +697,7 @@ public sealed class SnipEditorFormTests : IDisposable
         // Arrange
         using var form = new SnipEditorForm(Quarters(200, 100));
         List<Point> points = [];
-        form.PointerPressed += (_, point) => points.Add(point);
+        form.PointerPressed += (_, pointer) => points.Add(pointer.Location);
 
         // Act
         form.ShowCrop(new Rectangle(100, 50, 100, 50));
@@ -794,6 +794,42 @@ public sealed class SnipEditorFormTests : IDisposable
     }
 
     [Fact]
+    public void SelectionBand_IsShownOnTheScreenOnly()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        var canvas = Field<PictureBox>(form, "Canvas");
+        string path = SavedImagePath();
+
+        // Act
+        form.ShowSelectionBand(new Rectangle(20, 20, 50, 50));
+        using var shown = new Bitmap(canvas.Width, canvas.Height);
+        canvas.DrawToBitmap(shown, new Rectangle(Point.Empty, canvas.Size));
+        form.SaveImage(path);
+
+        // Assert: tinted blue inside, and nothing of it in the image
+        Color inside = shown.GetPixel(45, 45);
+        Assert.True(inside.B > inside.R, $"Not tinted: {inside}");
+        using var saved = new Bitmap(path);
+        Assert.Equal(Color.White.ToArgb(), saved.GetPixel(45, 45).ToArgb());
+    }
+
+    [Fact]
+    public void CtrlA_AsksToSelectEverything()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        int asked = 0;
+        form.SelectAllRequested += (_, _) => asked++;
+
+        // Act
+        InvokeKeyDown(form, new KeyEventArgs(Keys.Control | Keys.A));
+
+        // Assert
+        Assert.Equal(1, asked);
+    }
+
+    [Fact]
     public void GetSnipSize_IsTheWholeSnip_WhateverTheCrop()
     {
         // Arrange
@@ -830,7 +866,7 @@ public sealed class SnipEditorFormTests : IDisposable
         // Arrange
         using var form = new SnipEditorForm(Solid(200, 200, Color.White));
         List<Point> points = [];
-        form.PointerPressed += (_, point) => points.Add(point);
+        form.PointerPressed += (_, pointer) => points.Add(pointer.Location);
         form.PointerMoved += (_, point) => points.Add(point);
         form.PointerReleased += (_, point) => points.Add(point);
         form.PointerHovered += (_, point) => points.Add(point);

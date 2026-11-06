@@ -114,6 +114,20 @@ public static class AnnotationRenderer
         }
     }
 
+    /// <summary>The box being dragged to select what's in it, see-through so what's under it shows; on the screen only.</summary>
+    /// <param name="graphics">The screen, not scaled.</param>
+    /// <param name="band">The box, in snip pixels.</param>
+    /// <param name="zoom">How large the snip is shown.</param>
+    public static void DrawSelectionBand(Graphics graphics, Rectangle band, float zoom = 1)
+    {
+        var box = new RectangleF(band.X * zoom, band.Y * zoom, band.Width * zoom, band.Height * zoom);
+        using var fill = new SolidBrush(Color.FromArgb(40, _selectionColor));
+        using var pen = new Pen(_selectionColor);
+
+        graphics.FillRectangle(fill, box);
+        graphics.DrawRectangle(pen, box.X, box.Y, box.Width, box.Height);
+    }
+
     private static Pen CreatePen(Color color, int width) => new(color, width)
     {
         StartCap = LineCap.Round,
