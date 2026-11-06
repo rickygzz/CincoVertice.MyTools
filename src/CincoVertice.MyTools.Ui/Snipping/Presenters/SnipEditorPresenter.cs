@@ -46,6 +46,9 @@ public sealed class SnipEditorPresenter
     /// <summary>The transparencies to choose from, in percent; 100 would be invisible.</summary>
     public static IReadOnlyList<int> Transparencies { get; } = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90];
 
+    /// <summary>How large the snip can be shown, in percent.</summary>
+    public static IReadOnlyList<int> ZoomLevels { get; } = [25, 33, 50, 67, 75, 100, 125, 150, 200, 300, 400, 600, 800];
+
     /// <summary>How round corners can be, in pixels; 0 is square.</summary>
     public static IReadOnlyList<int> CornerRadii { get; } = [0, 4, 8, 12, 16, 24, 32, 48];
 
@@ -85,6 +88,9 @@ public sealed class SnipEditorPresenter
 
     // A snip is mostly of something else; the editor in it would be in the way
     private bool _hideWhileSnipping = true;
+
+    // How large the snip is shown, in percent
+    private int _zoomPercent = 100;
 
     // Off until a width is chosen; white shows on most of what a text is written over
     private SnipTextOutlineModel _textOutline = new(0, Rgb(0xFFFFFF));
@@ -149,6 +155,7 @@ public sealed class SnipEditorPresenter
         _view.SaveRequested += OnSaveRequested;
         _view.CloseRequested += OnCloseRequested;
         _view.HideWhileSnippingSelected += OnHideWhileSnippingSelected;
+        _view.ZoomRequested += OnZoomRequested;
     }
 
     /// <summary>The annotations kept on the snip shown, oldest first; without the one being drawn.</summary>
@@ -157,6 +164,8 @@ public sealed class SnipEditorPresenter
     private SnipPage Page => _pages[_current];
 
     private AnnotationModel? Selected => _selected is int index ? Page.Annotations[index] : null;
+
+    private double Zoom => _zoomPercent / 100.0;
 
     private SnipToolSettingsModel Settings => _settings[_tool];
 
@@ -173,6 +182,7 @@ public sealed class SnipEditorPresenter
     {
         _view.ShowPalette(Palette, [.. _customColors]);
         _view.ShowHideWhileSnipping(_hideWhileSnipping);
+        _view.ShowZoom(_zoomPercent);
         ShowTool();
         ShowPage(0);
     }
@@ -400,7 +410,7 @@ public sealed class SnipEditorPresenter
         // The one on top is the last one drawn
         for (int i = Page.Annotations.Count - 1; i >= 0; i--)
         {
-            if (AnnotationGeometry.Hits(Page.Annotations[i], point, MeasureText))
+            if (AnnotationGeometry.Hits(Page.Annotations[i], point, MeasureText, Zoom))
             {
                 return i;
             }
@@ -416,7 +426,7 @@ public sealed class SnipEditorPresenter
         {
             SnipSelectionModel selection = AnnotationGeometry.SelectionOf(selected, MeasureText);
 
-            if (AnnotationGeometry.HandleAt(selection, point) is int handle)
+            if (AnnotationGeometry.HandleAt(selection, point, Zoom) is int handle)
             {
                 _selectionDrag = new SelectionDrag(point, handle, selected);
 
@@ -545,7 +555,7 @@ public sealed class SnipEditorPresenter
     private void OnPointerDoubleClicked(object? sender, Point point)
     {
         if (_tool != SnipTool.Select || Selected is not TextAnnotationModel text
-            || !AnnotationGeometry.Hits(text, point, MeasureText))
+            || !AnnotationGeometry.Hits(text, point, MeasureText, Zoom))
         {
             return;
         }
@@ -572,7 +582,7 @@ public sealed class SnipEditorPresenter
         {
             SnipSelectionModel selection = AnnotationGeometry.SelectionOf(selected, MeasureText);
 
-            if (AnnotationGeometry.HandleAt(selection, point) is int handle)
+            if (AnnotationGeometry.HandleAt(selection, point, Zoom) is int handle)
             {
                 ShowCursor(AnnotationGeometry.CursorOf(selection, handle));
 
@@ -585,7 +595,7 @@ public sealed class SnipEditorPresenter
             }
         }
 
-        if (Page.Annotations.Any(annotation => AnnotationGeometry.Hits(annotation, point, MeasureText)))
+        if (Page.Annotations.Any(annotation => AnnotationGeometry.Hits(annotation, point, MeasureText, Zoom)))
         {
             cursor = SnipCursor.Move;
         }
@@ -602,7 +612,7 @@ public sealed class SnipEditorPresenter
         }
 
         bool isOnHandle = Selected is { } selected
-            && AnnotationGeometry.HandleAt(AnnotationGeometry.SelectionOf(selected, MeasureText), point) is not null;
+            && AnnotationGeometry.HandleAt(AnnotationGeometry.SelectionOf(selected, MeasureText), point, Zoom) is not null;
 
         if (!isOnHandle)
         {
@@ -945,8 +955,44 @@ public sealed class SnipEditorPresenter
         Changed();
     }
 
+    /// <summary>
+    ///     One level larger or smaller, or 0 for 100%. A drag can't go on: what's under the mouse is somewhere else now.
+    /// </summary>
+    private void OnZoomRequested(object? sender, int step)
+    {
+        int percent = step switch
+        {
+            > 0 => ZoomLevels.FirstOrDefault(level => level > _zoomPercent, ZoomLevels[^1]),
+            < 0 => ZoomLevels.LastOrDefault(level => level < _zoomPercent, ZoomLevels[0]),
+            _ => 100,
+        };
+
+        if (percent != _zoomPercent)
+        {
+            SetZoom(percent);
+        }
+    }
+
+    private void SetZoom(int percent)
+    {
+        _zoomPercent = percent;
+        _start = null;
+        _points = [];
+        _drawing = null;
+        _selectionDrag = null;
+        _preview = null;
+        _view.ShowZoom(percent);
+        Refresh();
+    }
+
     private void OnSnipAdded(object? sender, EventArgs e)
     {
+        // At its own size, as a new window shows it
+        if (_zoomPercent != 100)
+        {
+            SetZoom(100);
+        }
+
         _pages.Add(new SnipPage());
         ShowPage(_pages.Count - 1);
     }

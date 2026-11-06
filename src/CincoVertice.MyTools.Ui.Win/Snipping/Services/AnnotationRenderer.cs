@@ -68,20 +68,28 @@ public static class AnnotationRenderer
     }
 
     /// <summary>What shows an annotation is selected; on the editor's screen only, never in the image.</summary>
-    public static void DrawSelection(Graphics graphics, SnipSelectionModel selection)
+    /// <param name="graphics">The screen, not scaled.</param>
+    /// <param name="selection">What shows it, in snip pixels.</param>
+    /// <param name="zoom">How large the snip is shown; the frame and the handles stay as thin and as small.</param>
+    public static void DrawSelection(Graphics graphics, SnipSelectionModel selection, float zoom = 1)
     {
         using var pen = new Pen(_selectionColor);
 
         if (selection.Box is Rectangle box)
         {
-            graphics.DrawRectangle(pen, box);
+            graphics.DrawRectangle(
+                pen,
+                (int)Math.Round(box.X * zoom),
+                (int)Math.Round(box.Y * zoom),
+                (int)Math.Round(box.Width * zoom),
+                (int)Math.Round(box.Height * zoom));
         }
 
         foreach (Point handle in selection.Handles)
         {
             var square = new Rectangle(
-                handle.X - HandleSize / 2,
-                handle.Y - HandleSize / 2,
+                (int)Math.Round(handle.X * zoom) - HandleSize / 2,
+                (int)Math.Round(handle.Y * zoom) - HandleSize / 2,
                 HandleSize,
                 HandleSize);
 

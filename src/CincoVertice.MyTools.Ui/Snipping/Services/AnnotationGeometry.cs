@@ -66,8 +66,12 @@ public static class AnnotationGeometry
     ///     Which of the selection's handles is at the point, the nearest one when they overlap, as they do on a thin line;
     ///     null when none is.
     /// </returns>
-    public static int? HandleAt(SnipSelectionModel selection, Point point)
+    /// <param name="selection">What shows it's selected.</param>
+    /// <param name="point">Where, in snip pixels.</param>
+    /// <param name="zoom">How large the snip is shown: the handles are the same size on the screen at any zoom.</param>
+    public static int? HandleAt(SnipSelectionModel selection, Point point, double zoom = 1)
     {
+        double reach = HandleDistance / zoom;
         int? nearest = null;
         int nearestDistance = int.MaxValue;
 
@@ -77,7 +81,7 @@ public static class AnnotationGeometry
             int dy = Math.Abs(selection.Handles[i].Y - point.Y);
             int distance = dx * dx + dy * dy;
 
-            if (dx <= HandleDistance && dy <= HandleDistance && distance < nearestDistance)
+            if (dx <= reach && dy <= reach && distance < nearestDistance)
             {
                 nearest = i;
                 nearestDistance = distance;
@@ -91,16 +95,24 @@ public static class AnnotationGeometry
     ///     Whether the point is on what's drawn: on a line or a rectangle's outline, not in the empty space they
     ///     surround, so what's under them can still be clicked.
     /// </summary>
-    public static bool Hits(AnnotationModel annotation, Point point, Func<string, int, Size> measure)
+    /// <param name="annotation">What may be clicked.</param>
+    /// <param name="point">Where, in snip pixels.</param>
+    /// <param name="measure">Gives a text's size.</param>
+    /// <param name="zoom">How large the snip is shown: how near is near enough is the same on the screen at any zoom.</param>
+    public static bool Hits(AnnotationModel annotation, Point point, Func<string, int, Size> measure, double zoom = 1)
     {
+        double near = HitDistance / zoom;
+
         switch (annotation)
         {
             case StrokeAnnotationModel stroke:
-                return IsNearLine(stroke.Points, point, stroke.Width);
+                return IsNearLine(stroke.Points, point, stroke.Width, near);
             case ArrowAnnotationModel arrow:
-                return IsNearLine([arrow.From, arrow.To], point, arrow.Width)
-                    || (arrow.Heads is SnipArrowHeads.Start or SnipArrowHeads.Both && IsOnHead(arrow, arrow.To, arrow.From, point))
-                    || (arrow.Heads is SnipArrowHeads.End or SnipArrowHeads.Both && IsOnHead(arrow, arrow.From, arrow.To, point));
+                return IsNearLine([arrow.From, arrow.To], point, arrow.Width, near)
+                    || (arrow.Heads is SnipArrowHeads.Start or SnipArrowHeads.Both
+                        && IsOnHead(arrow, arrow.To, arrow.From, point, near))
+                    || (arrow.Heads is SnipArrowHeads.End or SnipArrowHeads.Both
+                        && IsOnHead(arrow, arrow.From, arrow.To, point, near));
             case RectangleAnnotationModel rectangle:
                 Rectangle bounds = rectangle.Bounds;
 
@@ -113,11 +125,13 @@ public static class AnnotationGeometry
                         new Point(bounds.Left, bounds.Top),
                     ],
                     point,
-                    rectangle.Width);
+                    rectangle.Width,
+                    near);
             default:
                 Rectangle box = BoxOf(annotation, measure);
+                int by = (int)Math.Ceiling(near);
 
-                box.Inflate(HitDistance, HitDistance);
+                box.Inflate(by, by);
 
                 return box.Contains(point);
         }
@@ -287,9 +301,9 @@ public static class AnnotationGeometry
         points.Max(point => point.X),
         points.Max(point => point.Y));
 
-    private static bool IsNearLine(IReadOnlyList<Point> points, Point point, int width)
+    private static bool IsNearLine(IReadOnlyList<Point> points, Point point, int width, double near)
     {
-        double reach = width / 2.0 + HitDistance;
+        double reach = width / 2.0 + near;
 
         if (points.Count == 1)
         {
@@ -308,7 +322,7 @@ public static class AnnotationGeometry
     }
 
     /// <summary>Whether the point is on a head: a triangle with its tip at the line's end, as long as it's wide.</summary>
-    private static bool IsOnHead(ArrowAnnotationModel arrow, Point tail, Point tip, Point point)
+    private static bool IsOnHead(ArrowAnnotationModel arrow, Point tail, Point tip, Point point, double near)
     {
         double dx = tip.X - tail.X;
         double dy = tip.Y - tail.Y;
@@ -325,9 +339,9 @@ public static class AnnotationGeometry
         double back = ((tip.X - point.X) * dx + (tip.Y - point.Y) * dy) / lineLength;
         double side = Math.Abs((point.X - tip.X) * dy - (point.Y - tip.Y) * dx) / lineLength;
 
-        return back >= -HitDistance
-            && back <= headLength + HitDistance
-            && side <= Math.Clamp(back, 0, headLength) / 2 + HitDistance;
+        return back >= -near
+            && back <= headLength + near
+            && side <= Math.Clamp(back, 0, headLength) / 2 + near;
     }
 
     /// <summary>From a point to the nearest point of a line between two others.</summary>

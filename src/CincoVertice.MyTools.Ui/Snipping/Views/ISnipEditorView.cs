@@ -80,6 +80,9 @@ public interface ISnipEditorView
     /// <summary>Raised to go to another snip: -1 for the one before, 1 for the one after.</summary>
     event EventHandler<int>? SnipStepRequested;
 
+    /// <summary>Raised to show the snip larger (1), smaller (-1), or at its own size (0).</summary>
+    event EventHandler<int>? ZoomRequested;
+
     /// <summary>Raised with true when the user wants the window kept out of the next snips' screenshots.</summary>
     event EventHandler<bool>? HideWhileSnippingSelected;
 
@@ -151,6 +154,12 @@ public interface ISnipEditorView
     Size MeasureText(string text, int fontSize);
 
     void ShowUndoRedo(bool canUndo, bool canRedo);
+
+    /// <summary>
+    ///     Shows the snip this large, in percent. Points in the events stay in snip pixels; what's copied or saved stays
+    ///     at the snip's own size.
+    /// </summary>
+    void ShowZoom(int percent);
 
     /// <summary>Shows whether the window is kept out of the next snips' screenshots.</summary>
     void ShowHideWhileSnipping(bool isHidden);

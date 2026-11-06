@@ -1965,6 +1965,147 @@ public class SnipEditorPresenterTests
     }
 
     [Fact]
+    public void Zoom_StartsAt100()
+    {
+        Assert.Equal(100, _view.ZoomPercent);
+    }
+
+    [Fact]
+    public void Zoom_GoesThroughTheLevels_AndStopsAtTheEnds()
+    {
+        // Act & Assert
+        List<int> larger = [];
+
+        for (int i = 0; i < 10; i++)
+        {
+            _view.Zoom(1);
+            larger.Add(_view.ZoomPercent!.Value);
+        }
+
+        Assert.Equal([125, 150, 200, 300, 400, 600, 800, 800, 800, 800], larger);
+
+        _view.Zoom(0);
+        Assert.Equal(100, _view.ZoomPercent);
+
+        List<int> smaller = [];
+
+        for (int i = 0; i < 7; i++)
+        {
+            _view.Zoom(-1);
+            smaller.Add(_view.ZoomPercent!.Value);
+        }
+
+        Assert.Equal([75, 67, 50, 33, 25, 25, 25], smaller);
+    }
+
+    [Fact]
+    public void Zoom_DropsADragInProgress()
+    {
+        // Arrange
+        _view.Press(10, 10);
+        _view.Move(50, 50);
+
+        // Act
+        _view.Zoom(1);
+        _view.Release(60, 60);
+
+        // Assert
+        Assert.Empty(_presenter.Annotations);
+        Assert.Empty(_view.Annotations);
+    }
+
+    [Fact]
+    public void Zoom_KeepsWhatsSelected()
+    {
+        // Arrange
+        DrawRectangleAndArrow();
+        Click(100, 140);
+
+        // Act
+        _view.Zoom(1);
+
+        // Assert
+        Assert.NotNull(_view.Selection);
+    }
+
+    [Fact]
+    public void NewSnip_IsShownAtItsOwnSize()
+    {
+        // Arrange
+        _view.Zoom(1);
+        _view.Zoom(1);
+
+        // Act
+        _view.AddSnip();
+
+        // Assert
+        Assert.Equal(100, _view.ZoomPercent);
+    }
+
+    [Fact]
+    public void GoingToAnotherSnip_KeepsTheZoom()
+    {
+        // Arrange
+        _view.AddSnip();
+        _view.Zoom(1);
+
+        // Act
+        _view.StepSnip(-1);
+
+        // Assert
+        Assert.Equal(125, _view.ZoomPercent);
+    }
+
+    [Theory]
+    [InlineData(100, 106, true)]
+    [InlineData(100, 107, false)]
+    [InlineData(400, 103, true)]
+    [InlineData(400, 104, false)]
+    [InlineData(25, 115, true)]
+    public void Clicking_NearALine_IsAsNearOnTheScreenAtAnyZoom(int percent, int y, bool selects)
+    {
+        // Arrange: a level line 4 wide at y 100, so its edge is 2 from the middle; near enough is 4 screen pixels
+        // past it, which is 4 snip pixels at 100% and 1 at 400%
+        _view.SelectTool(SnipTool.Pen);
+        _view.Press(100, 100);
+        _view.Release(300, 100);
+        _view.SelectTool(SnipTool.Select);
+
+        while (_view.ZoomPercent != percent)
+        {
+            _view.Zoom(percent > _view.ZoomPercent ? 1 : -1);
+        }
+
+        // Act
+        Click(200, y);
+
+        // Assert
+        Assert.Equal(selects, _view.Selection is not null);
+    }
+
+    [Fact]
+    public void Handles_AreAsLargeOnTheScreenAtAnyZoom()
+    {
+        // Arrange: the rectangle's bottom right handle is at (200, 180)
+        DrawRectangleAndArrow();
+        Click(100, 140);
+
+        // Act & Assert: 5 snip pixels away is near at 100%, too far at 400%
+        _view.Hover(205, 185);
+        Assert.Equal(SnipCursor.SizeTopLeftBottomRight, _view.Cursor);
+
+        _view.Zoom(1);
+        _view.Zoom(1);
+        _view.Zoom(1);
+        _view.Zoom(1);
+        _view.Zoom(1);
+        Assert.Equal(400, _view.ZoomPercent);
+
+        _view.Hover(205, 185);
+        Assert.NotEqual(SnipCursor.SizeTopLeftBottomRight, _view.Cursor);
+    }
+
+    [Fact]
     public void HideWhileSnipping_IsOnAtFirst()
     {
         Assert.True(_view.HidesWhileSnipping);
@@ -2548,6 +2689,14 @@ public class SnipEditorPresenterTests
         public event EventHandler<CancelEventArgs>? CloseRequested;
 
         public event EventHandler<bool>? HideWhileSnippingSelected;
+
+        public event EventHandler<int>? ZoomRequested;
+
+        public int? ZoomPercent { get; private set; }
+
+        public void Zoom(int step) => ZoomRequested?.Invoke(this, step);
+
+        public void ShowZoom(int percent) => ZoomPercent = percent;
 
         public bool? HidesWhileSnipping { get; private set; }
 

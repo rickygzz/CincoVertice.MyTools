@@ -101,7 +101,8 @@ public sealed class SnipEditorFormTests : IDisposable
 
         // Assert
         Assert.Equal(1, added);
-        Assert.Same(first, Field<PictureBox>(form, "Canvas").Image);
+        Assert.Equal(0, Field<int>(form, "_shownSnip"));
+        Assert.Equal(new Size(50, 40), Field<PictureBox>(form, "Canvas").Size);
     }
 
     [Fact]
@@ -134,11 +135,11 @@ public sealed class SnipEditorFormTests : IDisposable
 
         // Act & Assert
         form.ShowSnip(1, 2);
-        Assert.Same(second, Field<PictureBox>(form, "Canvas").Image);
+        Assert.Equal(new Size(60, 30), Field<PictureBox>(form, "Canvas").Size);
         form.SaveImage(secondPath);
 
         form.ShowSnip(0, 2);
-        Assert.Same(first, Field<PictureBox>(form, "Canvas").Image);
+        Assert.Equal(new Size(50, 40), Field<PictureBox>(form, "Canvas").Size);
         form.SaveImage(firstPath);
 
         using var savedFirst = new Bitmap(firstPath);
@@ -177,7 +178,7 @@ public sealed class SnipEditorFormTests : IDisposable
     private static SnipEditorForm WithTwoSnips(Size second, Point location)
     {
         // Wider than the toolbar, which the window never gets narrower than
-        var form = new SnipEditorForm(Solid(900, 300, Color.Red));
+        var form = new SnipEditorForm(Solid(1100, 300, Color.Red));
 
         form.AddSnip(new Bitmap(second.Width, second.Height));
         form.Location = location;
@@ -197,7 +198,7 @@ public sealed class SnipEditorFormTests : IDisposable
     {
         // Arrange
         Point corner = NearTheTopLeft();
-        using SnipEditorForm form = WithTwoSnips(new Size(1000, 450), corner);
+        using SnipEditorForm form = WithTwoSnips(new Size(1200, 450), corner);
         int toolbar = Field<ToolStrip>(form, "Tools").Height;
 
         // Act
@@ -206,7 +207,7 @@ public sealed class SnipEditorFormTests : IDisposable
         // Assert
         Assert.Equal(corner, form.Location);
         Assert.Equal(450 + toolbar, form.ClientSize.Height);
-        Assert.Equal(1000, form.ClientSize.Width);
+        Assert.Equal(1200, form.ClientSize.Width);
 
         // Act: back to the smaller one
         form.ShowSnip(0, 2);
@@ -214,7 +215,7 @@ public sealed class SnipEditorFormTests : IDisposable
         // Assert
         Assert.Equal(corner, form.Location);
         Assert.Equal(300 + toolbar, form.ClientSize.Height);
-        Assert.Equal(900, form.ClientSize.Width);
+        Assert.Equal(1100, form.ClientSize.Width);
     }
 
     [Fact]
@@ -647,6 +648,165 @@ public sealed class SnipEditorFormTests : IDisposable
         // Assert: the presenter says what's checked, not the click
         Assert.Equal(asked, selected);
         Assert.Equal(shown, item.Checked);
+    }
+
+    private static void Mouse(SnipEditorForm form, string handler, MouseButtons button, int x, int y)
+    {
+        typeof(SnipEditorForm)
+            .GetMethod(handler, BindingFlags.NonPublic | BindingFlags.Instance)!
+            .Invoke(form, [form, new MouseEventArgs(button, 1, x, y, 0)]);
+    }
+
+    [Fact]
+    public void Zoom_SizesTheCanvas_AndSaysHowLarge()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(50, 40, Color.Red));
+
+        // Act & Assert
+        form.ShowZoom(200);
+        Assert.Equal(new Size(100, 80), Field<PictureBox>(form, "Canvas").Size);
+        Assert.Equal("200%", Field<ToolStripLabel>(form, "ZoomLabel").Text);
+
+        form.ShowZoom(25);
+        Assert.Equal(new Size(13, 10), Field<PictureBox>(form, "Canvas").Size);
+    }
+
+    [Theory]
+    [InlineData(200, 41, 21, 20, 10)]
+    [InlineData(400, 7, 4, 1, 1)]
+    [InlineData(50, 30, 10, 60, 20)]
+    public void Zoom_TheMouseGivesSnipPixels(int percent, int x, int y, int snipX, int snipY)
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(200, 200, Color.White));
+        List<Point> points = [];
+        form.PointerPressed += (_, point) => points.Add(point);
+        form.PointerMoved += (_, point) => points.Add(point);
+        form.PointerReleased += (_, point) => points.Add(point);
+        form.PointerHovered += (_, point) => points.Add(point);
+        form.ShowZoom(percent);
+
+        // Act
+        Mouse(form, "Canvas_MouseDown", MouseButtons.Left, x, y);
+        Mouse(form, "Canvas_MouseMove", MouseButtons.Left, x, y);
+        Mouse(form, "Canvas_MouseUp", MouseButtons.Left, x, y);
+        Mouse(form, "Canvas_MouseMove", MouseButtons.None, x, y);
+
+        // Assert
+        Assert.Equal(Enumerable.Repeat(new Point(snipX, snipY), 4), points);
+    }
+
+    [Fact]
+    public void Zoom_ShowsEachPixelAsASharpSquare_WithTheAnnotationsScaled()
+    {
+        // Arrange: a white snip with one black pixel, and a red line across
+        Bitmap snip = Solid(20, 20, Color.White);
+        snip.SetPixel(5, 5, Color.Black);
+        using var form = new SnipEditorForm(snip);
+        form.ShowAnnotations([new RectangleAnnotationModel(new Rectangle(10, 2, 8, 8), Color.Red, 1, 0)]);
+        form.ShowZoom(400);
+        var canvas = Field<PictureBox>(form, "Canvas");
+
+        // Act
+        using var shown = new Bitmap(canvas.Width, canvas.Height);
+        canvas.DrawToBitmap(shown, new Rectangle(Point.Empty, canvas.Size));
+
+        // Assert: the pixel is 4 by 4, edge to edge, and the rectangle is where its snip pixels are
+        for (int dx = 0; dx < 4; dx++)
+        {
+            for (int dy = 0; dy < 4; dy++)
+            {
+                Assert.Equal(Color.Black.ToArgb(), shown.GetPixel(20 + dx, 20 + dy).ToArgb());
+            }
+        }
+
+        Assert.Equal(Color.White.ToArgb(), shown.GetPixel(19, 20).ToArgb());
+        Assert.Equal(Color.White.ToArgb(), shown.GetPixel(24, 20).ToArgb());
+        Assert.True(shown.GetPixel(41, 20).R > 200 && shown.GetPixel(41, 20).G < 100);
+    }
+
+    [Fact]
+    public void Zoom_FromTheKeys_KeepsTheMiddleOfWhatShowsWhereItWas()
+    {
+        // Arrange: a small snip in a larger window, so the snip ends before the window does
+        using var form = new SnipEditorForm(Solid(400, 200, Color.White));
+        form.ShowInTaskbar = false;
+        form.Show();
+        form.ClientSize = new Size(1000, 330);
+        form.Location = new Point(-5000, 100);
+        var panel = Field<Panel>(form, "CanvasPanel");
+
+        // Act
+        form.ShowZoom(400);
+
+        // Assert: the snip's middle, (200, 100) on the screen, is (800, 400) at 400%, scrolled to the same place on the
+        // screen, as the mouse's point is with Ctrl+wheel. Not the window's middle: that's past the snip's edge here
+        Assert.Equal(new Point(-600, -300), panel.AutoScrollPosition);
+        form.Close();
+    }
+
+    [Fact]
+    public void Zoom_LeavesTheCopiedAndSavedImageAtTheSnipsSize()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(50, 40, Color.Red));
+        string path = SavedImagePath();
+        form.ShowZoom(300);
+
+        // Act
+        form.SaveImage(path);
+
+        // Assert
+        using var saved = new Bitmap(path);
+        Assert.Equal(new Size(50, 40), saved.Size);
+    }
+
+    [Fact]
+    public void Zoom_EndsTheTextBeingTyped()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        TextInputModel? committed = null;
+        form.TextCommitted += (_, input) => committed = input;
+        form.BeginTextInput(new Point(10, 20), Color.Black, 14, "typed");
+
+        // Act
+        form.ShowZoom(200);
+
+        // Assert: where it is on the snip, not on the screen
+        Assert.Equal(new TextInputModel(new Point(10, 20), "typed"), committed);
+    }
+
+    [Fact]
+    public void TextBox_AtAZoom_IsWhereItsTextGoesOnTheScreen()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        form.ShowZoom(200);
+
+        // Act
+        form.BeginTextInput(new Point(10, 20), Color.Black, 14, string.Empty);
+
+        // Assert
+        var box = Field<TextBox>(form, "TextInputBox");
+        Assert.Equal(new Point(20, 40), box.Location);
+        Assert.Equal(28, box.Font.Size);
+    }
+
+    [Fact]
+    public void ZoomLabel_Click_AsksFor100()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        int? asked = null;
+        form.ZoomRequested += (_, step) => asked = step;
+
+        // Act
+        Field<ToolStripLabel>(form, "ZoomLabel").PerformClick();
+
+        // Assert
+        Assert.Equal(0, asked);
     }
 
     [Fact]

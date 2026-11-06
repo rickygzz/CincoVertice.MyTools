@@ -77,6 +77,7 @@ partial class SnipEditorForm
         PreviousSnipButton = new ToolStripButton();
         SnipPositionLabel = new ToolStripLabel();
         NextSnipButton = new ToolStripButton();
+        ZoomLabel = new ToolStripLabel();
         OptionsDropDownButton = new ToolStripDropDownButton();
         HideWhileSnippingMenuItem = new ToolStripMenuItem();
         SelectionMenu = new ContextMenuStrip();
@@ -94,7 +95,7 @@ partial class SnipEditorForm
         // Tools
         //
         Tools.GripStyle = ToolStripGripStyle.Hidden;
-        Tools.Items.AddRange(new ToolStripItem[] { SelectButton, PenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, BlurButton, ToolsSeparator, ColorDropDownButton, SizeComboBox, TransparencyComboBox, ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton, CornerRadiusComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, ColorsSeparator, UndoButton, RedoButton, HistorySeparator, CopyButton, SaveButton, SnipsSeparator, PreviousSnipButton, SnipPositionLabel, NextSnipButton, OptionsDropDownButton });
+        Tools.Items.AddRange(new ToolStripItem[] { SelectButton, PenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, BlurButton, ToolsSeparator, ColorDropDownButton, SizeComboBox, TransparencyComboBox, ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton, CornerRadiusComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, ColorsSeparator, UndoButton, RedoButton, HistorySeparator, CopyButton, SaveButton, SnipsSeparator, PreviousSnipButton, SnipPositionLabel, NextSnipButton, OptionsDropDownButton, ZoomLabel });
         Tools.Location = new Point(0, 0);
         Tools.Name = "Tools";
         Tools.Padding = new Padding(4, 2, 4, 2);
@@ -338,6 +339,18 @@ partial class SnipEditorForm
         NextSnipButton.Visible = false;
         NextSnipButton.Click += NextSnipButton_Click;
         //
+        // ZoomLabel
+        //
+        ZoomLabel.Alignment = ToolStripItemAlignment.Right;
+        ZoomLabel.IsLink = true;
+        ZoomLabel.LinkBehavior = LinkBehavior.HoverUnderline;
+        ZoomLabel.LinkColor = SystemColors.ControlText;
+        ZoomLabel.Name = "ZoomLabel";
+        ZoomLabel.Overflow = ToolStripItemOverflow.Never;
+        ZoomLabel.Text = "100%";
+        ZoomLabel.ToolTipText = "Ctrl+wheel, or Ctrl+ and Ctrl-, to zoom. Click, or Ctrl+0, for 100%";
+        ZoomLabel.Click += ZoomLabel_Click;
+        //
         // OptionsDropDownButton
         //
         OptionsDropDownButton.Alignment = ToolStripItemAlignment.Right;
@@ -388,7 +401,6 @@ partial class SnipEditorForm
         Canvas.Location = new Point(0, 0);
         Canvas.Name = "Canvas";
         Canvas.Size = new Size(100, 50);
-        Canvas.SizeMode = PictureBoxSizeMode.AutoSize;
         Canvas.TabIndex = 0;
         Canvas.TabStop = false;
         Canvas.Paint += Canvas_Paint;
@@ -396,6 +408,7 @@ partial class SnipEditorForm
         Canvas.MouseMove += Canvas_MouseMove;
         Canvas.MouseUp += Canvas_MouseUp;
         Canvas.MouseDoubleClick += Canvas_MouseDoubleClick;
+        Canvas.MouseWheel += Canvas_MouseWheel;
         //
         // TextInputBox
         //
@@ -474,6 +487,7 @@ partial class SnipEditorForm
     private ToolStripButton PreviousSnipButton;
     private ToolStripLabel SnipPositionLabel;
     private ToolStripButton NextSnipButton;
+    private ToolStripLabel ZoomLabel;
     private ToolStripDropDownButton OptionsDropDownButton;
     private ToolStripMenuItem HideWhileSnippingMenuItem;
     private ContextMenuStrip SelectionMenu;
