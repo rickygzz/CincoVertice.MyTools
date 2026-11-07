@@ -11,6 +11,8 @@ using CincoVertice.MyTools.Ui.Diagramming.Interfaces;
 using CincoVertice.MyTools.Ui.Diagramming.Services;
 using CincoVertice.MyTools.Ui.Setup;
 using CincoVertice.MyTools.Ui.Shell.Interfaces;
+using CincoVertice.MyTools.Ui.Shell.Presenters;
+using CincoVertice.MyTools.Ui.Shell.Services;
 using CincoVertice.MyTools.Ui.Shell.Views;
 using CincoVertice.MyTools.Ui.Snipping.Interfaces;
 using CincoVertice.MyTools.Ui.Snipping.Services;
@@ -37,6 +39,20 @@ namespace CincoVertice.MyTools.Ui.Win.Setup;
 
 public static class UiWinSetupExtensions
 {
+    // At sign-in, the network may not be up yet
+    private static readonly TimeSpan UpdateCheckStartDelay = TimeSpan.FromMinutes(1);
+
+    private static string UpdateSettingsFilePath { get; } =
+        Path.Combine(AppContext.BaseDirectory, "config", "updates.json");
+
+    /// <summary>
+    ///     Where the app's releases are: the csproj's &lt;RepositoryUrl&gt;, which the build writes in it.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The csproj has none.</exception>
+    public static string RepositoryUrl =>
+        AppVersion.RepositoryUrlOf(typeof(TrayApplicationContext).Assembly)
+        ?? throw new InvalidOperationException("The app was built without a <RepositoryUrl> in its csproj.");
+
     public static IServiceCollection AddMyToolsUiWinLayer(this IServiceCollection services)
     {
         services.AddSingleton<TrayApplicationContext>();
@@ -49,6 +65,20 @@ public static class UiWinSetupExtensions
         services.AddSingleton<GlobalHotkeyService>();
         services.AddSingleton<IHotkeyRegistrar>(sp => sp.GetRequiredService<GlobalHotkeyService>());
         services.AddSingleton<IStartWithWindows>(_ => StartWithWindowsService.ForCurrentUser());
+
+        // Releases are on GitHub, in the csproj's <RepositoryUrl>; looking at start is a setting, off until turned on
+        services.AddSingleton<IUpdatesView>(sp => sp.GetRequiredService<TrayApplicationContext>());
+        services.AddSingleton<IReleaseSource>(_ => new GitHubReleaseSource(
+            new HttpClient { Timeout = TimeSpan.FromSeconds(15) },
+            RepositoryUrl,
+            AppVersion.Of(typeof(TrayApplicationContext).Assembly)));
+        services.AddSingleton<IUpdateSettingsStore>(_ => new JsonFileUpdateSettingsStore(UpdateSettingsFilePath));
+        services.AddSingleton(sp => new UpdatesPresenter(
+            sp.GetRequiredService<IUpdatesView>(),
+            sp.GetRequiredService<IReleaseSource>(),
+            sp.GetRequiredService<IUpdateSettingsStore>(),
+            AppVersion.Of(typeof(TrayApplicationContext).Assembly),
+            UpdateCheckStartDelay));
         services.AddSingleton<AppIconService>();
         services.AddSingleton<MouseMoveSimulator>();
         services.AddSingleton<CodeReviewWindowService>();

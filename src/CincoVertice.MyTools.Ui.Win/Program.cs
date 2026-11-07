@@ -44,6 +44,9 @@ public static class Program
             // Registers the hotkeys on this thread, the UI thread, and fills the tray menu
             host.Services.GetRequiredService<TrayPresenter>().Start();
 
+            // Shows its setting; when that's on, looks for a newer version a while later. It never throws
+            _ = host.Services.GetRequiredService<UpdatesPresenter>().Start();
+
             Application.Run(trayContext);
         }
         catch (Exception ex)
