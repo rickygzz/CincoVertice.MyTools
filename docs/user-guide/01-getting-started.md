@@ -66,6 +66,10 @@ Only one copy runs at a time. If you start the exe while it is already running, 
 | **Edit activity settings...** | Opens `activity.cfg` in the config editor |
 | (separator) | |
 | **Start with Windows** | A checkable item. See below. |
+| **Check for updates at start** | A checkable item, off at first. When checked, the app looks for a newer version a minute after it starts. See [Updating](10-files-and-updates.md#updating). |
+| (separator) | |
+| **Check for updates...** | Asks GitHub for the latest release now, and offers to open its page if it is newer |
+| **About My Tools...** | Shows which version you have, and the address of the releases page |
 | **Exit** | Hides the icon and ends the app |
 
 **Main window.** Its title is "My Tools" and it has only a **File > Code review** menu. That item opens an empty Code Review window and starts nothing. Use the tray items **Check folder for standard...** and **Fix folder for standard...** instead. Minimizing or closing the main window hides it in the tray.
@@ -74,6 +78,7 @@ Only one copy runs at a time. If you start the exe while it is already running, 
 
 - "Hotkeys reloaded." (title "My Tools") appears after a reload that found no problems. It does not appear at startup.
 - "Could not change Start with Windows: <reason>" is a warning shown if the Windows setting could not be changed.
+- "Version <x.y.z> is out. Click here to open its page." appears after start when **Check for updates at start** is checked and a newer version is out. Clicking it opens the release page in your browser.
 
 **Exit** does not check for running scripts, the mouse mover, or unsaved diagram, config or snip windows. Save your work first.
 
