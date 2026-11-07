@@ -2,9 +2,11 @@
 
 Press **Ctrl+Alt+D** or choose **Diagram editor** from the tray menu. Each time, a **new** window opens with an empty diagram. Windows are independent.
 
+A `hotkeys.cfg` made by a version without the diagram editor has no line for it, since the file is created only once. Add `DiagramEditor = Ctrl+Alt+D` to it to get the hotkey (see [How to change a hotkey](02-hotkeys.md#how-to-change-a-hotkey)).
+
 The window title is `<name> - Diagram editor`, with `*` after the name when there are unsaved changes. A new diagram is called "Untitled". The default size is 1280 by 760 pixels, and the editor remembers its last size.
 
-The first time you open it, the editor installs the bundled Roboto font for your Windows user if it is missing, so that other programs such as a browser show saved diagrams in the same font.
+New text uses [Roboto](https://fonts.google.com/specimen/Roboto), which comes with the app under the [SIL Open Font License](https://openfontlicense.org). The first time you open it, the editor installs Roboto for your Windows user if it is missing, so that other programs such as a browser show saved diagrams in the same font. This needs no administrator rights. On a computer without a diagram's font, its SVG shows in another sans serif font.
 
 ## Tools
 
@@ -24,11 +26,17 @@ The first time you open it, the editor installs the bundled Roboto font for your
 
 ## Working with shapes
 
-- **Resize** a shape with its 8 handles. A new shape is 120 by 60 pixels; the minimum is 10 pixels.
+- **Add** a shape: pick it on the left, or press its key, then drag on the canvas. A click instead adds it at the usual size, 120 by 60 pixels.
+- **Select:** click a shape, Shift+click (or Ctrl+click) to add or remove one, or drag on empty canvas to draw a box around several. Ctrl+A selects everything.
+- **Move** the selection by dragging it, or with the arrow keys.
+- **Resize** a shape with its 8 handles; with several selected, the handles go around all of them. The minimum size is 10 pixels.
 - **Connectors** join two shapes and follow them when the shapes move. Deleting a shape also deletes its connectors.
+  - *Connect:* hover a shape, and circles appear around it; drag from one to another shape. Drop on one of that shape's circles to choose its side too. Or pick the Connector tool (C) and drag from one shape to the other, and the sides are chosen for you. **V** or **Esc** goes back to selecting.
+  - *Attach an end somewhere else:* click the connector, then drag one of the dots at its ends to another shape, or to a circle on it to choose the side. Dropped on nothing, the end stays where it was. Dropped on the middle of its own shape, the side is chosen for you again.
+  - *Change the path:* click an elbow connector, then drag any piece of its line sideways. The line stays level and upright, with rounded corners. **Reset line** on the toolbar lets it work out its own path again, and so does choosing **Elbow** or **Straight**.
 - **Text:** double-click a shape to edit its text, double-click a connector to edit its label, or double-click empty canvas for free text. The Text tool also adds free text where you click, and the Properties panel has a Text box. Enter ends editing; Shift+Enter inserts a new line.
 - **Group:** select two or more shapes and press Ctrl+G. Groups are one level only; there is no nesting. Selecting one shape of a group selects the whole group. Ctrl+Shift+G ungroups.
-- **Copy and paste** use the Windows clipboard as text: the selected shapes and the connectors between them. Pasting adds the shapes 20 pixels further each time. Pasting other text does nothing. If you paste into another program, you get that text, not a picture. **Duplicate** (Ctrl+D) does the same without using the clipboard.
+- **Copy and paste** use the Windows clipboard as text: the selected shapes and the connectors between them. Pasting adds the shapes 20 pixels further each time. Pasting other text does nothing. If you paste into another program, you get that text, not a picture. Because it is the clipboard, you can copy from one editor window and paste into another. **Duplicate** (Ctrl+D) does the same without using the clipboard.
 - **Snapping.** While you drag with the mouse, shapes snap in two ways.
   - *To other shapes:* the left edge, middle or right edge of what you move lines up with the left edge, middle or right edge of any other shape (top, middle and bottom likewise) when it is close. A thin guide line is drawn along each alignment.
   - *To a grid:* when no other shape is close in a direction, the position rounds to the nearest 10 pixels: a moved shape's left and top edges land on a multiple of 10 (when resizing, the edge you drag does). The faint grid lines on the canvas are every 50 pixels, not every 10.
@@ -60,6 +68,7 @@ The Properties panel (show or hide with **F4**) has these fields: Text, X, Y, Wi
 | Arrow keys | Move the selection 10 px (with Shift, 1 px) |
 | F4 | Show or hide the Properties panel |
 | Space (held) or middle mouse button | Drag the view |
+| Wheel / Shift+wheel | Move the view up and down / sideways |
 | Ctrl+wheel | Zoom (25% to 400%) |
 | Esc | Cancels a text being typed; else returns focus from the Properties panel to the canvas (applying what you typed); else ends a drag in progress, or switches to Select, or clears the selection |
 
