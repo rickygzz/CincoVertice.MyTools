@@ -69,6 +69,27 @@ Conversion results are rounded to 10 significant digits and followed by the unit
 
 Long names and plurals such as `meters`, `pounds`, `fahrenheit` and `miles` are accepted. Results print the canonical symbol: `10 m^2 to ft^2` prints `107.6391042 ft2`. You cannot convert between groups, for example `km` to `kg`.
 
+## Time zones
+
+Write `<time> <place> to <place>`, for example `10:30 Mexico to India` or `3 pm Miami to Sao Paulo`. The result is the time there, the place and its UTC offset: `22:00 India (UTC+5:30)`. When the day changes, the result ends with `, next day` or `, previous day`.
+
+- **The time:** 24-hour (`9:00`, `21:30`), or 12-hour with `am` or `pm` (`9 pm`, `9:30 pm`). With am or pm, the answer uses am or pm too. Minutes always have two digits. `now` is the time now.
+- **Without a first place**, the time is your computer's time: `10:00 to China`, `now to India`. `local` also means your computer's time zone: `9:00 Miami to local`.
+- **Today's date** is used, because daylight saving time changes the difference. In winter `10:00 Mexico to Miami` gives `11:00 Miami (UTC-5)`, and in summer `12:00 Miami (UTC-4)`. A time that is skipped when the clocks move forward is refused. A time that happens twice, when the clocks move back, is taken as the first one, in standard time.
+- **A number without am or pm is a number**, so `3 h to min` still converts hours. Write `15:00` or `3 pm` for a time.
+
+Places can be written in any letter case, with spaces or `_` between words, and without accents:
+
+| Region | Places (other names) |
+|---|---|
+| Mexico | Mexico City (Mexico, CDMX, Ciudad de Mexico), Guadalajara, Monterrey, Tijuana, Cancun |
+| US and Canada | Miami, New York (NYC), Chicago, Denver, Los Angeles, Toronto |
+| South America | Bogotá (Bogota, Colombia), Cali, Medellín (Medellin), Lima (Peru), Santiago (Chile), Buenos Aires (Argentina), São Paulo (Sao Paulo, SaoPaulo, Brazil, Brasil), Rio de Janeiro (Rio) |
+| Europe | London, Madrid (Spain, Espana), Paris (France), Berlin (Germany) |
+| Asia and Oceania | India (Delhi, New Delhi, Mumbai, Kolkata, Bangalore, Bengaluru), China (Beijing, Shanghai, Shenzhen), Hong Kong, Tokyo (Japan), Singapore, Dubai, Sydney |
+
+For other places, use `UTC` or `GMT`, alone or with an offset (`UTC-5`, `UTC+5:30`), or a time zone name such as `America/Lima` or `Europe/Rome`. Abbreviations like `CST` or `IST` are not accepted, because each one means more than one time zone.
+
 ## Verified examples
 
 | You type | You get |
@@ -97,6 +118,11 @@ Long names and plurals such as `meters`, `pounds`, `fahrenheit` and `miles` are 
 | `1 yr to d` | `365.25 d` |
 | `1 gal to floz` | `128 floz` |
 | `10 m^2 to ft^2` | `107.6391042 ft2` |
+| `10:00 Mexico to India` | `21:30 India (UTC+5:30)` |
+| `10:00 Mexico to China` | `0:00 China (UTC+8), next day` |
+| `3 pm Mexico to Miami` | `4:00 pm Miami (UTC-5)` in winter |
+| `10:00 Mexico to Sao Paulo` | `13:00 São Paulo (UTC-3)` |
+| `10:00 Mexico to utc-3` | `13:00 UTC-3` |
 | `sin(pi)` | `0` |
 | `ln(e)` | `1` |
 | `find("l", "hello")` | `3` |
@@ -133,6 +159,7 @@ Messages you may see (each is followed by ` at position N`):
 - `Start must be a whole number from 1 to <N>`
 - `Text not found`
 - `Decimal places must be a whole number from 0 to 28`
+- Time zones: `Expected minutes after ':'`, `Expected a time zone or 'to' after the time`, `Expected a time zone after 'to'`, `The hour must be from 0 to 23`, `With am or pm, the hour must be from 1 to 12`, `The minutes must be two digits, from 00 to 59`, `Write a time as 10:30 or 10:30 pm`, `Unknown time zone '<name>'`, `A UTC offset must be from UTC-14 to UTC+14`, `<time> doesn't exist in <place> today: the clocks move forward`
 
 ---
 

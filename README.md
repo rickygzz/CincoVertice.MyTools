@@ -46,6 +46,9 @@ Add a unit and `to` to convert the result: `10 km to mi`, `100 C to F`, `(2+3)*4
 knows units of length, mass, temperature, area, volume, time, speed and data; see
 [Calculator](docs/user-guide/03-calculator.md) for all of them and what you can type.
 
+It converts times between places too, following daylight saving time: `10:30 Mexico to India`, `3 pm Miami to Sao
+Paulo`, `now to China`.
+
 ## Diagram editor
 
 Draw diagrams without opening a browser: Ctrl+Alt+D, or **Diagram editor** in the tray menu. Shapes, connectors that
