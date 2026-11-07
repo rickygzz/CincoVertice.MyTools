@@ -95,7 +95,7 @@ To turn a hotkey off, put `#` at the start of its line.
 - A shortcut needs at least one modifier, except for `F1` to `F24`.
 - A modifier key cannot be the main key.
 - Use `Plus` for the + key. Typing a bare `+` as the key gives an error.
-- A character typed with AltGr is refused.
+- A character typed with AltGr is refused, and so is `AltGr` itself: Windows sees it as Ctrl+Alt, so a hotkey on it would stop you from typing those characters. Scripts can still press it with `keyboard.press("AltGr+...")` (see [Scripts](08-scripts.md)).
 
 ## Script hotkeys with a value
 
@@ -139,6 +139,7 @@ A bad line never blocks the good ones. Each bad line is reported and skipped, an
 - `'<text>' needs a modifier (Ctrl, Alt, Shift or Win).`
 - `No key types '<c>' on the current keyboard layout.`
 - `'<c>' is typed with AltGr, and a hotkey on its key would stop you from typing it.`
+- `'<text>' has AltGr, which can't be part of a hotkey: Windows sees it as Ctrl+Alt.`
 
 The app does not retry a shortcut Windows refused. Free the shortcut in the other program, or pick another one, then choose **Reload hotkeys**.
 

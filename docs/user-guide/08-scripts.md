@@ -103,8 +103,8 @@ Function names are written `module.function` and are not case sensitive (`clipbo
 | `clipboard.clear()` | no value | Clears the clipboard |
 | `clipboard.pasteastext()` | no value | Pastes the clipboard's text as plain text (sends Ctrl+V); does nothing if empty |
 | `clipboard.paste(text)` | no value | Pastes the given text with Ctrl+V, then restores the clipboard after about 500 ms |
-| `keyboard.type(text)` | no value | Types into the active window |
-| `keyboard.press(keys[, times])` | no value | For example `keyboard.press("Ctrl+V")` or `keyboard.press("Tab", 3)`. Keys are written as in hotkeys.cfg, but a key alone is allowed. `times` is a whole number from 1 to 100. |
+| `keyboard.type(text)` | no value | Types into the active window. Every character comes out as written, whatever the keyboard layout. |
+| `keyboard.press(keys[, times])` | no value | For example `keyboard.press("Ctrl+V")` or `keyboard.press("Tab", 3)`. Keys are written as in hotkeys.cfg, but a key alone is allowed, and so is `AltGr`, as in `keyboard.press("AltGr+2")`. `times` is a whole number from 1 to 100. |
 | `window.title()` | text | Title of the foreground window, empty if none |
 | `shell.open(target)` | no value | Opens a web address, file or folder with its default program |
 | `shell.run(program[, arguments])` | no value | Starts a program; does not wait for it |
@@ -137,7 +137,9 @@ answers = dialog.form("Search Google", ["Search for:", "Only on site:"])
 answers = dialog.form("New ticket", ["Ticket number:", "Type:"], ["", [["Bug", "Feature", "Task"], "Task"]])
 ```
 
-**`keyboard.type`.** It first waits up to 3 seconds until Ctrl, Alt, Shift and Win are released, so that your hotkey does not turn the text into shortcuts; after 3 seconds it types anyway. Special characters are typed as themselves. A new line in the text becomes Enter and a tab becomes Tab. Typing blocks the app until it finishes. Typing into a program that runs as administrator may depend on Windows; My Tools does nothing special for it. For long text, `clipboard.paste(text)` is an alternative.
+**`keyboard.type`.** It first waits up to 3 seconds until Ctrl, Alt, Shift and Win are released, so that your hotkey does not turn the text into shortcuts; after 3 seconds it types anyway. Each character is sent as itself, not as the key that types it, so `keyboard.type("@")` writes `@` on a Spanish, English or any other layout, and characters with no key on your keyboard, such as `€` or emoji, are typed too. Special characters such as `+`, `^` and `{` are typed as themselves. A new line in the text becomes Enter and a tab becomes Tab. Typing blocks the app until it finishes. Typing into a program that runs as administrator may depend on Windows; My Tools does nothing special for it. A few programs read only real keys and ignore typed characters, such as some games and some remote desktop or virtual machine windows; use `clipboard.paste(text)` there. For long text, `clipboard.paste(text)` is also faster.
+
+**`keyboard.press` and AltGr.** `keyboard.press` presses real keys, so what a key types depends on the layout of the window it goes to. Add `AltGr` to hold that key, for example `keyboard.press("AltGr+2")`, which types `@` on a Spanish layout and nothing on an English (US) one. It is for shortcuts that need AltGr and for dead keys on it; to write a character, use `keyboard.type`. `AltGr` cannot be combined with `Ctrl` or `Alt`, because Windows already sees it as Ctrl+Alt. A character that needs AltGr, such as `keyboard.press("@")` on a Spanish layout, is refused with `'@' is typed with AltGr; to write it, type it as text, or press AltGr and its key.`
 
 **`global.vars`.** `global.set` saves values in `config\global.vars` next to the exe, created the first time you use it. It is a text file in JSON form, for example after `global.set("a", 1)`:
 

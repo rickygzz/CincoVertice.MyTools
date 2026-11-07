@@ -9,6 +9,8 @@ using Xunit;
 
 namespace CincoVertice.MyTools.Ui.Win.Tests.Snipping;
 
+// Some send real keys to the window in front
+[Collection(KeyboardFocusCollection.Name)]
 public sealed class SnipEditorFormTests : IDisposable
 {
     private readonly string _folder = Path.Combine(Path.GetTempPath(), "SnipEditorFormTests_" + Guid.NewGuid());
