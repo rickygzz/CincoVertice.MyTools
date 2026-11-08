@@ -46,11 +46,16 @@ partial class SnipEditorForm
         Tools = new ToolStrip();
         SelectButton = new ToolStripButton();
         PenButton = new ToolStripButton();
+        SmoothPenButton = new ToolStripButton();
         HighlighterButton = new ToolStripButton();
         ArrowButton = new ToolStripButton();
         RectangleButton = new ToolStripButton();
         TextButton = new ToolStripButton();
+        StepButton = new ToolStripButton();
         BlurButton = new ToolStripButton();
+        CropButton = new ToolStripButton();
+        ApplyCropButton = new ToolStripButton();
+        CancelCropButton = new ToolStripButton();
         ToolsSeparator = new ToolStripSeparator();
         ColorDropDownButton = new ToolStripDropDownButton();
         Palette = new ColorPaletteControl();
@@ -61,6 +66,7 @@ partial class SnipEditorForm
         ArrowHeadEndButton = new ToolStripButton();
         ArrowHeadStartButton = new ToolStripButton();
         ArrowHeadsBothButton = new ToolStripButton();
+        CornerRadiusComboBox = new ToolStripComboBox();
         TextOutlineDropDownButton = new ToolStripDropDownButton();
         TextOutlinePalette = new ColorPaletteControl();
         TextOutlinePaletteHost = new ToolStripControlHost(TextOutlinePalette);
@@ -76,8 +82,15 @@ partial class SnipEditorForm
         PreviousSnipButton = new ToolStripButton();
         SnipPositionLabel = new ToolStripLabel();
         NextSnipButton = new ToolStripButton();
+        ZoomLabel = new ToolStripLabel();
+        OptionsDropDownButton = new ToolStripDropDownButton();
+        HideWhileSnippingMenuItem = new ToolStripMenuItem();
         SelectionMenu = new ContextMenuStrip();
         ResetMenuItem = new ToolStripMenuItem();
+        DuplicateMenuItem = new ToolStripMenuItem();
+        BringToFrontMenuItem = new ToolStripMenuItem();
+        SendToBackMenuItem = new ToolStripMenuItem();
+        ArrangeSeparator = new ToolStripSeparator();
         DeleteMenuItem = new ToolStripMenuItem();
         CanvasPanel = new Panel();
         Canvas = new PictureBox();
@@ -91,7 +104,7 @@ partial class SnipEditorForm
         // Tools
         //
         Tools.GripStyle = ToolStripGripStyle.Hidden;
-        Tools.Items.AddRange(new ToolStripItem[] { SelectButton, PenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, BlurButton, ToolsSeparator, ColorDropDownButton, SizeComboBox, TransparencyComboBox, ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton, TextOutlineDropDownButton, TextOutlineWidthComboBox, ColorsSeparator, UndoButton, RedoButton, HistorySeparator, CopyButton, SaveButton, SnipsSeparator, PreviousSnipButton, SnipPositionLabel, NextSnipButton });
+        Tools.Items.AddRange(new ToolStripItem[] { SelectButton, PenButton, SmoothPenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, StepButton, BlurButton, CropButton, ApplyCropButton, CancelCropButton, ToolsSeparator, ColorDropDownButton, SizeComboBox, TransparencyComboBox, ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton, CornerRadiusComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, ColorsSeparator, UndoButton, RedoButton, HistorySeparator, CopyButton, SaveButton, SnipsSeparator, PreviousSnipButton, SnipPositionLabel, NextSnipButton, OptionsDropDownButton, ZoomLabel });
         Tools.Location = new Point(0, 0);
         Tools.Name = "Tools";
         Tools.Padding = new Padding(4, 2, 4, 2);
@@ -115,6 +128,15 @@ partial class SnipEditorForm
         PenButton.Text = "Pen";
         PenButton.ToolTipText = "Pen (P)";
         PenButton.Click += ToolButton_Click;
+        //
+        // SmoothPenButton
+        //
+        SmoothPenButton.DisplayStyle = ToolStripItemDisplayStyle.Image;
+        SmoothPenButton.Name = "SmoothPenButton";
+        SmoothPenButton.Tag = "SmoothPen";
+        SmoothPenButton.Text = "Smooth pen";
+        SmoothPenButton.ToolTipText = "Smooth pen (S): like the pen, with the wobble of the hand evened out";
+        SmoothPenButton.Click += ToolButton_Click;
         //
         // HighlighterButton
         //
@@ -151,6 +173,40 @@ partial class SnipEditorForm
         TextButton.Text = "Text";
         TextButton.ToolTipText = "Text (T): click where it goes, Enter to end, Esc to end and select it, Shift+Enter for a new line";
         TextButton.Click += ToolButton_Click;
+        //
+        // CropButton
+        //
+        CropButton.DisplayStyle = ToolStripItemDisplayStyle.Image;
+        CropButton.Name = "CropButton";
+        CropButton.Tag = "Crop";
+        CropButton.Text = "Crop";
+        CropButton.ToolTipText = "Crop (C): drag over the part to keep, adjust it with its handles, then Enter. Ctrl+Z brings back the rest";
+        CropButton.Click += ToolButton_Click;
+        //
+        // ApplyCropButton
+        //
+        ApplyCropButton.Name = "ApplyCropButton";
+        ApplyCropButton.Text = "Apply crop";
+        ApplyCropButton.ToolTipText = "Keep only the part in the frame (Enter, or double-click in it)";
+        ApplyCropButton.Visible = false;
+        ApplyCropButton.Click += ApplyCropButton_Click;
+        //
+        // CancelCropButton
+        //
+        CancelCropButton.Name = "CancelCropButton";
+        CancelCropButton.Text = "Cancel";
+        CancelCropButton.ToolTipText = "Don't crop (Esc)";
+        CancelCropButton.Visible = false;
+        CancelCropButton.Click += CancelCropButton_Click;
+        //
+        // StepButton
+        //
+        StepButton.DisplayStyle = ToolStripItemDisplayStyle.Image;
+        StepButton.Name = "StepButton";
+        StepButton.Tag = "Step";
+        StepButton.Text = "Step";
+        StepButton.ToolTipText = "Numbered step (N): each click adds the next number";
+        StepButton.Click += ToolButton_Click;
         //
         // BlurButton
         //
@@ -230,6 +286,14 @@ partial class SnipEditorForm
         ArrowHeadsBothButton.Text = "Heads at both ends";
         ArrowHeadsBothButton.ToolTipText = "Arrow heads at both ends";
         ArrowHeadsBothButton.Click += ArrowHeadsButton_Click;
+        //
+        // CornerRadiusComboBox
+        //
+        CornerRadiusComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+        CornerRadiusComboBox.Name = "CornerRadiusComboBox";
+        CornerRadiusComboBox.Size = new Size(70, 23);
+        CornerRadiusComboBox.ToolTipText = "How round the corners are";
+        CornerRadiusComboBox.SelectedIndexChanged += CornerRadiusComboBox_SelectedIndexChanged;
         //
         // TextOutlineDropDownButton
         //
@@ -327,9 +391,35 @@ partial class SnipEditorForm
         NextSnipButton.Visible = false;
         NextSnipButton.Click += NextSnipButton_Click;
         //
+        // ZoomLabel
+        //
+        ZoomLabel.Alignment = ToolStripItemAlignment.Right;
+        ZoomLabel.IsLink = true;
+        ZoomLabel.LinkBehavior = LinkBehavior.HoverUnderline;
+        ZoomLabel.LinkColor = SystemColors.ControlText;
+        ZoomLabel.Name = "ZoomLabel";
+        ZoomLabel.Overflow = ToolStripItemOverflow.Never;
+        ZoomLabel.Text = "100%";
+        ZoomLabel.ToolTipText = "Ctrl+wheel, or Ctrl+ and Ctrl-, to zoom. Click, or Ctrl+0, for 100%";
+        ZoomLabel.Click += ZoomLabel_Click;
+        //
+        // OptionsDropDownButton
+        //
+        OptionsDropDownButton.Alignment = ToolStripItemAlignment.Right;
+        OptionsDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { HideWhileSnippingMenuItem });
+        OptionsDropDownButton.Name = "OptionsDropDownButton";
+        OptionsDropDownButton.Text = "Options";
+        //
+        // HideWhileSnippingMenuItem
+        //
+        HideWhileSnippingMenuItem.Name = "HideWhileSnippingMenuItem";
+        HideWhileSnippingMenuItem.Text = "Leave this window out of new snips";
+        HideWhileSnippingMenuItem.ToolTipText = "It stays on the screen, but isn't in the screenshot. Turn it off to snip the editor itself";
+        HideWhileSnippingMenuItem.Click += HideWhileSnippingMenuItem_Click;
+        //
         // SelectionMenu
         //
-        SelectionMenu.Items.AddRange(new ToolStripItem[] { ResetMenuItem, DeleteMenuItem });
+        SelectionMenu.Items.AddRange(new ToolStripItem[] { DuplicateMenuItem, BringToFrontMenuItem, SendToBackMenuItem, ResetMenuItem, ArrangeSeparator, DeleteMenuItem });
         SelectionMenu.Name = "SelectionMenu";
         //
         // ResetMenuItem
@@ -337,6 +427,31 @@ partial class SnipEditorForm
         ResetMenuItem.Name = "ResetMenuItem";
         ResetMenuItem.Text = "Reset to original";
         ResetMenuItem.Click += ResetMenuItem_Click;
+        //
+        // DuplicateMenuItem
+        //
+        DuplicateMenuItem.Name = "DuplicateMenuItem";
+        DuplicateMenuItem.ShortcutKeyDisplayString = "Ctrl+D";
+        DuplicateMenuItem.Text = "Duplicate";
+        DuplicateMenuItem.Click += DuplicateMenuItem_Click;
+        //
+        // BringToFrontMenuItem
+        //
+        BringToFrontMenuItem.Name = "BringToFrontMenuItem";
+        BringToFrontMenuItem.ShortcutKeyDisplayString = "Ctrl+]";
+        BringToFrontMenuItem.Text = "Bring to front";
+        BringToFrontMenuItem.Click += BringToFrontMenuItem_Click;
+        //
+        // SendToBackMenuItem
+        //
+        SendToBackMenuItem.Name = "SendToBackMenuItem";
+        SendToBackMenuItem.ShortcutKeyDisplayString = "Ctrl+[";
+        SendToBackMenuItem.Text = "Send to back";
+        SendToBackMenuItem.Click += SendToBackMenuItem_Click;
+        //
+        // ArrangeSeparator
+        //
+        ArrangeSeparator.Name = "ArrangeSeparator";
         //
         // DeleteMenuItem
         //
@@ -363,7 +478,6 @@ partial class SnipEditorForm
         Canvas.Location = new Point(0, 0);
         Canvas.Name = "Canvas";
         Canvas.Size = new Size(100, 50);
-        Canvas.SizeMode = PictureBoxSizeMode.AutoSize;
         Canvas.TabIndex = 0;
         Canvas.TabStop = false;
         Canvas.Paint += Canvas_Paint;
@@ -371,6 +485,7 @@ partial class SnipEditorForm
         Canvas.MouseMove += Canvas_MouseMove;
         Canvas.MouseUp += Canvas_MouseUp;
         Canvas.MouseDoubleClick += Canvas_MouseDoubleClick;
+        Canvas.MouseWheel += Canvas_MouseWheel;
         //
         // TextInputBox
         //
@@ -400,6 +515,7 @@ partial class SnipEditorForm
         Name = "SnipEditorForm";
         StartPosition = FormStartPosition.Manual;
         Text = "Snip editor";
+        FormClosing += SnipEditorForm_FormClosing;
         KeyDown += SnipEditorForm_KeyDown;
         Tools.ResumeLayout(false);
         Tools.PerformLayout();
@@ -417,11 +533,16 @@ partial class SnipEditorForm
     private ToolStrip Tools;
     private ToolStripButton SelectButton;
     private ToolStripButton PenButton;
+    private ToolStripButton SmoothPenButton;
     private ToolStripButton HighlighterButton;
     private ToolStripButton ArrowButton;
     private ToolStripButton RectangleButton;
     private ToolStripButton TextButton;
+    private ToolStripButton StepButton;
     private ToolStripButton BlurButton;
+    private ToolStripButton CropButton;
+    private ToolStripButton ApplyCropButton;
+    private ToolStripButton CancelCropButton;
     private ToolStripSeparator ToolsSeparator;
     private ToolStripDropDownButton ColorDropDownButton;
     private ColorPaletteControl Palette;
@@ -432,6 +553,7 @@ partial class SnipEditorForm
     private ToolStripButton ArrowHeadEndButton;
     private ToolStripButton ArrowHeadStartButton;
     private ToolStripButton ArrowHeadsBothButton;
+    private ToolStripComboBox CornerRadiusComboBox;
     private ToolStripDropDownButton TextOutlineDropDownButton;
     private ColorPaletteControl TextOutlinePalette;
     private ToolStripControlHost TextOutlinePaletteHost;
@@ -447,8 +569,15 @@ partial class SnipEditorForm
     private ToolStripButton PreviousSnipButton;
     private ToolStripLabel SnipPositionLabel;
     private ToolStripButton NextSnipButton;
+    private ToolStripLabel ZoomLabel;
+    private ToolStripDropDownButton OptionsDropDownButton;
+    private ToolStripMenuItem HideWhileSnippingMenuItem;
     private ContextMenuStrip SelectionMenu;
     private ToolStripMenuItem ResetMenuItem;
+    private ToolStripMenuItem DuplicateMenuItem;
+    private ToolStripMenuItem BringToFrontMenuItem;
+    private ToolStripMenuItem SendToBackMenuItem;
+    private ToolStripSeparator ArrangeSeparator;
     private ToolStripMenuItem DeleteMenuItem;
     private Panel CanvasPanel;
     private PictureBox Canvas;

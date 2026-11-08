@@ -20,7 +20,7 @@ public class CodeReviewPresenter
     }
 
     /// <summary>
-    ///     Checks every C# file in a folder for the code standard and shows the results in the view.
+    ///     Checks every C# and JavaScript file in a folder for the code standard and shows the results in the view.
     ///     Call it from the UI thread: the check runs in the background and the view is updated on the UI thread.
     /// </summary>
     public async Task CheckFolderAsync(string folderPath)
@@ -41,8 +41,8 @@ public class CodeReviewPresenter
     }
 
     /// <summary>
-    ///     Fixes every C# file in a folder for the code standard, in place, then checks the folder again and shows
-    ///     what changed and the issues left. Call it from the UI thread, like <see cref="CheckFolderAsync"/>.
+    ///     Fixes every C# and JavaScript file in a folder for the code standard, in place, then checks it again and
+    ///     shows what changed and the issues left. Call it from the UI thread, like <see cref="CheckFolderAsync"/>.
     /// </summary>
     public async Task FixFolderAsync(string folderPath)
     {

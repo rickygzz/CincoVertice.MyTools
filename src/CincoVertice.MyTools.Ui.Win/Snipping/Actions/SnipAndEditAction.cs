@@ -29,7 +29,12 @@ public sealed class SnipAndEditAction : IAppAction
 
     public async Task ExecuteAsync()
     {
-        Bitmap? snip = await _snipper.SnipAsync();
+        Bitmap? snip;
+
+        using (_editorWindow.KeepOutOfSnip())
+        {
+            snip = await _snipper.SnipAsync();
+        }
 
         if (snip is not null)
         {

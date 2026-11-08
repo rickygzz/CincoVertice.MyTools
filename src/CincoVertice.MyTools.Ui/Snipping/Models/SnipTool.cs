@@ -12,6 +12,15 @@ public enum SnipTool
     Text,
     Blur,
 
+    /// <summary>Like the pen, with the wobble of the hand evened out.</summary>
+    SmoothPen,
+
+    /// <summary>A click drops a circle with the next number, for the steps of a how-to.</summary>
+    Step,
+
+    /// <summary>A drag keeps only that part of the snip.</summary>
+    Crop,
+
     /// <summary>Doesn't draw: a click selects what's there, to move, scale, change or delete it.</summary>
     Select,
 }

@@ -1,4 +1,5 @@
 using CincoVertice.Common.WinApi.Helpers;
+using CincoVertice.Common.WinApi.Libs;
 using CincoVertice.MyTools.Ui.Snipping.Interfaces;
 using CincoVertice.MyTools.Ui.Snipping.Presenters;
 
@@ -45,8 +46,50 @@ public sealed class SnipEditorWindowService
         _form.Activate();
     }
 
+    /// <summary>
+    ///     Keeps the open editor out of the screenshot of a snip, when the editor's settings say so: the user may also
+    ///     want to snip the editor itself.
+    /// </summary>
+    /// <returns>What shows it in screenshots again; null when it isn't left out.</returns>
+    public IDisposable? KeepOutOfSnip()
+    {
+        if (_form is not { IsDisposed: false, Visible: true }
+            || _settingsStore.Load()?.HideWhileSnipping == false)
+        {
+            return null;
+        }
+
+        // It stays on the screen as it is; only Windows older than 10, version 2004, needs it see-through instead
+        return (IDisposable?)CaptureExclusion.Exclude([_form.Handle]) ?? new SeeThrough(_form);
+    }
+
     private void Form_FormClosed(object? sender, FormClosedEventArgs e)
     {
         _form = null;
+    }
+
+    /// <summary>The window invisible, but where it is, for as long as this isn't disposed.</summary>
+    private sealed class SeeThrough : IDisposable
+    {
+        private readonly Form _form;
+        private readonly double _opacity;
+
+        public SeeThrough(Form form)
+        {
+            _form = form;
+            _opacity = form.Opacity;
+            form.Opacity = 0;
+
+            // The screen keeps it until it's drawn again
+            Dwmapi.DwmFlush();
+        }
+
+        public void Dispose()
+        {
+            if (!_form.IsDisposed)
+            {
+                _form.Opacity = _opacity;
+            }
+        }
     }
 }

@@ -9,6 +9,8 @@ using Xunit;
 
 namespace CincoVertice.MyTools.Ui.Win.Tests.Snipping;
 
+// Some send real keys to the window in front
+[Collection(KeyboardFocusCollection.Name)]
 public sealed class SnipEditorFormTests : IDisposable
 {
     private readonly string _folder = Path.Combine(Path.GetTempPath(), "SnipEditorFormTests_" + Guid.NewGuid());
@@ -101,7 +103,8 @@ public sealed class SnipEditorFormTests : IDisposable
 
         // Assert
         Assert.Equal(1, added);
-        Assert.Same(first, Field<PictureBox>(form, "Canvas").Image);
+        Assert.Equal(0, Field<int>(form, "_shownSnip"));
+        Assert.Equal(new Size(50, 40), Field<PictureBox>(form, "Canvas").Size);
     }
 
     [Fact]
@@ -134,11 +137,11 @@ public sealed class SnipEditorFormTests : IDisposable
 
         // Act & Assert
         form.ShowSnip(1, 2);
-        Assert.Same(second, Field<PictureBox>(form, "Canvas").Image);
+        Assert.Equal(new Size(60, 30), Field<PictureBox>(form, "Canvas").Size);
         form.SaveImage(secondPath);
 
         form.ShowSnip(0, 2);
-        Assert.Same(first, Field<PictureBox>(form, "Canvas").Image);
+        Assert.Equal(new Size(50, 40), Field<PictureBox>(form, "Canvas").Size);
         form.SaveImage(firstPath);
 
         using var savedFirst = new Bitmap(firstPath);
@@ -177,7 +180,7 @@ public sealed class SnipEditorFormTests : IDisposable
     private static SnipEditorForm WithTwoSnips(Size second, Point location)
     {
         // Wider than the toolbar, which the window never gets narrower than
-        var form = new SnipEditorForm(Solid(900, 300, Color.Red));
+        var form = new SnipEditorForm(Solid(1100, 300, Color.Red));
 
         form.AddSnip(new Bitmap(second.Width, second.Height));
         form.Location = location;
@@ -197,7 +200,7 @@ public sealed class SnipEditorFormTests : IDisposable
     {
         // Arrange
         Point corner = NearTheTopLeft();
-        using SnipEditorForm form = WithTwoSnips(new Size(1000, 450), corner);
+        using SnipEditorForm form = WithTwoSnips(new Size(1200, 450), corner);
         int toolbar = Field<ToolStrip>(form, "Tools").Height;
 
         // Act
@@ -206,7 +209,7 @@ public sealed class SnipEditorFormTests : IDisposable
         // Assert
         Assert.Equal(corner, form.Location);
         Assert.Equal(450 + toolbar, form.ClientSize.Height);
-        Assert.Equal(1000, form.ClientSize.Width);
+        Assert.Equal(1200, form.ClientSize.Width);
 
         // Act: back to the smaller one
         form.ShowSnip(0, 2);
@@ -214,7 +217,7 @@ public sealed class SnipEditorFormTests : IDisposable
         // Assert
         Assert.Equal(corner, form.Location);
         Assert.Equal(300 + toolbar, form.ClientSize.Height);
-        Assert.Equal(900, form.ClientSize.Width);
+        Assert.Equal(1100, form.ClientSize.Width);
     }
 
     [Fact]
@@ -290,6 +293,15 @@ public sealed class SnipEditorFormTests : IDisposable
         Pump();
     }
 
+    /// <summary>
+    ///     The keys sent here come with the real keyboard's Shift, Ctrl and Alt, as typed keys do: with one held, as
+    ///     while someone uses the computer, they would mean something else.
+    /// </summary>
+    private static void SkipWhileAModifierIsHeld()
+    {
+        Assert.SkipWhen(Control.ModifierKeys != Keys.None, "Shift, Ctrl or Alt is held on the keyboard.");
+    }
+
     /// <summary>The window in front with a text being typed, so the keyboard goes where it really would.</summary>
     private static SnipEditorForm TypingInTheForeground()
     {
@@ -306,6 +318,7 @@ public sealed class SnipEditorFormTests : IDisposable
 
         // Without the focus nothing here would mean anything, e.g. with the computer locked
         Assert.SkipUnless(Field<TextBox>(form, "TextInputBox").Focused, "This window can't get the keyboard focus.");
+        SkipWhileAModifierIsHeld();
 
         return form;
     }
@@ -384,6 +397,7 @@ public sealed class SnipEditorFormTests : IDisposable
         form.Activate();
         Pump();
         Assert.SkipWhen(GetFocus() == 0, "This window can't get the keyboard focus.");
+        SkipWhileAModifierIsHeld();
         form.ShowSelection(new SnipSelectionModel(new Rectangle(20, 20, 50, 50), []));
         List<Size> nudges = [];
         form.NudgeRequested += (_, delta) => nudges.Add(delta);
@@ -540,6 +554,501 @@ public sealed class SnipEditorFormTests : IDisposable
         Assert.True(form.IsDisposed);
     }
 
+    private static SnipEditorForm ShownOffScreen()
+    {
+        var form = new SnipEditorForm(Solid(100, 100, Color.White));
+
+        form.ShowInTaskbar = false;
+        form.Show();
+        form.Location = new Point(-5000, 100);
+
+        return form;
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Close_ByTheUser_AsksFirst_AndStaysOpenWhenCancelled(bool cancel)
+    {
+        // Arrange
+        SnipEditorForm form = ShownOffScreen();
+        int asked = 0;
+        form.CloseRequested += (_, e) =>
+        {
+            asked++;
+            e.Cancel = cancel;
+        };
+
+        // Act: as the X, Alt+F4 and Esc do
+        form.Close();
+
+        // Assert
+        Assert.Equal(1, asked);
+        Assert.Equal(!cancel, form.IsDisposed);
+        form.Dispose();
+    }
+
+    [Theory]
+    [InlineData(CloseReason.WindowsShutDown)]
+    [InlineData(CloseReason.ApplicationExitCall)]
+    [InlineData(CloseReason.TaskManagerClosing)]
+    public void Close_ForAnyOtherReason_DoesntAsk(CloseReason reason)
+    {
+        // Arrange
+        using SnipEditorForm form = ShownOffScreen();
+        int asked = 0;
+        form.CloseRequested += (_, e) =>
+        {
+            asked++;
+            e.Cancel = true;
+        };
+        var closing = new FormClosingEventArgs(reason, cancel: false);
+
+        // Act
+        typeof(Form)
+            .GetMethod("OnFormClosing", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .Invoke(form, [closing]);
+
+        // Assert
+        Assert.Equal(0, asked);
+        Assert.False(closing.Cancel);
+    }
+
+    [Fact]
+    public void Close_WhileTyping_KeepsTheTextBeforeAsking()
+    {
+        // Arrange: the text counts as a change to the snip
+        SnipEditorForm form = ShownOffScreen();
+        List<string> happened = [];
+        form.TextCommitted += (_, input) => happened.Add($"text {input.Text}");
+        form.CloseRequested += (_, _) => happened.Add("close");
+        form.BeginTextInput(new Point(1, 2), Color.Black, 14, "typed");
+
+        // Act
+        form.Close();
+
+        // Assert
+        Assert.Equal(["text typed", "close"], happened);
+        form.Dispose();
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public void HideWhileSnipping_ShowsAsChecked_AndClickingAsksForTheOpposite(bool shown, bool asked)
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        var item = Field<ToolStripMenuItem>(form, "HideWhileSnippingMenuItem");
+        bool? selected = null;
+        form.HideWhileSnippingSelected += (_, isHidden) => selected = isHidden;
+
+        // Act
+        form.ShowHideWhileSnipping(shown);
+        item.PerformClick();
+
+        // Assert: the presenter says what's checked, not the click
+        Assert.Equal(asked, selected);
+        Assert.Equal(shown, item.Checked);
+    }
+
+    private static void Mouse(SnipEditorForm form, string handler, MouseButtons button, int x, int y)
+    {
+        typeof(SnipEditorForm)
+            .GetMethod(handler, BindingFlags.NonPublic | BindingFlags.Instance)!
+            .Invoke(form, [form, new MouseEventArgs(button, 1, x, y, 0)]);
+    }
+
+    /// <summary>A snip with a different color in each quarter: red, green, blue and yellow, clockwise from the top left.</summary>
+    private static Bitmap Quarters(int width, int height)
+    {
+        var snip = new Bitmap(width, height);
+
+        using var graphics = Graphics.FromImage(snip);
+
+        graphics.FillRectangle(Brushes.Red, 0, 0, width / 2, height / 2);
+        graphics.FillRectangle(Brushes.Lime, width / 2, 0, width - width / 2, height / 2);
+        graphics.FillRectangle(Brushes.Yellow, 0, height / 2, width / 2, height - height / 2);
+        graphics.FillRectangle(Brushes.Blue, width / 2, height / 2, width - width / 2, height - height / 2);
+
+        return snip;
+    }
+
+    [Fact]
+    public void Crop_SavesOnlyThatPart_WithTheAnnotationsOnWhatTheyWereDrawnOver()
+    {
+        // Arrange: kept is the bottom right quarter, blue, with a black rectangle drawn over its corner
+        using var form = new SnipEditorForm(Quarters(200, 100));
+        string path = SavedImagePath();
+        form.ShowAnnotations([new RectangleAnnotationModel(new Rectangle(110, 60, 30, 20), Color.Black, 2, 0)]);
+
+        // Act
+        form.ShowCrop(new Rectangle(100, 50, 100, 50));
+        form.SaveImage(path);
+
+        // Assert
+        using var saved = new Bitmap(path);
+        Assert.Equal(new Size(100, 50), saved.Size);
+        Assert.Equal(Color.Blue.ToArgb(), saved.GetPixel(50, 25).ToArgb());
+        Assert.True(saved.GetPixel(10, 20).R < 80 && saved.GetPixel(10, 20).B < 80, "The rectangle moved with the crop");
+    }
+
+    [Fact]
+    public void Crop_TheCanvasShowsOnlyThatPart_AndTheMouseGivesPixelsOfTheWholeSnip()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Quarters(200, 100));
+        List<Point> points = [];
+        form.PointerPressed += (_, pointer) => points.Add(pointer.Location);
+
+        // Act
+        form.ShowCrop(new Rectangle(100, 50, 100, 50));
+        form.ShowZoom(200);
+        Mouse(form, "Canvas_MouseDown", MouseButtons.Left, 10, 6);
+
+        // Assert: (5, 3) of the crop, at 200%, is (105, 53) of the snip
+        Assert.Equal(new Size(200, 100), Field<PictureBox>(form, "Canvas").Size);
+        Assert.Equal([new Point(105, 53)], points);
+    }
+
+    [Fact]
+    public void Crop_TheCanvasDrawsThatPart()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Quarters(200, 100));
+        var canvas = Field<PictureBox>(form, "Canvas");
+
+        // Act
+        form.ShowCrop(new Rectangle(100, 0, 100, 50));
+        using var shown = new Bitmap(canvas.Width, canvas.Height);
+        canvas.DrawToBitmap(shown, new Rectangle(Point.Empty, canvas.Size));
+
+        // Assert: the top right quarter
+        Assert.Equal(Color.Lime.ToArgb(), shown.GetPixel(50, 25).ToArgb());
+    }
+
+    [Fact]
+    public void CropPreview_DimsWhatWouldBeCutAway_OnTheScreenOnly()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        var canvas = Field<PictureBox>(form, "Canvas");
+        string path = SavedImagePath();
+
+        // Act
+        form.ShowCropPreview(new Rectangle(20, 20, 50, 50));
+        using var shown = new Bitmap(canvas.Width, canvas.Height);
+        canvas.DrawToBitmap(shown, new Rectangle(Point.Empty, canvas.Size));
+        form.SaveImage(path);
+
+        // Assert
+        Assert.True(shown.GetPixel(5, 5).R < 200, "Outside isn't dimmed");
+        Assert.Equal(Color.White.ToArgb(), shown.GetPixel(45, 45).ToArgb());
+        using var saved = new Bitmap(path);
+        Assert.Equal(Color.White.ToArgb(), saved.GetPixel(5, 5).ToArgb());
+    }
+
+    [Fact]
+    public void CropPreview_ShowsItsButtons_AndTheKeysApplyOrCancelIt()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        var apply = Field<ToolStripButton>(form, "ApplyCropButton");
+        var cancel = Field<ToolStripButton>(form, "CancelCropButton");
+        List<string> asked = [];
+        form.CropApplyRequested += (_, _) => asked.Add("apply");
+        form.CropCancelRequested += (_, _) => asked.Add("cancel");
+        var process = typeof(SnipEditorForm).GetMethod("ProcessCmdKey", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+        // Assert: only with a crop to adjust
+        Assert.False(apply.Available);
+        form.ShowCropPreview(new Rectangle(10, 10, 50, 50));
+        Assert.True(apply.Available && cancel.Available);
+
+        // Act
+        process.Invoke(form, [default(Message), Keys.Enter]);
+        process.Invoke(form, [default(Message), Keys.Escape]);
+        apply.PerformClick();
+        cancel.PerformClick();
+        form.ShowCropPreview(null);
+
+        // Assert
+        Assert.Equal(["apply", "cancel", "apply", "cancel"], asked);
+        Assert.False(apply.Available);
+        Assert.False(form.IsDisposed);
+    }
+
+    [Fact]
+    public void CropPreview_HasHandles()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        var canvas = Field<PictureBox>(form, "Canvas");
+
+        // Act
+        form.ShowCropPreview(new Rectangle(20, 20, 60, 60));
+        using var shown = new Bitmap(canvas.Width, canvas.Height);
+        canvas.DrawToBitmap(shown, new Rectangle(Point.Empty, canvas.Size));
+
+        // Assert: the handle at the top middle is the selection's blue, its middle white
+        Color edge = shown.GetPixel(50 - 4, 20);
+        Assert.True(edge.B > 150 && edge.R < 100, $"No handle at the top middle: {edge}");
+    }
+
+    [Fact]
+    public void SelectionBand_IsShownOnTheScreenOnly()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        var canvas = Field<PictureBox>(form, "Canvas");
+        string path = SavedImagePath();
+
+        // Act
+        form.ShowSelectionBand(new Rectangle(20, 20, 50, 50));
+        using var shown = new Bitmap(canvas.Width, canvas.Height);
+        canvas.DrawToBitmap(shown, new Rectangle(Point.Empty, canvas.Size));
+        form.SaveImage(path);
+
+        // Assert: tinted blue inside, and nothing of it in the image
+        Color inside = shown.GetPixel(45, 45);
+        Assert.True(inside.B > inside.R, $"Not tinted: {inside}");
+        using var saved = new Bitmap(path);
+        Assert.Equal(Color.White.ToArgb(), saved.GetPixel(45, 45).ToArgb());
+    }
+
+    [Fact]
+    public void CtrlA_AsksToSelectEverything()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        int asked = 0;
+        form.SelectAllRequested += (_, _) => asked++;
+
+        // Act
+        InvokeKeyDown(form, new KeyEventArgs(Keys.Control | Keys.A));
+
+        // Assert
+        Assert.Equal(1, asked);
+    }
+
+    [Fact]
+    public void GetSnipSize_IsTheWholeSnip_WhateverTheCrop()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(120, 80, Color.White));
+
+        // Act
+        form.ShowCrop(new Rectangle(10, 10, 20, 20));
+
+        // Assert
+        Assert.Equal(new Size(120, 80), form.GetSnipSize(0));
+    }
+
+    [Fact]
+    public void Zoom_SizesTheCanvas_AndSaysHowLarge()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(50, 40, Color.Red));
+
+        // Act & Assert
+        form.ShowZoom(200);
+        Assert.Equal(new Size(100, 80), Field<PictureBox>(form, "Canvas").Size);
+        Assert.Equal("200%", Field<ToolStripLabel>(form, "ZoomLabel").Text);
+
+        form.ShowZoom(25);
+        Assert.Equal(new Size(13, 10), Field<PictureBox>(form, "Canvas").Size);
+    }
+
+    [Theory]
+    [InlineData(200, 41, 21, 20, 10)]
+    [InlineData(400, 7, 4, 1, 1)]
+    [InlineData(50, 30, 10, 60, 20)]
+    public void Zoom_TheMouseGivesSnipPixels(int percent, int x, int y, int snipX, int snipY)
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(200, 200, Color.White));
+        List<Point> points = [];
+        form.PointerPressed += (_, pointer) => points.Add(pointer.Location);
+        form.PointerMoved += (_, point) => points.Add(point);
+        form.PointerReleased += (_, point) => points.Add(point);
+        form.PointerHovered += (_, point) => points.Add(point);
+        form.ShowZoom(percent);
+
+        // Act
+        Mouse(form, "Canvas_MouseDown", MouseButtons.Left, x, y);
+        Mouse(form, "Canvas_MouseMove", MouseButtons.Left, x, y);
+        Mouse(form, "Canvas_MouseUp", MouseButtons.Left, x, y);
+        Mouse(form, "Canvas_MouseMove", MouseButtons.None, x, y);
+
+        // Assert
+        Assert.Equal(Enumerable.Repeat(new Point(snipX, snipY), 4), points);
+    }
+
+    [Fact]
+    public void Zoom_ShowsEachPixelAsASharpSquare_WithTheAnnotationsScaled()
+    {
+        // Arrange: a white snip with one black pixel, and a red line across
+        Bitmap snip = Solid(20, 20, Color.White);
+        snip.SetPixel(5, 5, Color.Black);
+        using var form = new SnipEditorForm(snip);
+        form.ShowAnnotations([new RectangleAnnotationModel(new Rectangle(10, 2, 8, 8), Color.Red, 1, 0)]);
+        form.ShowZoom(400);
+        var canvas = Field<PictureBox>(form, "Canvas");
+
+        // Act
+        using var shown = new Bitmap(canvas.Width, canvas.Height);
+        canvas.DrawToBitmap(shown, new Rectangle(Point.Empty, canvas.Size));
+
+        // Assert: the pixel is 4 by 4, edge to edge, and the rectangle is where its snip pixels are
+        for (int dx = 0; dx < 4; dx++)
+        {
+            for (int dy = 0; dy < 4; dy++)
+            {
+                Assert.Equal(Color.Black.ToArgb(), shown.GetPixel(20 + dx, 20 + dy).ToArgb());
+            }
+        }
+
+        Assert.Equal(Color.White.ToArgb(), shown.GetPixel(19, 20).ToArgb());
+        Assert.Equal(Color.White.ToArgb(), shown.GetPixel(24, 20).ToArgb());
+        Assert.True(shown.GetPixel(41, 20).R > 200 && shown.GetPixel(41, 20).G < 100);
+    }
+
+    [Fact]
+    public void Zoom_FromTheKeys_KeepsTheMiddleOfWhatShowsWhereItWas()
+    {
+        // Arrange: a small snip in a larger window, so the snip ends before the window does
+        using var form = new SnipEditorForm(Solid(400, 200, Color.White));
+        form.ShowInTaskbar = false;
+        form.Show();
+        form.ClientSize = new Size(1000, 330);
+        form.Location = new Point(-5000, 100);
+        var panel = Field<Panel>(form, "CanvasPanel");
+
+        // Act
+        form.ShowZoom(400);
+
+        // Assert: the snip's middle, (200, 100) on the screen, is (800, 400) at 400%, scrolled to the same place on the
+        // screen, as the mouse's point is with Ctrl+wheel. Not the window's middle: that's past the snip's edge here
+        Assert.Equal(new Point(-600, -300), panel.AutoScrollPosition);
+        form.Close();
+    }
+
+    [Fact]
+    public void Zoom_LeavesTheCopiedAndSavedImageAtTheSnipsSize()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(50, 40, Color.Red));
+        string path = SavedImagePath();
+        form.ShowZoom(300);
+
+        // Act
+        form.SaveImage(path);
+
+        // Assert
+        using var saved = new Bitmap(path);
+        Assert.Equal(new Size(50, 40), saved.Size);
+    }
+
+    [Fact]
+    public void Zoom_EndsTheTextBeingTyped()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        TextInputModel? committed = null;
+        form.TextCommitted += (_, input) => committed = input;
+        form.BeginTextInput(new Point(10, 20), Color.Black, 14, "typed");
+
+        // Act
+        form.ShowZoom(200);
+
+        // Assert: where it is on the snip, not on the screen
+        Assert.Equal(new TextInputModel(new Point(10, 20), "typed"), committed);
+    }
+
+    [Fact]
+    public void TextBox_AtAZoom_IsWhereItsTextGoesOnTheScreen()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        form.ShowZoom(200);
+
+        // Act
+        form.BeginTextInput(new Point(10, 20), Color.Black, 14, string.Empty);
+
+        // Assert
+        var box = Field<TextBox>(form, "TextInputBox");
+        Assert.Equal(new Point(20, 40), box.Location);
+        Assert.Equal(28, box.Font.Size);
+    }
+
+    [Fact]
+    public void ZoomLabel_Click_AsksFor100()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        int? asked = null;
+        form.ZoomRequested += (_, step) => asked = step;
+
+        // Act
+        Field<ToolStripLabel>(form, "ZoomLabel").PerformClick();
+
+        // Assert
+        Assert.Equal(0, asked);
+    }
+
+    [Fact]
+    public void ContextMenu_ArrangeItems_FollowWhatTheyCanDo_AndPassOnWhatsPicked()
+    {
+        // Arrange
+        using SnipEditorForm form = ShownOffScreen();
+        var menu = Field<ContextMenuStrip>(form, "SelectionMenu");
+        var front = Field<ToolStripMenuItem>(form, "BringToFrontMenuItem");
+        var back = Field<ToolStripMenuItem>(form, "SendToBackMenuItem");
+        List<string> asked = [];
+        form.DuplicateRequested += (_, _) => asked.Add("duplicate");
+        form.BringToFrontRequested += (_, _) => asked.Add("front");
+        form.SendToBackRequested += (_, _) => asked.Add("back");
+
+        // Act
+        form.ShowContextMenu(new Point(10, 10), new SnipContextMenuModel(false, false, true));
+        (bool, bool) enabled = (front.Enabled, back.Enabled);
+
+        // A greyed out item does nothing when clicked
+        front.PerformClick();
+        menu.Close();
+        form.ShowContextMenu(new Point(10, 10), new SnipContextMenuModel(false, true, true));
+        menu.Close();
+        Field<ToolStripMenuItem>(form, "DuplicateMenuItem").PerformClick();
+        front.PerformClick();
+        back.PerformClick();
+
+        // Assert
+        Assert.Equal((false, true), enabled);
+        Assert.Equal(["duplicate", "front", "back"], asked);
+    }
+
+    [Theory]
+    [InlineData(Keys.Control | Keys.D, "duplicate")]
+    [InlineData(Keys.Control | Keys.OemCloseBrackets, "front")]
+    [InlineData(Keys.Control | Keys.OemOpenBrackets, "back")]
+    public void ArrangeKeys_WorkOnlyWithSomethingSelected(Keys key, string expected)
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        List<string> asked = [];
+        form.DuplicateRequested += (_, _) => asked.Add("duplicate");
+        form.BringToFrontRequested += (_, _) => asked.Add("front");
+        form.SendToBackRequested += (_, _) => asked.Add("back");
+
+        // Act: first with nothing selected
+        InvokeKeyDown(form, new KeyEventArgs(key));
+        form.ShowSelection(new SnipSelectionModel(new Rectangle(1, 1, 5, 5), []));
+        InvokeKeyDown(form, new KeyEventArgs(key));
+
+        // Assert
+        Assert.Equal([expected], asked);
+    }
+
     [Fact]
     public void ContextMenu_OnlyOffersTheResetWhenThereIsOne_AndPassesOnWhatsPicked()
     {
@@ -556,11 +1065,11 @@ public sealed class SnipEditorFormTests : IDisposable
         form.DeleteRequested += (_, _) => asked.Add("delete");
 
         // Act
-        form.ShowContextMenu(new Point(10, 10), canReset: false);
+        form.ShowContextMenu(new Point(10, 10), new SnipContextMenuModel(false, true, true));
         bool wasShown = menu.Visible;
         bool couldReset = reset.Enabled;
         menu.Close();
-        form.ShowContextMenu(new Point(10, 10), canReset: true);
+        form.ShowContextMenu(new Point(10, 10), new SnipContextMenuModel(true, true, true));
         bool canReset = reset.Enabled;
         menu.Close();
         reset.PerformClick();
@@ -573,26 +1082,175 @@ public sealed class SnipEditorFormTests : IDisposable
         Assert.Equal(["reset", "delete"], asked);
     }
 
+    private static Bitmap SavedHighlight(SnipEditorForm form, Rectangle bounds)
+    {
+        string path = Path.Combine(Path.GetTempPath(), "SnipEditorFormTests_" + Guid.NewGuid() + ".png");
+
+        form.ShowAnnotations([new HighlightAnnotationModel(bounds, Color.FromArgb(128, 0, 0, 255))]);
+        form.SaveImage(path);
+
+        try
+        {
+            using var saved = new Bitmap(path);
+
+            return new Bitmap(saved);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     [Fact]
-    public void HighlightedArea_FillsItsFrameExactly_SeeThrough()
+    public void HighlightedArea_FillsItsFrameEvenly_UpToItsStraightEdges()
     {
         // Arrange
-        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        using var form = new SnipEditorForm(Solid(200, 200, Color.White));
+
+        // Act
+        using Bitmap saved = SavedHighlight(form, new Rectangle(20, 30, 120, 80));
+
+        // Assert: blue over white, as strong on the edges as in the middle, and nothing outside them
+        int inside = saved.GetPixel(80, 70).ToArgb();
+
+        Assert.NotEqual(Color.White.ToArgb(), inside);
+
+        foreach (Point edge in new Point[] { new(80, 30), new(80, 109), new(20, 70), new(139, 70) })
+        {
+            Assert.Equal(inside, saved.GetPixel(edge.X, edge.Y).ToArgb());
+        }
+
+        foreach (Point outside in new Point[] { new(80, 29), new(80, 110), new(19, 70), new(140, 70) })
+        {
+            Assert.Equal(Color.White.ToArgb(), saved.GetPixel(outside.X, outside.Y).ToArgb());
+        }
+    }
+
+    [Fact]
+    public void HighlightedArea_HasRoundedCorners()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(200, 200, Color.White));
+
+        // Act
+        using Bitmap saved = SavedHighlight(form, new Rectangle(20, 30, 120, 80));
+
+        // Assert: the very corners are left out, and a little way in it's full again
+        int inside = saved.GetPixel(80, 70).ToArgb();
+
+        foreach (Point corner in new Point[] { new(20, 30), new(139, 30), new(20, 109), new(139, 109) })
+        {
+            Assert.Equal(Color.White.ToArgb(), saved.GetPixel(corner.X, corner.Y).ToArgb());
+        }
+
+        Assert.Equal(inside, saved.GetPixel(28, 38).ToArgb());
+        Assert.Equal(inside, saved.GetPixel(131, 101).ToArgb());
+    }
+
+    [Fact]
+    public void HighlightedArea_WithNoRadius_HasSquareCorners()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(200, 200, Color.White));
         string path = SavedImagePath();
-        form.ShowAnnotations([new HighlightAnnotationModel(new Rectangle(20, 30, 40, 20), Color.FromArgb(128, 0, 0, 255))]);
+        form.ShowAnnotations([new HighlightAnnotationModel(new Rectangle(20, 30, 120, 80), Color.FromArgb(128, 0, 0, 255), 0)]);
 
         // Act
         form.SaveImage(path);
 
-        // Assert: blue over white, the same in its corners as in its middle, and nothing around it
+        // Assert
         using var saved = new Bitmap(path);
-        int inside = saved.GetPixel(40, 40).ToArgb();
+        Assert.Equal(saved.GetPixel(80, 70).ToArgb(), saved.GetPixel(20, 30).ToArgb());
+        Assert.Equal(saved.GetPixel(80, 70).ToArgb(), saved.GetPixel(139, 109).ToArgb());
+    }
 
-        Assert.NotEqual(Color.White.ToArgb(), inside);
-        Assert.Equal(inside, saved.GetPixel(20, 30).ToArgb());
-        Assert.Equal(inside, saved.GetPixel(59, 49).ToArgb());
-        Assert.Equal(Color.White.ToArgb(), saved.GetPixel(19, 30).ToArgb());
-        Assert.Equal(Color.White.ToArgb(), saved.GetPixel(60, 49).ToArgb());
+    /// <summary>How far in from a rectangle's top left corner its outline crosses the diagonal.</summary>
+    private int CornerInset(int radius)
+    {
+        using var form = new SnipEditorForm(Solid(200, 200, Color.White));
+        string path = SavedImagePath();
+        form.ShowAnnotations([new RectangleAnnotationModel(new Rectangle(20, 20, 150, 150), Color.Black, 2, radius)]);
+        form.SaveImage(path);
+
+        using var saved = new Bitmap(path);
+
+        for (int i = 0; i < 80; i++)
+        {
+            if (saved.GetPixel(20 + i, 20 + i).R < 128)
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    [Fact]
+    public void Rectangle_CornerRadius_RoundsItsCorners()
+    {
+        // Act
+        int square = CornerInset(0);
+        int round = CornerInset(16);
+        int rounder = CornerInset(48);
+
+        // Assert: the rounder, the farther in along the diagonal
+        Assert.Equal(0, square);
+        Assert.True(round > square, $"Radius 16 at {round}");
+        Assert.True(rounder > round, $"Radius 48 at {rounder}");
+    }
+
+    [Fact]
+    public void Rectangle_SmallerThanItsCorners_StillDraws()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        string path = SavedImagePath();
+        form.ShowAnnotations([new RectangleAnnotationModel(new Rectangle(10, 10, 20, 6), Color.Black, 2, 48)]);
+
+        // Act
+        form.SaveImage(path);
+
+        // Assert
+        using var saved = new Bitmap(path);
+        Assert.True(saved.GetPixel(20, 10).R < 128);
+    }
+
+    [Fact]
+    public void CornerRadius_ShowsOnlyForWhatHasCorners_AndPassesOnTheChoice()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        var list = Field<ToolStripComboBox>(form, "CornerRadiusComboBox");
+        int? picked = null;
+        form.CornerRadiusSelected += (_, radius) => picked = radius;
+
+        // Act & Assert
+        form.ShowCornerRadius([0, 12, 48], null);
+        Assert.False(list.Available);
+
+        form.ShowCornerRadius([0, 12, 48], 12);
+        Assert.True(list.Available);
+        Assert.Equal("12 px", list.SelectedItem);
+        Assert.Null(picked);
+
+        list.SelectedItem = "Square";
+        Assert.Equal(0, picked);
+    }
+
+    [Theory]
+    [InlineData(4, 4)]
+    [InlineData(200, 3)]
+    [InlineData(1, 1)]
+    public void HighlightedArea_SmallOrThin_StillDraws(int width, int height)
+    {
+        // Arrange: smaller than its corners would be
+        using var form = new SnipEditorForm(Solid(300, 100, Color.White));
+
+        // Act
+        using Bitmap saved = SavedHighlight(form, new Rectangle(10, 10, width, height));
+
+        // Assert
+        Assert.NotEqual(Color.White.ToArgb(), saved.GetPixel(10 + width / 2, 10 + height / 2).ToArgb());
     }
 
     [Fact]

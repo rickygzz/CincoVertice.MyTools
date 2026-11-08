@@ -17,7 +17,7 @@ public static class ScriptCatalog
         # My Tools script. Bind it in hotkeys.cfg, e.g. GoogleSearch = Ctrl+Alt+G; it applies when you save.
         # The action's name is the file name; changes to this file apply the next time it runs.
         #
-        # Functions, by module (see SCRIPTING.md for details):
+        # Functions, by module (see docs/user-guide/08-scripts.md for details):
         #   dialog.ask(prompt, default)  dialog.form(title, [prompts], [defaults])  dialog.message(text)
         #   dialog.confirm(question)  clipboard.gettext()  clipboard.settext(text)  keyboard.type(text)
         #   clipboard.clear()  clipboard.pasteastext()  window.title()

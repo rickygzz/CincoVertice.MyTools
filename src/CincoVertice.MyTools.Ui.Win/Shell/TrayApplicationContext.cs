@@ -1,5 +1,8 @@
-﻿using CincoVertice.MyTools.Ui.Shell.Models;
+﻿using System.ComponentModel;
+using System.Diagnostics;
+using CincoVertice.MyTools.Ui.Shell.Models;
 using CincoVertice.MyTools.Ui.Shell.Presenters;
+using CincoVertice.MyTools.Ui.Shell.Services;
 using CincoVertice.MyTools.Ui.Shell.Views;
 using CincoVertice.MyTools.Ui.Win.Behaviors;
 using CincoVertice.MyTools.Ui.Win.CodeReview.Actions;
@@ -15,7 +18,7 @@ namespace CincoVertice.MyTools.Ui.Win.Shell;
 ///     Root of the application. Lives in the systray and shows the main form on demand. As the tray view, it shows
 ///     what <see cref="TrayPresenter"/> gives it: the scripts, the hotkey problems and notifications.
 /// </summary>
-public sealed class TrayApplicationContext : ApplicationContext, ITrayView
+public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpdatesView
 {
     private const int InfoNotificationMilliseconds = 5000;
     private const int WarningNotificationMilliseconds = 10000;
@@ -32,8 +35,12 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView
     private readonly ToolStripMenuItem _editHotkeysItem;
 
     private readonly ToolStripMenuItem _startWithWindowsItem;
+    private readonly ToolStripMenuItem _checkAtStartItem;
 
     private ToolStripMenuItem? _hotkeyProblemsItem;
+
+    // The page the notification shown last opens when clicked; null when it opens nothing
+    private string? _notificationPageUrl;
 
     public TrayApplicationContext(
         MainForm mainForm,
@@ -78,6 +85,13 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView
             menu.Items,
             "Start with &Windows",
             () => StartWithWindowsRequested?.Invoke(this, !_startWithWindowsItem!.Checked));
+        _checkAtStartItem = AddItem(
+            menu.Items,
+            "Check for updates at s&tart",
+            () => CheckAtStartRequested?.Invoke(this, !_checkAtStartItem!.Checked));
+        menu.Items.Add(new ToolStripSeparator());
+        AddItem(menu.Items, "Check for &updates...", () => CheckForUpdatesRequested?.Invoke(this, EventArgs.Empty));
+        AddItem(menu.Items, "A&bout My Tools...", () => AboutRequested?.Invoke(this, EventArgs.Empty));
         AddItem(menu.Items, "&Exit", Exit);
         menu.Opening += (_, _) => MenuOpening?.Invoke(this, EventArgs.Empty);
 
@@ -89,6 +103,7 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView
             Visible = true,
         };
         _notifyIcon.DoubleClick += (_, _) => ShowMainForm();
+        _notifyIcon.BalloonTipClicked += NotifyIcon_BalloonTipClicked;
 
         ShowScripts([]);
     }
@@ -99,9 +114,79 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView
 
     public event EventHandler<bool>? StartWithWindowsRequested;
 
+    public event EventHandler? AboutRequested;
+
+    public event EventHandler? CheckForUpdatesRequested;
+
+    public event EventHandler<bool>? CheckAtStartRequested;
+
     public void ShowStartWithWindows(bool isEnabled)
     {
         _startWithWindowsItem.Checked = isEnabled;
+    }
+
+    public void ShowCheckAtStart(bool isEnabled)
+    {
+        _checkAtStartItem.Checked = isEnabled;
+    }
+
+    public void ShowAbout(Version version, string releasesPageUrl)
+    {
+        MessageBox.Show(
+            $"{TrayPresenter.AppTitle}{Environment.NewLine}Version {AppVersion.Format(version)}"
+                + $"{Environment.NewLine}{Environment.NewLine}Releases: {releasesPageUrl}",
+            $"About {TrayPresenter.AppTitle}",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information);
+    }
+
+    public bool AskToOpenRelease(AppReleaseModel release, Version current)
+    {
+        return MessageBox.Show(
+            $"Version {AppVersion.Format(release.Version)} is out; this is {AppVersion.Format(current)}."
+                + $"{Environment.NewLine}{Environment.NewLine}Open its page to download it?",
+            $"{TrayPresenter.AppTitle}: a newer version",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Information) == DialogResult.Yes;
+    }
+
+    public void ShowUpToDate(Version current)
+    {
+        MessageBox.Show(
+            $"This is the latest version, {AppVersion.Format(current)}.",
+            TrayPresenter.AppTitle,
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information);
+    }
+
+    public void ShowUpdateCheckFailed(string reason)
+    {
+        MessageBox.Show(
+            $"Could not check for updates.{Environment.NewLine}{Environment.NewLine}{reason}",
+            TrayPresenter.AppTitle,
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning);
+    }
+
+    public void NotifyUpdateAvailable(AppReleaseModel release)
+    {
+        ShowBalloon(
+            TrayPresenter.AppTitle,
+            $"Version {AppVersion.Format(release.Version)} is out. Click here to open its page.",
+            ToolTipIcon.Info);
+        _notificationPageUrl = release.PageUrl;
+    }
+
+    public void OpenPage(string url)
+    {
+        try
+        {
+            using var _ = Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        catch (Win32Exception ex)
+        {
+            ShowBalloon(TrayPresenter.AppTitle, $"Could not open {url}: {ex.Message}", ToolTipIcon.Warning);
+        }
     }
 
     /// <summary>
@@ -194,7 +279,18 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView
     {
         int milliseconds = icon == ToolTipIcon.Warning ? WarningNotificationMilliseconds : InfoNotificationMilliseconds;
 
+        // It replaces the one before, so clicking it opens nothing unless whoever shows it says otherwise
+        _notificationPageUrl = null;
         _notifyIcon.ShowBalloonTip(milliseconds, title, text, icon);
+    }
+
+    private void NotifyIcon_BalloonTipClicked(object? sender, EventArgs e)
+    {
+        if (_notificationPageUrl is { } url)
+        {
+            _notificationPageUrl = null;
+            OpenPage(url);
+        }
     }
 
     private void Notification_Requested(object? sender, TrayNotificationModel notification)

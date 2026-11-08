@@ -216,6 +216,41 @@ public sealed class BlurRendererTests : IDisposable
     }
 
     [Fact]
+    public void Blur_AtTheEdgeOfACrop_GivesNothingAwayOfWhatsCutAway()
+    {
+        // Arrange: the crop's left edge is the blur's, and what's cut away beside it differs
+        var kept = Rectangle.FromLTRB(_secretArea.Left, 0, 200, 100);
+        using Bitmap white = Snip(_ => { });
+        using Bitmap withSecret = new(white);
+
+        using (var graphics = Graphics.FromImage(withSecret))
+        {
+            graphics.FillRectangle(Brushes.Black, 0, 0, _secretArea.Left, 100);
+        }
+
+        var blur = new BlurAnnotationModel(_secretArea);
+
+        // Act
+        using Bitmap first = RenderShown(white, kept, blur);
+        using Bitmap second = RenderShown(withSecret, kept, blur);
+
+        // Assert
+        Assert.Equal(PixelsIn(first, _secretArea), PixelsIn(second, _secretArea));
+    }
+
+    private static Bitmap RenderShown(Bitmap snip, Rectangle shown, params AnnotationModel[] annotations)
+    {
+        var image = new Bitmap(snip.Width, snip.Height, PixelFormat.Format24bppRgb);
+
+        using var graphics = Graphics.FromImage(image);
+
+        graphics.DrawImage(snip, new Rectangle(Point.Empty, snip.Size));
+        AnnotationRenderer.Draw(graphics, annotations, snip, shown);
+
+        return image;
+    }
+
+    [Fact]
     public void SavedImage_HasNothingOfWhatsUnderTheBlur()
     {
         // Arrange: the form owns the snip it's given

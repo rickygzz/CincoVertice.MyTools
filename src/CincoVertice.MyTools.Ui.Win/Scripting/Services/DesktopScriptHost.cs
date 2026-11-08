@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Text;
 using CincoVertice.Common.Application.Scripting.Interfaces;
 using CincoVertice.Common.Application.Scripting.Models;
 using CincoVertice.Common.WinApi.Helpers;
@@ -95,7 +94,9 @@ public sealed class DesktopScriptHost : IScriptHost
         // The hotkey's Ctrl or Alt is usually still down, which would turn the typed text into shortcuts
         await WaitForModifierKeysReleasedAsync();
 
-        SendKeys.SendWait(EscapeForSendKeys(text));
+        // Each character as itself: SendKeys pressed the key that types it on this app's keyboard layout, and the
+        // window may have another, where that key types something else, as AltGr+2 for @ on a Spanish one
+        InputSimulator.SendUnicodeText(text);
     }
 
     public async Task PasteTextAsync(string text)
@@ -133,7 +134,12 @@ public sealed class DesktopScriptHost : IScriptHost
 
     public async Task PressAsync(string keys, int times)
     {
-        if (!HotkeyParser.TryParseKeys(keys, out FSModifiers modifiers, out KeyCode key, out string error))
+        if (!HotkeyParser.TryParseKeys(
+            keys,
+            out FSModifiers modifiers,
+            out bool altGr,
+            out KeyCode key,
+            out string error))
         {
             throw new ArgumentException(error);
         }
@@ -141,7 +147,7 @@ public sealed class DesktopScriptHost : IScriptHost
         // The hotkey's own keys would add to the ones pressed: Ctrl+Alt+V instead of Ctrl+V
         await WaitForModifierKeysReleasedAsync();
 
-        InputSimulator.SendShortcut(modifiers, key, times);
+        InputSimulator.SendShortcut(modifiers, key, times, altGr);
     }
 
     public string GetActiveWindowTitle() => WindowHelper.GetForegroundWindowTitle();
@@ -217,41 +223,5 @@ public sealed class DesktopScriptHost : IScriptHost
         {
             await Task.Delay(20);
         }
-    }
-
-    /// <summary>
-    ///     SendKeys gives + ^ % ~ ( ) { } [ ] a meaning, so they are wrapped in braces to be typed as they are.
-    ///     New lines and tabs become Enter and Tab.
-    /// </summary>
-    private static string EscapeForSendKeys(string text)
-    {
-        var sb = new StringBuilder(text.Length);
-
-        foreach (char c in text)
-        {
-            switch (c)
-            {
-                case '+' or '^' or '%' or '~' or '(' or ')' or '{' or '}' or '[' or ']':
-                    sb.Append('{').Append(c).Append('}');
-                    break;
-
-                case '\n':
-                    sb.Append("{ENTER}");
-                    break;
-
-                case '\t':
-                    sb.Append("{TAB}");
-                    break;
-
-                case '\r':
-                    break;
-
-                default:
-                    sb.Append(c);
-                    break;
-            }
-        }
-
-        return sb.ToString();
     }
 }

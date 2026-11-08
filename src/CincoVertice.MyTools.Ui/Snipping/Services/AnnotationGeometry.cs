@@ -21,6 +21,10 @@ public static class AnnotationGeometry
 
     private const int MaxLineWidth = 200;
 
+    // A number has to fit in it
+    private const int MinStepDiameter = 12;
+    private const int MaxStepDiameter = 400;
+
     /// <summary>
     ///     The frame that's scaled to scale the annotation. A freehand line's goes around its thickness: around only the
     ///     middle of a nearly level line, it would be so thin that scaling it would stretch every wobble of the hand.
@@ -32,6 +36,11 @@ public static class AnnotationGeometry
         RectangleAnnotationModel rectangle => rectangle.Bounds,
         BlurAnnotationModel blur => blur.Bounds,
         HighlightAnnotationModel highlight => highlight.Bounds,
+        StepAnnotationModel step => new Rectangle(
+            step.Center.X - step.Diameter / 2,
+            step.Center.Y - step.Diameter / 2,
+            step.Diameter,
+            step.Diameter),
         TextAnnotationModel text => new Rectangle(text.Location, measure(text.Text, text.FontSize)),
         _ => Rectangle.Empty,
     };
@@ -44,7 +53,12 @@ public static class AnnotationGeometry
             return new SnipSelectionModel(null, [arrow.From, arrow.To]);
         }
 
-        Rectangle box = BoxOf(annotation, measure);
+        return FrameOf(BoxOf(annotation, measure));
+    }
+
+    /// <summary>A frame with 8 handles, clockwise from its top left, as for a crop being adjusted.</summary>
+    public static SnipSelectionModel FrameOf(Rectangle box)
+    {
         int middleX = box.Left + box.Width / 2;
         int middleY = box.Top + box.Height / 2;
 
@@ -66,8 +80,12 @@ public static class AnnotationGeometry
     ///     Which of the selection's handles is at the point, the nearest one when they overlap, as they do on a thin line;
     ///     null when none is.
     /// </returns>
-    public static int? HandleAt(SnipSelectionModel selection, Point point)
+    /// <param name="selection">What shows it's selected.</param>
+    /// <param name="point">Where, in snip pixels.</param>
+    /// <param name="zoom">How large the snip is shown: the handles are the same size on the screen at any zoom.</param>
+    public static int? HandleAt(SnipSelectionModel selection, Point point, double zoom = 1)
     {
+        double reach = HandleDistance / zoom;
         int? nearest = null;
         int nearestDistance = int.MaxValue;
 
@@ -77,7 +95,7 @@ public static class AnnotationGeometry
             int dy = Math.Abs(selection.Handles[i].Y - point.Y);
             int distance = dx * dx + dy * dy;
 
-            if (dx <= HandleDistance && dy <= HandleDistance && distance < nearestDistance)
+            if (dx <= reach && dy <= reach && distance < nearestDistance)
             {
                 nearest = i;
                 nearestDistance = distance;
@@ -91,16 +109,24 @@ public static class AnnotationGeometry
     ///     Whether the point is on what's drawn: on a line or a rectangle's outline, not in the empty space they
     ///     surround, so what's under them can still be clicked.
     /// </summary>
-    public static bool Hits(AnnotationModel annotation, Point point, Func<string, int, Size> measure)
+    /// <param name="annotation">What may be clicked.</param>
+    /// <param name="point">Where, in snip pixels.</param>
+    /// <param name="measure">Gives a text's size.</param>
+    /// <param name="zoom">How large the snip is shown: how near is near enough is the same on the screen at any zoom.</param>
+    public static bool Hits(AnnotationModel annotation, Point point, Func<string, int, Size> measure, double zoom = 1)
     {
+        double near = HitDistance / zoom;
+
         switch (annotation)
         {
             case StrokeAnnotationModel stroke:
-                return IsNearLine(stroke.Points, point, stroke.Width);
+                return IsNearLine(stroke.Points, point, stroke.Width, near);
             case ArrowAnnotationModel arrow:
-                return IsNearLine([arrow.From, arrow.To], point, arrow.Width)
-                    || (arrow.Heads is SnipArrowHeads.Start or SnipArrowHeads.Both && IsOnHead(arrow, arrow.To, arrow.From, point))
-                    || (arrow.Heads is SnipArrowHeads.End or SnipArrowHeads.Both && IsOnHead(arrow, arrow.From, arrow.To, point));
+                return IsNearLine([arrow.From, arrow.To], point, arrow.Width, near)
+                    || (arrow.Heads is SnipArrowHeads.Start or SnipArrowHeads.Both
+                        && IsOnHead(arrow, arrow.To, arrow.From, point, near))
+                    || (arrow.Heads is SnipArrowHeads.End or SnipArrowHeads.Both
+                        && IsOnHead(arrow, arrow.From, arrow.To, point, near));
             case RectangleAnnotationModel rectangle:
                 Rectangle bounds = rectangle.Bounds;
 
@@ -113,11 +139,13 @@ public static class AnnotationGeometry
                         new Point(bounds.Left, bounds.Top),
                     ],
                     point,
-                    rectangle.Width);
+                    rectangle.Width,
+                    near);
             default:
                 Rectangle box = BoxOf(annotation, measure);
+                int by = (int)Math.Ceiling(near);
 
-                box.Inflate(HitDistance, HitDistance);
+                box.Inflate(by, by);
 
                 return box.Contains(point);
         }
@@ -130,6 +158,7 @@ public static class AnnotationGeometry
         RectangleAnnotationModel rectangle => rectangle with { Bounds = Offset(rectangle.Bounds, delta) },
         BlurAnnotationModel blur => blur with { Bounds = Offset(blur.Bounds, delta) },
         HighlightAnnotationModel highlight => highlight with { Bounds = Offset(highlight.Bounds, delta) },
+        StepAnnotationModel step => step with { Center = step.Center + delta },
         TextAnnotationModel text => text with { Location = text.Location + delta },
         _ => annotation,
     };
@@ -151,6 +180,61 @@ public static class AnnotationGeometry
         }
 
         Rectangle box = BoxOf(annotation, measure);
+
+        return Scaled(annotation, box, ResizedBox(box, handle, point), measure);
+    }
+
+    /// <summary>
+    ///     What one of several annotations selected together becomes when the frame around them all is scaled: its own
+    ///     frame keeps its place and share in the group's, and it's scaled as if that frame's handles were dragged. An
+    ///     arrow's ends move with the group.
+    /// </summary>
+    /// <param name="annotation">The annotation as it was before the drag.</param>
+    /// <param name="from">The frame around the group before the drag.</param>
+    /// <param name="to">The frame around the group now.</param>
+    /// <param name="measure">Gives a text's size.</param>
+    public static AnnotationModel ScaledInGroup(
+        AnnotationModel annotation,
+        Rectangle from,
+        Rectangle to,
+        Func<string, int, Size> measure)
+    {
+        if (annotation is ArrowAnnotationModel arrow)
+        {
+            return arrow with { From = ScaledPoint(arrow.From, from, to), To = ScaledPoint(arrow.To, from, to) };
+        }
+
+        Rectangle box = BoxOf(annotation, measure);
+        Point topLeft = ScaledPoint(box.Location, from, to);
+        Point bottomRight = ScaledPoint(new Point(box.Right, box.Bottom), from, to);
+        Rectangle scaled = Rectangle.FromLTRB(
+            topLeft.X,
+            topLeft.Y,
+            Math.Max(bottomRight.X, topLeft.X + MinSize),
+            Math.Max(bottomRight.Y, topLeft.Y + MinSize));
+
+        if (scaled == box)
+        {
+            return annotation;
+        }
+
+        // A circle or a text only grows or shrinks, so it keeps its middle where the group puts it
+        AnnotationModel result = Scaled(annotation, box, scaled, measure);
+
+        if (result is not (StepAnnotationModel or TextAnnotationModel))
+        {
+            return result;
+        }
+
+        Point want = CenterOf(scaled);
+        Point got = CenterOf(BoxOf(result, measure));
+
+        return Moved(result, new Size(want.X - got.X, want.Y - got.Y));
+    }
+
+    /// <summary>A frame with one of the handles of <see cref="FrameOf"/> dragged to the point; it never turns inside out.</summary>
+    public static Rectangle ResizedBox(Rectangle box, int handle, Point point)
+    {
         int left = box.Left;
         int top = box.Top;
         int right = box.Right;
@@ -174,7 +258,7 @@ public static class AnnotationGeometry
             bottom = Math.Max(point.Y, top + MinSize);
         }
 
-        return Scaled(annotation, box, Rectangle.FromLTRB(left, top, right, bottom), measure);
+        return Rectangle.FromLTRB(left, top, right, bottom);
     }
 
     /// <returns>The pointer for a handle of <see cref="SelectionOf"/>.</returns>
@@ -205,9 +289,20 @@ public static class AnnotationGeometry
             RectangleAnnotationModel rectangle => rectangle with { Bounds = to },
             BlurAnnotationModel blur => blur with { Bounds = to },
             HighlightAnnotationModel highlight => highlight with { Bounds = to },
+            StepAnnotationModel step => ScaledStep(step, from, to),
             TextAnnotationModel text => ScaledText(text, from, to, measure),
             _ => annotation,
         };
+
+    /// <summary>A circle stays round: the side dragged gives its size, and the side that wasn't dragged stays.</summary>
+    private static StepAnnotationModel ScaledStep(StepAnnotationModel step, Rectangle from, Rectangle to)
+    {
+        int diameter = Math.Clamp(to.Height != from.Height ? to.Height : to.Width, MinStepDiameter, MaxStepDiameter);
+        int left = to.Left != from.Left ? to.Right - diameter : from.Left;
+        int top = to.Top != from.Top ? to.Bottom - diameter : from.Top;
+
+        return step with { Diameter = diameter, Center = new Point(left + diameter / 2, top + diameter / 2) };
+    }
 
     /// <summary>
     ///     The line's width changes with how it's scaled across its direction: dragging across a level line makes it
@@ -268,6 +363,13 @@ public static class AnnotationGeometry
             ? toStart + toLength / 2
             : toStart + (int)Math.Round((value - fromStart) * (toLength / (double)fromLength));
 
+    /// <summary>Where a point of one frame goes in another, keeping its share of the width and the height.</summary>
+    private static Point ScaledPoint(Point point, Rectangle from, Rectangle to) => new(
+        Scale(point.X, from.Left, from.Width, to.Left, to.Width),
+        Scale(point.Y, from.Top, from.Height, to.Top, to.Height));
+
+    private static Point CenterOf(Rectangle box) => new(box.Left + box.Width / 2, box.Top + box.Height / 2);
+
     private static Rectangle Offset(Rectangle rectangle, Size delta) =>
         new(rectangle.Location + delta, rectangle.Size);
 
@@ -287,9 +389,9 @@ public static class AnnotationGeometry
         points.Max(point => point.X),
         points.Max(point => point.Y));
 
-    private static bool IsNearLine(IReadOnlyList<Point> points, Point point, int width)
+    private static bool IsNearLine(IReadOnlyList<Point> points, Point point, int width, double near)
     {
-        double reach = width / 2.0 + HitDistance;
+        double reach = width / 2.0 + near;
 
         if (points.Count == 1)
         {
@@ -308,7 +410,7 @@ public static class AnnotationGeometry
     }
 
     /// <summary>Whether the point is on a head: a triangle with its tip at the line's end, as long as it's wide.</summary>
-    private static bool IsOnHead(ArrowAnnotationModel arrow, Point tail, Point tip, Point point)
+    private static bool IsOnHead(ArrowAnnotationModel arrow, Point tail, Point tip, Point point, double near)
     {
         double dx = tip.X - tail.X;
         double dy = tip.Y - tail.Y;
@@ -325,9 +427,9 @@ public static class AnnotationGeometry
         double back = ((tip.X - point.X) * dx + (tip.Y - point.Y) * dy) / lineLength;
         double side = Math.Abs((point.X - tip.X) * dy - (point.Y - tip.Y) * dx) / lineLength;
 
-        return back >= -HitDistance
-            && back <= headLength + HitDistance
-            && side <= Math.Clamp(back, 0, headLength) / 2 + HitDistance;
+        return back >= -near
+            && back <= headLength + near
+            && side <= Math.Clamp(back, 0, headLength) / 2 + near;
     }
 
     /// <summary>From a point to the nearest point of a line between two others.</summary>

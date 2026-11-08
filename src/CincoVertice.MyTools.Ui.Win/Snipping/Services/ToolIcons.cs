@@ -50,6 +50,15 @@ public static class ToolIcons
             case SnipTool.Select:
                 DrawSelect(graphics, pen);
                 break;
+            case SnipTool.Step:
+                DrawStep(graphics);
+                break;
+            case SnipTool.SmoothPen:
+                DrawSmoothPen(graphics, pen);
+                break;
+            case SnipTool.Crop:
+                DrawCrop(graphics, pen);
+                break;
         }
 
         return icon;
@@ -164,6 +173,37 @@ public static class ToolIcons
 
         path.AddRoundedRectangle(new RectangleF(2, 3.5f, 12, 9), new SizeF(5, 5));
         graphics.DrawPath(pen, path);
+    }
+
+    /// <summary>A smooth S curve, as the line this pen draws.</summary>
+    private static void DrawSmoothPen(Graphics graphics, Pen pen)
+    {
+        using var line = new Pen(_ink, 1.8f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+
+        graphics.DrawBezier(line, 2, 12, 6, 0, 10, 16, 14, 4);
+    }
+
+    /// <summary>Two crossing corners, as cropping tools usually show.</summary>
+    private static void DrawCrop(Graphics graphics, Pen pen)
+    {
+        graphics.DrawLines(pen, [new PointF(4.5f, 1.5f), new PointF(4.5f, 11.5f), new PointF(14.5f, 11.5f)]);
+        graphics.DrawLines(pen, [new PointF(1.5f, 4.5f), new PointF(11.5f, 4.5f), new PointF(11.5f, 14.5f)]);
+    }
+
+    /// <summary>A circle with a 1 in it, as the steps look.</summary>
+    private static void DrawStep(Graphics graphics)
+    {
+        using var brush = new SolidBrush(_ink);
+        using var font = new Font(AnnotationRenderer.FontFamilyName, 9, FontStyle.Bold, GraphicsUnit.Pixel);
+        using var format = new StringFormat
+        {
+            Alignment = StringAlignment.Center,
+            LineAlignment = StringAlignment.Center,
+        };
+
+        graphics.FillEllipse(brush, 1.5f, 1.5f, 13, 13);
+        graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+        graphics.DrawString("1", font, Brushes.White, new RectangleF(1.5f, 2, 13, 13), format);
     }
 
     /// <summary>A mouse pointer.</summary>

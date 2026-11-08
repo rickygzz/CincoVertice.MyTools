@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Drawing;
 using CincoVertice.MyTools.Ui.Snipping.Models;
 
@@ -11,7 +12,10 @@ namespace CincoVertice.MyTools.Ui.Snipping.Views;
 public interface ISnipEditorView
 {
     /// <summary>Raised when the user presses the left button on the snip.</summary>
-    event EventHandler<Point>? PointerPressed;
+    event EventHandler<SnipPointerModel>? PointerPressed;
+
+    /// <summary>Raised when the user wants everything on the snip selected.</summary>
+    event EventHandler? SelectAllRequested;
 
     /// <summary>Raised while the user moves the mouse with the left button down.</summary>
     event EventHandler<Point>? PointerMoved;
@@ -33,6 +37,15 @@ public interface ISnipEditorView
 
     /// <summary>Raised when the user wants what's selected as it was when first drawn.</summary>
     event EventHandler? ResetRequested;
+
+    /// <summary>Raised when the user wants a copy of what's selected.</summary>
+    event EventHandler? DuplicateRequested;
+
+    /// <summary>Raised when the user wants what's selected on top of all the others.</summary>
+    event EventHandler? BringToFrontRequested;
+
+    /// <summary>Raised when the user wants what's selected under all the others.</summary>
+    event EventHandler? SendToBackRequested;
 
     /// <summary>Raised with how far to move what's selected, in pixels.</summary>
     event EventHandler<Size>? NudgeRequested;
@@ -59,6 +72,9 @@ public interface ISnipEditorView
     /// <summary>Raised with which ends of an arrow should have a head.</summary>
     event EventHandler<SnipArrowHeads>? ArrowHeadsSelected;
 
+    /// <summary>Raised with how round corners should be, in pixels; 0 for square ones.</summary>
+    event EventHandler<int>? CornerRadiusSelected;
+
     /// <summary>Raised with how wide the edge around the text's letters should be, in pixels; 0 for none.</summary>
     event EventHandler<int>? TextOutlineWidthSelected;
 
@@ -76,6 +92,21 @@ public interface ISnipEditorView
     /// <summary>Raised to go to another snip: -1 for the one before, 1 for the one after.</summary>
     event EventHandler<int>? SnipStepRequested;
 
+    /// <summary>Raised when the user wants the crop being adjusted applied.</summary>
+    event EventHandler? CropApplyRequested;
+
+    /// <summary>Raised when the user drops the crop being adjusted.</summary>
+    event EventHandler? CropCancelRequested;
+
+    /// <summary>Raised to show the snip larger (1), smaller (-1), or at its own size (0).</summary>
+    event EventHandler<int>? ZoomRequested;
+
+    /// <summary>Raised with true when the user wants the window kept out of the next snips' screenshots.</summary>
+    event EventHandler<bool>? HideWhileSnippingSelected;
+
+    /// <summary>Raised when the user closes the window; cancel to keep it open.</summary>
+    event EventHandler<CancelEventArgs>? CloseRequested;
+
     event EventHandler? UndoRequested;
 
     event EventHandler? RedoRequested;
@@ -85,6 +116,22 @@ public interface ISnipEditorView
     event EventHandler? SaveRequested;
 
     void ShowTool(SnipTool tool);
+
+    /// <returns>How large one of the snips is, in pixels, before any crop.</returns>
+    Size GetSnipSize(int index);
+
+    /// <summary>
+    ///     Shows only this part of the snip shown, the same in what's copied or saved; null shows all of it. Points stay in
+    ///     the pixels of the whole snip. Called before <see cref="ShowSnip"/> for another snip, and on its own when the crop
+    ///     changes.
+    /// </summary>
+    void ShowCrop(Rectangle? crop);
+
+    /// <summary>
+    ///     Shows the part a crop being adjusted would keep, with handles to change it and a way to apply or drop it, on the
+    ///     screen only; null for none.
+    /// </summary>
+    void ShowCropPreview(Rectangle? area);
 
     /// <summary>Shows one of the snips, and which one it is. Its annotations follow in <see cref="ShowAnnotations"/>.</summary>
     /// <param name="index">Which one, from 0.</param>
@@ -118,6 +165,9 @@ public interface ISnipEditorView
     /// <summary>Shows the choice of arrow heads with one selected; null hides it, for the other tools.</summary>
     void ShowArrowHeads(SnipArrowHeads? selected);
 
+    /// <summary>Shows how round corners are, and the radii to choose from; null hides it, for what has no corners.</summary>
+    void ShowCornerRadius(IReadOnlyList<int> radii, int? selected);
+
     /// <summary>Shows the edge of the text's letters and the widths to choose from; null hides it, for the other tools.</summary>
     void ShowTextOutline(IReadOnlyList<int> widths, SnipTextOutlineModel? outline);
 
@@ -129,15 +179,27 @@ public interface ISnipEditorView
 
     void ShowCursor(SnipCursor cursor);
 
+    /// <summary>Shows the box being dragged to select what's in it, on the screen only; null for none.</summary>
+    void ShowSelectionBand(Rectangle? band);
+
     /// <summary>Shows what can be done to what's selected, at a point of the snip.</summary>
     /// <param name="location">Where to show it.</param>
-    /// <param name="canReset">True when it has changed since it was drawn.</param>
-    void ShowContextMenu(Point location, bool canReset);
+    /// <param name="menu">Which of the items can be used.</param>
+    void ShowContextMenu(Point location, SnipContextMenuModel menu);
 
     /// <returns>How large a text is when drawn with this font size.</returns>
     Size MeasureText(string text, int fontSize);
 
     void ShowUndoRedo(bool canUndo, bool canRedo);
+
+    /// <summary>
+    ///     Shows the snip this large, in percent. Points in the events stay in snip pixels; what's copied or saved stays
+    ///     at the snip's own size.
+    /// </summary>
+    void ShowZoom(int percent);
+
+    /// <summary>Shows whether the window is kept out of the next snips' screenshots.</summary>
+    void ShowHideWhileSnipping(bool isHidden);
 
     /// <summary>Lets the user type a text at the location; ends with <see cref="TextCommitted"/>.</summary>
     /// <param name="location">Where it goes.</param>
@@ -156,4 +218,9 @@ public interface ISnipEditorView
 
     /// <summary>Saves the snip with the annotations shown; the format follows the file extension.</summary>
     void SaveImage(string path);
+
+    /// <summary>Asks whether to close the window, losing the snips that weren't saved.</summary>
+    /// <param name="count">How many weren't.</param>
+    /// <returns>True to close it.</returns>
+    bool AskDiscardSnips(int count);
 }
