@@ -1,4 +1,4 @@
-# Troubleshooting
+﻿# Troubleshooting
 
 | Problem | What to try |
 |---|---|
@@ -17,7 +17,6 @@
 | **My clipboard content disappeared after a snip** | `SnipAndEdit` and `SnipRegion` replace the clipboard with the snip. The snip editor does so again after every change. |
 | **The snip editor ignores my keys** | While you are typing a text, keys belong to the text. Press Esc or Enter to end it. |
 | **A script does nothing or shows an error** | The error box is titled `My Tools: <Action>` and gives file, line and column. Scripts are only checked when they run, so open the script in the config editor to see its first syntax error. |
-| **A script text says "see SCRIPTING.md"** | That file is not included with the app. Use the script section of this guide. |
 | **A script is stuck waiting** | There is no cancel command. Press Cancel in its dialog, or choose **Exit** from the tray menu. |
 | **A diagram will not open** | Only SVG files saved by the diagram editor can be opened. |
 | **The Code Review window is empty and titled "CodeReviewForm"** | That is **File > Code review** in the main window, which starts nothing. Use **Check folder for standard...** or **Fix folder for standard...** from the tray menu. |

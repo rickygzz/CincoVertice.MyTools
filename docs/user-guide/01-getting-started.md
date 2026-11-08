@@ -56,8 +56,8 @@ Only one copy runs at a time. If you start the exe while it is already running, 
 |---|---|
 | **Open** (bold) | Shows the main window |
 | **Diagram editor** | Opens a new diagram editor window |
-| **Check folder for standard...** | Checks a folder of C# files |
-| **Fix folder for standard...** | Rewrites a folder of C# files to match the standard |
+| **Check folder for standard...** | Checks a folder of C# and JavaScript files |
+| **Fix folder for standard...** | Rewrites a folder of C# and JavaScript files to match the standard |
 | (separator) | |
 | **Scripts** | Submenu: one item per script (click to run it), then **Edit scripts...** and **Open scripts folder**. A separator appears between the scripts and these two items only when at least one script exists. |
 | **Hotkey problems (N)...** | Appears only while some hotkeys are off. Shows all the problems. |

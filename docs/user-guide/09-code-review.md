@@ -1,6 +1,6 @@
 # Code Review: Check and Fix a Folder
 
-This tool checks C# source files against a fixed set of formatting rules and can rewrite the files to follow them. The rules are built in and cannot be configured. It works on files in the folder you choose and all its subfolders. It skips the folders `bin`, `obj`, `.git` and `.vs`, and files ending `.Designer.cs`, `.g.cs` and `.g.i.cs`.
+This tool checks C# and JavaScript source files against a fixed set of formatting rules and can rewrite the files to follow them. The rules are built in and cannot be configured. It works on files in the folder you choose and all its subfolders: `.cs` files with the C# rules, and `.js`, `.mjs` and `.cjs` files with the [JavaScript rules](#javascript). It skips the folders `bin`, `obj`, `.git`, `.vs` and `node_modules`, and files ending `.Designer.cs`, `.g.cs`, `.g.i.cs` and `.min.js`.
 
 Use the tray items **Check folder for standard...** and **Fix folder for standard...**. You can also give them hotkeys with the actions `CheckFolder` and `FixFolder`. Do not use **File > Code review** in the main window; it opens an empty window.
 
@@ -9,7 +9,7 @@ Use the tray items **Check folder for standard...** and **Fix folder for standar
 1. Choose **Check folder for standard...**.
 2. A folder picker titled "Select the folder to check for the code standard" opens. It remembers your last folder while the app runs.
 3. A new window titled "Code standard - <folder>" opens and shows "Code standard check", the folder, then "Checking...".
-4. The result lists each file with issues as `<relative path> (<count>)`, with one line per issue: `<line>  <code>  <message>`. A summary ends the list: `No C# files found.`, `No issues found in N file(s).` or `N issue(s) in M of K file(s).`
+4. The result lists each file with issues as `<relative path> (<count>)`, with one line per issue: `<line>  <code>  <message>`. A summary ends the list: `No C# or JavaScript files found.`, `No issues found in N file(s).` or `N issue(s) in M of K file(s).`
 
 The window stays responsive while it works. There is no cancel button and no progress bar. You can select text and copy it with Ctrl+C. The output box is not read-only, so you can also type over the results. Right-click offers one entry, "Clear Text". There is no save or export command. A missing folder shows `Folder not found: <path>`.
 
@@ -22,7 +22,7 @@ The window stays responsive while it works. There is no cancel button and no pro
 3. A warning box titled "Fix folder for code standard" asks for confirmation. **No** is the default button. It reads:
 
 ```
-This rewrites the C# files in
+This rewrites the C# and JavaScript files in
 <folder>
 in place.
 
@@ -31,7 +31,7 @@ Commit or back up your changes first, so you can review the fixes and undo them.
 Fix the folder now?
 ```
 
-4. If you click **Yes**, a new window titled "Code standard fix - <folder>" opens. It shows "Code standard fix", the folder and "Fixing...". Then it lists one `Fixed  <relative path>` line for each changed file and `Skipped  <relative path>: <reason>` for each skipped file. A summary follows: `Fixed X of Y file(s).`, with ` Skipped N.` added when some files were skipped, or `No C# files found.`
+4. If you click **Yes**, a new window titled "Code standard fix - <folder>" opens. It shows "Code standard fix", the folder and "Fixing...". Then it lists one `Fixed  <relative path>` line for each changed file and `Skipped  <relative path>: <reason>` for each skipped file. A summary follows: `Fixed X of Y file(s).`, with ` Skipped N.` added when some files were skipped, or `No C# or JavaScript files found.`
 5. Last, under "Issues left (not fixable automatically)", it lists the issues that remain.
 
 A file is rewritten only if its content changes, and it keeps its own encoding and byte-order mark. A file without a byte-order mark must be valid UTF-8, otherwise it is skipped with `Not valid UTF-8; add a BOM or convert the file to UTF-8.` Text inside string and character literals is protected. Line endings are never converted.
@@ -69,6 +69,49 @@ Two things are changed even though they are not listed as rules: typographic pun
 | CH0033 | `Braces need a space before and inside them: get { return x; }` | yes |
 | CH0034 | `Block braces go on their own lines: "if (x) {" and "} else" are not allowed.` | yes |
 | CH0035 | `No space after ( or before ): Read(a), not Read( a ).` | yes |
+| CH0036 | `Line should be indented {spaces} spaces, by the brackets around it.` | yes (JavaScript only) |
+
+## JavaScript
+
+JavaScript files, such as the scripts of a Bruno collection, get the rules that make sense in any language: CH0010, CH0011, CH0016, CH0020, CH0021, CH0025 to CH0028, CH0032 and CH0036, plus the typographic punctuation and the final line break. The C# rules about braces, namespaces, XML comments, keywords and forbidden tokens are not used, and braces stay where they are: in JavaScript a `{` goes on the line of its statement, and moving the `{` after `return` to its own line would change what the code does.
+
+Text inside `'...'`, `"..."` and `` `...` `` strings (also over several lines, and the `${...}` parts) and inside `/.../` regular expressions is never changed.
+
+**Indentation (CH0036)** is worked out from the brackets, whatever the file had before, with 4 spaces per level. Tabs and 2-space indentation are fixed.
+
+- Inside `(`, `[` or `{` a line is one level deeper than the line that opened it. A line starting with `}`, `)` or `]` is at the level of the line that opened it.
+- In a `switch`, `case` and `default` are one level in and their lines two levels in.
+- A line that continues the statement above it is one level deeper. This includes a line starting with `.` (as in `.then(...)`), `&&`, `||`, `?`, `:`, `+` or `-`, a line after one ending with an operator such as `=`, `+` or `=>`, and the body of an `if`, `for`, `while` or `else` without braces.
+- In a `/* */` comment, lines starting with `*` line up under its first `*`. Other comment lines move with the comment's first line.
+- The lines of a multi-line `` `...` `` string are left alone.
+
+```javascript
+// Before
+function sign(req) {
+  const body = req.getBody();
+	if (!body)
+		return;
+  return axios.get(url)
+  .then((res) => {
+  return res.data;
+  });
+}
+
+// After
+function sign(req) {
+    const body = req.getBody();
+    if (!body)
+        return;
+    return axios.get(url)
+        .then((res) => {
+            return res.data;
+        });
+}
+```
+
+Not changed: quotes, semicolons, a space before `;` or after `,`, and long lines, which are reported only (CH0016). Bruno's `.bru` request files are not checked, only the `.js` files.
+
+## Examples
 
 Typical examples: `int a;  ` (trailing spaces) becomes `int a;`; `if(x)` becomes `if (x)`; `//text` becomes `// text`; `namespace N { ... }` becomes `namespace N;`; `get{return x;}` becomes `get { return x; }`.
 

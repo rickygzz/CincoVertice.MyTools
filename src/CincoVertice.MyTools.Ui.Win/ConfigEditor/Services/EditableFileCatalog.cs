@@ -76,8 +76,8 @@ public sealed class EditableFileCatalog : IEditableFileCatalog
 
         string path = Path.Combine(_scriptsFolderPath, fileName);
         string firstLine = ScriptCatalog.IsLibrary(fileName)
-            ? $"# {baseName}: for other scripts to run with script.include. See SCRIPTING.md."
-            : $"# Bind this script in hotkeys.cfg as {actionName}. See SCRIPTING.md.";
+            ? $"# {baseName}: for other scripts to run with script.include. See docs/user-guide/08-scripts.md."
+            : $"# Bind this script in hotkeys.cfg as {actionName}. See docs/user-guide/08-scripts.md.";
 
         try
         {

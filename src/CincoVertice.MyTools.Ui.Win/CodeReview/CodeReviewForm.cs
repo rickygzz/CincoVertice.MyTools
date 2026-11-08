@@ -118,7 +118,7 @@ public partial class CodeReviewForm : Form, ICodeReviewView
         }
 
         string summary = fixes.Count == 0
-            ? "No C# files found."
+            ? "No C# or JavaScript files found."
             : $"Fixed {changed.Count} of {fixes.Count} file(s)."
                 + (skipped.Count > 0 ? $" Skipped {skipped.Count}." : "");
 
@@ -173,7 +173,7 @@ public partial class CodeReviewForm : Form, ICodeReviewView
         }
 
         string summary = results.Count == 0
-            ? "No C# files found."
+            ? "No C# or JavaScript files found."
             : errorCount == 0
                 ? $"No issues found in {results.Count} file(s)."
                 : $"{errorCount} issue(s) in {filesWithErrors} of {results.Count} file(s).";

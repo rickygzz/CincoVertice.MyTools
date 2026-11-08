@@ -32,7 +32,7 @@ Click **New script...**. A dialog titled "New script" asks "Script name:" with *
 - If the file exists: `There's already a script named <file>.`
 - Other failures: `<file> can't be created: <reason>`
 
-The new file starts with the comment line `# Bind this script in hotkeys.cfg as <Action>. See SCRIPTING.md.` Ignore the mention of SCRIPTING.md; that file is not included with the app. A name starting with `_` creates a library script instead (see below), starting with `# <name>: for other scripts to run with script.include. See SCRIPTING.md.`
+The new file starts with the comment line `# Bind this script in hotkeys.cfg as <Action>. See docs/user-guide/08-scripts.md.`, which points to the [Scripts](08-scripts.md) chapter of this guide. A name starting with `_` creates a library script instead (see below), starting with `# <name>: for other scripts to run with script.include. See docs/user-guide/08-scripts.md.`
 
 ---
 

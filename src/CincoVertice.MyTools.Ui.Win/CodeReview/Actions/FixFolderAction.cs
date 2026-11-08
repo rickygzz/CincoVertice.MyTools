@@ -41,7 +41,7 @@ public sealed class FixFolderAction : IAppAction
 
         // Files are rewritten in place, so give a chance to commit first; No is the default button
         var answer = MessageBox.Show(
-            $"This rewrites the C# files in\n{dialog.SelectedPath}\nin place.\n\n"
+            $"This rewrites the C# and JavaScript files in\n{dialog.SelectedPath}\nin place.\n\n"
             + "Commit or back up your changes first, so you can review the fixes and undo them.\n\n"
             + "Fix the folder now?",
             "Fix folder for code standard",

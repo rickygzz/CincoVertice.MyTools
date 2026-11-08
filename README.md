@@ -16,7 +16,7 @@ This page is a short tour. The [user guide](docs/user-guide/README.md) covers ev
 - [Diagram editor](docs/user-guide/05-diagram-editor.md)
 - [Mouse mover (activity)](docs/user-guide/06-mouse-mover.md)
 - [Config editor](docs/user-guide/07-config-editor.md)
-- [Scripts](docs/user-guide/08-scripts.md), with the whole language in [SCRIPTING.md](SCRIPTING.md)
+- [Scripts](docs/user-guide/08-scripts.md): getting started, the whole language and examples
 - [Code review: check and fix a folder](docs/user-guide/09-code-review.md)
 - [Files and updates](docs/user-guide/10-files-and-updates.md): what the app writes, updating, uninstalling
 - [Troubleshooting](docs/user-guide/11-troubleshooting.md)
@@ -58,8 +58,8 @@ keep editing them. See [Diagram editor](docs/user-guide/05-diagram-editor.md) fo
 ## Scripts
 
 Hotkeys can run your own scripts: ask something, open a web page, start a program, type text, and more. See
-[SCRIPTING.md](SCRIPTING.md) for the language and everything it can do, and [Scripts](docs/user-guide/08-scripts.md)
-for getting started and sample scripts.
+[Scripts](docs/user-guide/08-scripts.md) for getting started, the language and everything it can do, and sample
+scripts.
 
 ## Config editor
 
