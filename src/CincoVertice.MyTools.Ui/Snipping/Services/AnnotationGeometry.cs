@@ -184,6 +184,54 @@ public static class AnnotationGeometry
         return Scaled(annotation, box, ResizedBox(box, handle, point), measure);
     }
 
+    /// <summary>
+    ///     What one of several annotations selected together becomes when the frame around them all is scaled: its own
+    ///     frame keeps its place and share in the group's, and it's scaled as if that frame's handles were dragged. An
+    ///     arrow's ends move with the group.
+    /// </summary>
+    /// <param name="annotation">The annotation as it was before the drag.</param>
+    /// <param name="from">The frame around the group before the drag.</param>
+    /// <param name="to">The frame around the group now.</param>
+    /// <param name="measure">Gives a text's size.</param>
+    public static AnnotationModel ScaledInGroup(
+        AnnotationModel annotation,
+        Rectangle from,
+        Rectangle to,
+        Func<string, int, Size> measure)
+    {
+        if (annotation is ArrowAnnotationModel arrow)
+        {
+            return arrow with { From = ScaledPoint(arrow.From, from, to), To = ScaledPoint(arrow.To, from, to) };
+        }
+
+        Rectangle box = BoxOf(annotation, measure);
+        Point topLeft = ScaledPoint(box.Location, from, to);
+        Point bottomRight = ScaledPoint(new Point(box.Right, box.Bottom), from, to);
+        Rectangle scaled = Rectangle.FromLTRB(
+            topLeft.X,
+            topLeft.Y,
+            Math.Max(bottomRight.X, topLeft.X + MinSize),
+            Math.Max(bottomRight.Y, topLeft.Y + MinSize));
+
+        if (scaled == box)
+        {
+            return annotation;
+        }
+
+        // A circle or a text only grows or shrinks, so it keeps its middle where the group puts it
+        AnnotationModel result = Scaled(annotation, box, scaled, measure);
+
+        if (result is not (StepAnnotationModel or TextAnnotationModel))
+        {
+            return result;
+        }
+
+        Point want = CenterOf(scaled);
+        Point got = CenterOf(BoxOf(result, measure));
+
+        return Moved(result, new Size(want.X - got.X, want.Y - got.Y));
+    }
+
     /// <summary>A frame with one of the handles of <see cref="FrameOf"/> dragged to the point; it never turns inside out.</summary>
     public static Rectangle ResizedBox(Rectangle box, int handle, Point point)
     {
@@ -314,6 +362,13 @@ public static class AnnotationGeometry
         fromLength == 0
             ? toStart + toLength / 2
             : toStart + (int)Math.Round((value - fromStart) * (toLength / (double)fromLength));
+
+    /// <summary>Where a point of one frame goes in another, keeping its share of the width and the height.</summary>
+    private static Point ScaledPoint(Point point, Rectangle from, Rectangle to) => new(
+        Scale(point.X, from.Left, from.Width, to.Left, to.Width),
+        Scale(point.Y, from.Top, from.Height, to.Top, to.Height));
+
+    private static Point CenterOf(Rectangle box) => new(box.Left + box.Width / 2, box.Top + box.Height / 2);
 
     private static Rectangle Offset(Rectangle rectangle, Size delta) =>
         new(rectangle.Location + delta, rectangle.Size);

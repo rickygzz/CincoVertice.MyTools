@@ -1345,9 +1345,45 @@ public class SnipEditorPresenterTests
         // Act
         ShiftClick(350, 300);
 
-        // Assert: around the rectangle and the arrow, with no handles, since several can't be scaled
+        // Assert: around the rectangle and the arrow, with handles to scale them together
         Assert.Equal(Rectangle.FromLTRB(100, 100, 400, 300), _view.Selection!.Box);
-        Assert.Empty(_view.Selection.Handles);
+        Assert.Equal(8, _view.Selection.Handles.Count);
+    }
+
+    [Fact]
+    public void Several_ScaleTogether_ByAHandleOfTheirFrame_AsOneStepToUndo()
+    {
+        // Arrange: the frame goes from (100, 100) to (400, 300)
+        DrawRectangleAndArrow();
+        Click(100, 140);
+        ShiftClick(350, 300);
+
+        // Act: the bottom right corner, to twice as far from the top left
+        Drag(400, 300, 700, 500);
+
+        // Assert: each keeps its place and share in the frame; the line widths stay
+        Assert.Equal(new Rectangle(100, 100, 200, 160), TheRectangle.Bounds);
+        Assert.Equal((new Point(500, 500), new Point(700, 500)), (TheArrow.From, TheArrow.To));
+        Assert.Equal(Rectangle.FromLTRB(100, 100, 700, 500), _view.Selection!.Box);
+
+        _view.Undo();
+        Assert.Equal(new Rectangle(100, 100, 100, 80), TheRectangle.Bounds);
+        Assert.Equal((new Point(300, 300), new Point(400, 300)), (TheArrow.From, TheArrow.To));
+    }
+
+    [Fact]
+    public void Several_Scaled_ATextGrowsAroundWhereTheFramePutsIt()
+    {
+        // Arrange: the frame goes from (100, 100) to (524, 524); the text is 24 by 24 at (500, 500)
+        DrawThree();
+        _view.SelectAll();
+
+        // Act: the right side, to twice as wide
+        Drag(524, 312, 948, 312);
+
+        // Assert: twice the font, with its middle where its frame went, (900, 500) to (948, 524)
+        Assert.Equal(48, TheText.FontSize);
+        Assert.Equal(new Point(900, 488), TheText.Location);
     }
 
     [Fact]
@@ -1682,19 +1718,22 @@ public class SnipEditorPresenterTests
     }
 
     [Fact]
-    public void Several_HaveNoHandles_AndNoTextToEdit()
+    public void Several_HaveTheHandlesOfTheirFrame_NotTheirOwn_AndNoTextToEdit()
     {
         // Arrange
         DrawThree();
         _view.SelectAll();
 
-        // Act: where the rectangle's bottom right handle would be, and a double-click on the text
+        // Act: where the rectangle's bottom right handle would be, the frame's, and a double-click on the text
         _view.Hover(200, 180);
-        SnipCursor cursor = _view.Cursor;
+        SnipCursor onOwnHandle = _view.Cursor;
+        _view.Hover(524, 524);
+        SnipCursor onFrameHandle = _view.Cursor;
         _view.DoubleClick(510, 510);
 
         // Assert
-        Assert.Equal(SnipCursor.Move, cursor);
+        Assert.Equal(SnipCursor.Move, onOwnHandle);
+        Assert.Equal(SnipCursor.SizeTopLeftBottomRight, onFrameHandle);
         Assert.Null(_view.TextInput);
     }
 

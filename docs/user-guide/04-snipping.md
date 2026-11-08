@@ -92,6 +92,7 @@ Choose Select (V), or end a text with Esc.
   - A text changes its font size.
   - A pen line is scaled and its width changes with it.
   - A highlighter line becomes a highlighted area.
+  - With several drawings selected, the frame around them all has the 8 handles and scales them together: each keeps its place in the frame. Texts and step numbers grow or shrink around their middle, and arrows move their ends with the frame. Line widths stay as they are.
 - **Edit a text:** double-click it.
 - **Delete:** press Delete or Backspace.
 - **Right-click** a drawing for the menu "Reset to original" and "Delete". "Reset to original" returns that one drawing to how it was first drawn, however many changes it had. It is enabled only when the drawing has changed.

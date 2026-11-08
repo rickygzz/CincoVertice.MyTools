@@ -503,19 +503,36 @@ public sealed class SnipEditorPresenter
         _ => selected.Select(annotation => AnnotationGeometry.BoxOf(annotation, MeasureText)).Aggregate(Rectangle.Union),
     };
 
+    /// <summary>
+    ///     What shows what's selected: one's own frame and handles, or a frame with handles around several, which scales
+    ///     them all together. Null when nothing is.
+    /// </summary>
+    private SnipSelectionModel? SelectionShown(IReadOnlyList<AnnotationModel> selected) => selected.Count switch
+    {
+        0 => null,
+        1 => AnnotationGeometry.SelectionOf(selected[0], MeasureText),
+        _ => AnnotationGeometry.FrameOf(SelectionFrame(selected)!.Value),
+    };
+
+    /// <returns>Which handle of what's selected is at the point; null when none is.</returns>
+    private int? SelectionHandleAt(Point point) =>
+        SelectionShown(SelectedAll) is { } shown ? AnnotationGeometry.HandleAt(shown, point, Zoom) : null;
+
     /// <summary>Inside the frame holds what's selected, as a rectangle has only its outline to take hold of.</summary>
     private bool IsInsideSelectionFrame(Point point) => SelectionFrame(SelectedAll)?.Contains(point) == true;
 
     /// <summary>
-    ///     A handle of the one selected scales it. On something, it's selected, or with Shift added or taken away; a drag
-    ///     then moves all that's selected. Elsewhere, a drag draws a box that selects what's wholly inside it.
+    ///     A handle scales what's selected: the one, or all of several together. On something, it's selected, or with
+    ///     Shift added or taken away; a drag then moves all that's selected. Elsewhere, a drag draws a box that selects
+    ///     what's wholly inside it.
     /// </summary>
     private void PressWithSelectTool(Point point, bool shift)
     {
-        if (!shift && Selected is { } selected
-            && AnnotationGeometry.HandleAt(AnnotationGeometry.SelectionOf(selected, MeasureText), point, Zoom) is int handle)
+        if (!shift && SelectionHandleAt(point) is int handle)
         {
-            _selectionDrag = new SelectionDrag(point, handle, [selected]);
+            Rectangle? groupFrame = _selection.Count > 1 ? SelectionFrame(SelectedAll) : null;
+
+            _selectionDrag = new SelectionDrag(point, handle, SelectedAll, GroupFrame: groupFrame);
 
             return;
         }
@@ -859,10 +876,26 @@ public sealed class SnipEditorPresenter
     private int NextStepNumber() =>
         Page.Annotations.OfType<StepAnnotationModel>().Select(step => step.Number).DefaultIfEmpty(0).Max() + 1;
 
-    /// <summary>What an annotation becomes with the drag: scaled by the handle of the one selected, or moved.</summary>
-    private AnnotationModel Dragged(SelectionDrag drag, AnnotationModel annotation, Point point) => drag.Handle is int handle
-        ? AnnotationGeometry.Resized(annotation, handle, point, MeasureText)
-        : AnnotationGeometry.Moved(annotation, new Size(point.X - drag.Start.X, point.Y - drag.Start.Y));
+    /// <summary>
+    ///     What an annotation becomes with the drag: scaled by a handle of the one selected or of the frame around
+    ///     several, or moved.
+    /// </summary>
+    private AnnotationModel Dragged(SelectionDrag drag, AnnotationModel annotation, Point point)
+    {
+        if (drag.Handle is not int handle)
+        {
+            return AnnotationGeometry.Moved(annotation, new Size(point.X - drag.Start.X, point.Y - drag.Start.Y));
+        }
+
+        if (drag.GroupFrame is Rectangle frame)
+        {
+            Rectangle scaled = AnnotationGeometry.ResizedBox(frame, handle, point);
+
+            return AnnotationGeometry.ScaledInGroup(annotation, frame, scaled, MeasureText);
+        }
+
+        return AnnotationGeometry.Resized(annotation, handle, point, MeasureText);
+    }
 
     /// <summary>On a selected text, lets the user type over it; inside a crop being adjusted, crops.</summary>
     private void OnPointerDoubleClicked(object? sender, Point point)
@@ -903,16 +936,11 @@ public sealed class SnipEditorPresenter
             return;
         }
 
-        if (Selected is { } selected)
+        if (SelectionShown(SelectedAll) is { } selection && AnnotationGeometry.HandleAt(selection, point, Zoom) is int handle)
         {
-            SnipSelectionModel selection = AnnotationGeometry.SelectionOf(selected, MeasureText);
+            ShowCursor(AnnotationGeometry.CursorOf(selection, handle));
 
-            if (AnnotationGeometry.HandleAt(selection, point, Zoom) is int handle)
-            {
-                ShowCursor(AnnotationGeometry.CursorOf(selection, handle));
-
-                return;
-            }
+            return;
         }
 
         ShowCursor(IsInsideSelectionFrame(point) || TopmostAt(point) is not null ? SnipCursor.Move : SnipCursor.Default);
@@ -946,8 +974,7 @@ public sealed class SnipEditorPresenter
             return;
         }
 
-        bool isOnHandle = Selected is { } selected
-            && AnnotationGeometry.HandleAt(AnnotationGeometry.SelectionOf(selected, MeasureText), point, Zoom) is not null;
+        bool isOnHandle = SelectionHandleAt(point) is not null;
         int? hit = TopmostAt(point);
         bool isOnSelection = isOnHandle || (hit is int on ? _selection.Contains(on) : IsInsideSelectionFrame(point));
 
@@ -1605,13 +1632,7 @@ public sealed class SnipEditorPresenter
 
         _view.ShowAnnotations(shown);
 
-        // One shows its own frame and handles; several a frame around them all, as they can only be moved together
-        _view.ShowSelection(selected.Count switch
-        {
-            0 => null,
-            1 => AnnotationGeometry.SelectionOf(selected[0], MeasureText),
-            _ => new SnipSelectionModel(SelectionFrame(selected), []),
-        });
+        _view.ShowSelection(SelectionShown(selected));
         _view.ShowSelectionBand(_band);
         _view.ShowUndoRedo(Page.Undo.Count > 0, Page.Redo.Count > 0);
     }
@@ -1663,14 +1684,16 @@ public sealed class SnipEditorPresenter
 
     /// <summary>A drag of what's selected.</summary>
     /// <param name="Start">Where the button was pressed.</param>
-    /// <param name="Handle">Which handle of the one selected is dragged; null when they're all moved.</param>
+    /// <param name="Handle">Which handle of the selection is dragged; null when they're all moved.</param>
     /// <param name="Originals">What's selected as it was before the drag, in the selection's order.</param>
     /// <param name="Clicked">What the button was pressed on; null for the empty space inside the frame.</param>
+    /// <param name="GroupFrame">The frame around several selected, before a drag of its handle; null for one.</param>
     private sealed record SelectionDrag(
         Point Start,
         int? Handle,
         IReadOnlyList<AnnotationModel> Originals,
-        int? Clicked = null);
+        int? Clicked = null,
+        Rectangle? GroupFrame = null);
 
     /// <summary>A drag with the crop tool.</summary>
     /// <param name="Start">Where the button was pressed.</param>
