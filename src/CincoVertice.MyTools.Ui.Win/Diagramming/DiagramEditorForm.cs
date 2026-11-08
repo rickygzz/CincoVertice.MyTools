@@ -524,10 +524,28 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         }
     }
 
-    /// <summary>The same choices as the top bar's color, below the button.</summary>
+    /// <summary>
+    ///     The same choices as the top bar's color, below the panel's button. The menu belongs to the top bar's button,
+    ///     and a menu with an owner opens under it, so it's lent without its owner until it closes.
+    /// </summary>
     private static void ShowColorMenu(ToolStripDropDownButton colors, Control button)
     {
-        colors.DropDown.Show(button, new Point(0, button.Height));
+        ToolStripDropDown menu = colors.DropDown;
+
+        if (menu.Visible)
+        {
+            menu.Close();
+        }
+
+        void GiveBack(object? sender, ToolStripDropDownClosedEventArgs e)
+        {
+            menu.Closed -= GiveBack;
+            menu.OwnerItem = colors;
+        }
+
+        menu.OwnerItem = null;
+        menu.Closed += GiveBack;
+        menu.Show(button, new Point(0, button.Height));
     }
 
     private void PropertiesButton_Click(object? sender, EventArgs e)
