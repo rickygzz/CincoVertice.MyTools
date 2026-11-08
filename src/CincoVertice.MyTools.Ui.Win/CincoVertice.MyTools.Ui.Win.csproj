@@ -7,7 +7,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>Resources\RG.ico</ApplicationIcon>
-    <Version>0.0.6</Version>
+    <Version>0.0.7</Version>
     <!-- Where the releases are: the app looks there for a newer version, read from the assembly at run time -->
     <RepositoryUrl>https://github.com/rickygzz/CincoVertice.MyTools</RepositoryUrl>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
