@@ -43,7 +43,7 @@ To have it look on its own, check **Check for updates at start**. A minute after
 The app never downloads or installs anything itself, and there is no setting migration. To update:
 
 1. Choose **Exit** from the tray menu.
-2. Replace the exe (and the `licenses` folder) with the new ones in the same folder.
+2. Replace the exe and the `licenses` and `docs` folders with the new ones in the same folder.
 3. Start the new exe.
 
 The new version reads your existing `config` folder. Because the config files are read with the current rules, a line that the new version rejects appears as a problem. The JSON settings files are tolerant: a missing or unreadable one simply means defaults.

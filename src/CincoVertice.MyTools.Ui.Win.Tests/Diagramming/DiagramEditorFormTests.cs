@@ -457,8 +457,8 @@ public class DiagramEditorFormTests
     }
 
     [Theory]
-    [InlineData("SaveButton", "Save")]
-    [InlineData("UndoButton", "Undo")]
+    [InlineData("SaveMenuItem", "Save")]
+    [InlineData("UndoMenuItem", "Undo")]
     public void Toolbar_TakesTheTextBeingTyped_BeforeItsCommand(string button, string command)
     {
         // Arrange
@@ -494,10 +494,48 @@ public class DiagramEditorFormTests
         using DiagramEditorForm form = ShowFormEditingProperties(events, "WidthBox", "250");
 
         // Act
-        ClickToolbarButton(form, "SaveButton");
+        ClickToolbarButton(form, "SaveMenuItem");
 
         // Assert
         Assert.Equal(["width 250", "Save"], events);
+    }
+
+    [Fact]
+    public void FileExit_ClosesLikeTheWindowsX_TakingTheTextBeingTyped()
+    {
+        // Arrange
+        List<string> events = [];
+        using DiagramEditorForm form = ShowFormEditingProperties(events, "TextPropertyBox", "new");
+
+        // Act
+        ClickToolbarButton(form, "ExitMenuItem");
+
+        // Assert
+        Assert.Equal(["text new", "closing"], events);
+    }
+
+    [Theory]
+    [InlineData("NewMenuItem", "New")]
+    [InlineData("OpenMenuItem", "Open")]
+    [InlineData("SaveAsMenuItem", "SaveAs")]
+    [InlineData("CopyStyleMenuItem", "CopyStyle")]
+    [InlineData("PasteStyleMenuItem", "PasteStyle")]
+    [InlineData("RedoMenuItem", "Redo")]
+    [InlineData("GroupMenuItem", "Group")]
+    [InlineData("UngroupMenuItem", "Ungroup")]
+    [InlineData("CopyStyleContextMenuItem", "CopyStyle")]
+    [InlineData("PasteStyleContextMenuItem", "PasteStyle")]
+    public void Toolbar_ItemsAskForTheirCommand(string item, string command)
+    {
+        // Arrange
+        List<string> events = [];
+        using DiagramEditorForm form = ShowFormEditingProperties(events, "TextPropertyBox", "new");
+
+        // Act
+        ClickToolbarButton(form, item);
+
+        // Assert
+        Assert.Equal(["text new", command], events);
     }
 
     [Fact]

@@ -15,6 +15,12 @@ public enum DiagramCommand
     Copy,
     Paste,
     Duplicate,
+
+    /// <summary>Keeps the style of what's selected, for <see cref="PasteStyle"/>.</summary>
+    CopyStyle,
+
+    /// <summary>Gives what's selected, and what comes next, the style kept by <see cref="CopyStyle"/>.</summary>
+    PasteStyle,
     Delete,
     SelectAll,
     Group,

@@ -16,6 +16,7 @@ partial class DiagramEditorForm
         if (disposing)
         {
             components?.Dispose();
+            SelectionMenu.Dispose();
             _textFont?.Dispose();
 
             foreach (Image image in _images.Concat(_swatches.Values))
@@ -34,6 +35,9 @@ partial class DiagramEditorForm
     /// </summary>
     private void InitializeComponent()
     {
+        SelectionMenu = new ContextMenuStrip();
+        CopyStyleContextMenuItem = new ToolStripMenuItem();
+        PasteStyleContextMenuItem = new ToolStripMenuItem();
         ToolsStrip = new ToolStrip();
         SelectButton = new ToolStripButton();
         ConnectorButton = new ToolStripButton();
@@ -48,12 +52,18 @@ partial class DiagramEditorForm
         DocumentButton = new ToolStripButton();
         TextButton = new ToolStripButton();
         StyleStrip = new ToolStrip();
-        NewButton = new ToolStripButton();
-        OpenButton = new ToolStripButton();
-        SaveButton = new ToolStripButton();
+        FileDropDownButton = new ToolStripDropDownButton();
+        NewMenuItem = new ToolStripMenuItem();
+        OpenMenuItem = new ToolStripMenuItem();
+        SaveMenuItem = new ToolStripMenuItem();
+        SaveAsMenuItem = new ToolStripMenuItem();
+        ExitSeparator = new ToolStripSeparator();
+        ExitMenuItem = new ToolStripMenuItem();
         FileSeparator = new ToolStripSeparator();
-        UndoButton = new ToolStripButton();
-        RedoButton = new ToolStripButton();
+        EditDropDownButton = new ToolStripDropDownButton();
+        GroupSeparator = new ToolStripSeparator();
+        UndoMenuItem = new ToolStripMenuItem();
+        RedoMenuItem = new ToolStripMenuItem();
         HistorySeparator = new ToolStripSeparator();
         FillDropDownButton = new ToolStripDropDownButton();
         FillPalette = new Snipping.ColorPaletteControl();
@@ -76,13 +86,15 @@ partial class DiagramEditorForm
         TextOutlinePaletteHost = new ToolStripControlHost(TextOutlinePalette);
         MoreTextOutlineColorsMenuItem = new ToolStripMenuItem();
         TextOutlineWidthComboBox = new ToolStripComboBox();
+        CopyStyleMenuItem = new ToolStripMenuItem();
+        PasteStyleMenuItem = new ToolStripMenuItem();
         StyleSeparator = new ToolStripSeparator();
         RoutingComboBox = new ToolStripComboBox();
         ArrowHeadsComboBox = new ToolStripComboBox();
         ResetRouteButton = new ToolStripButton();
         ConnectorsSeparator = new ToolStripSeparator();
-        GroupButton = new ToolStripButton();
-        UngroupButton = new ToolStripButton();
+        GroupMenuItem = new ToolStripMenuItem();
+        UngroupMenuItem = new ToolStripMenuItem();
         FrontButton = new ToolStripButton();
         BackButton = new ToolStripButton();
         PropertiesButton = new ToolStripButton();
@@ -255,54 +267,139 @@ partial class DiagramEditorForm
         // StyleStrip
         //
         StyleStrip.GripStyle = ToolStripGripStyle.Hidden;
-        StyleStrip.Items.AddRange(new ToolStripItem[] { NewButton, OpenButton, SaveButton, FileSeparator, UndoButton, RedoButton, HistorySeparator, FillDropDownButton, LineDropDownButton, LineWidthComboBox, DashedButton, TextColorDropDownButton, FontSizeComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, StyleSeparator, RoutingComboBox, ArrowHeadsComboBox, ResetRouteButton, ConnectorsSeparator, GroupButton, UngroupButton, FrontButton, BackButton, ZoomLabel, PropertiesButton });
+        StyleStrip.Items.AddRange(new ToolStripItem[] { FileDropDownButton, EditDropDownButton, FileSeparator, FillDropDownButton, LineDropDownButton, LineWidthComboBox, DashedButton, TextColorDropDownButton, FontSizeComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, StyleSeparator, RoutingComboBox, ArrowHeadsComboBox, ResetRouteButton, ConnectorsSeparator, FrontButton, BackButton, ZoomLabel, PropertiesButton });
         StyleStrip.Name = "StyleStrip";
         StyleStrip.Padding = new Padding(4, 2, 4, 2);
         StyleStrip.TabIndex = 1;
         //
-        // NewButton
+        // EditDropDownButton
         //
-        NewButton.Name = "NewButton";
-        NewButton.Tag = "New";
-        NewButton.Text = "New";
-        NewButton.ToolTipText = "New diagram (Ctrl+N)";
-        NewButton.Click += CommandButton_Click;
+        EditDropDownButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
+        EditDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { UndoMenuItem, RedoMenuItem, HistorySeparator, CopyStyleMenuItem, PasteStyleMenuItem, GroupSeparator, GroupMenuItem, UngroupMenuItem });
+        EditDropDownButton.Name = "EditDropDownButton";
+        EditDropDownButton.Text = "Edit";
+        EditDropDownButton.ToolTipText = "Undo, redo, copy and paste a style, group";
         //
-        // OpenButton
+        // GroupSeparator
         //
-        OpenButton.Name = "OpenButton";
-        OpenButton.Tag = "Open";
-        OpenButton.Text = "Open";
-        OpenButton.ToolTipText = "Open a diagram saved here (Ctrl+O)";
-        OpenButton.Click += CommandButton_Click;
+        GroupSeparator.Name = "GroupSeparator";
         //
-        // SaveButton
+        // SelectionMenu
         //
-        SaveButton.Name = "SaveButton";
-        SaveButton.Tag = "Save";
-        SaveButton.Text = "Save";
-        SaveButton.ToolTipText = "Save as an SVG image that opens here again (Ctrl+S; Ctrl+Shift+S to save as)";
-        SaveButton.Click += CommandButton_Click;
+        SelectionMenu.Items.AddRange(new ToolStripItem[] { CopyStyleContextMenuItem, PasteStyleContextMenuItem });
+        SelectionMenu.Name = "SelectionMenu";
+        //
+        // CopyStyleContextMenuItem
+        //
+        CopyStyleContextMenuItem.Name = "CopyStyleContextMenuItem";
+        CopyStyleContextMenuItem.ShortcutKeyDisplayString = "Ctrl+Shift+C";
+        CopyStyleContextMenuItem.Tag = "CopyStyle";
+        CopyStyleContextMenuItem.Text = "Copy style";
+        CopyStyleContextMenuItem.Click += CommandButton_Click;
+        //
+        // PasteStyleContextMenuItem
+        //
+        PasteStyleContextMenuItem.Name = "PasteStyleContextMenuItem";
+        PasteStyleContextMenuItem.ShortcutKeyDisplayString = "Ctrl+Shift+V";
+        PasteStyleContextMenuItem.Tag = "PasteStyle";
+        PasteStyleContextMenuItem.Text = "Paste style";
+        PasteStyleContextMenuItem.Click += CommandButton_Click;
+        //
+        // FileDropDownButton
+        //
+        FileDropDownButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
+        FileDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { NewMenuItem, OpenMenuItem, SaveMenuItem, SaveAsMenuItem, ExitSeparator, ExitMenuItem });
+        FileDropDownButton.Name = "FileDropDownButton";
+        FileDropDownButton.Text = "File";
+        FileDropDownButton.ToolTipText = "New, open, save and close";
+        //
+        // NewMenuItem
+        //
+        NewMenuItem.Name = "NewMenuItem";
+        NewMenuItem.ShortcutKeyDisplayString = "Ctrl+N";
+        NewMenuItem.Tag = "New";
+        NewMenuItem.Text = "New";
+        NewMenuItem.ToolTipText = "Start an empty diagram";
+        NewMenuItem.Click += CommandButton_Click;
+        //
+        // OpenMenuItem
+        //
+        OpenMenuItem.Name = "OpenMenuItem";
+        OpenMenuItem.ShortcutKeyDisplayString = "Ctrl+O";
+        OpenMenuItem.Tag = "Open";
+        OpenMenuItem.Text = "Open...";
+        OpenMenuItem.ToolTipText = "Open a diagram saved here";
+        OpenMenuItem.Click += CommandButton_Click;
+        //
+        // SaveMenuItem
+        //
+        SaveMenuItem.Name = "SaveMenuItem";
+        SaveMenuItem.ShortcutKeyDisplayString = "Ctrl+S";
+        SaveMenuItem.Tag = "Save";
+        SaveMenuItem.Text = "Save";
+        SaveMenuItem.ToolTipText = "Save as an SVG image that opens here again";
+        SaveMenuItem.Click += CommandButton_Click;
+        //
+        // SaveAsMenuItem
+        //
+        SaveAsMenuItem.Name = "SaveAsMenuItem";
+        SaveAsMenuItem.ShortcutKeyDisplayString = "Ctrl+Shift+S";
+        SaveAsMenuItem.Tag = "SaveAs";
+        SaveAsMenuItem.Text = "Save as...";
+        SaveAsMenuItem.ToolTipText = "Save under another name";
+        SaveAsMenuItem.Click += CommandButton_Click;
+        //
+        // ExitSeparator
+        //
+        ExitSeparator.Name = "ExitSeparator";
+        //
+        // ExitMenuItem
+        //
+        ExitMenuItem.Name = "ExitMenuItem";
+        ExitMenuItem.ShortcutKeyDisplayString = "Alt+F4";
+        ExitMenuItem.Text = "Exit";
+        ExitMenuItem.ToolTipText = "Close this window";
+        ExitMenuItem.Click += ExitMenuItem_Click;
+        //
+        // CopyStyleMenuItem
+        //
+        CopyStyleMenuItem.Name = "CopyStyleMenuItem";
+        CopyStyleMenuItem.Tag = "CopyStyle";
+        CopyStyleMenuItem.Text = "Copy style";
+        CopyStyleMenuItem.ShortcutKeyDisplayString = "Ctrl+Shift+C";
+        CopyStyleMenuItem.ToolTipText = "Copy the style of what's selected";
+        CopyStyleMenuItem.Click += CommandButton_Click;
+        //
+        // PasteStyleMenuItem
+        //
+        PasteStyleMenuItem.Name = "PasteStyleMenuItem";
+        PasteStyleMenuItem.Tag = "PasteStyle";
+        PasteStyleMenuItem.Text = "Paste style";
+        PasteStyleMenuItem.ShortcutKeyDisplayString = "Ctrl+Shift+V";
+        PasteStyleMenuItem.ToolTipText = "Give what's selected, and what you draw next, the copied style";
+        PasteStyleMenuItem.Click += CommandButton_Click;
         //
         // FileSeparator
         //
         FileSeparator.Name = "FileSeparator";
         //
-        // UndoButton
+        // UndoMenuItem
         //
-        UndoButton.Name = "UndoButton";
-        UndoButton.Tag = "Undo";
-        UndoButton.Text = "Undo";
-        UndoButton.ToolTipText = "Undo (Ctrl+Z)";
-        UndoButton.Click += CommandButton_Click;
+        UndoMenuItem.Name = "UndoMenuItem";
+        UndoMenuItem.Tag = "Undo";
+        UndoMenuItem.Text = "Undo";
+        UndoMenuItem.ShortcutKeyDisplayString = "Ctrl+Z";
+        UndoMenuItem.ToolTipText = "Undo the last change";
+        UndoMenuItem.Click += CommandButton_Click;
         //
-        // RedoButton
+        // RedoMenuItem
         //
-        RedoButton.Name = "RedoButton";
-        RedoButton.Tag = "Redo";
-        RedoButton.Text = "Redo";
-        RedoButton.ToolTipText = "Redo (Ctrl+Y)";
-        RedoButton.Click += CommandButton_Click;
+        RedoMenuItem.Name = "RedoMenuItem";
+        RedoMenuItem.Tag = "Redo";
+        RedoMenuItem.Text = "Redo";
+        RedoMenuItem.ShortcutKeyDisplayString = "Ctrl+Y";
+        RedoMenuItem.ToolTipText = "Redo what was undone";
+        RedoMenuItem.Click += CommandButton_Click;
         //
         // HistorySeparator
         //
@@ -469,21 +566,23 @@ partial class DiagramEditorForm
         //
         ConnectorsSeparator.Name = "ConnectorsSeparator";
         //
-        // GroupButton
+        // GroupMenuItem
         //
-        GroupButton.Name = "GroupButton";
-        GroupButton.Tag = "Group";
-        GroupButton.Text = "Group";
-        GroupButton.ToolTipText = "Group the selected shapes (Ctrl+G)";
-        GroupButton.Click += CommandButton_Click;
+        GroupMenuItem.Name = "GroupMenuItem";
+        GroupMenuItem.Tag = "Group";
+        GroupMenuItem.Text = "Group";
+        GroupMenuItem.ShortcutKeyDisplayString = "Ctrl+G";
+        GroupMenuItem.ToolTipText = "Group the selected shapes";
+        GroupMenuItem.Click += CommandButton_Click;
         //
-        // UngroupButton
+        // UngroupMenuItem
         //
-        UngroupButton.Name = "UngroupButton";
-        UngroupButton.Tag = "Ungroup";
-        UngroupButton.Text = "Ungroup";
-        UngroupButton.ToolTipText = "Ungroup (Ctrl+Shift+G)";
-        UngroupButton.Click += CommandButton_Click;
+        UngroupMenuItem.Name = "UngroupMenuItem";
+        UngroupMenuItem.Tag = "Ungroup";
+        UngroupMenuItem.Text = "Ungroup";
+        UngroupMenuItem.ShortcutKeyDisplayString = "Ctrl+Shift+G";
+        UngroupMenuItem.ToolTipText = "Ungroup the selected groups";
+        UngroupMenuItem.Click += CommandButton_Click;
         //
         // FrontButton
         //
@@ -913,6 +1012,9 @@ partial class DiagramEditorForm
 
     #endregion
 
+    private ContextMenuStrip SelectionMenu;
+    private ToolStripMenuItem CopyStyleContextMenuItem;
+    private ToolStripMenuItem PasteStyleContextMenuItem;
     private ToolStrip ToolsStrip;
     private ToolStripButton SelectButton;
     private ToolStripButton ConnectorButton;
@@ -927,12 +1029,18 @@ partial class DiagramEditorForm
     private ToolStripButton DocumentButton;
     private ToolStripButton TextButton;
     private ToolStrip StyleStrip;
-    private ToolStripButton NewButton;
-    private ToolStripButton OpenButton;
-    private ToolStripButton SaveButton;
+    private ToolStripDropDownButton FileDropDownButton;
+    private ToolStripMenuItem NewMenuItem;
+    private ToolStripMenuItem OpenMenuItem;
+    private ToolStripMenuItem SaveMenuItem;
+    private ToolStripMenuItem SaveAsMenuItem;
+    private ToolStripSeparator ExitSeparator;
+    private ToolStripMenuItem ExitMenuItem;
     private ToolStripSeparator FileSeparator;
-    private ToolStripButton UndoButton;
-    private ToolStripButton RedoButton;
+    private ToolStripDropDownButton EditDropDownButton;
+    private ToolStripSeparator GroupSeparator;
+    private ToolStripMenuItem UndoMenuItem;
+    private ToolStripMenuItem RedoMenuItem;
     private ToolStripSeparator HistorySeparator;
     private ToolStripDropDownButton FillDropDownButton;
     private Snipping.ColorPaletteControl FillPalette;
@@ -955,13 +1063,15 @@ partial class DiagramEditorForm
     private ToolStripControlHost TextOutlinePaletteHost;
     private ToolStripMenuItem MoreTextOutlineColorsMenuItem;
     private ToolStripComboBox TextOutlineWidthComboBox;
+    private ToolStripMenuItem CopyStyleMenuItem;
+    private ToolStripMenuItem PasteStyleMenuItem;
     private ToolStripSeparator StyleSeparator;
     private ToolStripComboBox RoutingComboBox;
     private ToolStripComboBox ArrowHeadsComboBox;
     private ToolStripButton ResetRouteButton;
     private ToolStripSeparator ConnectorsSeparator;
-    private ToolStripButton GroupButton;
-    private ToolStripButton UngroupButton;
+    private ToolStripMenuItem GroupMenuItem;
+    private ToolStripMenuItem UngroupMenuItem;
     private ToolStripButton FrontButton;
     private ToolStripButton BackButton;
     private ToolStripButton PropertiesButton;

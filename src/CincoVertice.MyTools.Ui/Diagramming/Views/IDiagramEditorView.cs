@@ -22,6 +22,9 @@ public interface IDiagramEditorView
     /// <summary>Raised when the user double-clicks on the canvas, after the press.</summary>
     event EventHandler<DiagramPointerModel>? PointerDoubleClicked;
 
+    /// <summary>Raised when the user right-clicks the canvas, with where, in canvas pixels.</summary>
+    event EventHandler<Point>? PointerRightClicked;
+
     /// <summary>Raised when the mouse leaves the canvas.</summary>
     event EventHandler? PointerLeft;
 
@@ -100,6 +103,11 @@ public interface IDiagramEditorView
     void ShowProperties(DiagramPropertiesModel properties);
 
     void ShowUndoRedo(bool canUndo, bool canRedo);
+
+    /// <summary>Shows the menu over what's selected, whose items ask for their <see cref="DiagramCommand"/>.</summary>
+    /// <param name="location">Where, in canvas pixels.</param>
+    /// <param name="canPasteStyle">False until a style has been copied.</param>
+    void ShowContextMenu(Point location, bool canPasteStyle);
 
     /// <summary>Shows the name of the diagram.</summary>
     /// <param name="name">The file's name, or a default.</param>

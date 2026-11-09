@@ -71,6 +71,10 @@ public sealed class DiagramEditorPresenter
         Color.FromArgb(0, 0, 0),
         14);
 
+    // Kept by Copy style, only in this window. A connector's style has no fill to give
+    private DiagramStyleModel? _copiedStyle;
+    private bool _copiedStyleHasFill;
+
     private DiagramRouting _routing = DiagramRouting.Elbow;
     private DiagramArrowHeads _heads = DiagramArrowHeads.End;
     private bool _isPropertiesPanelVisible = true;
@@ -119,6 +123,7 @@ public sealed class DiagramEditorPresenter
         _view.PointerMoved += OnPointerMoved;
         _view.PointerReleased += OnPointerReleased;
         _view.PointerDoubleClicked += OnPointerDoubleClicked;
+        _view.PointerRightClicked += OnPointerRightClicked;
         _view.PointerLeft += OnPointerLeft;
         _view.WheelTurned += OnWheelTurned;
         _view.ToolSelected += OnToolSelected;
@@ -898,6 +903,45 @@ public sealed class DiagramEditorPresenter
         Commit(_diagram with { Connectors = [.. _diagram.Connectors, connector] });
     }
 
+    /// <summary>
+    ///     On a shape or a connector, shows the menu; a right-click on something not selected selects only it (with
+    ///     its group) first, and one on what's selected keeps the whole selection. Nothing on an empty spot.
+    /// </summary>
+    private void OnPointerRightClicked(object? sender, Point location)
+    {
+        if (_drag is not null)
+        {
+            return;
+        }
+
+        Point point = _viewport.ToDiagram(location);
+
+        if (DiagramHitTester.ShapeAt(_diagram, point) is { } shape)
+        {
+            if (!_selectedShapes.Contains(shape.Id))
+            {
+                ClearSelection();
+                _selectedShapes.UnionWith(WithGroup(shape));
+            }
+        }
+        else if (DiagramHitTester.ConnectorAt(_diagram, point, GrabDistance / _viewport.Zoom) is { } connector)
+        {
+            if (!_selectedConnectors.Contains(connector.Id))
+            {
+                ClearSelection();
+                _selectedConnectors.Add(connector.Id);
+            }
+        }
+        else
+        {
+            return;
+        }
+
+        SelectionChanged();
+        Refresh();
+        _view.ShowContextMenu(location, _copiedStyle is not null);
+    }
+
     private void OnPointerDoubleClicked(object? sender, DiagramPointerModel pointer)
     {
         if (_tool != DiagramTool.Select)
@@ -1099,6 +1143,12 @@ public sealed class DiagramEditorPresenter
                 break;
             case DiagramCommand.Duplicate:
                 Insert(SelectedFragment(), PasteOffset);
+                break;
+            case DiagramCommand.CopyStyle:
+                CopyStyle();
+                break;
+            case DiagramCommand.PasteStyle:
+                PasteStyle();
                 break;
             case DiagramCommand.Delete:
                 Delete();
@@ -1637,6 +1687,29 @@ public sealed class DiagramEditorPresenter
         }
 
         ShowSelectedStyle();
+    }
+
+    private void CopyStyle()
+    {
+        if (_selectedShapes.Count > 0 || _selectedConnectors.Count > 0)
+        {
+            _copiedStyle = SelectedStyle();
+            _copiedStyleHasFill = _selectedShapes.Count > 0;
+        }
+    }
+
+    /// <summary>
+    ///     The whole copied style, except that a style copied from a connector, which has no fill, leaves a shape's
+    ///     fill as it is.
+    /// </summary>
+    private void PasteStyle()
+    {
+        if (_copiedStyle is not DiagramStyleModel copied)
+        {
+            return;
+        }
+
+        ChangeStyle(style => _copiedStyleHasFill ? copied : copied with { Fill = style.Fill });
     }
 
     private void SelectionChanged() => ShowSelectedStyle();

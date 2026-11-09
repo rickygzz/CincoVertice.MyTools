@@ -2231,6 +2231,189 @@ public class DiagramEditorPresenterTests
     }
 
     [Fact]
+    public void PasteStyle_GivesEverySelectedShapeTheCopiedStyle_AsOneStepToUndo()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.SelectColor(DiagramColorTarget.Fill, Color.Red);
+        _view.SelectLineWidth(5);
+        _view.SelectDashed(true);
+        _view.SelectFontSize(24);
+        DiagramStyleModel copied = Diagram.Shapes[0].Style;
+        _view.Command(DiagramCommand.CopyStyle);
+        AddShape(400, 100);
+        _view.SelectLineWidth(1);
+        AddShape(700, 100);
+        ClickEmpty();
+        _view.Click(420, 120);
+        _view.Click(720, 120, shift: true);
+        DiagramModel before = Diagram;
+
+        // Act
+        _view.Command(DiagramCommand.PasteStyle);
+
+        // Assert
+        Assert.All(Diagram.Shapes, shape => Assert.Equal(copied, shape.Style));
+        Assert.Equal(copied, _view.ShownStyle);
+        _view.Command(DiagramCommand.Undo);
+        Assert.Equal(before, Diagram);
+    }
+
+    [Fact]
+    public void PasteStyle_IsWhatComesNext()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.SelectLineWidth(7);
+        _view.Command(DiagramCommand.CopyStyle);
+        AddShape(400, 100);
+        _view.SelectLineWidth(1);
+
+        // Act
+        _view.Command(DiagramCommand.PasteStyle);
+
+        // Assert
+        Assert.Equal(7, AddShape(700, 100).Style.LineWidth);
+    }
+
+    [Fact]
+    public void PasteStyle_FromAConnector_LeavesTheShapesFill()
+    {
+        // Arrange
+        DiagramShapeModel from = AddShape(100, 100);
+        _view.SelectColor(DiagramColorTarget.Fill, Color.Red);
+        DiagramShapeModel to = AddShape(400, 100);
+        Connect(from, to);
+        ClickEmpty();
+        _view.Click(300, 125);
+        _view.SelectColor(DiagramColorTarget.Fill, Color.Blue);
+        _view.SelectColor(DiagramColorTarget.Line, Color.Green);
+        _view.Command(DiagramCommand.CopyStyle);
+        _view.Click(120, 120);
+
+        // Act
+        _view.Command(DiagramCommand.PasteStyle);
+
+        // Assert
+        Assert.Equal(Color.FromArgb(255, Color.Red), Diagram.Shapes[0].Style.Fill);
+        Assert.Equal(Color.FromArgb(255, Color.Green), Diagram.Shapes[0].Style.Line);
+    }
+
+    [Fact]
+    public void PasteStyle_WithNothingCopied_ChangesNothing()
+    {
+        // Arrange
+        AddShape(100, 100);
+        DiagramModel before = Diagram;
+
+        // Act
+        _view.Command(DiagramCommand.PasteStyle);
+
+        // Assert
+        Assert.Equal(before, Diagram);
+    }
+
+    [Fact]
+    public void CopyStyle_WithNothingSelected_KeepsWhatWasCopied()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.SelectLineWidth(7);
+        _view.Command(DiagramCommand.CopyStyle);
+        ClickEmpty();
+        _view.Command(DiagramCommand.CopyStyle);
+        AddShape(400, 100);
+        _view.SelectLineWidth(1);
+
+        // Act
+        _view.Command(DiagramCommand.PasteStyle);
+
+        // Assert
+        Assert.Equal(7, Diagram.Shapes[1].Style.LineWidth);
+    }
+
+    [Fact]
+    public void RightClick_OnAShapeNotSelected_SelectsOnlyIt_AndShowsTheMenu()
+    {
+        // Arrange
+        AddShape(100, 100);
+        AddShape(400, 100);
+
+        // Act
+        _view.RightClick(120, 120);
+
+        // Assert
+        Assert.Equal((new Point(120, 120), false), _view.ContextMenu);
+        _view.Command(DiagramCommand.Delete);
+        Assert.Equal(400, Assert.Single(Diagram.Shapes).Bounds.X);
+    }
+
+    [Fact]
+    public void RightClick_OnTheSelection_KeepsItAll()
+    {
+        // Arrange
+        AddShape(100, 100);
+        AddShape(400, 100);
+        _view.Command(DiagramCommand.SelectAll);
+
+        // Act
+        _view.RightClick(120, 120);
+
+        // Assert
+        _view.Command(DiagramCommand.Delete);
+        Assert.Empty(Diagram.Shapes);
+    }
+
+    [Fact]
+    public void RightClick_OnAConnector_SelectsIt()
+    {
+        // Arrange
+        DiagramShapeModel from = AddShape(100, 100);
+        DiagramShapeModel to = AddShape(400, 100);
+        Connect(from, to);
+        ClickEmpty();
+
+        // Act
+        _view.RightClick(300, 125);
+
+        // Assert
+        Assert.NotNull(_view.ContextMenu);
+        _view.Command(DiagramCommand.Delete);
+        Assert.Empty(Diagram.Connectors);
+        Assert.Equal(2, Diagram.Shapes.Count);
+    }
+
+    [Fact]
+    public void RightClick_OnAnEmptySpot_ShowsNoMenu_AndKeepsTheSelection()
+    {
+        // Arrange
+        AddShape(100, 100);
+
+        // Act
+        _view.RightClick(5000, 5000);
+
+        // Assert
+        Assert.Null(_view.ContextMenu);
+        _view.Command(DiagramCommand.Delete);
+        Assert.Empty(Diagram.Shapes);
+    }
+
+    [Fact]
+    public void RightClick_AfterCopyingAStyle_CanPasteIt()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.Command(DiagramCommand.CopyStyle);
+        AddShape(400, 100);
+
+        // Act
+        _view.RightClick(120, 120);
+
+        // Assert
+        Assert.True(_view.ContextMenu!.Value.CanPasteStyle);
+    }
+
+    [Fact]
     public void MoreColors_UsesWhatThePickerGives_AndCancelKeepsIt()
     {
         // Arrange
@@ -2915,6 +3098,8 @@ public class DiagramEditorPresenterTests
 
         public event EventHandler<DiagramPointerModel>? PointerDoubleClicked;
 
+        public event EventHandler<Point>? PointerRightClicked;
+
         public event EventHandler? PointerLeft;
 
         public event EventHandler<DiagramWheelModel>? WheelTurned;
@@ -2988,6 +3173,9 @@ public class DiagramEditorPresenterTests
 
         public bool CanUndo { get; private set; }
 
+        /// <summary>Where the last menu was shown, and whether it could paste a style.</summary>
+        public (Point Location, bool CanPasteStyle)? ContextMenu { get; private set; }
+
         public bool CanRedo { get; private set; }
 
         public string? DocumentName { get; private set; }
@@ -3051,6 +3239,8 @@ public class DiagramEditorPresenterTests
             PointerDoubleClicked?.Invoke(this, new DiagramPointerModel(new Point(x, y)));
             Release(x, y);
         }
+
+        public void RightClick(int x, int y) => PointerRightClicked?.Invoke(this, new Point(x, y));
 
         public void Wheel(int x, int y, float steps, bool control = false, bool shift = false) =>
             WheelTurned?.Invoke(this, new DiagramWheelModel(new Point(x, y), steps, control, shift));
@@ -3119,6 +3309,8 @@ public class DiagramEditorPresenterTests
         }
 
         public void ShowUndoRedo(bool canUndo, bool canRedo) => (CanUndo, CanRedo) = (canUndo, canRedo);
+
+        public void ShowContextMenu(Point location, bool canPasteStyle) => ContextMenu = (location, canPasteStyle);
 
         public void ShowDocument(string name, bool hasChanges) => (DocumentName, HasChanges) = (name, hasChanges);
 

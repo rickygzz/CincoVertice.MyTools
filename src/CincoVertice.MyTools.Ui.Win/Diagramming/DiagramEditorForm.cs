@@ -81,6 +81,8 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
 
     public event EventHandler<DiagramPointerModel>? PointerDoubleClicked;
 
+    public event EventHandler<Point>? PointerRightClicked;
+
     public event EventHandler? PointerLeft;
 
     public event EventHandler<DiagramWheelModel>? WheelTurned;
@@ -266,10 +268,16 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         _isShowingChoices = false;
     }
 
+    public void ShowContextMenu(Point location, bool canPasteStyle)
+    {
+        PasteStyleContextMenuItem.Enabled = canPasteStyle;
+        SelectionMenu.Show(Canvas, location);
+    }
+
     public void ShowUndoRedo(bool canUndo, bool canRedo)
     {
-        UndoButton.Enabled = canUndo;
-        RedoButton.Enabled = canRedo;
+        UndoMenuItem.Enabled = canUndo;
+        RedoMenuItem.Enabled = canRedo;
     }
 
     public void ShowDocument(string name, bool hasChanges)
@@ -712,6 +720,9 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         CommandRequested?.Invoke(this, CommandOf(sender));
     }
 
+    // Closing asks about unsaved changes, as the window's X does
+    private void ExitMenuItem_Click(object? sender, EventArgs e) => Close();
+
     private void ZoomLabel_Click(object? sender, EventArgs e)
     {
         CommitText();
@@ -857,6 +868,10 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         {
             PointerReleased?.Invoke(this, PointerOf(e));
         }
+        else if (e.Button == MouseButtons.Right)
+        {
+            PointerRightClicked?.Invoke(this, e.Location);
+        }
     }
 
     private void Canvas_MouseDoubleClick(object? sender, MouseEventArgs e)
@@ -990,6 +1005,8 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
             (Keys.Control, Keys.C) => DiagramCommand.Copy,
             (Keys.Control, Keys.V) => DiagramCommand.Paste,
             (Keys.Control, Keys.D) => DiagramCommand.Duplicate,
+            (Keys.Control | Keys.Shift, Keys.C) => DiagramCommand.CopyStyle,
+            (Keys.Control | Keys.Shift, Keys.V) => DiagramCommand.PasteStyle,
             (Keys.Control, Keys.A) => DiagramCommand.SelectAll,
             (Keys.Control, Keys.G) => DiagramCommand.Group,
             (Keys.Control | Keys.Shift, Keys.G) => DiagramCommand.Ungroup,

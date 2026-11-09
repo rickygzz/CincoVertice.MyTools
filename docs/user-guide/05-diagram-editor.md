@@ -35,7 +35,7 @@ New text uses [Roboto](https://fonts.google.com/specimen/Roboto), which comes wi
   - *Attach an end somewhere else:* click the connector, then drag one of the dots at its ends to another shape, or to a circle on it to choose the side. Dropped on nothing, the end stays where it was. Dropped on the middle of its own shape, the side is chosen for you again.
   - *Change the path:* click an elbow connector, then drag any piece of its line sideways. The line stays level and upright, with rounded corners. **Reset line** on the toolbar lets it work out its own path again, and so does choosing **Elbow** or **Straight**.
 - **Text:** double-click a shape to edit its text, double-click a connector to edit its label, or double-click empty canvas for free text. The Text tool also adds free text where you click, and the Properties panel has a Text box. Enter ends editing; Shift+Enter inserts a new line.
-- **Group:** select two or more shapes and press Ctrl+G. Groups are one level only; there is no nesting. Selecting one shape of a group selects the whole group. Ctrl+Shift+G ungroups.
+- **Group:** select two or more shapes and press Ctrl+G, or choose **Edit > Group**. Groups are one level only; there is no nesting. Selecting one shape of a group selects the whole group. Ctrl+Shift+G ungroups.
 - **Copy and paste** use the Windows clipboard as text: the selected shapes and the connectors between them. Pasting adds the shapes 20 pixels further each time. Pasting other text does nothing. If you paste into another program, you get that text, not a picture. Because it is the clipboard, you can copy from one editor window and paste into another. **Duplicate** (Ctrl+D) does the same without using the clipboard.
 - **Snapping.** While you drag with the mouse, shapes snap in two ways.
   - *To other shapes:* the left edge, middle or right edge of what you move lines up with the left edge, middle or right edge of any other shape (top, middle and bottom likewise) when it is close. A thin guide line is drawn along each alignment.
@@ -46,7 +46,13 @@ New text uses [Roboto](https://fonts.google.com/specimen/Roboto), which comes wi
 
 ## Style and properties
 
-The toolbar offers Fill (with "No fill"), Line, line width, Dashed, Text color, text size, Edge color and width, routing ("Elbow" or "Straight", tooltip "How connectors go between shapes"), arrows ("Arrow at end", "Arrow at start", "Arrows at both", "No arrows"), "Reset line" (tooltip "Let the selected connectors work out their own path again"), Group, Ungroup, Front, Back and Properties.
+The toolbar offers the **File** menu (see [Saving and opening](#saving-and-opening)), the **Edit** menu, Fill (with "No fill"), Line, line width, Dashed, Text color, text size, Edge color and width, routing ("Elbow" or "Straight", tooltip "How connectors go between shapes"), arrows ("Arrow at end", "Arrow at start", "Arrows at both", "No arrows"), "Reset line" (tooltip "Let the selected connectors work out their own path again"), Front, Back and Properties.
+
+The **Edit** menu has **Undo** (Ctrl+Z), **Redo** (Ctrl+Y), **Copy style** (Ctrl+Shift+C), **Paste style** (Ctrl+Shift+V), **Group** (Ctrl+G) and **Ungroup** (Ctrl+Shift+G). Undo and Redo are grayed out when there is nothing to undo or redo.
+
+A toolbar change goes to everything selected, and to what you draw next.
+
+**Copy a style.** Select a shape or connector and choose **Edit > Copy style** (or press **Ctrl+Shift+C**). Then select one or more others and choose **Edit > Paste style** (**Ctrl+Shift+V**). Both are also on the menu you get by right-clicking a shape or connector: a right-click on something not selected selects just it first, and one on the selection keeps it all. Paste style is grayed out there until you copy a style. Pasted objects get the copied fill, border, border width, dashes, text color, font, text size and text edge, as one step to undo. What you draw next gets that style too. A style copied from a connector leaves a shape's fill as it is, since a connector has none. Routing and arrows are not copied. The copied style stays until you copy another, in that window only.
 
 The Properties panel (show or hide with **F4**) has these fields: Text, X, Y, Width, Height, Corner radius, Fill, Border, Border width, Dashed, Text color, Font, Text size, Text edge, Edge width, Route and Arrows.
 
@@ -60,6 +66,7 @@ The Properties panel (show or hide with **F4**) has these fields: Text, X, Y, Wi
 | Ctrl+Y or Ctrl+Shift+Z | Redo |
 | Ctrl+X, Ctrl+C, Ctrl+V | Cut, copy, paste |
 | Ctrl+D | Duplicate |
+| Ctrl+Shift+C / Ctrl+Shift+V | Copy style / paste style |
 | Ctrl+A | Select all |
 | Ctrl+G / Ctrl+Shift+G | Group / ungroup |
 | Ctrl+] / Ctrl+[ | Bring to front / send to back |
@@ -76,7 +83,7 @@ The zoom label shows the percentage; its tooltip reads "Ctrl+wheel to zoom. Clic
 
 ## Saving and opening
 
-- Tooltips: "New diagram (Ctrl+N)", "Open a diagram saved here (Ctrl+O)", "Save as an SVG image that opens here again (Ctrl+S; Ctrl+Shift+S to save as)".
+- The toolbar's **File** menu has **New** (Ctrl+N), **Open...** (Ctrl+O), **Save** (Ctrl+S), **Save as...** (Ctrl+Shift+S) and **Exit**. Exit closes this window, as its X button does, and asks about unsaved changes; the rest of My Tools keeps running.
 - The dialogs are "Save diagram" and "Open diagram", with the filter "SVG image (*.svg)". The suggested name is `Diagram.svg`.
 - A saved diagram is a normal SVG image that any browser can show. It carries the diagram's data inside, so only My Tools can edit it again. A failed save leaves the old file as it was.
 - **Only diagrams made by this editor can be opened.** Other files give `This isn't an SVG file.` or `This SVG file wasn't made by the diagram editor, so it can't be edited here.`
