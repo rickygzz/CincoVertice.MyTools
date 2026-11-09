@@ -38,6 +38,9 @@ partial class DiagramEditorForm
         SelectionMenu = new ContextMenuStrip();
         CopyStyleContextMenuItem = new ToolStripMenuItem();
         PasteStyleContextMenuItem = new ToolStripMenuItem();
+        GroupContextSeparator = new ToolStripSeparator();
+        GroupContextMenuItem = new ToolStripMenuItem();
+        UngroupContextMenuItem = new ToolStripMenuItem();
         ToolsStrip = new ToolStrip();
         SelectButton = new ToolStripButton();
         ConnectorButton = new ToolStripButton();
@@ -287,7 +290,7 @@ partial class DiagramEditorForm
         //
         // SelectionMenu
         //
-        SelectionMenu.Items.AddRange(new ToolStripItem[] { CopyStyleContextMenuItem, PasteStyleContextMenuItem });
+        SelectionMenu.Items.AddRange(new ToolStripItem[] { CopyStyleContextMenuItem, PasteStyleContextMenuItem, GroupContextSeparator, GroupContextMenuItem, UngroupContextMenuItem });
         SelectionMenu.Name = "SelectionMenu";
         //
         // CopyStyleContextMenuItem
@@ -305,6 +308,26 @@ partial class DiagramEditorForm
         PasteStyleContextMenuItem.Tag = "PasteStyle";
         PasteStyleContextMenuItem.Text = "Paste style";
         PasteStyleContextMenuItem.Click += CommandButton_Click;
+        //
+        // GroupContextSeparator
+        //
+        GroupContextSeparator.Name = "GroupContextSeparator";
+        //
+        // GroupContextMenuItem
+        //
+        GroupContextMenuItem.Name = "GroupContextMenuItem";
+        GroupContextMenuItem.ShortcutKeyDisplayString = "Ctrl+G";
+        GroupContextMenuItem.Tag = "Group";
+        GroupContextMenuItem.Text = "Group";
+        GroupContextMenuItem.Click += CommandButton_Click;
+        //
+        // UngroupContextMenuItem
+        //
+        UngroupContextMenuItem.Name = "UngroupContextMenuItem";
+        UngroupContextMenuItem.ShortcutKeyDisplayString = "Ctrl+Shift+G";
+        UngroupContextMenuItem.Tag = "Ungroup";
+        UngroupContextMenuItem.Text = "Ungroup";
+        UngroupContextMenuItem.Click += CommandButton_Click;
         //
         // FileDropDownButton
         //
@@ -1022,6 +1045,9 @@ partial class DiagramEditorForm
     private ContextMenuStrip SelectionMenu;
     private ToolStripMenuItem CopyStyleContextMenuItem;
     private ToolStripMenuItem PasteStyleContextMenuItem;
+    private ToolStripSeparator GroupContextSeparator;
+    private ToolStripMenuItem GroupContextMenuItem;
+    private ToolStripMenuItem UngroupContextMenuItem;
     private ToolStrip ToolsStrip;
     private ToolStripButton SelectButton;
     private ToolStripButton ConnectorButton;

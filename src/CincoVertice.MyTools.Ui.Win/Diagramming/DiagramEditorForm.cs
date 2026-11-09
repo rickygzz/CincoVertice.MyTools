@@ -273,9 +273,11 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         _isShowingChoices = false;
     }
 
-    public void ShowContextMenu(Point location, bool canPasteStyle)
+    public void ShowContextMenu(Point location, DiagramContextMenuModel menu)
     {
-        PasteStyleContextMenuItem.Enabled = canPasteStyle;
+        PasteStyleContextMenuItem.Enabled = menu.CanPasteStyle;
+        GroupContextMenuItem.Enabled = menu.CanGroup;
+        UngroupContextMenuItem.Enabled = menu.CanUngroup;
         SelectionMenu.Show(Canvas, location);
     }
 

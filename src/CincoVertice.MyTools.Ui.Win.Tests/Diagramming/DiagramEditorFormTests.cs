@@ -525,6 +525,8 @@ public class DiagramEditorFormTests
     [InlineData("UngroupMenuItem", "Ungroup")]
     [InlineData("CopyStyleContextMenuItem", "CopyStyle")]
     [InlineData("PasteStyleContextMenuItem", "PasteStyle")]
+    [InlineData("GroupContextMenuItem", "Group")]
+    [InlineData("UngroupContextMenuItem", "Ungroup")]
     public void Toolbar_ItemsAskForTheirCommand(string item, string command)
     {
         // Arrange

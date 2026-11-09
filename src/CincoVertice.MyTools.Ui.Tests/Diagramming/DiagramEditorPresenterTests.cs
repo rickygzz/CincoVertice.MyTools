@@ -2387,7 +2387,7 @@ public class DiagramEditorPresenterTests
         _view.RightClick(120, 120);
 
         // Assert
-        Assert.Equal((new Point(120, 120), false), _view.ContextMenu);
+        Assert.Equal((new Point(120, 120), new DiagramContextMenuModel(false, false, false)), _view.ContextMenu);
         _view.Command(DiagramCommand.Delete);
         Assert.Equal(400, Assert.Single(Diagram.Shapes).Bounds.X);
     }
@@ -2443,6 +2443,81 @@ public class DiagramEditorPresenterTests
     }
 
     [Fact]
+    public void RightClick_OnSeveralShapes_CanGroupThem_ButNotUngroup()
+    {
+        // Arrange
+        AddShape(100, 100);
+        AddShape(400, 100);
+        _view.Command(DiagramCommand.SelectAll);
+
+        // Act
+        _view.RightClick(120, 120);
+
+        // Assert
+        DiagramContextMenuModel menu = _view.ContextMenu!.Value.Menu;
+        Assert.True(menu.CanGroup);
+        Assert.False(menu.CanUngroup);
+    }
+
+    [Fact]
+    public void RightClick_OnAGroup_CanUngroupIt_ButNotGroupItAgain()
+    {
+        // Arrange
+        AddShape(100, 100);
+        AddShape(400, 100);
+        _view.Command(DiagramCommand.SelectAll);
+        _view.Command(DiagramCommand.Group);
+        ClickEmpty();
+
+        // Act: one shape of the group selects it all
+        _view.RightClick(120, 120);
+
+        // Assert
+        DiagramContextMenuModel menu = _view.ContextMenu!.Value.Menu;
+        Assert.False(menu.CanGroup);
+        Assert.True(menu.CanUngroup);
+    }
+
+    [Fact]
+    public void RightClick_OnAGroupAndAnotherShape_CanGroupThemAll_AndUngroup()
+    {
+        // Arrange
+        AddShape(100, 100);
+        AddShape(400, 100);
+        _view.Command(DiagramCommand.SelectAll);
+        _view.Command(DiagramCommand.Group);
+        AddShape(700, 100);
+        _view.Command(DiagramCommand.SelectAll);
+
+        // Act
+        _view.RightClick(720, 120);
+
+        // Assert
+        DiagramContextMenuModel menu = _view.ContextMenu!.Value.Menu;
+        Assert.True(menu.CanGroup);
+        Assert.True(menu.CanUngroup);
+    }
+
+    [Fact]
+    public void Group_OfWhatsOneGroupAlready_ChangesNothingToUndo()
+    {
+        // Arrange
+        AddShape(100, 100);
+        AddShape(400, 100);
+        _view.Command(DiagramCommand.SelectAll);
+        _view.Command(DiagramCommand.Group);
+        DiagramModel grouped = Diagram;
+
+        // Act
+        _view.Command(DiagramCommand.Group);
+
+        // Assert: one undo goes back to before the first group
+        Assert.Same(grouped, Diagram);
+        _view.Command(DiagramCommand.Undo);
+        Assert.All(Diagram.Shapes, shape => Assert.Null(shape.GroupId));
+    }
+
+    [Fact]
     public void RightClick_AfterCopyingAStyle_CanPasteIt()
     {
         // Arrange
@@ -2454,7 +2529,7 @@ public class DiagramEditorPresenterTests
         _view.RightClick(120, 120);
 
         // Assert
-        Assert.True(_view.ContextMenu!.Value.CanPasteStyle);
+        Assert.True(_view.ContextMenu!.Value.Menu.CanPasteStyle);
     }
 
     [Fact]
@@ -3217,8 +3292,8 @@ public class DiagramEditorPresenterTests
 
         public bool CanUndo { get; private set; }
 
-        /// <summary>Where the last menu was shown, and whether it could paste a style.</summary>
-        public (Point Location, bool CanPasteStyle)? ContextMenu { get; private set; }
+        /// <summary>Where the last menu was shown, and what it could do.</summary>
+        public (Point Location, DiagramContextMenuModel Menu)? ContextMenu { get; private set; }
 
         public bool CanRedo { get; private set; }
 
@@ -3354,7 +3429,7 @@ public class DiagramEditorPresenterTests
 
         public void ShowUndoRedo(bool canUndo, bool canRedo) => (CanUndo, CanRedo) = (canUndo, canRedo);
 
-        public void ShowContextMenu(Point location, bool canPasteStyle) => ContextMenu = (location, canPasteStyle);
+        public void ShowContextMenu(Point location, DiagramContextMenuModel menu) => ContextMenu = (location, menu);
 
         public void ShowDocument(string name, bool hasChanges) => (DocumentName, HasChanges) = (name, hasChanges);
 

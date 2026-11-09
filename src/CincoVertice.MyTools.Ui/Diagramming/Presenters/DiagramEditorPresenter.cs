@@ -942,7 +942,7 @@ public sealed class DiagramEditorPresenter
 
         SelectionChanged();
         Refresh();
-        _view.ShowContextMenu(location, _copiedStyle is not null);
+        _view.ShowContextMenu(location, new DiagramContextMenuModel(_copiedStyle is not null, CanGroup(), CanUngroup()));
     }
 
     private void OnPointerDoubleClicked(object? sender, DiagramPointerModel pointer)
@@ -1460,9 +1460,28 @@ public sealed class DiagramEditorPresenter
         Refresh();
     }
 
-    private void Group()
+    /// <summary>Two or more shapes, not all in one group already, which grouping again would leave as they are.</summary>
+    private bool CanGroup()
     {
         if (_selectedShapes.Count < 2)
+        {
+            return false;
+        }
+
+        List<int?> groups = [.. _diagram.Shapes
+            .Where(shape => _selectedShapes.Contains(shape.Id))
+            .Select(shape => shape.GroupId)
+            .Distinct()];
+
+        return groups.Count > 1 || groups[0] is null;
+    }
+
+    private bool CanUngroup() =>
+        _diagram.Shapes.Any(shape => _selectedShapes.Contains(shape.Id) && shape.GroupId is not null);
+
+    private void Group()
+    {
+        if (!CanGroup())
         {
             return;
         }
@@ -1481,7 +1500,7 @@ public sealed class DiagramEditorPresenter
 
     private void Ungroup()
     {
-        if (_diagram.Shapes.Any(shape => _selectedShapes.Contains(shape.Id) && shape.GroupId is not null))
+        if (CanUngroup())
         {
             Commit(_diagram with
             {

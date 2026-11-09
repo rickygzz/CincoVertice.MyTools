@@ -106,8 +106,8 @@ public interface IDiagramEditorView
 
     /// <summary>Shows the menu over what's selected, whose items ask for their <see cref="DiagramCommand"/>.</summary>
     /// <param name="location">Where, in canvas pixels.</param>
-    /// <param name="canPasteStyle">False until a style has been copied.</param>
-    void ShowContextMenu(Point location, bool canPasteStyle);
+    /// <param name="menu">Which of its items can be used.</param>
+    void ShowContextMenu(Point location, DiagramContextMenuModel menu);
 
     /// <summary>Shows the name of the diagram.</summary>
     /// <param name="name">The file's name, or a default.</param>
