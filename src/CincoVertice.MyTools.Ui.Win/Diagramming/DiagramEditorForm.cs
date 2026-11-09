@@ -173,11 +173,13 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         FillPalette.SelectedColor = style.Fill;
         LinePalette.SelectedColor = style.Line;
         TextPalette.SelectedColor = style.TextColor;
-        TextOutlinePalette.SelectedColor = style.TextOutlineColor;
+        // With no edge, its swatch shows no color, as no fill does; the color is kept for when it's turned on
+        Color textOutline = style.TextOutlineWidth == 0 ? Color.Empty : style.TextOutlineColor;
+        TextOutlinePalette.SelectedColor = textOutline;
         ShowSwatch(FillDropDownButton, style.Fill);
         ShowSwatch(LineDropDownButton, style.Line);
         ShowSwatch(TextColorDropDownButton, style.TextColor);
-        ShowSwatch(TextOutlineDropDownButton, style.TextOutlineColor);
+        ShowSwatch(TextOutlineDropDownButton, textOutline);
 
         LineWidthComboBox.SelectedIndex = _lineWidths.ToList().IndexOf(style.LineWidth);
         FontSizeComboBox.SelectedIndex = _fontSizes.ToList().IndexOf(style.FontSize);
@@ -227,7 +229,10 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         ShowColor(FillLabel, FillColorButton, properties.Fill);
         ShowColor(LineLabel, LineColorButton, properties.Line);
         ShowColor(TextColorLabel, TextColorButton, properties.TextColor);
-        ShowColor(TextOutlineLabel, TextOutlineColorButton, properties.TextOutlineColor);
+        ShowColor(
+            TextOutlineLabel,
+            TextOutlineColorButton,
+            properties.TextOutlineWidth == 0 ? Color.Empty : properties.TextOutlineColor);
 
         // A connector has a line where a shape has a border
         LineLabel.Text = hasBounds ? "Border" : "Line";
@@ -762,6 +767,11 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     private void NoFillMenuItem_Click(object? sender, EventArgs e)
     {
         ColorSelected?.Invoke(this, new DiagramColorChoiceModel(DiagramColorTarget.Fill, Color.Empty));
+    }
+
+    private void NoTextOutlineMenuItem_Click(object? sender, EventArgs e)
+    {
+        ColorSelected?.Invoke(this, new DiagramColorChoiceModel(DiagramColorTarget.TextOutline, Color.Empty));
     }
 
     private void MoreFillColorsMenuItem_Click(object? sender, EventArgs e)

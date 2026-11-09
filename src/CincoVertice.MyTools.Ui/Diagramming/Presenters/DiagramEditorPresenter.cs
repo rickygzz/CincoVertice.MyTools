@@ -45,6 +45,9 @@ public sealed class DiagramEditorPresenter
     private const float AnchorOffset = 14;
     private const float AnchorGrabDistance = 8;
 
+    // The edge's width when picking its color turns it on
+    private const int TurnedOnTextOutlineWidth = 2;
+
     private static readonly Size _defaultShapeSize = new(120, 60);
 
     private readonly IDiagramEditorView _view;
@@ -1522,9 +1525,27 @@ public sealed class DiagramEditorPresenter
         {
             DiagramColorTarget.Fill => style with { Fill = color },
             DiagramColorTarget.Line => style with { Line = color },
-            DiagramColorTarget.TextOutline => style with { TextOutlineColor = color },
+            DiagramColorTarget.TextOutline => WithTextOutlineColor(style, color),
             _ => style with { TextColor = color },
         });
+    }
+
+    /// <summary>
+    ///     No color turns the edge off, keeping its color for later; a color turns it on when it's off, or the color
+    ///     would seem to do nothing.
+    /// </summary>
+    private static DiagramStyleModel WithTextOutlineColor(DiagramStyleModel style, Color color)
+    {
+        if (color.IsEmpty)
+        {
+            return style with { TextOutlineWidth = 0 };
+        }
+
+        return style with
+        {
+            TextOutlineColor = color,
+            TextOutlineWidth = style.TextOutlineWidth == 0 ? TurnedOnTextOutlineWidth : style.TextOutlineWidth,
+        };
     }
 
     private void OnMoreColorsRequested(object? sender, DiagramColorTarget target)

@@ -84,6 +84,7 @@ partial class DiagramEditorForm
         TextOutlineDropDownButton = new ToolStripDropDownButton();
         TextOutlinePalette = new Snipping.ColorPaletteControl();
         TextOutlinePaletteHost = new ToolStripControlHost(TextOutlinePalette);
+        NoTextOutlineMenuItem = new ToolStripMenuItem();
         MoreTextOutlineColorsMenuItem = new ToolStripMenuItem();
         TextOutlineWidthComboBox = new ToolStripComboBox();
         CopyStyleMenuItem = new ToolStripMenuItem();
@@ -505,7 +506,7 @@ partial class DiagramEditorForm
         //
         // TextOutlineDropDownButton
         //
-        TextOutlineDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { TextOutlinePaletteHost, MoreTextOutlineColorsMenuItem });
+        TextOutlineDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { TextOutlinePaletteHost, NoTextOutlineMenuItem, MoreTextOutlineColorsMenuItem });
         TextOutlineDropDownButton.Name = "TextOutlineDropDownButton";
         TextOutlineDropDownButton.Text = "Edge";
         TextOutlineDropDownButton.ToolTipText = "Color of the edge around the text's letters";
@@ -519,6 +520,12 @@ partial class DiagramEditorForm
         //
         TextOutlinePaletteHost.AutoSize = true;
         TextOutlinePaletteHost.Name = "TextOutlinePaletteHost";
+        //
+        // NoTextOutlineMenuItem
+        //
+        NoTextOutlineMenuItem.Name = "NoTextOutlineMenuItem";
+        NoTextOutlineMenuItem.Text = "No edge";
+        NoTextOutlineMenuItem.Click += NoTextOutlineMenuItem_Click;
         //
         // MoreTextOutlineColorsMenuItem
         //
@@ -1061,6 +1068,7 @@ partial class DiagramEditorForm
     private ToolStripDropDownButton TextOutlineDropDownButton;
     private Snipping.ColorPaletteControl TextOutlinePalette;
     private ToolStripControlHost TextOutlinePaletteHost;
+    private ToolStripMenuItem NoTextOutlineMenuItem;
     private ToolStripMenuItem MoreTextOutlineColorsMenuItem;
     private ToolStripComboBox TextOutlineWidthComboBox;
     private ToolStripMenuItem CopyStyleMenuItem;

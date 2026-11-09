@@ -2333,6 +2333,50 @@ public class DiagramEditorPresenterTests
     }
 
     [Fact]
+    public void TextOutline_NoColor_TurnsTheEdgeOff_KeepingItsColor()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.SelectColor(DiagramColorTarget.TextOutline, Color.Blue);
+        _view.SelectTextOutlineWidth(4);
+
+        // Act
+        _view.SelectColor(DiagramColorTarget.TextOutline, Color.Empty);
+
+        // Assert
+        Assert.Equal(0, Diagram.Shapes[0].Style.TextOutlineWidth);
+        Assert.Equal(Color.FromArgb(255, Color.Blue), Diagram.Shapes[0].Style.TextOutlineColor);
+    }
+
+    [Fact]
+    public void TextOutline_AColor_WithTheEdgeOff_TurnsItOn()
+    {
+        // Arrange
+        AddShape(100, 100);
+
+        // Act
+        _view.SelectColor(DiagramColorTarget.TextOutline, Color.Blue);
+
+        // Assert
+        Assert.Equal(2, Diagram.Shapes[0].Style.TextOutlineWidth);
+        Assert.Equal(Color.FromArgb(255, Color.Blue), Diagram.Shapes[0].Style.TextOutlineColor);
+    }
+
+    [Fact]
+    public void TextOutline_AColor_KeepsTheWidthOfAnEdgeThatsOn()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.SelectTextOutlineWidth(6);
+
+        // Act
+        _view.SelectColor(DiagramColorTarget.TextOutline, Color.Blue);
+
+        // Assert
+        Assert.Equal(6, Diagram.Shapes[0].Style.TextOutlineWidth);
+    }
+
+    [Fact]
     public void RightClick_OnAShapeNotSelected_SelectsOnlyIt_AndShowsTheMenu()
     {
         // Arrange
