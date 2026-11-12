@@ -9,6 +9,7 @@ Everything below is in the `config` folder next to the exe unless noted.
 | `hotkeys.cfg` | On startup, if missing | Your hotkeys |
 | `scripts\GoogleSearch.mts` | On startup, if the `scripts` folder is missing | Example script |
 | `activity.cfg` | The first time you turn the mouse mover on, or open it in the config editor | Mouse mover settings |
+| `startup.cfg` | The first time Windows starts My Tools, or you open the config editor | Actions to run when Windows starts My Tools (see [Startup actions](01-getting-started.md#startup-actions)) |
 | `global.vars` | The first time a script uses `global.set` | Values scripts keep between runs |
 | `snipeditor.json` | After the first snip editor setting change | Snip editor tool choices |
 | `diagrameditor.json` | After diagram editor settings are saved | Diagram editor choices and window size |

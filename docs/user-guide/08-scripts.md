@@ -92,7 +92,7 @@ This script is created with the app. It asks what to search for (starting with t
 #   clipboard.clear()  clipboard.pasteastext()  window.title()
 #   keyboard.press("Ctrl+V")  keyboard.press("Tab", 3)
 #   shell.open(address or file)  shell.run(program, arguments)  tray.notify(text)
-#   script.wait(ms)  script.stop()
+#   script.wait(ms)  script.stop()  system.waitidle(cpu %, disk %, quiet seconds, most minutes)
 #   global.set(name, value)  global.get(name, default)  (kept between runs, in config\global.vars)
 #   text.length  text.upper  text.lower  text.trim  text.replace(text, old, new)  text.contains(text, part)
 #   text.urlencode  list.length(list)  list.contains(list, item)  number(value)  text(value)
@@ -244,6 +244,7 @@ Functions are grouped in modules: you call one as `module.function(...)`, as in 
 | [`window`](#window) | The window you are in | `title` |
 | [`shell`](#shell) | Web pages, files and programs | `open` `run` |
 | [`tray`](#tray) | Notifications | `notify` |
+| [`system`](#system) | The computer | `waitidle` |
 | [`script`](#script) | The running script | `wait` `stop` `argument` `include` |
 | [`global`](#global) | Values kept between runs | `set` `get` `has` `remove` `names` |
 | [`text`](#text) | Working with text | `length` `upper` `lower` `trim` `replace` `contains` `urlencode` |
@@ -399,6 +400,24 @@ In texts, a backslash is written `\\`, so the path `C:\notes.txt` is `"C:\\notes
 | Function | What it does |
 |---|---|
 | `tray.notify(text)` | Shows a tray notification titled `My Tools: <script name>` for about 5 seconds, and goes on at once. |
+
+### system
+
+| Function | What it does | Returns |
+|---|---|---|
+| `system.waitidle(cpu, disk, seconds, minutes)` | Waits until the computer is quiet: the processors at or under `cpu` percent and the disks busy at or under `disk` percent, both for `seconds` in a row. Gives up after `minutes`. The app stays responsive while it waits. | `true` once it is quiet, `false` when the minutes ran out first. |
+
+It measures 5 seconds at a time, from the same counters Task Manager shows (CPU, and the disks' active time). A measure over either limit starts the quiet time again, so `seconds` is rounded up to a multiple of 5. All four are whole numbers: `cpu` and `disk` from 1 to 100, `seconds` from 1 to 3600, and `minutes` from 1 to 120, at least as long as `seconds`.
+
+Use it in a startup action, so a program starts only once the computer has settled after you sign in, instead of adding to the rush (see [Start a program once the computer is quiet](#start-a-program-once-the-computer-is-quiet)):
+
+```mts
+if system.waitidle(15, 20, 60, 20)
+    shell.run("C:\\Program Files\\Slack\\slack.exe")
+else
+    tray.notify("Slack not started: the computer stayed busy for 20 minutes")
+end
+```
 
 ### script
 
@@ -709,6 +728,31 @@ if dialog.confirm("Open today's notes?")
 end
 ```
 
+### Start a program once the computer is quiet
+
+Right after you sign in, Windows and the programs that start with it keep the processors and the disks busy. A program you start then adds to the rush, and everything starts slower. This script waits until the computer has been quiet for a minute (processors at most 15% busy, disks at most 20%) and then starts the program. If that hasn't happened in 20 minutes, it leaves the program alone and says so.
+
+Save it as `config\scripts\StartLater.mts`:
+
+```mts
+# The program comes from startup.cfg (Run = StartLater, <program>), or Notepad from the tray menu
+program = script.argument("notepad.exe")
+
+if system.waitidle(15, 20, 60, 20)
+    shell.run(program)
+else
+    tray.notify("Not started, the computer stayed busy: " + program)
+end
+```
+
+Then have it run when you sign in: in the config editor, open `startup.cfg` and add a line:
+
+```
+Run = StartLater, C:\Program Files\Slack\slack.exe
+```
+
+Startup actions run only when Windows starts My Tools, so **Start with Windows** in the tray menu must be on; starting My Tools yourself does not run them. See [Startup actions](01-getting-started.md#startup-actions).
+
 ### Type a signature
 
 ```mts
@@ -781,6 +825,9 @@ Some examples:
 - `<function>(): <message>` for problems inside a function, for example:
   - `argument N must be a number, not <type>`
   - `the time must be from 0 to 600000 milliseconds`
+  - `the CPU percent must be a whole number from 1 to 100, not <n>`, and likewise for the disk percent, the quiet seconds and the minutes
+  - `the quiet seconds (<s>) are longer than the minutes (<m>) to wait`
+  - `Could not open the performance counters (error 0x<code>).`, when Windows' counters are turned off
   - `the text to replace can't be empty`
   - `there is no global variable '<name>'; global.get("<name>", value) gives a value then`
   - `'<name>' must be the name of a script in the scripts folder`

@@ -13,6 +13,7 @@
 | **Settings do not save, or "Could not use <path>..." appears** | The `config` folder is not writable. Move the app to a folder you can write to. |
 | **The mouse mover seems not to react to my moves** | It notices only moves that change both the horizontal and vertical position between checks. See [Mouse Mover](06-mouse-mover.md#mouse-mover-activity). |
 | **I changed activity.cfg but nothing changed** | Edits apply the next time you turn the mover on. Turn it off and on with Ctrl+Alt+M. |
+| **My startup actions did not run** | They run only when Windows starts My Tools at sign-in, with **Start with Windows** on; starting it yourself does not run them. A line that could not be used was shown in a notification titled "My Tools: some startup actions are off", and is squiggled in `startup.cfg` in the config editor. |
 | **Did I leave the mouse mover on?** | The tray icon is red while it is on. |
 | **My clipboard content disappeared after a snip** | `SnipAndEdit` and `SnipRegion` replace the clipboard with the snip. The snip editor does so again after every change. |
 | **The snip editor ignores my keys** | While you are typing a text, keys belong to the text. Press Esc or Enter to end it. |

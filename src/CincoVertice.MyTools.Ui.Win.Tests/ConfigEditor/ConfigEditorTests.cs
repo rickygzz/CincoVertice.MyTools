@@ -35,6 +35,7 @@ public sealed class ConfigEditorTests : IDisposable
     private EditableFileCatalog CreateCatalog() => new(
         new HotkeyConfigService(Path.Combine(_folder, "hotkeys.cfg")),
         new ActivitySettingsService(Path.Combine(_folder, "activity.cfg")),
+        new StartupConfigService(Path.Combine(_folder, "startup.cfg")),
         () => [new NamedAction("Known")],
         Path.Combine(_folder, "scripts"));
 
@@ -58,6 +59,7 @@ public sealed class ConfigEditorTests : IDisposable
         // Assert
         Assert.NotNull(editor);
         Assert.NotNull(provider.GetRequiredService<CincoVertice.MyTools.Ui.Shell.Interfaces.IStartWithWindows>());
+        Assert.NotNull(provider.GetRequiredService<StartupActionsService>());
         Assert.Contains(catalog.GetActions(), action => action.Name == "EditScripts");
         Assert.Empty(language.Check(EditableFileKind.Hotkeys, "EditScripts = Ctrl+Alt+F12"));
     }
@@ -83,6 +85,7 @@ public sealed class ConfigEditorTests : IDisposable
             "Line 1:",
             HotkeyConfigReader.Read("not a line", ["Known"]).Problems[0]);
         Assert.Contains("Line 1:", ActivitySettingsReader.Read("not a line").Problems[0]);
+        Assert.Contains("Line 1:", StartupConfigReader.Read("not a line", ["Known"]).Problems[0]);
     }
 
     [Theory]
@@ -97,6 +100,16 @@ public sealed class ConfigEditorTests : IDisposable
 
         // Assert
         Assert.Equal(line, problems[0].Line);
+    }
+
+    [Fact]
+    public void Language_Startup_GivesTheLinesOfItsProblems()
+    {
+        // Act
+        var problems = CreateLanguage().Check(EditableFileKind.StartupActions, "# top\nRun = Known\nRun = Other");
+
+        // Assert
+        Assert.Equal(3, Assert.Single(problems).Line);
     }
 
     [Fact]
@@ -132,8 +145,11 @@ public sealed class ConfigEditorTests : IDisposable
         Assert.Equal("hotkeys.cfg", files[0].Name);
         Assert.Equal(EditableFileKind.Hotkeys, files[0].Kind);
         Assert.Equal("activity.cfg", files[1].Name);
+        Assert.Equal("startup.cfg", files[2].Name);
+        Assert.Equal(EditableFileKind.StartupActions, files[2].Kind);
         Assert.True(File.Exists(files[0].Path));
         Assert.True(File.Exists(files[1].Path));
+        Assert.True(File.Exists(files[2].Path));
         Assert.Contains(files, file => file.Kind == EditableFileKind.Script);
     }
 

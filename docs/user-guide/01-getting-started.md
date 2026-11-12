@@ -94,6 +94,23 @@ Right-click the tray icon and click **Start with Windows** to make My Tools star
 - Turning it on or off also clears any switch-off you made in the Windows startup settings for My Tools.
 - If you move the exe after enabling the option, the entry still points to the old location and the menu item shows unchecked. Click it once to point it at the new location.
 - **Exit** does not remove the startup entry. Turn **Start with Windows** off first if you want to remove it (see [Updating and Uninstalling](10-files-and-updates.md#updating-and-uninstalling)).
+- The entry starts the exe with `--startup`, which tells My Tools that Windows started it, so it runs the [startup actions](#startup-actions). An entry made by an older version has no `--startup`: it still counts as on, and My Tools adds `--startup` to it the next time it starts.
+
+### Startup actions
+
+`config\startup.cfg` lists actions to run when Windows starts My Tools at sign-in. Starting My Tools yourself does not run them, so restarting it, for example after an update, doesn't start your programs again. Open the file in the config editor (tray menu, **Edit hotkeys...**, then `startup.cfg` in the list). It is created the first time My Tools starts with Windows, or the config editor opens, with only comments, so nothing runs until you add a line:
+
+```
+# Each line: Run = Action, or Run = Action, value
+Run = StartLater, C:\Program Files\Slack\slack.exe
+Run = ShowCalculator
+```
+
+- An action is any action you can bind in hotkeys.cfg: a built-in one or a script. The value after the comma is what the script gets from `script.argument()`.
+- They run in order, each after the one before ends. A script that waits holds back the lines after it, while the tray and the hotkeys keep working.
+- Changes apply at the next sign-in. A line that can't be used is skipped and shown in a notification titled "My Tools: some startup actions are off", and squiggled in the config editor. So is an action that fails, and the next one still runs.
+
+To keep a program from slowing down your sign-in, start it from a script that first waits until the computer is quiet with `system.waitidle`: see [Start a program once the computer is quiet](08-scripts.md#start-a-program-once-the-computer-is-quiet).
 
 ---
 

@@ -96,6 +96,7 @@ public static class UiWinSetupExtensions
         services.AddSingleton<IEditableFileCatalog>(sp => new EditableFileCatalog(
             sp.GetRequiredService<HotkeyConfigService>(),
             sp.GetRequiredService<ActivitySettingsService>(),
+            sp.GetRequiredService<StartupConfigService>(),
             () => sp.GetRequiredService<AppActionCatalog>().GetActions().ToList(),
             ScriptCatalog.FolderPath));
         services.AddSingleton<IEditableFileLanguage>(sp => new EditableFileLanguage(
@@ -138,6 +139,11 @@ public static class UiWinSetupExtensions
 
         services.AddSingleton(_ => new HotkeyConfigService(HotkeyConfigService.DefaultFilePath));
         services.AddSingleton(_ => new ActivitySettingsService(ActivitySettingsService.DefaultFilePath));
+        services.AddSingleton(_ => new StartupConfigService(StartupConfigService.DefaultFilePath));
+        services.AddSingleton(sp => new StartupActionsService(
+            sp.GetRequiredService<StartupConfigService>(),
+            () => sp.GetRequiredService<AppActionCatalog>().GetActions().ToList(),
+            sp.GetRequiredService<TrayNotificationService>()));
         services.AddSingleton(_ => new HotkeyFilesWatcher(
             HotkeyConfigService.DefaultFilePath,
             ScriptCatalog.FolderPath));

@@ -84,6 +84,30 @@ public class TrayPresenterTests
     }
 
     [Fact]
+    public void Start_UpdatesTheStartWithWindowsCommand()
+    {
+        // Act
+        _presenter.Start();
+
+        // Assert
+        Assert.Equal(1, _startWithWindows.UpdateCount);
+    }
+
+    [Fact]
+    public void Start_WhenTheStartWithWindowsCommandCantBeUpdated_SaysNothing()
+    {
+        // Arrange
+        _startWithWindows.Error = new UnauthorizedAccessException("Denied");
+
+        // Act
+        _presenter.Start();
+
+        // Assert: it still starts the app, only without the startup actions
+        Assert.Equal(1, _startWithWindows.UpdateCount);
+        Assert.Empty(_view.Notifications);
+    }
+
+    [Fact]
     public void Start_WithProblems_ListsThemAndWarns()
     {
         // Arrange
@@ -163,6 +187,18 @@ public class TrayPresenterTests
             }
 
             IsEnabled = enabled;
+        }
+
+        public int UpdateCount { get; private set; }
+
+        public void UpdateCommand()
+        {
+            UpdateCount++;
+
+            if (Error is not null)
+            {
+                throw Error;
+            }
         }
     }
 

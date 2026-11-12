@@ -33,6 +33,13 @@ public sealed class StartWithWindowsServiceTests : IDisposable
         key.SetValue("MyTools", state, RegistryValueKind.Binary);
     }
 
+    private void SetRunValue(string command)
+    {
+        using RegistryKey key = Registry.CurrentUser.CreateSubKey(_runKey);
+
+        key.SetValue("MyTools", command);
+    }
+
     private object? RunValue()
     {
         using RegistryKey? key = Registry.CurrentUser.OpenSubKey(_runKey);
@@ -54,14 +61,14 @@ public sealed class StartWithWindowsServiceTests : IDisposable
     }
 
     [Fact]
-    public void SetEnabled_TurnsItOn_WithThePathInQuotes()
+    public void SetEnabled_TurnsItOn_WithThePathInQuotes_AndTheStartupArgument()
     {
         // Act
         _service.SetEnabled(true);
 
         // Assert: Windows would stop at the first space otherwise
         Assert.True(_service.IsEnabled);
-        Assert.Equal($"\"{ExePath}\"", RunValue());
+        Assert.Equal($"\"{ExePath}\" --startup", RunValue());
     }
 
     [Fact]
@@ -160,7 +167,56 @@ public sealed class StartWithWindowsServiceTests : IDisposable
         _service.SetEnabled(true);
 
         Assert.True(_service.IsEnabled);
-        Assert.Equal($"\"{ExePath}\"", RunValue());
+        Assert.Equal($"\"{ExePath}\" --startup", RunValue());
+    }
+
+    [Fact]
+    public void IsEnabled_WithTheCommandOfAnOlderVersion_IsOn()
+    {
+        // Arrange: before --startup
+        SetRunValue($"\"{ExePath}\"");
+
+        // Act & Assert
+        Assert.True(_service.IsEnabled);
+    }
+
+    [Fact]
+    public void UpdateCommand_GivesTheCommandOfAnOlderVersionTheStartupArgument_KeepingItTurnedOffInWindows()
+    {
+        // Arrange
+        SetRunValue($"\"{ExePath}\"");
+        SetApproved(3, 0, 0, 0);
+
+        // Act
+        _service.UpdateCommand();
+
+        // Assert
+        Assert.Equal($"\"{ExePath}\" --startup", RunValue());
+        Assert.NotNull(ApprovedValue());
+        Assert.False(_service.IsEnabled);
+    }
+
+    [Fact]
+    public void UpdateCommand_LeavesAnotherCopyAlone()
+    {
+        // Arrange
+        SetRunValue(@"""C:\Old\MyTools.exe""");
+
+        // Act
+        _service.UpdateCommand();
+
+        // Assert
+        Assert.Equal(@"""C:\Old\MyTools.exe""", RunValue());
+    }
+
+    [Fact]
+    public void UpdateCommand_WhenItsOff_AddsNothing()
+    {
+        // Act
+        _service.UpdateCommand();
+
+        // Assert
+        Assert.Null(RunValue());
     }
 
     [Fact]

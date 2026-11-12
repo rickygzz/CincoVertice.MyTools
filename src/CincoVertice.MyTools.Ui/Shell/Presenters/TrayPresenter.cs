@@ -42,6 +42,19 @@ public class TrayPresenter
     {
         Reload(announceSuccess: false);
         _hotkeys.WatchFiles();
+        UpdateStartWithWindows();
+    }
+
+    // Quietly: the older command still starts the app, only without running the startup actions
+    private void UpdateStartWithWindows()
+    {
+        try
+        {
+            _startWithWindows.UpdateCommand();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+        {
+        }
     }
 
     /// <summary>

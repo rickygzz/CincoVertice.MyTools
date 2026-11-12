@@ -23,7 +23,7 @@ public static class ScriptCatalog
         #   clipboard.clear()  clipboard.pasteastext()  window.title()
         #   keyboard.press("Ctrl+V")  keyboard.press("Tab", 3)
         #   shell.open(address or file)  shell.run(program, arguments)  tray.notify(text)
-        #   script.wait(ms)  script.stop()
+        #   script.wait(ms)  script.stop()  system.waitidle(cpu %, disk %, quiet seconds, most minutes)
         #   global.set(name, value)  global.get(name, default)  (kept between runs, in config\global.vars)
         #   text.length  text.upper  text.lower  text.trim  text.replace(text, old, new)  text.contains(text, part)
         #   text.urlencode  list.length(list)  list.contains(list, item)  number(value)  text(value)

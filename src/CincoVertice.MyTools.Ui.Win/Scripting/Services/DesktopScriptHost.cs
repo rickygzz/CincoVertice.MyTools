@@ -154,6 +154,17 @@ public sealed class DesktopScriptHost : IScriptHost
 
     public Task WaitAsync(int milliseconds) => Task.Delay(milliseconds);
 
+    public async Task<SystemLoadModel> MeasureLoadAsync(int milliseconds)
+    {
+        using var meter = new SystemLoadMeter();
+
+        meter.Start();
+        await Task.Delay(milliseconds);
+        var (cpu, disk) = meter.Read();
+
+        return new SystemLoadModel((decimal)cpu, (decimal)disk);
+    }
+
     public void Notify(string text) => _notifications.Show(_title, text);
 
     /// <summary>

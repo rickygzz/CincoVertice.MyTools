@@ -10,4 +10,13 @@ public interface IStartWithWindows
     /// <exception cref="UnauthorizedAccessException">It can't be changed.</exception>
     /// <exception cref="System.Security.SecurityException">It can't be changed.</exception>
     void SetEnabled(bool enabled);
+
+    /// <summary>
+    ///     When an older version of this copy made it start, gives it the command of this version, which tells the app
+    ///     it was started at sign-in. Changes nothing otherwise.
+    /// </summary>
+    /// <exception cref="IOException">It can't be changed.</exception>
+    /// <exception cref="UnauthorizedAccessException">It can't be changed.</exception>
+    /// <exception cref="System.Security.SecurityException">It can't be changed.</exception>
+    void UpdateCommand();
 }

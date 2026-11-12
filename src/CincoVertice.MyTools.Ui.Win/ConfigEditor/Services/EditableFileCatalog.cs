@@ -7,23 +7,27 @@ using CincoVertice.MyTools.Ui.Win.Shell.Services.Config;
 namespace CincoVertice.MyTools.Ui.Win.ConfigEditor.Services;
 
 /// <summary>
-///     hotkeys.cfg, activity.cfg and every script. Loading each config file creates it when it doesn't exist yet.
+///     hotkeys.cfg, activity.cfg, startup.cfg and every script. Loading each config file creates it when it doesn't
+///     exist yet.
 /// </summary>
 public sealed class EditableFileCatalog : IEditableFileCatalog
 {
     private readonly HotkeyConfigService _hotkeys;
     private readonly ActivitySettingsService _activity;
+    private readonly StartupConfigService _startup;
     private readonly Func<IReadOnlyCollection<IAppAction>> _actions;
     private readonly string _scriptsFolderPath;
 
     public EditableFileCatalog(
         HotkeyConfigService hotkeys,
         ActivitySettingsService activity,
+        StartupConfigService startup,
         Func<IReadOnlyCollection<IAppAction>> actions,
         string scriptsFolderPath)
     {
         _hotkeys = hotkeys;
         _activity = activity;
+        _startup = startup;
         _actions = actions;
         _scriptsFolderPath = scriptsFolderPath;
     }
@@ -32,11 +36,13 @@ public sealed class EditableFileCatalog : IEditableFileCatalog
     {
         _hotkeys.Load(_actions());
         _activity.Load();
+        _startup.Load(_actions());
 
         List<EditableFileModel> files =
         [
             new(_hotkeys.FilePath, Path.GetFileName(_hotkeys.FilePath), EditableFileKind.Hotkeys),
             new(_activity.FilePath, Path.GetFileName(_activity.FilePath), EditableFileKind.ActivitySettings),
+            new(_startup.FilePath, Path.GetFileName(_startup.FilePath), EditableFileKind.StartupActions),
         ];
 
         files.AddRange(ScriptCatalog.GetScriptFiles(_scriptsFolderPath).Select(ToScript));

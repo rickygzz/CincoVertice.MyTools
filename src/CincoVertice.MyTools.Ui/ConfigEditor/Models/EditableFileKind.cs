@@ -5,5 +5,6 @@ public enum EditableFileKind
 {
     Hotkeys,
     ActivitySettings,
+    StartupActions,
     Script,
 }

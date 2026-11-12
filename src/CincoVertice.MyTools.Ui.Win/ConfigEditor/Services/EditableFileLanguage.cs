@@ -31,6 +31,7 @@ public sealed class EditableFileLanguage : IEditableFileLanguage
     {
         EditableFileKind.Hotkeys => InLineOrder(HotkeyConfigReader.Read(text, _actionNames()).LineProblems),
         EditableFileKind.ActivitySettings => InLineOrder(ActivitySettingsReader.Read(text).LineProblems),
+        EditableFileKind.StartupActions => InLineOrder(StartupConfigReader.Read(text, _actionNames()).LineProblems),
         _ => ScriptEngine.FindSyntaxError(text) is ScriptException error
             ? [new EditableFileProblemModel(error.Line, error.Message, error.Column)]
             : [],
