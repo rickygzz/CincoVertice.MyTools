@@ -2,6 +2,7 @@ using System.ComponentModel;
 using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.Common.WinApi.Libs;
 using CincoVertice.MyTools.Ui.Zones.Interfaces;
+using CincoVertice.MyTools.Ui.Zones.Models;
 
 namespace CincoVertice.MyTools.Ui.Win.Zones.Services;
 
@@ -13,19 +14,25 @@ public sealed class DesktopZones : IZoneDesktop
 {
     private const int ErrorAccessDenied = 5;
 
-    public IReadOnlyList<Rectangle> GetWorkAreas()
+    public IReadOnlyList<ZoneMonitorModel> GetMonitors()
     {
         using (DpiAwarenessScope.PerMonitorV2())
         {
-            return MonitorHelper.GetWorkAreas();
+            return
+            [
+                .. MonitorHelper.GetMonitors()
+                    .Select(monitor => new ZoneMonitorModel(monitor.Bounds, monitor.WorkArea)),
+            ];
         }
     }
 
-    public Rectangle GetWorkAreaOf(nint window)
+    public ZoneMonitorModel GetMonitorOf(nint window)
     {
         using (DpiAwarenessScope.PerMonitorV2())
         {
-            return MonitorHelper.GetWorkArea(window);
+            (Rectangle bounds, Rectangle workArea) = MonitorHelper.GetMonitor(window);
+
+            return new ZoneMonitorModel(bounds, workArea);
         }
     }
 

@@ -65,7 +65,7 @@ Only one copy runs at a time. If you start the exe while it is already running, 
 | **Edit hotkeys...** | Opens `hotkeys.cfg` in the config editor |
 | **Reload hotkeys** | Re-reads `hotkeys.cfg` and the scripts folder |
 | **Edit activity settings...** | Opens `activity.cfg` in the config editor |
-| **Edit window zones...** | Opens `zones.cfg` in the config editor. See [Window Zones](13-window-zones.md). |
+| **Edit window zones...** | Opens the window zones editor. See [Window Zones](13-window-zones.md#the-window-zones-editor). |
 | (separator) | |
 | **Start with Windows** | A checkable item. See below. |
 | **Check for updates at start** | A checkable item, off at first. When checked, the app looks for a newer version a minute after it starts. See [Updating](10-files-and-updates.md#updating). |

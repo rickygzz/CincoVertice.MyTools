@@ -1,5 +1,6 @@
 using System.Drawing;
 using CincoVertice.MyTools.Ui.Zones.Interfaces;
+using CincoVertice.MyTools.Ui.Zones.Models;
 
 namespace CincoVertice.MyTools.Ui.Zones.Services;
 
@@ -66,7 +67,8 @@ public sealed class ZoneMover
             return false;
         }
 
-        zones = ZoneCalculator.Place(_layouts.Load(), _desktop.GetWorkAreaOf(window));
+        ZoneMonitorModel monitor = _desktop.GetMonitorOf(window);
+        zones = ZoneCalculator.Place(_layouts.Load().For(monitor.Bounds), monitor.WorkArea);
 
         return true;
     }

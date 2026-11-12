@@ -19,7 +19,7 @@
 | `MoveToZone` | none | Moves the active window to a zone, given after the shortcut: `MoveToZone = Ctrl+Alt+1, 1`. See [Window Zones](13-window-zones.md). |
 | `MoveToNextZone` | none | Moves the active window to the next zone |
 | `MoveToPreviousZone` | none | Moves the active window to the zone before |
-| `EditZones` | none | Opens `zones.cfg` in the config editor |
+| `EditZones` | none | Opens the window zones editor |
 | each script | none | Runs the script |
 
 Hotkeys work in the same way whichever window is active, including My Tools' own windows. Holding a hotkey down does not repeat it.

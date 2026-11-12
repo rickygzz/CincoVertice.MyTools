@@ -3,10 +3,10 @@ using CincoVertice.MyTools.Ui.Zones.Models;
 
 namespace CincoVertice.MyTools.Ui.Win.Zones.Models;
 
-/// <summary>What zones.cfg asks for: the layout, and a problem per line that was skipped.</summary>
+/// <summary>What zones.cfg asks for: the layouts, and a problem per line that was skipped.</summary>
 public sealed class ZonesConfigResultModel
 {
-    public ZoneLayoutModel Layout { get; set; } = ZoneLayoutModel.Default;
+    public ZoneLayoutsModel Layouts { get; set; } = ZoneLayoutsModel.Default;
 
     public List<string> Problems { get; } = [];
 

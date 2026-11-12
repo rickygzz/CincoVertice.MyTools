@@ -125,6 +125,30 @@ public class ZoneDragPresenterTests
     }
 
     [Fact]
+    public void AMonitorWithItsOwnLayout_ShowsIts_TheOthersTheDefault()
+    {
+        // Arrange: the right monitor in two rows
+        _desktop.Layouts = _desktop.Layouts with
+        {
+            Monitors =
+            [
+                new(FakeZoneDesktop.Right, new(ZoneLayoutModel.Rows(ZoneLayoutModel.Equal(2)), 0)),
+            ],
+        };
+
+        // Act
+        _drags.Start(Window);
+        _drags.Move(1500, 500, shift: true);
+        _drags.End();
+
+        // Assert
+        Assert.Equal(
+            [_zones[0], _zones[1], new Rectangle(1000, 0, 1000, 300), new Rectangle(1000, 300, 1000, 300)],
+            _overlay.Shown[0].Zones);
+        Assert.Equal((Window, new Rectangle(1000, 300, 1000, 300)), Assert.Single(_desktop.Moves));
+    }
+
+    [Fact]
     public void AWindowThatCantBeMoved_IsAProblemShown()
     {
         // Arrange

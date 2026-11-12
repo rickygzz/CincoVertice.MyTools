@@ -5,6 +5,6 @@ namespace CincoVertice.MyTools.Ui.Zones.Interfaces;
 /// <summary>The zones the user set, read again each time, so a change applies at once.</summary>
 public interface IZoneLayoutSource
 {
-    /// <returns>The layout; the default one when it can't be read.</returns>
-    ZoneLayoutModel Load();
+    /// <returns>The default layout and the monitors' own; the default ones when they can't be read.</returns>
+    ZoneLayoutsModel Load();
 }

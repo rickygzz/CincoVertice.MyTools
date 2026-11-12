@@ -129,6 +129,8 @@ public static class UiWinSetupExtensions
             ZonesConfigService.DefaultFilePath,
             sp.GetRequiredService<TrayNotificationService>()));
         services.AddSingleton<IZoneLayoutSource>(sp => sp.GetRequiredService<ZonesConfigService>());
+        services.AddSingleton<IZoneLayoutStore>(sp => sp.GetRequiredService<ZonesConfigService>());
+        services.AddSingleton<ZoneEditorWindowService>();
         services.AddSingleton<IZoneDesktop, DesktopZones>();
         services.AddSingleton<WindowDragWatcher>();
         services.AddSingleton<IWindowDragSource>(sp => sp.GetRequiredService<WindowDragWatcher>());

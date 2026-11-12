@@ -2,6 +2,7 @@ using System.Drawing.Text;
 using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.Common.WinApi.Libs.Enums;
 using CincoVertice.MyTools.Ui.Win.Shell.Services;
+using CincoVertice.MyTools.Ui.Zones.Services;
 using CincoVertice.MyTools.Ui.Zones.Views;
 
 namespace CincoVertice.MyTools.Ui.Win.Zones;
@@ -102,7 +103,7 @@ public partial class ZoneOverlayForm : Form, IZoneOverlayView
             LineAlignment = StringAlignment.Center,
         };
 
-        for (int i = 0; i < _zones.Count; i++)
+        foreach (int i in ZoneCalculator.DrawingOrder(_zones.Count, _highlighted))
         {
             Rectangle zone = _zones[i];
             zone.Offset(-Left, -Top);

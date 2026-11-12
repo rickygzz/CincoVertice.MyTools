@@ -7,10 +7,10 @@ using CincoVertice.MyTools.Ui.Zones.Views;
 namespace CincoVertice.MyTools.Ui.Zones.Presenters;
 
 /// <summary>
-///     Window zones: while the user drags a window holding Shift, shows the zones of every monitor with the one under
-///     the mouse highlighted, and when they let go there, moves the window into that zone. Without Shift, dragging is
-///     as usual. The layout is read during each drag, the first time Shift is held, so a change applies at the next
-///     one.
+///     Window zones: while the user drags a window holding Shift, shows the zones of every monitor, its own layout or
+///     the default one, with the one under the mouse highlighted, and when they let go there, moves the window into
+///     that zone. Without Shift, dragging is as usual. The layouts are read during each drag, the first time Shift is
+///     held, so a change applies at the next one.
 /// </summary>
 public sealed class ZoneDragPresenter
 {
@@ -100,10 +100,17 @@ public sealed class ZoneDragPresenter
     // Only once the user asks for them: most drags never do
     private IReadOnlyList<Rectangle> ReadZones()
     {
-        ZoneLayoutModel layout = _layouts.Load();
-        _gap = layout.Gap;
+        ZoneLayoutsModel layouts = _layouts.Load();
+        IReadOnlyList<ZoneMonitorModel> monitors = _desktop.GetMonitors();
 
-        return [.. _desktop.GetWorkAreas().SelectMany(area => ZoneCalculator.Place(layout, area))];
+        // The widest gap: a point in it is in the zones on either side, on any monitor
+        _gap = monitors.Select(monitor => layouts.For(monitor.Bounds).Gap).DefaultIfEmpty(0).Max();
+
+        return
+        [
+            .. monitors.SelectMany(monitor =>
+                ZoneCalculator.Place(layouts.For(monitor.Bounds), monitor.WorkArea)),
+        ];
     }
 
     private void Hide()

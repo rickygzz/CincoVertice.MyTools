@@ -1,4 +1,5 @@
 using System.Drawing;
+using CincoVertice.MyTools.Ui.Zones.Models;
 using CincoVertice.MyTools.Ui.Zones.Services;
 using Xunit;
 
@@ -26,6 +27,26 @@ public class ZoneMoverTests
         // Assert
         Assert.Null(problem);
         Assert.Equal((FakeZoneDesktop.Window, new Rectangle(1500, 0, 500, 600)), Assert.Single(_desktop.Moves));
+    }
+
+    [Fact]
+    public void MoveActiveWindowTo_UsesTheMonitorsOwnLayout()
+    {
+        // Arrange: the right monitor has one zone of its own
+        _desktop.WindowBounds = new Rectangle(1200, 100, 300, 200);
+        _desktop.Layouts = _desktop.Layouts with
+        {
+            Monitors =
+            [
+                new(FakeZoneDesktop.Right, new(ZoneLayoutModel.Rows(ZoneLayoutModel.Equal(2)), 0)),
+            ],
+        };
+
+        // Act
+        _mover.MoveActiveWindowTo(2);
+
+        // Assert
+        Assert.Equal((FakeZoneDesktop.Window, new Rectangle(1000, 300, 1000, 300)), Assert.Single(_desktop.Moves));
     }
 
     [Theory]

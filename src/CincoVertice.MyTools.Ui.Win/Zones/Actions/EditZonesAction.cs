@@ -1,19 +1,19 @@
-using CincoVertice.MyTools.Ui.Win.ConfigEditor.Services;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 using CincoVertice.MyTools.Ui.Win.Zones.Services;
 
 namespace CincoVertice.MyTools.Ui.Win.Zones.Actions;
 
-/// <summary>Opens zones.cfg in the config editor. A change applies at the next drag.</summary>
+/// <summary>
+///     Opens the window zones editor, which saves zones.cfg; its Edit as text opens the file in the config editor.
+///     A change applies at the next drag.
+/// </summary>
 public sealed class EditZonesAction : IAppAction
 {
-    private readonly ConfigEditorWindowService _editor;
-    private readonly ZonesConfigService _zones;
+    private readonly ZoneEditorWindowService _editor;
 
-    public EditZonesAction(ConfigEditorWindowService editor, ZonesConfigService zones)
+    public EditZonesAction(ZoneEditorWindowService editor)
     {
         _editor = editor;
-        _zones = zones;
     }
 
     public string Name => "EditZones";
@@ -22,9 +22,7 @@ public sealed class EditZonesAction : IAppAction
 
     public Task ExecuteAsync()
     {
-        // Created first, with the default layout, so there's something to edit
-        _zones.LoadResult();
-        _editor.Open(_zones.FilePath);
+        _editor.Open();
 
         return Task.CompletedTask;
     }

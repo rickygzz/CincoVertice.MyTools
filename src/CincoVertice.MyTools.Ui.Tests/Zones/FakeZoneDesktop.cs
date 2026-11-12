@@ -21,7 +21,15 @@ internal sealed class FakeZoneDesktop : IZoneDesktop, IZoneLayoutSource
     /// <summary>The window as the user sees it; on the left monitor at first.</summary>
     public Rectangle WindowBounds { get; set; } = new(100, 100, 300, 200);
 
-    public ZoneLayoutModel Layout { get; set; } = new(ZoneLayoutModel.Columns(ZoneLayoutModel.Equal(2)), 0);
+    public ZoneLayoutsModel Layouts { get; set; } =
+        new(new ZoneLayoutModel(ZoneLayoutModel.Columns(ZoneLayoutModel.Equal(2)), 0), []);
+
+    /// <summary>The default layout, for every monitor without its own.</summary>
+    public ZoneLayoutModel Layout
+    {
+        get => Layouts.DefaultLayout;
+        set => Layouts = Layouts with { DefaultLayout = value };
+    }
 
     /// <summary>When set, MoveWindow fails with it.</summary>
     public string? MoveProblem { get; set; }
@@ -30,9 +38,10 @@ internal sealed class FakeZoneDesktop : IZoneDesktop, IZoneLayoutSource
 
     public int Loads { get; private set; }
 
-    public IReadOnlyList<Rectangle> GetWorkAreas() => [Left, Right];
+    public IReadOnlyList<ZoneMonitorModel> GetMonitors() => [new(Left, Left), new(Right, Right)];
 
-    public Rectangle GetWorkAreaOf(nint window) => WindowBounds.Left >= Right.Left ? Right : Left;
+    public ZoneMonitorModel GetMonitorOf(nint window) =>
+        WindowBounds.Left >= Right.Left ? new(Right, Right) : new(Left, Left);
 
     public nint GetActiveWindow() => ActiveWindow;
 
@@ -51,10 +60,10 @@ internal sealed class FakeZoneDesktop : IZoneDesktop, IZoneLayoutSource
         return null;
     }
 
-    public ZoneLayoutModel Load()
+    public ZoneLayoutsModel Load()
     {
         Loads++;
 
-        return Layout;
+        return Layouts;
     }
 }

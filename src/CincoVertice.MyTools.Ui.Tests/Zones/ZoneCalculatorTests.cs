@@ -85,8 +85,32 @@ public class ZoneCalculatorTests
         Assert.Equal(expected, zone);
     }
 
+    [Theory]
+    [InlineData(800, 200, 1)]
+    [InlineData(800, 500, 1)]
+    [InlineData(800, 600, 3)]
+    [InlineData(300, 200, 0)]
+    [InlineData(300, 700, 2)]
+    public void ZoneAt_InZonesThatOverlap_IsTheOneWhoseCenterIsNearest(int x, int y, int expected)
+    {
+        // Arrange: four zones that overlap, as saved by a user, on a monitor of 1000 x 1000
+        IReadOnlyList<Rectangle> zones =
+        [
+            new Rectangle(0, 0, 635, 722),
+            new Rectangle(366, 0, 634, 722),
+            new Rectangle(0, 500, 635, 500),
+            new Rectangle(366, 363, 634, 637),
+        ];
+
+        // Act
+        int? zone = ZoneCalculator.ZoneAt(zones, new Point(x, y), 0);
+
+        // Assert: before, the smallest of them was chosen, e.g. zone 4 at (800, 500), in the middle of zone 2
+        Assert.Equal(expected, zone);
+    }
+
     [Fact]
-    public void ZoneAt_InZonesThatOverlap_IsTheSmallest()
+    public void ZoneAt_InAZoneInsideAnotherWithTheSameCenter_IsTheSmaller()
     {
         // Arrange
         IReadOnlyList<Rectangle> zones = [new Rectangle(0, 0, 1000, 600), new Rectangle(400, 200, 200, 200)];
@@ -96,6 +120,16 @@ public class ZoneCalculatorTests
 
         // Assert
         Assert.Equal(1, zone);
+    }
+
+    [Theory]
+    [InlineData(null, new[] { 0, 1, 2 })]
+    [InlineData(0, new[] { 1, 2, 0 })]
+    [InlineData(1, new[] { 0, 2, 1 })]
+    [InlineData(5, new[] { 0, 1, 2 })]
+    public void DrawingOrder_PutsTheOneOnTopLast(int? onTop, int[] expected)
+    {
+        Assert.Equal(expected, ZoneCalculator.DrawingOrder(3, onTop));
     }
 
     [Theory]

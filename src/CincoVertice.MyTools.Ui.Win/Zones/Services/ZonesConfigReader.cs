@@ -1,3 +1,4 @@
+using System.Drawing;
 using System.Globalization;
 using CincoVertice.Common.Utils.Config;
 using CincoVertice.MyTools.Ui.Win.Zones.Models;
@@ -7,14 +8,16 @@ namespace CincoVertice.MyTools.Ui.Win.Zones.Services;
 
 /// <summary>
 ///     Reads zones.cfg with the config lexer: a Layout line (Columns, Rows or Grid) or Zone lines in percent, and a
-///     Gap in pixels; # for comments. Every line that can't be used is reported as a problem and skipped; without a
-///     layout, the default one is used.
+///     Gap in pixels; # for comments. That's the default layout; after a Monitor line (the monitor's bounds), the same
+///     lines are that monitor's own layout, taking what it lacks from the default one. Every line that can't be used is
+///     reported as a problem and skipped; without a layout, the default one is used.
 /// </summary>
 public static class ZonesConfigReader
 {
     public const string LayoutName = "Layout";
     public const string ZoneName = "Zone";
     public const string GapName = "Gap";
+    public const string MonitorName = "Monitor";
 
     /// <summary>The most zones a layout has: window.tozone takes up to 99.</summary>
     public const int MaxZones = 99;
@@ -26,6 +29,7 @@ public static class ZonesConfigReader
 
     private const string LayoutExample = "e.g. Layout = Columns 3, Columns 25 50 25, Rows 2 or Grid 3 x 2";
     private const string ZoneExample = "e.g. Zone = 0, 0, 50, 100";
+    private const string MonitorExample = "e.g. Monitor = 1920, 0, 2560, 1440";
 
     public static ZonesConfigResultModel Read(string text)
     {
@@ -33,12 +37,12 @@ public static class ZonesConfigReader
         ConfigLexer lexer = new(text);
         ConfigItems items = lexer.Items;
 
-        IReadOnlyList<ZoneModel>? layout = null;
-        int layoutLine = 0;
-        List<ZoneModel> zones = [];
-        int? gap = null;
+        // The lines before the first Monitor line are the default layout's; each Monitor line starts a monitor's own
+        var defaultSection = new Section(Rectangle.Empty);
+        List<Section> monitors = [];
+        Section section = defaultSection;
 
-        for (int i = 0; i < items.KeysCount; i++)
+        foreach (int i in Enumerable.Range(0, items.KeysCount).OrderBy(items.GetLine))
         {
             string name = items.GetKeyName(i);
             int line = items.GetLine(i);
@@ -52,58 +56,28 @@ public static class ZonesConfigReader
 
             string value = items.GetValue(i).Split('#')[0].Trim();
 
-            if (name.Equals(LayoutName, StringComparison.OrdinalIgnoreCase))
+            if (name.Equals(MonitorName, StringComparison.OrdinalIgnoreCase))
             {
-                if (layout is not null)
-                {
-                    result.AddProblem(line, $"{LayoutName}: there's one already, line {layoutLine}, which is used.");
-                }
-                else if (TryReadLayout(value, out IReadOnlyList<ZoneModel> read, out string problem))
-                {
-                    layout = read;
-                    layoutLine = line;
-                }
-                else
-                {
-                    result.AddProblem(line, $"{LayoutName}: {problem}");
-                }
+                section = StartMonitor(result, monitors, value, line);
+            }
+            else if (name.Equals(LayoutName, StringComparison.OrdinalIgnoreCase))
+            {
+                ReadLayoutLine(result, section, value, line);
             }
             else if (name.Equals(ZoneName, StringComparison.OrdinalIgnoreCase))
             {
-                if (zones.Count == MaxZones)
-                {
-                    result.AddProblem(line, $"{ZoneName}: there can be {MaxZones} zones at most.");
-                }
-                else if (TryReadZone(value, out ZoneModel? zone, out string problem))
-                {
-                    zones.Add(zone!);
-                }
-                else
-                {
-                    result.AddProblem(line, $"{ZoneName}: {problem}");
-                }
+                ReadZoneLine(result, section, value, line);
             }
             else if (name.Equals(GapName, StringComparison.OrdinalIgnoreCase))
             {
-                if (gap is not null)
-                {
-                    result.AddProblem(line, $"{GapName}: there's one already, which is used.");
-                }
-                else if (int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out int pixels)
-                    && pixels <= MaxGap)
-                {
-                    gap = pixels;
-                }
-                else
-                {
-                    result.AddProblem(line, $"{GapName}: a whole number of pixels from 0 to {MaxGap}, not '{value}'.");
-                }
+                ReadGapLine(result, section, value, line);
             }
             else
             {
                 result.AddProblem(
                     line,
-                    $"{name}: each line is {LayoutName} = ..., {ZoneName} = ... or {GapName} = ....");
+                    $"{name}: each line is {LayoutName} = ..., {ZoneName} = ..., {GapName} = ... "
+                    + $"or {MonitorName} = ....");
             }
         }
 
@@ -112,15 +86,122 @@ public static class ZonesConfigReader
             result.AddProblem(number, $"'{badLine}' is not 'Name = Value'.");
         }
 
-        if (zones.Count > 0 && layout is not null)
-        {
-            result.AddProblem(layoutLine, $"{LayoutName}: there are {ZoneName} lines too, and they're used instead.");
-        }
-
-        IReadOnlyList<ZoneModel> used = zones.Count > 0 ? zones : layout ?? ZoneLayoutModel.Default.Zones;
-        result.Layout = new ZoneLayoutModel(used, gap ?? ZoneLayoutModel.DefaultGap);
+        ZoneLayoutModel defaultLayout =
+            defaultSection.Build(result, ZoneLayoutModel.Default.Zones, ZoneLayoutModel.DefaultGap);
+        result.Layouts = new ZoneLayoutsModel(
+            defaultLayout,
+            [
+                .. monitors.Select(monitor => new MonitorZoneLayoutModel(
+                    monitor.Bounds,
+                    monitor.Build(result, defaultLayout.Zones, defaultLayout.Gap))),
+            ]);
 
         return result;
+    }
+
+    // A monitor's own layout from here on; a Monitor line that can't be used starts one that's read but not used
+    private static Section StartMonitor(ZonesConfigResultModel result, List<Section> monitors, string value, int line)
+    {
+        if (!TryReadMonitor(value, out Rectangle bounds))
+        {
+            result.AddProblem(
+                line,
+                $"{MonitorName}: four whole numbers in pixels: left, top, width, height, "
+                + "as Windows places the monitor; "
+                + $"{MonitorExample}. Its lines are not used.");
+
+            return new Section(Rectangle.Empty);
+        }
+
+        if (monitors.FirstOrDefault(monitor => monitor.Bounds == bounds) is Section other)
+        {
+            result.AddProblem(
+                line,
+                $"{MonitorName}: there's one already for it, line {other.Line}; these lines are not used.");
+
+            return new Section(bounds);
+        }
+
+        var section = new Section(bounds) { Line = line };
+        monitors.Add(section);
+
+        return section;
+    }
+
+    private static void ReadLayoutLine(ZonesConfigResultModel result, Section section, string value, int line)
+    {
+        if (section.Layout is not null)
+        {
+            result.AddProblem(line, $"{LayoutName}: there's one already, line {section.LayoutLine}, which is used.");
+        }
+        else if (TryReadLayout(value, out IReadOnlyList<ZoneModel> read, out string problem))
+        {
+            section.Layout = read;
+            section.LayoutLine = line;
+        }
+        else
+        {
+            result.AddProblem(line, $"{LayoutName}: {problem}");
+        }
+    }
+
+    private static void ReadZoneLine(ZonesConfigResultModel result, Section section, string value, int line)
+    {
+        if (section.Zones.Count == MaxZones)
+        {
+            result.AddProblem(line, $"{ZoneName}: there can be {MaxZones} zones at most.");
+        }
+        else if (TryReadZone(value, out ZoneModel? zone, out string problem))
+        {
+            section.Zones.Add(zone!);
+        }
+        else
+        {
+            result.AddProblem(line, $"{ZoneName}: {problem}");
+        }
+    }
+
+    private static void ReadGapLine(ZonesConfigResultModel result, Section section, string value, int line)
+    {
+        if (section.Gap is not null)
+        {
+            result.AddProblem(line, $"{GapName}: there's one already, which is used.");
+        }
+        else if (int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out int pixels)
+            && pixels <= MaxGap)
+        {
+            section.Gap = pixels;
+        }
+        else
+        {
+            result.AddProblem(line, $"{GapName}: a whole number of pixels from 0 to {MaxGap}, not '{value}'.");
+        }
+    }
+
+    // "left, top, width, height", whole pixels; left and top can be below 0, for a monitor left of or above the main
+    // one
+    private static bool TryReadMonitor(string value, out Rectangle bounds)
+    {
+        bounds = Rectangle.Empty;
+        string[] parts = value.Split([',', ' '], StringSplitOptions.RemoveEmptyEntries);
+        List<int> numbers = [];
+
+        foreach (string part in parts)
+        {
+            if (int.TryParse(part, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out int number))
+            {
+                numbers.Add(number);
+            }
+        }
+
+        if (parts.Length != 4 || numbers.Count != 4 || numbers[2] <= 0 || numbers[3] <= 0)
+        {
+            return false;
+        }
+
+        bounds = new Rectangle(numbers[0], numbers[1], numbers[2], numbers[3]);
+
+        return true;
     }
 
     // "Columns 3", "Columns 25 50 25", "Rows 2", "Grid 3 x 2"
@@ -292,4 +373,36 @@ public static class ZonesConfigReader
     private static string Format(double number) => Math.Round(number, 2).ToString(CultureInfo.InvariantCulture);
 
     private static string Capitalized(string word) => char.ToUpperInvariant(word[0]) + word[1..];
+
+    /// <summary>The lines of one layout: the default one, or a monitor's own.</summary>
+    private sealed class Section(Rectangle bounds)
+    {
+        public Rectangle Bounds { get; } = bounds;
+
+        /// <summary>The Monitor line it starts at; 0 for the default layout.</summary>
+        public int Line { get; init; }
+
+        public IReadOnlyList<ZoneModel>? Layout { get; set; }
+
+        public int LayoutLine { get; set; }
+
+        public List<ZoneModel> Zones { get; } = [];
+
+        public int? Gap { get; set; }
+
+        /// <summary>
+        ///     Its zones, from Zone lines or a Layout line, and its gap; what it lacks comes from the fallback.
+        /// </summary>
+        public ZoneLayoutModel Build(ZonesConfigResultModel result, IReadOnlyList<ZoneModel> zones, int gap)
+        {
+            if (Zones.Count > 0 && Layout is not null)
+            {
+                result.AddProblem(
+                    LayoutLine,
+                    $"{LayoutName}: there are {ZoneName} lines too, and they're used instead.");
+            }
+
+            return new ZoneLayoutModel(Zones.Count > 0 ? Zones : Layout ?? zones, Gap ?? gap);
+        }
+    }
 }
