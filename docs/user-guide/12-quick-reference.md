@@ -32,7 +32,7 @@ All other actions have no default hotkey. Add them in `hotkeys.cfg`.
 
 | Key | Effect |
 |---|---|
-| V, P, H, A, R, T, B | Select, Pen, Highlighter, Arrow, Rectangle, Text, Blur |
+| V, P, H, A, R, T, B, E | Select, Pen, Highlighter, Arrow, Rectangle, Text, Blur, Emoji |
 | Ctrl+Z / Ctrl+Y or Ctrl+Shift+Z | Undo / redo |
 | Ctrl+C / Ctrl+S | Copy / save |
 | Ctrl+Shift+C | Copy the text in the snip |

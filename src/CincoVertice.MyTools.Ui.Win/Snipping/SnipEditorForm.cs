@@ -59,6 +59,10 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     // False while the choices of color, size and transparency are hidden
     private bool _showsDrawingChoices = true;
 
+    // The grid of each group of emoji, and the emoji shown on the emoji list's button
+    private readonly List<EmojiPaletteControl> _emojiPalettes = [];
+    private string? _shownEmoji;
+
     // The values behind the size, transparency and text outline lists, which show them as text
     private IReadOnlyList<int> _sizes = [];
     private IReadOnlyList<int> _transparencies = [];
@@ -100,6 +104,8 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         // The palette and More colors only, without the menu's empty image column
         ((ToolStripDropDownMenu)ColorDropDownButton.DropDown).ShowImageMargin = false;
         ((ToolStripDropDownMenu)TextOutlineDropDownButton.DropDown).ShowImageMargin = false;
+        ((ToolStripDropDownMenu)EmojiDropDownButton.DropDown).ShowImageMargin = false;
+        AddEmojiGroups();
 
         FitToSnip();
         FormExtensions.CenterOnCursorScreen(this);
@@ -139,6 +145,8 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     public event EventHandler<SnipTool>? ToolSelected;
 
     public event EventHandler<Color>? ColorSelected;
+
+    public event EventHandler<string>? EmojiSelected;
 
     public event EventHandler? MoreColorsRequested;
 
@@ -317,6 +325,35 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         ColorDropDownButton.Visible = isVisible;
         SizeComboBox.Visible = isVisible;
         TransparencyComboBox.Visible = isVisible;
+    }
+
+    public void ShowColorChoice(bool isVisible)
+    {
+        ColorDropDownButton.Visible = _showsDrawingChoices && isVisible;
+    }
+
+    public void ShowEmojis(IReadOnlyList<string> recent, string? current)
+    {
+        RecentEmojis.Emojis = recent;
+        RecentEmojisLabel.Visible = recent.Count > 0;
+        RecentEmojisHost.Visible = recent.Count > 0;
+        RecentEmojisSeparator.Visible = recent.Count > 0;
+
+        foreach (EmojiPaletteControl palette in _emojiPalettes.Append(RecentEmojis))
+        {
+            palette.SelectedEmoji = current;
+        }
+
+        EmojiDropDownButton.Visible = current is not null;
+
+        if (current is not null && current != _shownEmoji)
+        {
+            // A copy: the renderer may drop its own when it has drawn many
+            Image? old = EmojiDropDownButton.Image;
+            EmojiDropDownButton.Image = new Bitmap(ColorEmojiRenderer.Render(current, _iconSize));
+            old?.Dispose();
+            _shownEmoji = current;
+        }
     }
 
     public void ShowArrowHeads(SnipArrowHeads? selected)
@@ -662,7 +699,10 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     }
 
     private ToolStripButton[] ToolButtons() =>
-        [SelectButton, PenButton, SmoothPenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, StepButton, BlurButton, CropButton];
+        [
+            SelectButton, PenButton, SmoothPenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton,
+            StepButton, EmojiButton, BlurButton, CropButton,
+        ];
 
     private ToolStripButton[] ArrowHeadsButtons() => [ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton];
 
@@ -793,6 +833,29 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     {
         CommitText();
         ToolSelected?.Invoke(this, ToolOf((ToolStripButton)sender!));
+    }
+
+    // A submenu per group, each a grid of its emoji: they come from the catalog, so they're made here, not in the
+    // designer
+    private void AddEmojiGroups()
+    {
+        foreach (EmojiCategoryModel category in EmojiCatalog.Categories)
+        {
+            var palette = new EmojiPaletteControl { Emojis = category.Emojis };
+            palette.EmojiPicked += EmojiPalette_EmojiPicked;
+            _emojiPalettes.Add(palette);
+
+            var group = new ToolStripMenuItem(category.Name);
+            ((ToolStripDropDownMenu)group.DropDown).ShowImageMargin = false;
+            group.DropDownItems.Add(new ToolStripControlHost(palette) { AutoSize = true });
+            EmojiDropDownButton.DropDownItems.Add(group);
+        }
+    }
+
+    private void EmojiPalette_EmojiPicked(object? sender, string emoji)
+    {
+        EmojiDropDownButton.HideDropDown();
+        EmojiSelected?.Invoke(this, emoji);
     }
 
     private void Palette_ColorPicked(object? sender, Color color)
@@ -1176,6 +1239,7 @@ public partial class SnipEditorForm : Form, ISnipEditorView
             (Keys.None, Keys.T) => () => ToolSelected?.Invoke(this, SnipTool.Text),
             (Keys.None, Keys.B) => () => ToolSelected?.Invoke(this, SnipTool.Blur),
             (Keys.None, Keys.N) => () => ToolSelected?.Invoke(this, SnipTool.Step),
+            (Keys.None, Keys.E) => () => ToolSelected?.Invoke(this, SnipTool.Emoji),
             (Keys.None, Keys.C) => () => ToolSelected?.Invoke(this, SnipTool.Crop),
             // - and + where the keyboard has them, [ and ] as in other drawing programs
             (Keys.None, Keys.OemMinus or Keys.Subtract or Keys.OemOpenBrackets) => () => StepSize(-1),

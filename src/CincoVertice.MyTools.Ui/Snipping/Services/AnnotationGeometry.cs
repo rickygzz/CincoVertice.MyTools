@@ -25,6 +25,10 @@ public static class AnnotationGeometry
     private const int MinStepDiameter = 12;
     private const int MaxStepDiameter = 400;
 
+    // Smaller, an emoji can't be told from another
+    private const int MinEmojiSize = 12;
+    private const int MaxEmojiSize = 400;
+
     /// <summary>
     ///     The frame that's scaled to scale the annotation. A freehand line's goes around its thickness: around only the
     ///     middle of a nearly level line, it would be so thin that scaling it would stretch every wobble of the hand.
@@ -41,6 +45,11 @@ public static class AnnotationGeometry
             step.Center.Y - step.Diameter / 2,
             step.Diameter,
             step.Diameter),
+        EmojiAnnotationModel emoji => new Rectangle(
+            emoji.Center.X - emoji.Size / 2,
+            emoji.Center.Y - emoji.Size / 2,
+            emoji.Size,
+            emoji.Size),
         TextAnnotationModel text => new Rectangle(text.Location, measure(text.Text, text.FontSize)),
         _ => Rectangle.Empty,
     };
@@ -159,6 +168,7 @@ public static class AnnotationGeometry
         BlurAnnotationModel blur => blur with { Bounds = Offset(blur.Bounds, delta) },
         HighlightAnnotationModel highlight => highlight with { Bounds = Offset(highlight.Bounds, delta) },
         StepAnnotationModel step => step with { Center = step.Center + delta },
+        EmojiAnnotationModel emoji => emoji with { Center = emoji.Center + delta },
         TextAnnotationModel text => text with { Location = text.Location + delta },
         _ => annotation,
     };
@@ -221,7 +231,7 @@ public static class AnnotationGeometry
         // A circle or a text only grows or shrinks, so it keeps its middle where the group puts it
         AnnotationModel result = Scaled(annotation, box, scaled, measure);
 
-        if (result is not (StepAnnotationModel or TextAnnotationModel))
+        if (result is not (StepAnnotationModel or TextAnnotationModel or EmojiAnnotationModel))
         {
             return result;
         }
@@ -290,6 +300,7 @@ public static class AnnotationGeometry
             BlurAnnotationModel blur => blur with { Bounds = to },
             HighlightAnnotationModel highlight => highlight with { Bounds = to },
             StepAnnotationModel step => ScaledStep(step, from, to),
+            EmojiAnnotationModel emoji => ScaledEmoji(emoji, from, to),
             TextAnnotationModel text => ScaledText(text, from, to, measure),
             _ => annotation,
         };
@@ -302,6 +313,16 @@ public static class AnnotationGeometry
         int top = to.Top != from.Top ? to.Bottom - diameter : from.Top;
 
         return step with { Diameter = diameter, Center = new Point(left + diameter / 2, top + diameter / 2) };
+    }
+
+    /// <summary>An emoji stays square, as a step's circle stays round.</summary>
+    private static EmojiAnnotationModel ScaledEmoji(EmojiAnnotationModel emoji, Rectangle from, Rectangle to)
+    {
+        int size = Math.Clamp(to.Height != from.Height ? to.Height : to.Width, MinEmojiSize, MaxEmojiSize);
+        int left = to.Left != from.Left ? to.Right - size : from.Left;
+        int top = to.Top != from.Top ? to.Bottom - size : from.Top;
+
+        return emoji with { Size = size, Center = new Point(left + size / 2, top + size / 2) };
     }
 
     /// <summary>

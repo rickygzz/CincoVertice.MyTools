@@ -64,6 +64,17 @@ public static class AnnotationRenderer
                 case StepAnnotationModel step:
                     DrawStep(graphics, step);
                     break;
+                case EmojiAnnotationModel emoji:
+                    ColorEmojiRenderer.Draw(
+                        graphics,
+                        emoji.Emoji,
+                        new RectangleF(
+                            emoji.Center.X - (emoji.Size / 2f),
+                            emoji.Center.Y - (emoji.Size / 2f),
+                            emoji.Size,
+                            emoji.Size),
+                        emoji.Color.A);
+                    break;
             }
         }
 

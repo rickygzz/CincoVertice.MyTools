@@ -75,6 +75,24 @@ public sealed class JsonFileSnipEditorSettingsStoreTests : IDisposable
     }
 
     [Fact]
+    public void SaveThenLoad_KeepsTheEmoji_AndTheRecentOnes_InOrder()
+    {
+        // Act: one with a skin tone, which is two characters, and a flag
+        _store.Save(new SnipEditorSettingsModel(
+            SnipTool.Emoji,
+            new Dictionary<SnipTool, SnipToolSettingsModel>(),
+            [],
+            Emoji: "👍🏽",
+            RecentEmojis: ["🇲🇽", "👍🏽", "❤️"]));
+        SnipEditorSettingsModel loaded = _store.Load()!;
+
+        // Assert
+        Assert.Equal(SnipTool.Emoji, loaded.Tool);
+        Assert.Equal("👍🏽", loaded.Emoji);
+        Assert.Equal(["🇲🇽", "👍🏽", "❤️"], loaded.RecentEmojis);
+    }
+
+    [Fact]
     public void SaveThenLoad_KeepsTheCornerRadius()
     {
         // Act

@@ -27,6 +27,7 @@ partial class SnipEditorForm
             _textFont?.Dispose();
             _colorSwatch?.Dispose();
             _textOutlineSwatch?.Dispose();
+            EmojiDropDownButton.Image?.Dispose();
 
             foreach (Image image in _images)
             {
@@ -53,6 +54,12 @@ partial class SnipEditorForm
         RectangleButton = new ToolStripButton();
         TextButton = new ToolStripButton();
         StepButton = new ToolStripButton();
+        EmojiButton = new ToolStripButton();
+        EmojiDropDownButton = new ToolStripDropDownButton();
+        RecentEmojisLabel = new ToolStripLabel();
+        RecentEmojis = new EmojiPaletteControl();
+        RecentEmojisHost = new ToolStripControlHost(RecentEmojis);
+        RecentEmojisSeparator = new ToolStripSeparator();
         BlurButton = new ToolStripButton();
         CropButton = new ToolStripButton();
         ApplyCropButton = new ToolStripButton();
@@ -107,7 +114,7 @@ partial class SnipEditorForm
         // Tools
         //
         Tools.GripStyle = ToolStripGripStyle.Hidden;
-        Tools.Items.AddRange(new ToolStripItem[] { SelectButton, PenButton, SmoothPenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, StepButton, BlurButton, CropButton, ApplyCropButton, CancelCropButton, ToolsSeparator, ColorDropDownButton, SizeComboBox, TransparencyComboBox, ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton, CornerRadiusComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, ColorsSeparator, UndoButton, RedoButton, HistorySeparator, CopyButton, CopyTextButton, SaveButton, SnipsSeparator, PreviousSnipButton, SnipPositionLabel, NextSnipButton, OptionsDropDownButton, ZoomLabel });
+        Tools.Items.AddRange(new ToolStripItem[] { SelectButton, PenButton, SmoothPenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, StepButton, EmojiButton, BlurButton, CropButton, ApplyCropButton, CancelCropButton, ToolsSeparator, ColorDropDownButton, SizeComboBox, TransparencyComboBox, ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton, CornerRadiusComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, EmojiDropDownButton, ColorsSeparator, UndoButton, RedoButton, HistorySeparator, CopyButton, CopyTextButton, SaveButton, SnipsSeparator, PreviousSnipButton, SnipPositionLabel, NextSnipButton, OptionsDropDownButton, ZoomLabel });
         Tools.Location = new Point(0, 0);
         Tools.Name = "Tools";
         Tools.Padding = new Padding(4, 2, 4, 2);
@@ -210,6 +217,46 @@ partial class SnipEditorForm
         StepButton.Text = "Step";
         StepButton.ToolTipText = "Numbered step (N): each click adds the next number";
         StepButton.Click += ToolButton_Click;
+        //
+        // EmojiButton
+        //
+        EmojiButton.DisplayStyle = ToolStripItemDisplayStyle.Image;
+        EmojiButton.Name = "EmojiButton";
+        EmojiButton.Tag = "Emoji";
+        EmojiButton.Text = "Emoji";
+        EmojiButton.ToolTipText = "Emoji (E): click where it goes; pick which one from the emoji list beside the sizes";
+        EmojiButton.Click += ToolButton_Click;
+        //
+        // EmojiDropDownButton
+        //
+        EmojiDropDownButton.DisplayStyle = ToolStripItemDisplayStyle.Image;
+        EmojiDropDownButton.DropDownItems.AddRange(new ToolStripItem[]
+        {
+            RecentEmojisLabel, RecentEmojisHost, RecentEmojisSeparator,
+        });
+        EmojiDropDownButton.Name = "EmojiDropDownButton";
+        EmojiDropDownButton.ToolTipText = "Emoji: the ones used last, then all of them by group";
+        EmojiDropDownButton.Visible = false;
+        //
+        // RecentEmojisLabel
+        //
+        RecentEmojisLabel.ForeColor = SystemColors.GrayText;
+        RecentEmojisLabel.Name = "RecentEmojisLabel";
+        RecentEmojisLabel.Text = "Used last";
+        //
+        // RecentEmojis
+        //
+        RecentEmojis.Name = "RecentEmojis";
+        RecentEmojis.EmojiPicked += EmojiPalette_EmojiPicked;
+        //
+        // RecentEmojisHost
+        //
+        RecentEmojisHost.AutoSize = true;
+        RecentEmojisHost.Name = "RecentEmojisHost";
+        //
+        // RecentEmojisSeparator
+        //
+        RecentEmojisSeparator.Name = "RecentEmojisSeparator";
         //
         // BlurButton
         //
@@ -549,6 +596,12 @@ partial class SnipEditorForm
     private ToolStripButton RectangleButton;
     private ToolStripButton TextButton;
     private ToolStripButton StepButton;
+    private ToolStripButton EmojiButton;
+    private ToolStripDropDownButton EmojiDropDownButton;
+    private ToolStripLabel RecentEmojisLabel;
+    private EmojiPaletteControl RecentEmojis;
+    private ToolStripControlHost RecentEmojisHost;
+    private ToolStripSeparator RecentEmojisSeparator;
     private ToolStripButton BlurButton;
     private ToolStripButton CropButton;
     private ToolStripButton ApplyCropButton;

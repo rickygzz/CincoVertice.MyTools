@@ -59,9 +59,23 @@ public static class ToolIcons
             case SnipTool.Crop:
                 DrawCrop(graphics, pen);
                 break;
+            case SnipTool.Emoji:
+                DrawEmoji(graphics, pen);
+                break;
         }
 
         return icon;
+    }
+
+    // A smiling face, in the ink of the other icons: the emojis themselves are in color
+    private static void DrawEmoji(Graphics graphics, Pen pen)
+    {
+        using var eyes = new SolidBrush(_ink);
+
+        graphics.DrawEllipse(pen, 2f, 2f, 12f, 12f);
+        graphics.FillEllipse(eyes, 5.3f, 5.5f, 1.6f, 1.8f);
+        graphics.FillEllipse(eyes, 9.1f, 5.5f, 1.6f, 1.8f);
+        graphics.DrawArc(pen, 5f, 6.5f, 6f, 4.5f, 20f, 140f);
     }
 
     /// <returns>An arrow turning back to the left; the caller disposes it.</returns>

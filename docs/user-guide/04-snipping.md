@@ -52,13 +52,16 @@ The window is titled "Snip editor". It opens at the snip's size (at most 90% of 
 | Rectangle | R | "Rounded rectangle (R)" |
 | Text | T | "Text (T): click where it goes, Enter to end, Esc to end and select it, Shift+Enter for a new line" |
 | Blur | B | "Blur (B): drag over what to hide. It can't be recovered from the copied or saved image" |
+| Emoji | E | "Emoji (E): click where it goes; pick which one from the emoji list beside the sizes" |
 
 **Blur** is not a true blur. The covered area is replaced by the average color of the pixels just outside it, with a fixed cloudy pattern. Nothing from the covered pixels is kept, so it cannot be reversed from the copied or saved image. Blur has no color, size or transparency choices.
+
+**Emoji** drops an emoji, in its own colors as Windows shows them, where you click, and again at each click. Choose which one from the emoji list that shows beside the sizes while the tool is chosen: at its top, **Used last** has the 10 emoji you dropped most recently, newest first, and below are all of them by group: Faces, Gestures, Marks and arrows, Work, Hearts and symbols, Nature and food. Picking one from the list also chooses the tool. With an emoji selected, picking another one changes it. An emoji has no color choice, but it has a size, from 16 to 200 pixels, and a transparency. The emoji chosen and the ones used last are remembered between runs. Flags are not offered: Windows draws them as two letters.
 
 ## Toolbar choices
 
 - **Color of this tool** (a drop-down): a palette of 24 colors, plus "More colors...". Up to 8 custom colors are remembered, newest first.
-- **Line width, or text size, in pixels (- and +)**: line widths 1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48; text sizes 10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 64, 72.
+- **Line width, or text size, in pixels (- and +)**: line widths 1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48; text sizes 10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 64, 72. Emoji sizes 16, 20, 24, 32, 40, 48, 64, 80, 96, 128, 160, 200 (48 at first).
 - **Transparency**: 0 to 90% in steps of 10.
 - **Arrow heads:** "Head at the end", "Head at the start", "Heads at both ends".
 - **Text edge:** an "Edge" color drop-down and an edge width list ("No edge" for 0, otherwise "N px": 0, 1, 2, 3, 4, 5, 6, 8, 10, 12).
@@ -78,7 +81,7 @@ Defaults: the Pen is the starting tool unless you used another last time. Pen, A
 | Alt+Left / Alt+Right | Previous / next snip |
 | `-` or `[` | Next smaller size |
 | `+` or `]` | Next larger size |
-| V, P, H, A, R, T, B | Choose a tool |
+| V, P, H, A, R, T, B, E | Choose a tool |
 | Esc | Ends a text being typed; else deselects the selection; else closes the editor |
 | Enter / Shift+Enter | End a text / start a new line in a text |
 

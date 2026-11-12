@@ -416,6 +416,76 @@ public sealed class SnipEditorFormTests : IDisposable
         Assert.Equal([new Size(x, y)], nudges);
     }
 
+    [Fact]
+    public void TheEmojiList_HasTheOnesUsedLast_AtTheTop_ThenEveryGroup()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+
+        // Act
+        form.ShowEmojis(["🔥", "👍"], "👍");
+
+        // Assert
+        var button = Field<ToolStripDropDownButton>(form, "EmojiDropDownButton");
+        var recent = Field<EmojiPaletteControl>(form, "RecentEmojis");
+        Assert.True(button.Available);
+        Assert.NotNull(button.Image);
+        Assert.Equal(["🔥", "👍"], recent.Emojis);
+        Assert.Equal("👍", recent.SelectedEmoji);
+        Assert.Equal(
+            ["Used last", string.Empty, string.Empty, "Faces", "Gestures", "Marks and arrows", "Work",
+                "Hearts and symbols", "Nature and food"],
+            button.DropDownItems.Cast<ToolStripItem>().Select(item => item.Text ?? string.Empty));
+    }
+
+    [Fact]
+    public void TheEmojiList_WithoutRecentOnes_StartsWithTheGroups_AndHidesWithoutAnEmoji()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        var button = Field<ToolStripDropDownButton>(form, "EmojiDropDownButton");
+
+        // Act and assert
+        form.ShowEmojis([], "😀");
+        Assert.False(Field<ToolStripLabel>(form, "RecentEmojisLabel").Available);
+        Assert.True(button.Available);
+
+        form.ShowEmojis([], null);
+        Assert.False(button.Available);
+    }
+
+    [Fact]
+    public void PickingAnEmojiFromTheList_RaisesIt()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        var picked = new List<string>();
+        form.EmojiSelected += (_, emoji) => picked.Add(emoji);
+
+        // Act
+        typeof(SnipEditorForm)
+            .GetMethod("EmojiPalette_EmojiPicked", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .Invoke(form, [form, "✅"]);
+
+        // Assert
+        Assert.Equal(["✅"], picked);
+    }
+
+    [Fact]
+    public void E_ChoosesTheEmojiTool()
+    {
+        // Arrange
+        using var form = new SnipEditorForm(Solid(100, 100, Color.White));
+        var tools = new List<SnipTool>();
+        form.ToolSelected += (_, tool) => tools.Add(tool);
+
+        // Act
+        InvokeKeyDown(form, new KeyEventArgs(Keys.E));
+
+        // Assert
+        Assert.Equal([SnipTool.Emoji], tools);
+    }
+
     private static void InvokeKeyDown(SnipEditorForm form, KeyEventArgs e)
     {
         typeof(SnipEditorForm)

@@ -60,6 +60,9 @@ public interface ISnipEditorView
 
     event EventHandler<Color>? ColorSelected;
 
+    /// <summary>Raised with the emoji the user picked, e.g. "👍".</summary>
+    event EventHandler<string>? EmojiSelected;
+
     /// <summary>Raised when the user wants a color that isn't in the palette.</summary>
     event EventHandler? MoreColorsRequested;
 
@@ -164,6 +167,16 @@ public interface ISnipEditorView
 
     /// <summary>Shows or hides the choices of color, size and transparency, which the blur tool doesn't have.</summary>
     void ShowDrawingChoices(bool isVisible);
+
+    /// <summary>
+    ///     Shows or hides the choice of color, after <see cref="ShowDrawingChoices"/>: an emoji has its own colors.
+    /// </summary>
+    void ShowColorChoice(bool isVisible);
+
+    /// <summary>Shows the emoji to choose from, with those used last at the top, and the one chosen.</summary>
+    /// <param name="recent">The emoji used last, most recent first.</param>
+    /// <param name="current">The one the emoji tool drops, or of the emoji selected; null hides the choice.</param>
+    void ShowEmojis(IReadOnlyList<string> recent, string? current);
 
     /// <summary>Shows the choice of arrow heads with one selected; null hides it, for the other tools.</summary>
     void ShowArrowHeads(SnipArrowHeads? selected);

@@ -19,11 +19,14 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.14" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.14" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.14" />
+    <!-- Direct2D, which draws emoji in color: GDI+ draws them in black and white -->
+    <PackageReference Include="Vortice.Direct2D1" Version="3.8.3" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="Diagramming\Fonts\Roboto.ttf" LogicalName="Roboto.ttf" />
     <Content Include="Diagramming\Fonts\OFL.txt" Link="licenses\Roboto-OFL.txt" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <Content Include="Snipping\Licenses\Vortice-MIT.txt" Link="licenses\Vortice-MIT.txt" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
   </ItemGroup>
 
   <ItemGroup>

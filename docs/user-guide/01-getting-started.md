@@ -7,7 +7,7 @@
 The release zip contains three things:
 
 - `CincoVertice.MyTools.Ui.Win.exe`, the application. It is self-contained, so you do not need to install any .NET runtime.
-- A `licenses` folder with `Roboto-OFL.txt`, the license for the Roboto font that is built into the program. Keep it next to the exe.
+- A `licenses` folder with `Roboto-OFL.txt`, the license for the Roboto font that is built into the program, and `Vortice-MIT.txt`, the license for the libraries that draw emoji in color. Keep it next to the exe.
 - A `docs\user-guide` folder with this guide, as Markdown files. Start with `README.md`. They open in any text editor, and read best in one that shows Markdown, such as Visual Studio Code.
 
 ### First run

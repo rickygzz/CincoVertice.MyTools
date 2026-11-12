@@ -3066,6 +3066,128 @@ public class SnipEditorPresenterTests
         }
     }
 
+    private List<EmojiAnnotationModel> Emojis => [.. _presenter.Annotations.OfType<EmojiAnnotationModel>()];
+
+    [Fact]
+    public void PickingAnEmoji_TurnsToTheEmojiTool_WithItsSizes_AndNoColor()
+    {
+        // Act
+        _view.SelectEmoji("👍");
+
+        // Assert
+        Assert.Equal(SnipTool.Emoji, _view.Tool);
+        Assert.Equal("👍", _view.Emoji);
+        Assert.False(_view.ColorChoiceVisible);
+        Assert.Equal(SnipEditorPresenter.EmojiSizes, _view.Sizes);
+
+        // And another tool hides the emoji and shows the color again
+        _view.SelectTool(SnipTool.Pen);
+        Assert.Null(_view.Emoji);
+        Assert.True(_view.ColorChoiceVisible);
+    }
+
+    [Fact]
+    public void AClickWithTheEmojiTool_DropsTheEmojiChosen_ThereAtTheToolsSize()
+    {
+        // Arrange
+        _view.SelectEmoji("🔥");
+        _view.SelectSize(64);
+
+        // Act
+        Click(120, 80);
+
+        // Assert
+        EmojiAnnotationModel emoji = Assert.Single(Emojis);
+        Assert.Equal(new Point(120, 80), emoji.Center);
+        Assert.Equal("🔥", emoji.Emoji);
+        Assert.Equal(64, emoji.Size);
+    }
+
+    [Fact]
+    public void TheRecentEmojis_AreTheTenDroppedLast_MostRecentFirst_EachOnce()
+    {
+        // Arrange: twelve different emojis, then the first again
+        string[] used = ["😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "🙂", "😉", "😊", "😇", "😀"];
+
+        // Act
+        foreach (string emoji in used)
+        {
+            _view.SelectEmoji(emoji);
+            Click(100, 100);
+        }
+
+        // Assert
+        Assert.Equal(["😀", "😇", "😊", "😉", "🙂", "🤣", "😂", "😅", "😆", "😁"], _view.RecentEmojis);
+    }
+
+    [Fact]
+    public void PickingAnEmoji_WithoutDroppingIt_DoesntMakeItRecent()
+    {
+        // Act
+        _view.SelectEmoji("👀");
+
+        // Assert
+        Assert.Empty(_view.RecentEmojis);
+    }
+
+    [Fact]
+    public void TheEmojiChosen_AndTheRecentOnes_AreSaved_ForTheNextEditor()
+    {
+        // Arrange
+        _view.SelectEmoji("✅");
+        Click(100, 100);
+        _view.SelectEmoji("❌");
+
+        // Act
+        SnipEditorSettingsModel saved = _store.Saved[^1];
+        var view = new FakeSnipEditorView();
+        new SnipEditorPresenter(view, _time, new FakeSettingsStore(saved), _recognizer).Start();
+
+        // Assert
+        Assert.Equal("❌", saved.Emoji);
+        Assert.Equal(["✅"], saved.RecentEmojis);
+        Assert.Equal(["✅"], view.RecentEmojis);
+        Assert.Equal("❌", view.Emoji);
+    }
+
+    [Fact]
+    public void PickingAnEmoji_WithAnEmojiSelected_ChangesIt()
+    {
+        // Arrange
+        _view.SelectEmoji("👍");
+        Click(100, 100);
+        _view.SelectTool(SnipTool.Select);
+        Click(100, 100);
+
+        // Act
+        _view.SelectEmoji("👎");
+
+        // Assert
+        Assert.Equal("👎", Assert.Single(Emojis).Emoji);
+        Assert.Equal(SnipTool.Select, _view.Tool);
+        Assert.Equal("👎", _view.Emoji);
+        Assert.False(_view.ColorChoiceVisible);
+    }
+
+    [Fact]
+    public void AnEmojiSelected_IsScaledSquare_AroundItsMiddle()
+    {
+        // Arrange
+        _view.SelectEmoji("👍");
+        _view.SelectSize(48);
+        Click(100, 100);
+        _view.SelectTool(SnipTool.Select);
+        Click(100, 100);
+
+        // Act
+        _view.SelectSize(96);
+
+        // Assert
+        EmojiAnnotationModel emoji = Assert.Single(Emojis);
+        Assert.Equal(96, emoji.Size);
+        Assert.Equal(new Point(100, 100), emoji.Center);
+    }
+
     [Fact]
     public void Step_EachClickAddsTheNextNumber_WhereItWasClicked()
     {
@@ -3968,6 +4090,8 @@ public class SnipEditorPresenterTests
 
         public event EventHandler<Color>? ColorSelected;
 
+        public event EventHandler<string>? EmojiSelected;
+
         public event EventHandler? MoreColorsRequested;
 
         public event EventHandler<int>? SizeSelected;
@@ -4147,6 +4271,8 @@ public class SnipEditorPresenterTests
 
         public void SelectColor(Color color) => ColorSelected?.Invoke(this, color);
 
+        public void SelectEmoji(string emoji) => EmojiSelected?.Invoke(this, emoji);
+
         public void RequestMoreColors() => MoreColorsRequested?.Invoke(this, EventArgs.Empty);
 
         public void SelectSize(int size) => SizeSelected?.Invoke(this, size);
@@ -4211,6 +4337,20 @@ public class SnipEditorPresenterTests
         public bool DrawingChoicesVisible { get; private set; }
 
         public void ShowDrawingChoices(bool isVisible) => DrawingChoicesVisible = isVisible;
+
+        public bool ColorChoiceVisible { get; private set; } = true;
+
+        public IReadOnlyList<string> RecentEmojis { get; private set; } = [];
+
+        public string? Emoji { get; private set; }
+
+        public void ShowColorChoice(bool isVisible) => ColorChoiceVisible = isVisible;
+
+        public void ShowEmojis(IReadOnlyList<string> recent, string? current)
+        {
+            RecentEmojis = recent;
+            Emoji = current;
+        }
 
         public void ShowTextOutline(IReadOnlyList<int> widths, SnipTextOutlineModel? outline) =>
             (TextOutlineWidths, TextOutline) = (widths, outline);
