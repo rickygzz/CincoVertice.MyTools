@@ -8,6 +8,7 @@
 | `ToggleActivity` | Ctrl+Alt+M | Starts or stops the mouse mover |
 | `SnipAndEdit` | Ctrl+Alt+S | Takes a snip, then opens the snip editor |
 | `SnipRegion` | Ctrl+Alt+Shift+S | Takes a snip to the clipboard |
+| `SnipText` | Ctrl+Alt+T | Takes a snip and copies the text in it, as text |
 | `DiagramEditor` | Ctrl+Alt+D | Opens a new diagram editor window |
 | `CheckFolder` | none | Pick a folder, check the C# standard |
 | `FixFolder` | none | Pick a folder, fix it in place |
@@ -45,6 +46,7 @@ DiagramEditor = Ctrl+Alt+D
 ShowCalculator = Ctrl+Alt+C
 SnipAndEdit = Ctrl+Alt+S
 SnipRegion = Ctrl+Alt+Shift+S
+SnipText = Ctrl+Alt+T
 ToggleActivity = Ctrl+Alt+M
 ```
 

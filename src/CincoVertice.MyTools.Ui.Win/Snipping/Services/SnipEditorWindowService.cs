@@ -12,12 +12,14 @@ namespace CincoVertice.MyTools.Ui.Win.Snipping.Services;
 public sealed class SnipEditorWindowService
 {
     private readonly ISnipEditorSettingsStore _settingsStore;
+    private readonly ITextRecognizer _textRecognizer;
 
     private SnipEditorForm? _form;
 
-    public SnipEditorWindowService(ISnipEditorSettingsStore settingsStore)
+    public SnipEditorWindowService(ISnipEditorSettingsStore settingsStore, ITextRecognizer textRecognizer)
     {
         _settingsStore = settingsStore;
+        _textRecognizer = textRecognizer;
     }
 
     /// <param name="snip">The image to edit; the window owns it from here and disposes it.</param>
@@ -27,7 +29,7 @@ public sealed class SnipEditorWindowService
         {
             _form = new SnipEditorForm(snip);
             _form.FormClosed += Form_FormClosed;
-            new SnipEditorPresenter(_form, TimeProvider.System, _settingsStore).Start();
+            new SnipEditorPresenter(_form, TimeProvider.System, _settingsStore, _textRecognizer).Start();
             _form.Show();
 
             return;

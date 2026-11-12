@@ -113,6 +113,9 @@ public interface ISnipEditorView
 
     event EventHandler? CopyRequested;
 
+    /// <summary>Raised when the user wants the text in the snip shown copied, as text.</summary>
+    event EventHandler? CopyTextRequested;
+
     event EventHandler? SaveRequested;
 
     void ShowTool(SnipTool tool);
@@ -210,6 +213,14 @@ public interface ISnipEditorView
 
     /// <summary>Copies the snip with the annotations shown to the clipboard.</summary>
     void CopyImageToClipboard();
+
+    /// <returns>The snip with the annotations shown, as copied, encoded as a PNG.</returns>
+    byte[] RenderImagePng();
+
+    void CopyTextToClipboard(string text);
+
+    /// <summary>Tells the user something briefly, without asking anything.</summary>
+    void ShowNotice(string message);
 
     /// <summary>Asks where to save the image.</summary>
     /// <param name="suggestedFileName">The file name offered first.</param>

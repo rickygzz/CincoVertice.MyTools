@@ -19,6 +19,9 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     // How many pixels the arrow keys move what's selected; with Shift, one
     private const int NudgeStep = 10;
 
+    // How long a notice such as "Copied 2 lines of text." stays
+    private const int NoticeMilliseconds = 3000;
+
     // Every snip of this window, oldest first, which the form owns and disposes
     private readonly List<Bitmap> _snips = [];
 
@@ -174,6 +177,8 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     public event EventHandler? RedoRequested;
 
     public event EventHandler? CopyRequested;
+
+    public event EventHandler? CopyTextRequested;
 
     public event EventHandler? SaveRequested;
 
@@ -475,6 +480,31 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         using Bitmap image = RenderImage();
 
         Clipboard.SetImage(image);
+    }
+
+    public byte[] RenderImagePng()
+    {
+        using Bitmap image = RenderImage();
+
+        return PngEncoder.Encode(image);
+    }
+
+    public void CopyTextToClipboard(string text)
+    {
+        Clipboard.SetText(text);
+    }
+
+    public void ShowNotice(string message)
+    {
+        // The text is read after a wait, so the window may be closed by now
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        // Under the button, where the user looks after clicking it
+        Rectangle button = CopyTextButton.Bounds;
+        NoticeToolTip.Show(message, Tools, button.Left, Tools.Height, NoticeMilliseconds);
     }
 
     public string? AskSavePath(string suggestedFileName)
@@ -884,6 +914,12 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         CopyRequested?.Invoke(this, EventArgs.Empty);
     }
 
+    private void CopyTextButton_Click(object? sender, EventArgs e)
+    {
+        CommitText();
+        CopyTextRequested?.Invoke(this, EventArgs.Empty);
+    }
+
     private void SaveButton_Click(object? sender, EventArgs e)
     {
         CommitText();
@@ -1123,6 +1159,7 @@ public partial class SnipEditorForm : Form, ISnipEditorView
             (Keys.Control | Keys.Shift, Keys.Z) or (Keys.Control, Keys.Y) =>
                 () => RedoRequested?.Invoke(this, EventArgs.Empty),
             (Keys.Control, Keys.C) => () => CopyRequested?.Invoke(this, EventArgs.Empty),
+            (Keys.Control | Keys.Shift, Keys.C) => () => CopyTextRequested?.Invoke(this, EventArgs.Empty),
             (Keys.Control, Keys.S) => () => SaveRequested?.Invoke(this, EventArgs.Empty),
             (Keys.Control, Keys.A) => () => SelectAllRequested?.Invoke(this, EventArgs.Empty),
             (Keys.Control, Keys.Oemplus or Keys.Add) => () => ZoomRequested?.Invoke(this, 1),

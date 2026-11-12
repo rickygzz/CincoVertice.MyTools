@@ -64,6 +64,7 @@ public sealed class SnipEditorPresenter
     private readonly ISnipEditorView _view;
     private readonly TimeProvider _timeProvider;
     private readonly ISnipEditorSettingsStore _settingsStore;
+    private readonly ITextRecognizer _textRecognizer;
 
     // Every snip of the window, oldest first; starts with the one it opened with
     private readonly List<SnipPage> _pages = [new SnipPage()];
@@ -126,6 +127,9 @@ public sealed class SnipEditorPresenter
     // The selected text while it's being typed over, when it isn't drawn since the text box stands in for it
     private bool _isEditingText;
 
+    // While the text of a snip is being read, asking again does nothing
+    private bool _isReadingText;
+
     private SnipCursor _cursor = SnipCursor.Cross;
 
     // The crop being adjusted before it's applied, and the drag of it; and the crop the view shows, to tell it only of a
@@ -141,14 +145,17 @@ public sealed class SnipEditorPresenter
     ///     Where the tool, each tool's settings and the custom colors are kept: the editor starts with the ones saved
     ///     last, and saves them on every change.
     /// </param>
+    /// <param name="textRecognizer">Reads the text of the snip shown, for Copy text.</param>
     public SnipEditorPresenter(
         ISnipEditorView view,
         TimeProvider timeProvider,
-        ISnipEditorSettingsStore settingsStore)
+        ISnipEditorSettingsStore settingsStore,
+        ITextRecognizer textRecognizer)
     {
         _view = view;
         _timeProvider = timeProvider;
         _settingsStore = settingsStore;
+        _textRecognizer = textRecognizer;
 
         Apply(settingsStore.Load());
 
@@ -183,6 +190,7 @@ public sealed class SnipEditorPresenter
         _view.UndoRequested += OnUndoRequested;
         _view.RedoRequested += OnRedoRequested;
         _view.CopyRequested += OnCopyRequested;
+        _view.CopyTextRequested += OnCopyTextRequested;
         _view.SaveRequested += OnSaveRequested;
         _view.CloseRequested += OnCloseRequested;
         _view.HideWhileSnippingSelected += OnHideWhileSnippingSelected;
@@ -1490,6 +1498,40 @@ public sealed class SnipEditorPresenter
     private void OnCopyRequested(object? sender, EventArgs e)
     {
         _view.CopyImageToClipboard();
+    }
+
+    private async void OnCopyTextRequested(object? sender, EventArgs e)
+    {
+        if (_isReadingText)
+        {
+            return;
+        }
+
+        _isReadingText = true;
+
+        try
+        {
+            IReadOnlyList<string> lines =
+                RecognizedText.Format(await _textRecognizer.ReadLinesAsync(_view.RenderImagePng()));
+
+            if (lines.Count == 0)
+            {
+                _view.ShowNotice(RecognizedText.NoneFoundMessage);
+
+                return;
+            }
+
+            _view.CopyTextToClipboard(RecognizedText.Join(lines));
+            _view.ShowNotice(RecognizedText.CopiedMessage(lines.Count));
+        }
+        catch (TextRecognitionException ex)
+        {
+            _view.ShowNotice(ex.Message);
+        }
+        finally
+        {
+            _isReadingText = false;
+        }
     }
 
     private void OnSaveRequested(object? sender, EventArgs e)

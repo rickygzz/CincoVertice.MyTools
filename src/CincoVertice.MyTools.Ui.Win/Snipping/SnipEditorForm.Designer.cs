@@ -17,6 +17,7 @@ partial class SnipEditorForm
         {
             components?.Dispose();
             SelectionMenu.Dispose();
+            NoticeToolTip.Dispose();
 
             foreach (Bitmap snip in _snips)
             {
@@ -77,6 +78,7 @@ partial class SnipEditorForm
         RedoButton = new ToolStripButton();
         HistorySeparator = new ToolStripSeparator();
         CopyButton = new ToolStripButton();
+        CopyTextButton = new ToolStripButton();
         SaveButton = new ToolStripButton();
         SnipsSeparator = new ToolStripSeparator();
         PreviousSnipButton = new ToolStripButton();
@@ -86,6 +88,7 @@ partial class SnipEditorForm
         OptionsDropDownButton = new ToolStripDropDownButton();
         HideWhileSnippingMenuItem = new ToolStripMenuItem();
         SelectionMenu = new ContextMenuStrip();
+        NoticeToolTip = new ToolTip();
         ResetMenuItem = new ToolStripMenuItem();
         DuplicateMenuItem = new ToolStripMenuItem();
         BringToFrontMenuItem = new ToolStripMenuItem();
@@ -104,7 +107,7 @@ partial class SnipEditorForm
         // Tools
         //
         Tools.GripStyle = ToolStripGripStyle.Hidden;
-        Tools.Items.AddRange(new ToolStripItem[] { SelectButton, PenButton, SmoothPenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, StepButton, BlurButton, CropButton, ApplyCropButton, CancelCropButton, ToolsSeparator, ColorDropDownButton, SizeComboBox, TransparencyComboBox, ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton, CornerRadiusComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, ColorsSeparator, UndoButton, RedoButton, HistorySeparator, CopyButton, SaveButton, SnipsSeparator, PreviousSnipButton, SnipPositionLabel, NextSnipButton, OptionsDropDownButton, ZoomLabel });
+        Tools.Items.AddRange(new ToolStripItem[] { SelectButton, PenButton, SmoothPenButton, HighlighterButton, ArrowButton, RectangleButton, TextButton, StepButton, BlurButton, CropButton, ApplyCropButton, CancelCropButton, ToolsSeparator, ColorDropDownButton, SizeComboBox, TransparencyComboBox, ArrowHeadEndButton, ArrowHeadStartButton, ArrowHeadsBothButton, CornerRadiusComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, ColorsSeparator, UndoButton, RedoButton, HistorySeparator, CopyButton, CopyTextButton, SaveButton, SnipsSeparator, PreviousSnipButton, SnipPositionLabel, NextSnipButton, OptionsDropDownButton, ZoomLabel });
         Tools.Location = new Point(0, 0);
         Tools.Name = "Tools";
         Tools.Padding = new Padding(4, 2, 4, 2);
@@ -357,6 +360,13 @@ partial class SnipEditorForm
         CopyButton.ToolTipText = "Copy (Ctrl+C); every change is copied too";
         CopyButton.Click += CopyButton_Click;
         //
+        // CopyTextButton
+        //
+        CopyTextButton.Name = "CopyTextButton";
+        CopyTextButton.Text = "Copy text";
+        CopyTextButton.ToolTipText = "Copy the text in the snip, as text (Ctrl+Shift+C)";
+        CopyTextButton.Click += CopyTextButton_Click;
+        //
         // SaveButton
         //
         SaveButton.Name = "SaveButton";
@@ -564,6 +574,7 @@ partial class SnipEditorForm
     private ToolStripButton RedoButton;
     private ToolStripSeparator HistorySeparator;
     private ToolStripButton CopyButton;
+    private ToolStripButton CopyTextButton;
     private ToolStripButton SaveButton;
     private ToolStripSeparator SnipsSeparator;
     private ToolStripButton PreviousSnipButton;
@@ -573,6 +584,7 @@ partial class SnipEditorForm
     private ToolStripDropDownButton OptionsDropDownButton;
     private ToolStripMenuItem HideWhileSnippingMenuItem;
     private ContextMenuStrip SelectionMenu;
+    private ToolTip NoticeToolTip;
     private ToolStripMenuItem ResetMenuItem;
     private ToolStripMenuItem DuplicateMenuItem;
     private ToolStripMenuItem BringToFrontMenuItem;

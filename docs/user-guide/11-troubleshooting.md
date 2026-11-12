@@ -16,6 +16,8 @@
 | **My startup actions did not run** | They run only when Windows starts My Tools at sign-in, with **Start with Windows** on; starting it yourself does not run them. A line that could not be used was shown in a notification titled "My Tools: some startup actions are off", and is squiggled in `startup.cfg` in the config editor. |
 | **Did I leave the mouse mover on?** | The tray icon is red while it is on. |
 | **My clipboard content disappeared after a snip** | `SnipAndEdit` and `SnipRegion` replace the clipboard with the snip. The snip editor does so again after every change. |
+| **Copy text or Ctrl+Alt+T says Windows can't read text in my languages** | Add a language with its **Optical character recognition** feature in **Settings > Time & language > Language & region**. See [Copying the text in a snip](04-snipping.md#copying-the-text-in-a-snip). |
+| **The copied text has mistakes** | Small text is hard to read. Zoom in on it before you snip it. |
 | **The snip editor ignores my keys** | While you are typing a text, keys belong to the text. Press Esc or Enter to end it. |
 | **A script does nothing or shows an error** | The error box is titled `My Tools: <Action>` and gives file, line and column. Scripts are only checked when they run, so open the script in the config editor to see its first syntax error. |
 | **A script is stuck waiting** | There is no cancel command. Press Cancel in its dialog, or choose **Exit** from the tray menu. |

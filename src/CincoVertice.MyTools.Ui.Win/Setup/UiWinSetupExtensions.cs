@@ -103,11 +103,13 @@ public static class UiWinSetupExtensions
             () => sp.GetRequiredService<AppActionCatalog>().GetActions().Select(action => action.Name).ToList()));
         services.AddSingleton<ConfigEditorWindowService>();
         services.AddSingleton<ScreenSnipper>();
+        services.AddSingleton<ITextRecognizer, WindowsTextRecognizer>();
         services.AddSingleton<ISnipEditorSettingsStore>(_ =>
             new JsonFileSnipEditorSettingsStore(SnipAndEditAction.SettingsFilePath));
         services.AddSingleton<SnipEditorWindowService>();
         services.AddSingleton<SnipRegionAction>();
         services.AddSingleton<SnipAndEditAction>();
+        services.AddSingleton<SnipTextAction>();
         services.AddSingleton<IDiagramFileStore, SvgDiagramFileStore>();
         services.AddSingleton<IDiagramEditorSettingsStore>(_ =>
             new JsonFileDiagramEditorSettingsStore(OpenDiagramEditorAction.SettingsFilePath));
@@ -125,6 +127,7 @@ public static class UiWinSetupExtensions
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<EditScriptsAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<SnipRegionAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<SnipAndEditAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<SnipTextAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<OpenDiagramEditorAction>());
 
         // The built-in actions above, plus one per script in config\scripts, read again on every hotkey reload

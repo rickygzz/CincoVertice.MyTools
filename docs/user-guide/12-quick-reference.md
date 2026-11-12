@@ -7,6 +7,7 @@
 | Ctrl+Alt+C | Calculator |
 | Ctrl+Alt+S | Snip, then edit |
 | Ctrl+Alt+Shift+S | Snip to the clipboard |
+| Ctrl+Alt+T | Snip, then copy the text in it |
 | Ctrl+Alt+D | New diagram editor window |
 | Ctrl+Alt+M | Turn the mouse mover on or off |
 
@@ -28,6 +29,7 @@ All other actions have no default hotkey. Add them in `hotkeys.cfg`.
 | V, P, H, A, R, T, B | Select, Pen, Highlighter, Arrow, Rectangle, Text, Blur |
 | Ctrl+Z / Ctrl+Y or Ctrl+Shift+Z | Undo / redo |
 | Ctrl+C / Ctrl+S | Copy / save |
+| Ctrl+Shift+C | Copy the text in the snip |
 | Alt+Left / Alt+Right | Previous / next snip |
 | `-` or `[` / `+` or `]` | Smaller / larger size |
 | Arrows (Shift for 1 px) | Nudge the selection |
