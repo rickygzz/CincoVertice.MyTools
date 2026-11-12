@@ -14,6 +14,8 @@ using CincoVertice.MyTools.Ui.Win.Setup;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Services;
 using CincoVertice.MyTools.Ui.Win.Shell.Services.Config;
+using CincoVertice.MyTools.Ui.Win.Zones.Services;
+using CincoVertice.MyTools.Ui.Zones.Presenters;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -36,6 +38,7 @@ public sealed class ConfigEditorTests : IDisposable
         new HotkeyConfigService(Path.Combine(_folder, "hotkeys.cfg")),
         new ActivitySettingsService(Path.Combine(_folder, "activity.cfg")),
         new StartupConfigService(Path.Combine(_folder, "startup.cfg")),
+        new ZonesConfigService(Path.Combine(_folder, "zones.cfg"), new TrayNotificationService()),
         () => [new NamedAction("Known")],
         Path.Combine(_folder, "scripts"));
 
@@ -60,6 +63,8 @@ public sealed class ConfigEditorTests : IDisposable
         Assert.NotNull(editor);
         Assert.NotNull(provider.GetRequiredService<CincoVertice.MyTools.Ui.Shell.Interfaces.IStartWithWindows>());
         Assert.NotNull(provider.GetRequiredService<StartupActionsService>());
+        Assert.NotNull(provider.GetRequiredService<ZoneDragPresenter>());
+        Assert.Contains(catalog.GetActions(), action => action.Name == "MoveToZone");
         Assert.Contains(catalog.GetActions(), action => action.Name == "EditScripts");
         Assert.Empty(language.Check(EditableFileKind.Hotkeys, "EditScripts = Ctrl+Alt+F12"));
     }
@@ -113,6 +118,16 @@ public sealed class ConfigEditorTests : IDisposable
     }
 
     [Fact]
+    public void Language_Zones_GivesTheLinesOfItsProblems()
+    {
+        // Act
+        var problems = CreateLanguage().Check(EditableFileKind.WindowZones, "Layout = Columns 2\nGap = -1");
+
+        // Assert
+        Assert.Equal(2, Assert.Single(problems).Line);
+    }
+
+    [Fact]
     public void Language_Script_GivesTheErrorsPlace()
     {
         // Act
@@ -147,9 +162,12 @@ public sealed class ConfigEditorTests : IDisposable
         Assert.Equal("activity.cfg", files[1].Name);
         Assert.Equal("startup.cfg", files[2].Name);
         Assert.Equal(EditableFileKind.StartupActions, files[2].Kind);
+        Assert.Equal("zones.cfg", files[3].Name);
+        Assert.Equal(EditableFileKind.WindowZones, files[3].Kind);
         Assert.True(File.Exists(files[0].Path));
         Assert.True(File.Exists(files[1].Path));
         Assert.True(File.Exists(files[2].Path));
+        Assert.True(File.Exists(files[3].Path));
         Assert.Contains(files, file => file.Kind == EditableFileKind.Script);
     }
 

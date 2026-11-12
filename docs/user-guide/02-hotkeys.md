@@ -16,6 +16,10 @@
 | `EditActivitySettings` | none | Opens `activity.cfg` in the config editor |
 | `EditScripts` | none | Opens the first script in the config editor |
 | `OpenScriptsFolder` | none | Opens `config\scripts` in Explorer |
+| `MoveToZone` | none | Moves the active window to a zone, given after the shortcut: `MoveToZone = Ctrl+Alt+1, 1`. See [Window Zones](13-window-zones.md). |
+| `MoveToNextZone` | none | Moves the active window to the next zone |
+| `MoveToPreviousZone` | none | Moves the active window to the zone before |
+| `EditZones` | none | Opens `zones.cfg` in the config editor |
 | each script | none | Runs the script |
 
 Hotkeys work in the same way whichever window is active, including My Tools' own windows. Holding a hotkey down does not repeat it.
@@ -40,8 +44,12 @@ DiagramEditor = Ctrl+Alt+D
 # EditActivitySettings = Ctrl+Alt+
 # EditHotkeys = Ctrl+Alt+
 # EditScripts = Ctrl+Alt+
+# EditZones = Ctrl+Alt+
 # FixFolder = Ctrl+Alt+
 # GoogleSearch = Ctrl+Alt+
+# MoveToNextZone = Ctrl+Alt+
+# MoveToPreviousZone = Ctrl+Alt+
+# MoveToZone = Ctrl+Alt+
 # OpenScriptsFolder = Ctrl+Alt+
 ShowCalculator = Ctrl+Alt+C
 SnipAndEdit = Ctrl+Alt+S

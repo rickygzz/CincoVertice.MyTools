@@ -4,7 +4,7 @@ Version 0.0.6
 
 ## Overview
 
-**My Tools** is a Windows utility that lives in the system tray (the icon area of the taskbar). It gives you global hotkeys for small tools: a calculator with unit and time zone conversion, a screen snipping tool with an annotation editor, a diagram editor, a "mouse mover" you can switch on and off, a checker and fixer for C# code formatting, and a small scripting language for automating typing, the clipboard, dialogs and launching things.
+**My Tools** is a Windows utility that lives in the system tray (the icon area of the taskbar). It gives you global hotkeys for small tools: a calculator with unit and time zone conversion, a screen snipping tool with an annotation editor, a diagram editor, a "mouse mover" you can switch on and off, window zones to snap windows into, a checker and fixer for C# code formatting, and a small scripting language for automating typing, the clipboard, dialogs and launching things.
 
 There is no installer. You download a zip, unpack it, and run one program.
 
@@ -30,3 +30,4 @@ This guide is for people who download and use the app. It covers every tool, the
   - [Updating and Uninstalling](10-files-and-updates.md#updating-and-uninstalling)
 - [Troubleshooting](11-troubleshooting.md)
 - [Quick Reference: Default Shortcuts](12-quick-reference.md)
+- [Window Zones](13-window-zones.md)

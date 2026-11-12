@@ -32,6 +32,13 @@ using CincoVertice.MyTools.Ui.Win.Shell.Services;
 using CincoVertice.MyTools.Ui.Win.Shell.Services.Config;
 using CincoVertice.MyTools.Ui.Win.Snipping.Actions;
 using CincoVertice.MyTools.Ui.Win.Snipping.Services;
+using CincoVertice.MyTools.Ui.Win.Zones;
+using CincoVertice.MyTools.Ui.Win.Zones.Actions;
+using CincoVertice.MyTools.Ui.Win.Zones.Services;
+using CincoVertice.MyTools.Ui.Zones.Interfaces;
+using CincoVertice.MyTools.Ui.Zones.Presenters;
+using CincoVertice.MyTools.Ui.Zones.Services;
+using CincoVertice.MyTools.Ui.Zones.Views;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -97,6 +104,7 @@ public static class UiWinSetupExtensions
             sp.GetRequiredService<HotkeyConfigService>(),
             sp.GetRequiredService<ActivitySettingsService>(),
             sp.GetRequiredService<StartupConfigService>(),
+            sp.GetRequiredService<ZonesConfigService>(),
             () => sp.GetRequiredService<AppActionCatalog>().GetActions().ToList(),
             ScriptCatalog.FolderPath));
         services.AddSingleton<IEditableFileLanguage>(sp => new EditableFileLanguage(
@@ -116,6 +124,23 @@ public static class UiWinSetupExtensions
         services.AddSingleton(_ => RobotoFontInstaller.ForCurrentUser());
         services.AddSingleton<OpenDiagramEditorAction>();
 
+        // Window zones: the drag watcher is started on the UI thread by Program
+        services.AddSingleton(sp => new ZonesConfigService(
+            ZonesConfigService.DefaultFilePath,
+            sp.GetRequiredService<TrayNotificationService>()));
+        services.AddSingleton<IZoneLayoutSource>(sp => sp.GetRequiredService<ZonesConfigService>());
+        services.AddSingleton<IZoneDesktop, DesktopZones>();
+        services.AddSingleton<WindowDragWatcher>();
+        services.AddSingleton<IWindowDragSource>(sp => sp.GetRequiredService<WindowDragWatcher>());
+        services.AddSingleton<ZoneOverlayForm>();
+        services.AddSingleton<IZoneOverlayView>(sp => sp.GetRequiredService<ZoneOverlayForm>());
+        services.AddSingleton<ZoneDragPresenter>();
+        services.AddSingleton<ZoneMover>();
+        services.AddSingleton<MoveToZoneAction>();
+        services.AddSingleton<MoveToNextZoneAction>();
+        services.AddSingleton<MoveToPreviousZoneAction>();
+        services.AddSingleton<EditZonesAction>();
+
         // Every action can be bound to a shortcut in hotkeys.cfg; same instances as above
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ShowCalculatorAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ToggleActivityAction>());
@@ -128,6 +153,10 @@ public static class UiWinSetupExtensions
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<SnipRegionAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<SnipAndEditAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<SnipTextAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<MoveToZoneAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<MoveToNextZoneAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<MoveToPreviousZoneAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<EditZonesAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<OpenDiagramEditorAction>());
 
         // The built-in actions above, plus one per script in config\scripts, read again on every hotkey reload
@@ -138,6 +167,7 @@ public static class UiWinSetupExtensions
             sp.GetServices<IAppAction>(),
             sp.GetRequiredService<ScriptEngine>(),
             sp.GetRequiredService<TrayNotificationService>(),
+            sp.GetRequiredService<ZoneMover>(),
             ScriptCatalog.FolderPath));
 
         services.AddSingleton(_ => new HotkeyConfigService(HotkeyConfigService.DefaultFilePath));

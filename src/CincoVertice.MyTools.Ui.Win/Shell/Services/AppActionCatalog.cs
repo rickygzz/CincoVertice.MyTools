@@ -2,6 +2,7 @@ using CincoVertice.Common.Application.Scripting;
 using CincoVertice.MyTools.Ui.Win.Scripting.Actions;
 using CincoVertice.MyTools.Ui.Win.Scripting.Services;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
+using CincoVertice.MyTools.Ui.Zones.Services;
 
 namespace CincoVertice.MyTools.Ui.Win.Shell.Services;
 
@@ -14,6 +15,7 @@ public sealed class AppActionCatalog
     private readonly IReadOnlyList<IAppAction> _builtInActions;
     private readonly ScriptEngine _engine;
     private readonly TrayNotificationService _notifications;
+    private readonly ZoneMover _zones;
     private readonly string _scriptsFolderPath;
 
     // Kept across reloads, so a script that is running isn't started again by its new hotkey
@@ -23,11 +25,13 @@ public sealed class AppActionCatalog
         IEnumerable<IAppAction> builtInActions,
         ScriptEngine engine,
         TrayNotificationService notifications,
+        ZoneMover zones,
         string scriptsFolderPath)
     {
         _builtInActions = [.. builtInActions];
         _engine = engine;
         _notifications = notifications;
+        _zones = zones;
         _scriptsFolderPath = scriptsFolderPath;
     }
 
@@ -47,7 +51,7 @@ public sealed class AppActionCatalog
 
             if (!_scriptActions.TryGetValue(scriptFile, out var script))
             {
-                script = new ScriptAction(scriptFile, _engine, _notifications);
+                script = new ScriptAction(scriptFile, _engine, _notifications, _zones);
                 _scriptActions.Add(scriptFile, script);
             }
 

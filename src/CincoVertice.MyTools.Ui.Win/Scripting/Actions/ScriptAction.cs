@@ -3,6 +3,7 @@ using CincoVertice.Common.Application.Scripting.Models;
 using CincoVertice.MyTools.Ui.Win.Scripting.Services;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Services;
+using CincoVertice.MyTools.Ui.Zones.Services;
 
 namespace CincoVertice.MyTools.Ui.Win.Scripting.Actions;
 
@@ -14,15 +15,17 @@ public sealed class ScriptAction : IArgumentAppAction
 {
     private readonly ScriptEngine _engine;
     private readonly TrayNotificationService _notifications;
+    private readonly ZoneMover _zones;
 
     private bool _isRunning;
 
-    public ScriptAction(string filePath, ScriptEngine engine, TrayNotificationService notifications)
+    public ScriptAction(string filePath, ScriptEngine engine, TrayNotificationService notifications, ZoneMover zones)
     {
         FilePath = filePath;
         Name = ScriptCatalog.GetActionName(filePath);
         _engine = engine;
         _notifications = notifications;
+        _zones = zones;
     }
 
     public string FilePath { get; }
@@ -49,7 +52,7 @@ public sealed class ScriptAction : IArgumentAppAction
 
             var options = new ScriptRunOptions { Argument = argument, ReadInclude = ReadInclude };
 
-            await _engine.RunAsync(source, new DesktopScriptHost(Name, _notifications), options);
+            await _engine.RunAsync(source, new DesktopScriptHost(Name, _notifications, _zones), options);
         }
         catch (ScriptException ex)
         {

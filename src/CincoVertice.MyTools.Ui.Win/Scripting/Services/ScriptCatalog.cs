@@ -20,7 +20,7 @@ public static class ScriptCatalog
         # Functions, by module (see docs/user-guide/08-scripts.md for details):
         #   dialog.ask(prompt, default)  dialog.form(title, [prompts], [defaults])  dialog.message(text)
         #   dialog.confirm(question)  clipboard.gettext()  clipboard.settext(text)  keyboard.type(text)
-        #   clipboard.clear()  clipboard.pasteastext()  window.title()
+        #   clipboard.clear()  clipboard.pasteastext()  window.title()  window.tozone(number)
         #   keyboard.press("Ctrl+V")  keyboard.press("Tab", 3)
         #   shell.open(address or file)  shell.run(program, arguments)  tray.notify(text)
         #   script.wait(ms)  script.stop()  system.waitidle(cpu %, disk %, quiet seconds, most minutes)

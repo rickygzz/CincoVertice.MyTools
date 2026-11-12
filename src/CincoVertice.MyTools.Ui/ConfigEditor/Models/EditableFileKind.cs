@@ -6,5 +6,6 @@ public enum EditableFileKind
     Hotkeys,
     ActivitySettings,
     StartupActions,
+    WindowZones,
     Script,
 }

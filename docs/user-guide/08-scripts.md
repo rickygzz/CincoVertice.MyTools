@@ -89,7 +89,7 @@ This script is created with the app. It asks what to search for (starting with t
 # Functions, by module (see docs/user-guide/08-scripts.md for details):
 #   dialog.ask(prompt, default)  dialog.form(title, [prompts], [defaults])  dialog.message(text)
 #   dialog.confirm(question)  clipboard.gettext()  clipboard.settext(text)  keyboard.type(text)
-#   clipboard.clear()  clipboard.pasteastext()  window.title()
+#   clipboard.clear()  clipboard.pasteastext()  window.title()  window.tozone(number)
 #   keyboard.press("Ctrl+V")  keyboard.press("Tab", 3)
 #   shell.open(address or file)  shell.run(program, arguments)  tray.notify(text)
 #   script.wait(ms)  script.stop()  system.waitidle(cpu %, disk %, quiet seconds, most minutes)
@@ -372,6 +372,7 @@ Typing blocks the app until it finishes. Typing into a program that runs as admi
 | Function | Returns |
 |---|---|
 | `window.title()` | The title of the active window, the one you are working in, e.g. `"Inbox - Outlook"`. `""` when it has none. |
+| `window.tozone(number)` | Moves the active window to that zone of its monitor, from 1, as set in `zones.cfg`. Nothing. A number with no zone is an error. See [Window Zones](13-window-zones.md). |
 
 With a hotkey, the active window is the program you pressed it in. Read the title at the start of the script: while a dialog of the script is open, the dialog is the active window. From the tray menu, the active window is usually the taskbar, so the title is `""`.
 

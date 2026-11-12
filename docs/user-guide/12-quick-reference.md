@@ -13,6 +13,12 @@
 
 All other actions have no default hotkey. Add them in `hotkeys.cfg`.
 
+## Window zones
+
+| Key | Effect |
+|---|---|
+| Shift while dragging a window | Shows the zones; drop the window on one to put it there. See [Window Zones](13-window-zones.md). |
+
 ## Calculator
 
 | Key | Effect |
@@ -65,4 +71,4 @@ All other actions have no default hotkey. Add them in `hotkeys.cfg`.
 
 ---
 
-← Previous: [Troubleshooting](11-troubleshooting.md) | [Contents](README.md)
+← Previous: [Troubleshooting](11-troubleshooting.md) | [Contents](README.md) | Next: [Window Zones](13-window-zones.md) →

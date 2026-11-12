@@ -18,6 +18,8 @@
 | **My clipboard content disappeared after a snip** | `SnipAndEdit` and `SnipRegion` replace the clipboard with the snip. The snip editor does so again after every change. |
 | **Copy text or Ctrl+Alt+T says Windows can't read text in my languages** | Add a language with its **Optical character recognition** feature in **Settings > Time & language > Language & region**. See [Copying the text in a snip](04-snipping.md#copying-the-text-in-a-snip). |
 | **The copied text has mistakes** | Small text is hard to read. Zoom in on it before you snip it. |
+| **Shift+drag shows no zones** | Hold Shift after you start dragging by the title bar. A window being resized shows none. For a program run as administrator, My Tools must run as administrator too. |
+| **A window sticks out of its zone** | The program has a minimum size larger than the zone. Use fewer, larger zones in `zones.cfg`. |
 | **The snip editor ignores my keys** | While you are typing a text, keys belong to the text. Press Esc or Enter to end it. |
 | **A script does nothing or shows an error** | The error box is titled `My Tools: <Action>` and gives file, line and column. Scripts are only checked when they run, so open the script in the config editor to see its first syntax error. |
 | **A script is stuck waiting** | There is no cancel command. Press Cancel in its dialog, or choose **Exit** from the tray menu. |

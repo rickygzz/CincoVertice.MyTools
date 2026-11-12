@@ -11,6 +11,7 @@ using CincoVertice.MyTools.Ui.Win.Scripting.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Models;
 using CincoVertice.MyTools.Ui.Win.Shell.Services;
+using CincoVertice.MyTools.Ui.Win.Zones.Actions;
 
 namespace CincoVertice.MyTools.Ui.Win.Shell;
 
@@ -50,6 +51,7 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
         FixFolderAction fixFolderAction,
         EditHotkeysAction editHotkeysAction,
         EditActivitySettingsAction editActivitySettingsAction,
+        EditZonesAction editZonesAction,
         OpenScriptsFolderAction openScriptsFolderAction,
         EditScriptsAction editScriptsAction,
         OpenDiagramEditorAction openDiagramEditorAction)
@@ -80,6 +82,7 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
         // For when the file watcher misses a change, e.g. on a network drive
         AddItem(menu.Items, "&Reload hotkeys", () => ReloadHotkeysRequested?.Invoke(this, EventArgs.Empty));
         AddAction(menu.Items, "Edit &activity settings...", editActivitySettingsAction);
+        AddAction(menu.Items, "Edit window &zones...", editZonesAction);
         menu.Items.Add(new ToolStripSeparator());
         _startWithWindowsItem = AddItem(
             menu.Items,

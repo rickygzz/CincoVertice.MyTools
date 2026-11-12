@@ -3,6 +3,8 @@ using CincoVertice.MyTools.Ui.Shell.Presenters;
 using CincoVertice.MyTools.Ui.Win.Setup;
 using CincoVertice.MyTools.Ui.Win.Shell;
 using CincoVertice.MyTools.Ui.Win.Shell.Services;
+using CincoVertice.MyTools.Ui.Win.Zones.Services;
+using CincoVertice.MyTools.Ui.Zones.Presenters;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -48,6 +50,10 @@ public static class Program
 
             // Registers the hotkeys on this thread, the UI thread, and fills the tray menu
             host.Services.GetRequiredService<TrayPresenter>().Start();
+
+            // Window zones: the drags of other programs' windows come through this thread's message loop
+            host.Services.GetRequiredService<ZoneDragPresenter>().Start();
+            host.Services.GetRequiredService<WindowDragWatcher>().Start();
 
             // Shows its setting; when that's on, looks for a newer version a while later. It never throws
             _ = host.Services.GetRequiredService<UpdatesPresenter>().Start();

@@ -3,18 +3,20 @@ using CincoVertice.MyTools.Ui.ConfigEditor.Models;
 using CincoVertice.MyTools.Ui.Win.Scripting.Services;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Services.Config;
+using CincoVertice.MyTools.Ui.Win.Zones.Services;
 
 namespace CincoVertice.MyTools.Ui.Win.ConfigEditor.Services;
 
 /// <summary>
-///     hotkeys.cfg, activity.cfg, startup.cfg and every script. Loading each config file creates it when it doesn't
-///     exist yet.
+///     hotkeys.cfg, activity.cfg, startup.cfg, zones.cfg and every script. Loading each config file creates it when it
+///     doesn't exist yet.
 /// </summary>
 public sealed class EditableFileCatalog : IEditableFileCatalog
 {
     private readonly HotkeyConfigService _hotkeys;
     private readonly ActivitySettingsService _activity;
     private readonly StartupConfigService _startup;
+    private readonly ZonesConfigService _zones;
     private readonly Func<IReadOnlyCollection<IAppAction>> _actions;
     private readonly string _scriptsFolderPath;
 
@@ -22,12 +24,14 @@ public sealed class EditableFileCatalog : IEditableFileCatalog
         HotkeyConfigService hotkeys,
         ActivitySettingsService activity,
         StartupConfigService startup,
+        ZonesConfigService zones,
         Func<IReadOnlyCollection<IAppAction>> actions,
         string scriptsFolderPath)
     {
         _hotkeys = hotkeys;
         _activity = activity;
         _startup = startup;
+        _zones = zones;
         _actions = actions;
         _scriptsFolderPath = scriptsFolderPath;
     }
@@ -37,12 +41,14 @@ public sealed class EditableFileCatalog : IEditableFileCatalog
         _hotkeys.Load(_actions());
         _activity.Load();
         _startup.Load(_actions());
+        _zones.LoadResult();
 
         List<EditableFileModel> files =
         [
             new(_hotkeys.FilePath, Path.GetFileName(_hotkeys.FilePath), EditableFileKind.Hotkeys),
             new(_activity.FilePath, Path.GetFileName(_activity.FilePath), EditableFileKind.ActivitySettings),
             new(_startup.FilePath, Path.GetFileName(_startup.FilePath), EditableFileKind.StartupActions),
+            new(_zones.FilePath, Path.GetFileName(_zones.FilePath), EditableFileKind.WindowZones),
         ];
 
         files.AddRange(ScriptCatalog.GetScriptFiles(_scriptsFolderPath).Select(ToScript));

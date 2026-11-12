@@ -2,6 +2,8 @@ using CincoVertice.Common.Application.Scripting;
 using CincoVertice.MyTools.Ui.Win.Scripting.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Services;
+using CincoVertice.MyTools.Ui.Win.Zones.Services;
+using CincoVertice.MyTools.Ui.Zones.Services;
 using Xunit;
 
 namespace CincoVertice.MyTools.Ui.Win.Tests.Shell;
@@ -19,6 +21,9 @@ public class AppActionCatalogTests : IDisposable
             [new FakeAction("ToggleActivity")],
             new ScriptEngine(),
             new TrayNotificationService(),
+            new ZoneMover(
+                new DesktopZones(),
+                new ZonesConfigService(Path.Combine(_folder, "zones.cfg"), new TrayNotificationService())),
             _folder);
     }
 
