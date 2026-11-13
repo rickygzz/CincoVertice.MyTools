@@ -45,15 +45,17 @@ public class CodeReviewPresenter
     ///     shows what changed and the issues left. Call it from the UI thread, like <see cref="CheckFolderAsync"/>.
     /// </summary>
     /// <param name="folderPath">The folder.</param>
-    /// <param name="fixers">The fixers to run, by name; all when null.</param>
-    public async Task FixFolderAsync(string folderPath, IReadOnlyCollection<string>? fixers = null)
+    /// <param name="options">
+    ///     The fixers to run, the line ending and the encoding; every fixer, keeping the rest, when null.
+    /// </param>
+    public async Task FixFolderAsync(string folderPath, FixOptionsModel? options = null)
     {
         _view.ShowFixingFolder(folderPath);
 
         try
         {
             var (fixes, remaining) = await Task.Run(
-                () => (_codeFixer.FixFolder(folderPath, fixers), _codeChecker.CheckFolder(folderPath)));
+                () => (_codeFixer.FixFolder(folderPath, options), _codeChecker.CheckFolder(folderPath)));
 
             _view.ShowFixResults(folderPath, fixes, remaining);
         }

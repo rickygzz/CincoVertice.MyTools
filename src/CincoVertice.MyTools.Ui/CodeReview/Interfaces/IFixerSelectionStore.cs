@@ -1,12 +1,12 @@
+using CincoVertice.MyTools.Ui.CodeReview.Models;
+
 namespace CincoVertice.MyTools.Ui.CodeReview.Interfaces;
 
-/// <summary>
-///     Where the fixers the user turned off are kept. The ones off, not the ones on, so a fixer added later starts on.
-/// </summary>
+/// <summary>Where the choices for Fix folder are kept: the fixers off, the line ending and the encoding.</summary>
 public interface IFixerSelectionStore
 {
-    /// <returns>The names of the fixers turned off; none when nothing was saved, or it can't be read.</returns>
-    IReadOnlyCollection<string> LoadOff();
+    /// <returns>The choices saved last; the defaults when nothing was saved, or it can't be read.</returns>
+    FixerSettingsModel Load();
 
-    void SaveOff(IReadOnlyCollection<string> names);
+    void Save(FixerSettingsModel settings);
 }

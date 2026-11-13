@@ -104,12 +104,76 @@ public class FixerSelectionTests
         Assert.Equal(title, FixerCatalog.TitleOf(name));
     }
 
+    [Fact]
+    public void ALineEndingAndAnEncoding_AreSaved_AndGoInTheOptions()
+    {
+        // Arrange
+        var selection = new FixerSelection(_store, CodeLanguageModel.All);
+        selection.Set("Indentation", false);
+
+        // Act
+        selection.SetLineEnding(LineEndingEnum.CRLF);
+        selection.SetEncoding(FileEncodingEnum.Utf8Bom);
+        var next = new FixerSelection(_store, CodeLanguageModel.All);
+
+        // Assert
+        Assert.Equal((LineEndingEnum.CRLF, FileEncodingEnum.Utf8Bom), (next.LineEnding, next.Encoding));
+        FixOptionsModel options = next.Options;
+        Assert.Equal((LineEndingEnum.CRLF, FileEncodingEnum.Utf8Bom), (options.LineEnding, options.Encoding));
+        Assert.DoesNotContain("Indentation", options.Fixers!);
+    }
+
+    [Fact]
+    public void AtFirst_LineEndingsAndEncodings_AreKept()
+    {
+        // Act
+        var selection = new FixerSelection(_store, CodeLanguageModel.All);
+
+        // Assert
+        Assert.Equal((LineEndingEnum.None, FileEncodingEnum.Keep), (selection.LineEnding, selection.Encoding));
+        Assert.Equal("Keep as they are", FixerSelection.TitleOf(selection.LineEnding));
+        Assert.Equal("Keep as it is", FixerSelection.TitleOf(selection.Encoding));
+    }
+
+    [Fact]
+    public void TheFile_KeepsTheChoices()
+    {
+        // Arrange
+        string path = Path.Combine(Path.GetTempPath(), "FixerSelectionTests_" + Guid.NewGuid() + ".json");
+        var store = new JsonFileFixerSelectionStore(path);
+        var saved = new FixerSettingsModel(["Indentation"], LineEndingEnum.LF, FileEncodingEnum.Utf8);
+
+        try
+        {
+            // Act
+            store.Save(saved);
+            FixerSettingsModel loaded = store.Load();
+
+            // Assert
+            Assert.Equal(saved.Off, loaded.Off);
+            Assert.Equal((LineEndingEnum.LF, FileEncodingEnum.Utf8), (loaded.LineEnding, loaded.Encoding));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     private sealed class MemoryStore : IFixerSelectionStore
     {
         public IReadOnlyCollection<string> Off { get; set; } = [];
 
-        public IReadOnlyCollection<string> LoadOff() => Off;
+        public LineEndingEnum LineEnding { get; set; }
 
-        public void SaveOff(IReadOnlyCollection<string> names) => Off = [.. names];
+        public FileEncodingEnum Encoding { get; set; }
+
+        public FixerSettingsModel Load() => new(Off, LineEnding, Encoding);
+
+        public void Save(FixerSettingsModel settings)
+        {
+            Off = [.. settings.Off];
+            LineEnding = settings.LineEnding;
+            Encoding = settings.Encoding;
+        }
     }
 }

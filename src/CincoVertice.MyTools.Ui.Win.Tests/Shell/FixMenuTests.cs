@@ -1,6 +1,7 @@
 using System.Windows.Forms;
 using CincoVertice.Common.Application.CodeStandard.Models;
 using CincoVertice.MyTools.Ui.CodeReview.Interfaces;
+using CincoVertice.MyTools.Ui.CodeReview.Models;
 using CincoVertice.MyTools.Ui.CodeReview.Services;
 using CincoVertice.MyTools.Ui.Help.Interfaces;
 using CincoVertice.MyTools.Ui.Help.Models;
@@ -45,9 +46,49 @@ public sealed class FixMenuTests : IDisposable
         List<string> texts = [.. _menu.DropDownItems.Cast<ToolStripItem>().Select(item => item.Text ?? "-")];
 
         // Assert
-        Assert.Equal(["&Fix a folder...", "", "Turn &all on", "Turn all &off", ""], texts.Take(5));
-        Assert.Equal(_selection.Choices.Select(choice => choice.Title), texts.Skip(5));
+        Assert.Equal(
+            [
+                "&Fix a folder...", "", "&Line endings: Keep as they are", "&Encoding: Keep as it is", "",
+                "Turn &all on", "Turn all &off", "",
+            ],
+            texts.Take(8));
+        Assert.Equal(_selection.Choices.Select(choice => choice.Title), texts.Skip(8));
         Assert.All(FixerItems(), item => Assert.True(item.Checked));
+    }
+
+    [Fact]
+    public void ChoosingALineEnding_TicksIt_ShowsIt_AndKeepsIt()
+    {
+        // Arrange
+        ToolStripMenuItem lineEndings = Item("&Line endings: Keep as they are");
+        List<ToolStripMenuItem> values = [.. lineEndings.DropDownItems.OfType<ToolStripMenuItem>()];
+
+        // Act
+        values.Single(item => item.Text == "CRLF (Windows)").PerformClick();
+
+        // Assert
+        Assert.Equal(
+            ["Keep as they are", "CRLF (Windows)", "LF (Linux, macOS)", "CR (classic Mac OS)"],
+            values.Select(item => item.Text));
+        Assert.Equal([false, true, false, false], values.Select(item => item.Checked));
+        Assert.Equal("&Line endings: CRLF (Windows)", lineEndings.Text);
+        Assert.Equal(LineEndingEnum.CRLF, _selection.LineEnding);
+    }
+
+    [Fact]
+    public void ChoosingAnEncoding_TicksIt_AndKeepsIt()
+    {
+        // Arrange
+        ToolStripMenuItem encodings = Item("&Encoding: Keep as it is");
+        List<ToolStripMenuItem> values = [.. encodings.DropDownItems.OfType<ToolStripMenuItem>()];
+
+        // Act
+        values.Single(item => item.Text == "UTF-8 with BOM").PerformClick();
+
+        // Assert
+        Assert.Equal(["Keep as it is", "UTF-8", "UTF-8 with BOM"], values.Select(item => item.Text));
+        Assert.Equal([false, false, true], values.Select(item => item.Checked));
+        Assert.Equal(FileEncodingEnum.Utf8Bom, _selection.Encoding);
     }
 
     [Fact]
@@ -95,15 +136,15 @@ public sealed class FixMenuTests : IDisposable
         _menu.DropDownItems.OfType<ToolStripMenuItem>().Single(item => item.Text == text);
 
     private List<ToolStripMenuItem> FixerItems() =>
-        [.. _menu.DropDownItems.OfType<ToolStripMenuItem>().Skip(3)];
+        [.. _menu.DropDownItems.OfType<ToolStripMenuItem>().Skip(5)];
 
     private sealed class MemoryStore : IFixerSelectionStore
     {
         public IReadOnlyCollection<string> Off { get; private set; } = [];
 
-        public IReadOnlyCollection<string> LoadOff() => Off;
+        public FixerSettingsModel Load() => new(Off);
 
-        public void SaveOff(IReadOnlyCollection<string> names) => Off = [.. names];
+        public void Save(FixerSettingsModel settings) => Off = [.. settings.Off];
     }
 
     private sealed class NoSettings : IHelpSettingsStore

@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel;
 using System.Diagnostics;
+using CincoVertice.Common.Application.CodeStandard.Models;
 using CincoVertice.MyTools.Ui.CodeReview.Models;
 using CincoVertice.MyTools.Ui.CodeReview.Services;
 using CincoVertice.MyTools.Ui.Shell.Models;
@@ -298,6 +299,19 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
         var fix = AddAction(menu.DropDownItems, "&Fix a folder...", fixFolderAction);
         fix.Font = new Font(fix.Font, FontStyle.Bold);
         menu.DropDownItems.Add(new ToolStripSeparator());
+        menu.DropDownItems.Add(CreateChoiceMenu(
+            "&Line endings",
+            [LineEndingEnum.None, LineEndingEnum.CRLF, LineEndingEnum.LF, LineEndingEnum.CR],
+            () => selection.LineEnding,
+            selection.SetLineEnding,
+            FixerSelection.TitleOf));
+        menu.DropDownItems.Add(CreateChoiceMenu(
+            "&Encoding",
+            [FileEncodingEnum.Keep, FileEncodingEnum.Utf8, FileEncodingEnum.Utf8Bom],
+            () => selection.Encoding,
+            selection.SetEncoding,
+            FixerSelection.TitleOf));
+        menu.DropDownItems.Add(new ToolStripSeparator());
 
         List<ToolStripMenuItem> fixerItems = [];
 
@@ -356,6 +370,44 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
 
             isKeptOpen = false;
         };
+
+        return menu;
+    }
+
+    /// <summary>A submenu to choose one of several values, with the one chosen ticked and in its own text.</summary>
+    private static ToolStripMenuItem CreateChoiceMenu<T>(
+        string title,
+        IReadOnlyList<T> values,
+        Func<T> current,
+        Action<T> choose,
+        Func<T, string> titleOf)
+        where T : struct, Enum
+    {
+        var menu = new ToolStripMenuItem();
+
+        void ShowCurrent()
+        {
+            T chosen = current();
+            menu.Text = $"{title}: {titleOf(chosen)}";
+
+            foreach (ToolStripMenuItem item in menu.DropDownItems.OfType<ToolStripMenuItem>())
+            {
+                item.Checked = item.Tag is T value && value.Equals(chosen);
+            }
+        }
+
+        foreach (T value in values)
+        {
+            var item = new ToolStripMenuItem(titleOf(value)) { Tag = value };
+            item.Click += (_, _) =>
+            {
+                choose(value);
+                ShowCurrent();
+            };
+            menu.DropDownItems.Add(item);
+        }
+
+        ShowCurrent();
 
         return menu;
     }

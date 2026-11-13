@@ -31,12 +31,18 @@ Commit or back up your changes first, so you can review the fixes and undo them.
 Fix the folder now?
 ```
 
-When some fixers are off, the box also lists them: `These fixers are off: Indentation, Trailing whitespace.`
+When some fixers are off, or a line ending or encoding is chosen, the box also says so, for example:
+
+```
+These fixers are off: Indentation, Trailing whitespace.
+Every line ends in CRLF (Windows).
+Every file is saved as UTF-8 with BOM.
+```
 
 4. If you click **Yes**, a new window titled "Code standard fix - <folder>" opens. It shows "Code standard fix", the folder and "Fixing...". Then it lists one `Fixed  <relative path>` line for each changed file and `Skipped  <relative path>: <reason>` for each skipped file. A summary follows: `Fixed X of Y file(s).`, with ` Skipped N.` added when some files were skipped, or `No C# or JavaScript files found.`
 5. Last, under "Issues left (not fixable automatically)", it lists the issues that remain.
 
-A file is rewritten only if its content changes, and it keeps its own encoding and byte-order mark. A file without a byte-order mark must be valid UTF-8, otherwise it is skipped with `Not valid UTF-8; add a BOM or convert the file to UTF-8.` Text inside string and character literals is protected. Line endings are never converted.
+A file is rewritten only if its content changes, or its line endings or encoding are to change (see [Line endings and encoding](#line-endings-and-encoding)). Unless you choose otherwise, it keeps its own encoding, byte-order mark and line endings. A file without a byte-order mark must be valid UTF-8, otherwise it is skipped with `Not valid UTF-8; add a BOM or convert the file to UTF-8.` Text inside string and character literals is protected from the fixers.
 
 Two things are changed even though they are not listed as rules: typographic punctuation (curly quotes, dashes, the minus sign, the ellipsis) becomes plain ASCII outside string and character literals, and every file ends with exactly one line break.
 
@@ -47,6 +53,19 @@ The **Fix folder for standard** submenu lists every fixer by name, such as "Inde
 Your choice is saved in `config\fixers.json` and applies to every fix after it, including one started with the `FixFolder` hotkey, until you change it. A fixer added in a later version of My Tools starts on. If every fixer is off, **Fix a folder...** says so and does nothing.
 
 A fixer that is off leaves its issues in place, so they appear under "Issues left" after the fix.
+
+## Line endings and encoding
+
+The same submenu has two more choices, saved in `config\fixers.json` too:
+
+| Submenu | Choices | What a fix does |
+|---|---|---|
+| **Line endings** | **Keep as they are** (the default), **CRLF (Windows)**, **LF (Linux, macOS)**, **CR (classic Mac OS)** | Gives every line of every file the line ending chosen, whatever mix the file had, including the lines inside multi-line strings. |
+| **Encoding** | **Keep as it is** (the default), **UTF-8**, **UTF-8 with BOM** | Saves every file in the encoding chosen: UTF-8 with or without the byte-order mark (EF BB BF) that Visual Studio adds. A UTF-16 file with a byte-order mark becomes UTF-8 too. |
+
+Each submenu shows its choice in its own name, for example **Line endings: CRLF (Windows)**.
+
+To only convert line endings or encodings, choose them, then **Turn all off**: the fix changes nothing else. A file without a byte-order mark that isn't valid UTF-8 (for example one saved as Windows-1252) is still skipped, since its encoding can't be known for sure.
 
 ## The rules
 

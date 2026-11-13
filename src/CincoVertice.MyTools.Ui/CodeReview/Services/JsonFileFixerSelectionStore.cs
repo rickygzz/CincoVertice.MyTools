@@ -1,17 +1,22 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using CincoVertice.Common.Application.CodeStandard.Models;
 using CincoVertice.Common.Utils.Helpers;
 using CincoVertice.MyTools.Ui.CodeReview.Interfaces;
+using CincoVertice.MyTools.Ui.CodeReview.Models;
 
 namespace CincoVertice.MyTools.Ui.CodeReview.Services;
 
 /// <summary>
-///     The fixers turned off, in a JSON file, written on every change. A missing or broken file turns none off.
+///     The choices for Fix folder in a JSON file, written on every change. A missing or broken file gives the
+///     defaults: every fixer on, line endings and encodings kept.
 /// </summary>
 public sealed class JsonFileFixerSelectionStore : IFixerSelectionStore
 {
     private static readonly JsonSerializerOptions _options = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Converters = { new JsonStringEnumConverter() },
         WriteIndented = true,
         ReadCommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true,
@@ -24,33 +29,38 @@ public sealed class JsonFileFixerSelectionStore : IFixerSelectionStore
 
     public string FilePath { get; }
 
-    public IReadOnlyCollection<string> LoadOff()
+    public FixerSettingsModel Load()
     {
         try
         {
             if (!File.Exists(FilePath))
             {
-                return [];
+                return FixerSettingsModel.Default;
             }
 
-            var file = JsonSerializer.Deserialize<SelectionFile>(File.ReadAllText(FilePath), _options);
+            var file = JsonSerializer.Deserialize<SettingsFile>(File.ReadAllText(FilePath), _options);
 
-            return [.. file?.Off ?? []];
+            return file is null
+                ? FixerSettingsModel.Default
+                : new FixerSettingsModel([.. file.Off ?? []], file.LineEnding, file.Encoding);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
-            return [];
+            return FixerSettingsModel.Default;
         }
     }
 
-    public void SaveOff(IReadOnlyCollection<string> names)
+    public void Save(FixerSettingsModel settings)
     {
+        var file = new SettingsFile(
+            [.. settings.Off.Order(StringComparer.Ordinal)],
+            settings.LineEnding,
+            settings.Encoding);
+
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-            AtomicFile.WriteAllText(
-                FilePath,
-                JsonSerializer.Serialize(new SelectionFile([.. names.Order(StringComparer.Ordinal)]), _options));
+            AtomicFile.WriteAllText(FilePath, JsonSerializer.Serialize(file, _options));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -58,5 +68,8 @@ public sealed class JsonFileFixerSelectionStore : IFixerSelectionStore
         }
     }
 
-    private sealed record SelectionFile(string[]? Off);
+    private sealed record SettingsFile(
+        string[]? Off,
+        LineEndingEnum LineEnding = LineEndingEnum.None,
+        FileEncodingEnum Encoding = FileEncodingEnum.Keep);
 }
