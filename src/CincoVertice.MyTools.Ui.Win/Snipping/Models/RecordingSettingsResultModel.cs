@@ -1,4 +1,4 @@
-using CincoVertice.MyTools.Ui.Snipping.Models;
+﻿using CincoVertice.MyTools.Ui.Snipping.Models;
 using CincoVertice.MyTools.Ui.Win.Shell.Models;
 
 namespace CincoVertice.MyTools.Ui.Win.Snipping.Models;

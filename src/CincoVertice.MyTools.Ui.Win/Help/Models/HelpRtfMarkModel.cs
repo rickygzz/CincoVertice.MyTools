@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Win.Help.Models;
+﻿namespace CincoVertice.MyTools.Ui.Win.Help.Models;
 
 /// <summary>
 ///     What a mark in a page's RTF stands for: a link, as long as its text, or a heading's start. The marks are

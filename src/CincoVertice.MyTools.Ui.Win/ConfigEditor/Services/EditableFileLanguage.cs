@@ -1,4 +1,4 @@
-using CincoVertice.Common.Application.Scripting;
+﻿using CincoVertice.Common.Application.Scripting;
 using CincoVertice.Common.Utils.Config;
 using CincoVertice.Common.Utils.Highlighting;
 using CincoVertice.MyTools.Ui.ConfigEditor.Interfaces;

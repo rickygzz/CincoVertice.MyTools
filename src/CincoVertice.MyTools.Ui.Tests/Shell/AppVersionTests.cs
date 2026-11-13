@@ -1,4 +1,4 @@
-using CincoVertice.MyTools.Ui.Shell.Services;
+﻿using CincoVertice.MyTools.Ui.Shell.Services;
 using Xunit;
 
 namespace CincoVertice.MyTools.Ui.Tests.Shell;

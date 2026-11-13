@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Help.Models;
+﻿namespace CincoVertice.MyTools.Ui.Help.Models;
 
 /// <summary>A block of a Markdown page: a heading, a paragraph, a list item, a code block, a table...</summary>
 /// <param name="Inlines">Its text; for a code block, one piece with all of its lines.</param>

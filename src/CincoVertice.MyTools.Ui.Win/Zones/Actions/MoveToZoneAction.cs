@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Services;
 using CincoVertice.MyTools.Ui.Zones.Services;

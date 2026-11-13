@@ -1,4 +1,4 @@
-using CincoVertice.Common.Application.Scripting;
+﻿using CincoVertice.Common.Application.Scripting;
 using CincoVertice.MyTools.Ui.Win.Scripting.Services;
 using Xunit;
 

@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Models;
 

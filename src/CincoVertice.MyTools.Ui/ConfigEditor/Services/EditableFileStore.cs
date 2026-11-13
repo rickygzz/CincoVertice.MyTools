@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using CincoVertice.Common.Utils.Helpers;
 using CincoVertice.MyTools.Ui.ConfigEditor.Interfaces;
 using CincoVertice.MyTools.Ui.ConfigEditor.Models;

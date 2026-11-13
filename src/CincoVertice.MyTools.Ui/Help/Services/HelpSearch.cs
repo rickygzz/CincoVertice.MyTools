@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using CincoVertice.MyTools.Ui.Help.Models;
 
 namespace CincoVertice.MyTools.Ui.Help.Services;

@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Globalization;
 using CincoVertice.Common.Utils.Config;
 using CincoVertice.MyTools.Ui.Win.Zones.Models;

@@ -1,4 +1,4 @@
-using CincoVertice.MyTools.Ui.Snipping.Models;
+﻿using CincoVertice.MyTools.Ui.Snipping.Models;
 using CincoVertice.MyTools.Ui.Snipping.Services;
 using Xunit;
 

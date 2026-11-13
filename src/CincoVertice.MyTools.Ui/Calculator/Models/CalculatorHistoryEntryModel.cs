@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Calculator.Models;
+﻿namespace CincoVertice.MyTools.Ui.Calculator.Models;
 
 /// <summary>
 ///     An operation in the calculator's history.

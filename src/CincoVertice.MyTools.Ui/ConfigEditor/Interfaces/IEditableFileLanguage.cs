@@ -1,4 +1,4 @@
-using CincoVertice.Common.Utils.Highlighting;
+﻿using CincoVertice.Common.Utils.Highlighting;
 using CincoVertice.MyTools.Ui.ConfigEditor.Models;
 
 namespace CincoVertice.MyTools.Ui.ConfigEditor.Interfaces;

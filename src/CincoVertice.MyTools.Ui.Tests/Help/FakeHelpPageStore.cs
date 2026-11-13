@@ -1,4 +1,4 @@
-using CincoVertice.MyTools.Ui.Help.Interfaces;
+﻿using CincoVertice.MyTools.Ui.Help.Interfaces;
 
 namespace CincoVertice.MyTools.Ui.Tests.Help;
 

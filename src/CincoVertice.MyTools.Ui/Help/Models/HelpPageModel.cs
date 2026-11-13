@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Help.Models;
+﻿namespace CincoVertice.MyTools.Ui.Help.Models;
 
 /// <summary>A page of the user guide.</summary>
 /// <param name="Name">Its file name, as links give it: "02-hotkeys.md".</param>

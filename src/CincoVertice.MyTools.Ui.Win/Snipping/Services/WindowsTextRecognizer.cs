@@ -1,4 +1,4 @@
-using CincoVertice.MyTools.Ui.Snipping.Interfaces;
+﻿using CincoVertice.MyTools.Ui.Snipping.Interfaces;
 using CincoVertice.MyTools.Ui.Snipping.Models;
 using CincoVertice.MyTools.Ui.Snipping.Services;
 using Windows.Graphics.Imaging;

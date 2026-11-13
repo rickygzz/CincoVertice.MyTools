@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.ConfigEditor.Models;
+﻿namespace CincoVertice.MyTools.Ui.ConfigEditor.Models;
 
 /// <summary>What's in a file, and how to write it back the same way.</summary>
 /// <param name="Text">The text, with \n for every new line, as the editor has it.</param>

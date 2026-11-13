@@ -1,4 +1,4 @@
-using CincoVertice.MyTools.Ui.Win.ConfigEditor.Services;
+﻿using CincoVertice.MyTools.Ui.Win.ConfigEditor.Services;
 using CincoVertice.MyTools.Ui.Win.Scripting.Services;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 

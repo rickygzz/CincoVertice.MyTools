@@ -1,4 +1,4 @@
-using System.Security;
+﻿using System.Security;
 using CincoVertice.MyTools.Ui.Shell.Interfaces;
 using Microsoft.Win32;
 

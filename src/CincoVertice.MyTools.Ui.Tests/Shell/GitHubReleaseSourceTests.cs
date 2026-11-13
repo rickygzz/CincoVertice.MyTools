@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Text;
 using CincoVertice.MyTools.Ui.Shell.Models;
 using CincoVertice.MyTools.Ui.Shell.Services;

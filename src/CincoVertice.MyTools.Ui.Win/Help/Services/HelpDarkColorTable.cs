@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Win.Help.Services;
+﻿namespace CincoVertice.MyTools.Ui.Win.Help.Services;
 
 /// <summary>A toolbar and its menus in dark colors, for Windows' dark mode: WinForms draws them light.</summary>
 public sealed class HelpDarkColorTable : ProfessionalColorTable

@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Snipping.Models;
+﻿namespace CincoVertice.MyTools.Ui.Snipping.Models;
 
 /// <summary>How the screen is recorded, from recording.cfg.</summary>
 /// <param name="FramesPerSecond">How many times a second the area is copied into the video.</param>

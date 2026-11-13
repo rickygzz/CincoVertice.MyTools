@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using CincoVertice.MyTools.Ui.Snipping.Presenters;
 using CincoVertice.MyTools.Ui.Snipping.Views;
 using Xunit;

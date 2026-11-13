@@ -1,4 +1,4 @@
-using CincoVertice.Common.Application.Scripting;
+﻿using CincoVertice.Common.Application.Scripting;
 using CincoVertice.Common.Application.Scripting.Models;
 using CincoVertice.MyTools.Ui.Win.Scripting.Services;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;

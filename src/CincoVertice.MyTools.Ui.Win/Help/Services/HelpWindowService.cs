@@ -1,4 +1,4 @@
-using CincoVertice.MyTools.Ui.Help.Interfaces;
+﻿using CincoVertice.MyTools.Ui.Help.Interfaces;
 using CincoVertice.MyTools.Ui.Help.Models;
 using CincoVertice.MyTools.Ui.Help.Presenters;
 using CincoVertice.MyTools.Ui.Win.Behaviors;

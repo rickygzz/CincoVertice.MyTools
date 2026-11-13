@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Zones.Models;
+﻿namespace CincoVertice.MyTools.Ui.Zones.Models;
 
 /// <summary>
 ///     Where the mouse is on the editor's monitor, in percent of its work area, and how near counts as on a border.

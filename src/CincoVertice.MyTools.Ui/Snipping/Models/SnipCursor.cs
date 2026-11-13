@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Snipping.Models;
+﻿namespace CincoVertice.MyTools.Ui.Snipping.Models;
 
 /// <summary>
 ///     The mouse pointer over a snip.

@@ -1,4 +1,4 @@
-using CincoVertice.Common.WinApi.Libs;
+﻿using CincoVertice.Common.WinApi.Libs;
 
 namespace CincoVertice.MyTools.Ui.Win.Snipping.Services;
 

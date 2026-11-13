@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Help.Models;
+﻿namespace CincoVertice.MyTools.Ui.Help.Models;
 
 /// <summary>A page of the user guide that has the text searched for.</summary>
 /// <param name="Page">The page's file name.</param>

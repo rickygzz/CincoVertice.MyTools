@@ -1,4 +1,4 @@
-using CincoVertice.Common.WinApi.Libs.Enums;
+﻿using CincoVertice.Common.WinApi.Libs.Enums;
 
 namespace CincoVertice.MyTools.Ui.Win.Snipping;
 

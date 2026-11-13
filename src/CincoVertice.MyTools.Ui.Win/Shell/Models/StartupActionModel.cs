@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Win.Shell.Models;
+﻿namespace CincoVertice.MyTools.Ui.Win.Shell.Models;
 
 /// <summary>
 ///     One line of startup.cfg: an action to run when Windows starts the app.

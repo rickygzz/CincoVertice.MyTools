@@ -1,4 +1,4 @@
-using CincoVertice.Common.WinApi.Helpers;
+﻿using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.Common.WinApi.Libs;
 using CincoVertice.MyTools.Ui.Help.Services;
 using CincoVertice.MyTools.Ui.Snipping.Interfaces;

@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 
 namespace CincoVertice.MyTools.Ui.Win.Snipping;
 

@@ -1,4 +1,4 @@
-using CincoVertice.MyTools.Ui.ConfigEditor.Models;
+﻿using CincoVertice.MyTools.Ui.ConfigEditor.Models;
 
 namespace CincoVertice.MyTools.Ui.ConfigEditor.Interfaces;
 

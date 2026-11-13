@@ -1,4 +1,4 @@
-using CincoVertice.MyTools.Ui.Help.Services;
+﻿using CincoVertice.MyTools.Ui.Help.Services;
 using CincoVertice.MyTools.Ui.Win.ConfigEditor.Services;
 using CincoVertice.MyTools.Ui.Win.Help.Services;
 using CincoVertice.MyTools.Ui.Win.Shell.Services;

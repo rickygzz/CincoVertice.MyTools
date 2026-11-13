@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Win.Shell.Models;
+﻿namespace CincoVertice.MyTools.Ui.Win.Shell.Models;
 
 /// <summary>
 ///     What startup.cfg asks for: the actions to run, in order, and a problem per line that was skipped.

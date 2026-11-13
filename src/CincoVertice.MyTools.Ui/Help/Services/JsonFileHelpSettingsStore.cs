@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Text.Json;
 using CincoVertice.Common.Utils.Helpers;
 using CincoVertice.MyTools.Ui.Help.Interfaces;

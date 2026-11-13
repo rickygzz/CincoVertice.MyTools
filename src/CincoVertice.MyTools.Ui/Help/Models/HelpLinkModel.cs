@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Help.Models;
+﻿namespace CincoVertice.MyTools.Ui.Help.Models;
 
 /// <summary>Where a link of the user guide goes: a page and a heading in it, or a web page.</summary>
 /// <param name="Page">The page's file name; null for the page it's on.</param>

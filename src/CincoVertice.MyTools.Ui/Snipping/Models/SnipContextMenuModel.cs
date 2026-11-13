@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Snipping.Models;
+﻿namespace CincoVertice.MyTools.Ui.Snipping.Models;
 
 /// <summary>
 ///     What the menu over a selected annotation can do to it.

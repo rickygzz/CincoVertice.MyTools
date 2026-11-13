@@ -1,4 +1,4 @@
-using CincoVertice.MyTools.Ui.Diagramming.Models;
+﻿using CincoVertice.MyTools.Ui.Diagramming.Models;
 
 namespace CincoVertice.MyTools.Ui.Diagramming.Interfaces;
 

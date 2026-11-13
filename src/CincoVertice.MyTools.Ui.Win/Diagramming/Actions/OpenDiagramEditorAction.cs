@@ -1,4 +1,4 @@
-using CincoVertice.MyTools.Ui.Diagramming.Interfaces;
+﻿using CincoVertice.MyTools.Ui.Diagramming.Interfaces;
 using CincoVertice.MyTools.Ui.Diagramming.Presenters;
 using CincoVertice.MyTools.Ui.Help.Services;
 using CincoVertice.MyTools.Ui.Win.Diagramming.Services;

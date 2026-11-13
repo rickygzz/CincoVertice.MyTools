@@ -1,4 +1,4 @@
-using CincoVertice.MyTools.Ui.ConfigEditor.Interfaces;
+﻿using CincoVertice.MyTools.Ui.ConfigEditor.Interfaces;
 using CincoVertice.MyTools.Ui.ConfigEditor.Presenters;
 using CincoVertice.MyTools.Ui.Help.Services;
 using CincoVertice.MyTools.Ui.Win.Help.Services;

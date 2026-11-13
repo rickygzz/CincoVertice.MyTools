@@ -1,4 +1,4 @@
-using CincoVertice.MyTools.Ui.Shell.Models;
+﻿using CincoVertice.MyTools.Ui.Shell.Models;
 
 namespace CincoVertice.MyTools.Ui.Shell.Views;
 

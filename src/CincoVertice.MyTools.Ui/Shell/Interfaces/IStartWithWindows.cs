@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Shell.Interfaces;
+﻿namespace CincoVertice.MyTools.Ui.Shell.Interfaces;
 
 /// <summary>Whether the app starts when the user signs in to the computer.</summary>
 public interface IStartWithWindows

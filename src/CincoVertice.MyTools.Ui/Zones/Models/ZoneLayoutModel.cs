@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Zones.Models;
+﻿namespace CincoVertice.MyTools.Ui.Zones.Models;
 
 /// <summary>The zones of every monitor, numbered from 1 in this order, and the space between them.</summary>
 /// <param name="Gap">Pixels between zones, and between them and the edges of the work area.</param>

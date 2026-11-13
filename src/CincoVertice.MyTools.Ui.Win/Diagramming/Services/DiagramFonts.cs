@@ -1,4 +1,4 @@
-using System.Drawing.Text;
+﻿using System.Drawing.Text;
 using System.Runtime.InteropServices;
 using CincoVertice.MyTools.Ui.Diagramming.Models;
 

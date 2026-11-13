@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Zones.Models;
+﻿namespace CincoVertice.MyTools.Ui.Zones.Models;
 
 /// <summary>A layout the zone editor can start from.</summary>
 public enum ZoneLayoutTemplate

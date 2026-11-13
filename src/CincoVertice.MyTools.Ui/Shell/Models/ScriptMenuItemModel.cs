@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Shell.Models;
+﻿namespace CincoVertice.MyTools.Ui.Shell.Models;
 
 /// <summary>
 ///     A script in the tray's Scripts menu.

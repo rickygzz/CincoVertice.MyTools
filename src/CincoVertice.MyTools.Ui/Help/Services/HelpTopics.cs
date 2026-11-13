@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Help.Services;
+﻿namespace CincoVertice.MyTools.Ui.Help.Services;
 
 /// <summary>
 ///     The user guide's page about each window, which F1 opens there, as links: "page.md", or "page.md#heading".

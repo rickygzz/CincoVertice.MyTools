@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Drawing;
 using CincoVertice.MyTools.Ui.Zones.Interfaces;
 using CincoVertice.MyTools.Ui.Zones.Models;

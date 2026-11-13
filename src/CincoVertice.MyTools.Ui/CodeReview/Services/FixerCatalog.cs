@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.CodeReview.Services;
+﻿namespace CincoVertice.MyTools.Ui.CodeReview.Services;
 
 /// <summary>
 ///     Each fixer's name in words and what it does, for the menu where they're turned on and off. A test checks that

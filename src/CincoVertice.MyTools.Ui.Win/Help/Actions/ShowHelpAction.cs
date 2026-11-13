@@ -1,4 +1,4 @@
-using CincoVertice.MyTools.Ui.Win.Help.Services;
+﻿using CincoVertice.MyTools.Ui.Win.Help.Services;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 
 namespace CincoVertice.MyTools.Ui.Win.Help.Actions;

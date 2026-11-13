@@ -1,4 +1,4 @@
-using System.Drawing.Imaging;
+﻿using System.Drawing.Imaging;
 using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.MyTools.Ui.Snipping.Presenters;
 

@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Shell.Models;
+﻿namespace CincoVertice.MyTools.Ui.Shell.Models;
 
 /// <summary>
 ///     What registering the hotkeys gave.

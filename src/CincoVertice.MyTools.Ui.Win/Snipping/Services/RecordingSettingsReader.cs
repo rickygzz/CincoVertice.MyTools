@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using CincoVertice.Common.Utils.Config;
 using CincoVertice.MyTools.Ui.Snipping.Models;
 using CincoVertice.MyTools.Ui.Win.Shell.Models;

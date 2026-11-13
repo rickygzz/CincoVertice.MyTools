@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Help.Models;
+﻿namespace CincoVertice.MyTools.Ui.Help.Models;
 
 /// <summary>How a piece of a Markdown line looks; several can go together, as bold italic.</summary>
 [Flags]

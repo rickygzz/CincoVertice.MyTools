@@ -1,4 +1,4 @@
-using CincoVertice.Common.Utils.Config;
+﻿using CincoVertice.Common.Utils.Config;
 using CincoVertice.MyTools.Ui.Win.Shell.Models;
 
 namespace CincoVertice.MyTools.Ui.Win.Shell.Services.Config;

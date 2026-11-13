@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Zones.Models;
+﻿namespace CincoVertice.MyTools.Ui.Zones.Models;
 
 /// <summary>What the mouse would do in the zone editor, shown by its cursor.</summary>
 public enum ZoneEditorCursor

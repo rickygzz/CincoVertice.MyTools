@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using CincoVertice.MyTools.Ui.Zones.Models;
 
 namespace CincoVertice.MyTools.Ui.Zones.Interfaces;

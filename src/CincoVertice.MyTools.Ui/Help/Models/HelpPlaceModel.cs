@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Help.Models;
+﻿namespace CincoVertice.MyTools.Ui.Help.Models;
 
 /// <summary>A place in the user guide that back and forward go to.</summary>
 /// <param name="Page">The page's file name.</param>

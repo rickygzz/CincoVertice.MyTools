@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 using CincoVertice.Common.Application.CodeStandard.Models;
 using CincoVertice.Common.Utils.Helpers;

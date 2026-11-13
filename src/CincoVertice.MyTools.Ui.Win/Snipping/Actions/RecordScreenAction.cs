@@ -1,4 +1,4 @@
-using CincoVertice.MyTools.Ui.Snipping.Presenters;
+﻿using CincoVertice.MyTools.Ui.Snipping.Presenters;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Services;
 using CincoVertice.MyTools.Ui.Win.Snipping.Models;

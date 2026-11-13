@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.CodeReview.Models;
+﻿namespace CincoVertice.MyTools.Ui.CodeReview.Models;
 
 /// <summary>A fixer of the code standard that the user can turn on or off for Fix folder.</summary>
 /// <param name="Name">Its name, which the choice is kept by, e.g. "BracePlacement".</param>

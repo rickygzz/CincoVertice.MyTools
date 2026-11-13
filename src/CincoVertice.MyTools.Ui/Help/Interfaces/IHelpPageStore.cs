@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Help.Interfaces;
+﻿namespace CincoVertice.MyTools.Ui.Help.Interfaces;
 
 /// <summary>The pages of the user guide, Markdown files.</summary>
 public interface IHelpPageStore

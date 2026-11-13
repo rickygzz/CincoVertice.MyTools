@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Win.Shell.Actions;
+﻿namespace CincoVertice.MyTools.Ui.Win.Shell.Actions;
 
 /// <summary>
 ///     An action that can take a value from its hotkeys.cfg line, as in "PrTemplate = Ctrl+Alt+1, app1", so one

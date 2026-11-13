@@ -1,4 +1,4 @@
-using CincoVertice.Common.Application.CodeStandard.Models;
+﻿using CincoVertice.Common.Application.CodeStandard.Models;
 
 namespace CincoVertice.MyTools.Ui.CodeReview.Models;
 

@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Snipping.Services;
+﻿namespace CincoVertice.MyTools.Ui.Snipping.Services;
 
 /// <summary>Text couldn't be read from an image at all; the message says why, for the user.</summary>
 public sealed class TextRecognitionException : Exception

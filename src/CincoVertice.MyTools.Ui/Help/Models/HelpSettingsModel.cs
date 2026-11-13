@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 
 namespace CincoVertice.MyTools.Ui.Help.Models;
 
