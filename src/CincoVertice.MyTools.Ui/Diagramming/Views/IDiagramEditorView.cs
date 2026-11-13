@@ -61,6 +61,9 @@ public interface IDiagramEditorView
     /// <summary>Raised when the user types where the selected shapes should be, all of them together.</summary>
     event EventHandler<Rectangle>? BoundsEdited;
 
+    /// <summary>Raised when the user locks or frees the X, Y, width or height of the selected shapes.</summary>
+    event EventHandler<DiagramLockChoiceModel>? LockToggled;
+
     /// <summary>Raised with how round the corners of the selected shapes should be, in pixels.</summary>
     event EventHandler<int>? CornerRadiusEdited;
 

@@ -147,6 +147,7 @@ public sealed class DiagramEditorPresenter
         _view.ArrowHeadsSelected += OnArrowHeadsSelected;
         _view.BoundsEdited += OnBoundsEdited;
         _view.CornerRadiusEdited += OnCornerRadiusEdited;
+        _view.LockToggled += OnLockToggled;
         _view.TextEdited += OnTextEdited;
         _view.TextCommitted += OnTextCommitted;
         _view.Closing += OnClosing;
@@ -1558,7 +1559,10 @@ public sealed class DiagramEditorPresenter
     {
         if (_drag is null && _selectedShapes.Count > 0)
         {
-            Commit(WithBounds(_diagram, SelectedBounds(), bounds => Moved(bounds, delta), bend => bend + delta));
+            // Shapes locked where they are don't move, and that's nothing to undo
+            Commit(
+                WithBounds(_diagram, SelectedBounds(), bounds => Moved(bounds, delta), bend => bend + delta),
+                onlyIfChanged: true);
         }
     }
 
@@ -1629,12 +1633,37 @@ public sealed class DiagramEditorPresenter
 
         if (to != from)
         {
-            Commit(WithBounds(
-                _diagram,
-                SelectedBounds(),
-                bounds => ScaleInside(bounds, from, to),
-                bend => ScaleInside(new Rectangle(bend, Size.Empty), from, to).Location));
+            Commit(
+                WithBounds(
+                    _diagram,
+                    SelectedBounds(),
+                    bounds => ScaleInside(bounds, from, to),
+                    bend => ScaleInside(new Rectangle(bend, Size.Empty), from, to).Location),
+                onlyIfChanged: true);
         }
+    }
+
+    /// <summary>A change to the diagram like any other, so it can be undone, and it's saved with the shapes.</summary>
+    private void OnLockToggled(object? sender, DiagramLockChoiceModel choice)
+    {
+        if (_drag is not null || _selectedShapes.Count == 0)
+        {
+            return;
+        }
+
+        DiagramLock locks = choice.Lock & DiagramLock.All;
+
+        Commit(
+            _diagram with
+            {
+                Shapes =
+                [
+                    .. _diagram.Shapes.Select(shape => _selectedShapes.Contains(shape.Id)
+                        ? shape with { Locks = choice.IsLocked ? shape.Locks | locks : shape.Locks & ~locks }
+                        : shape),
+                ],
+            },
+            onlyIfChanged: true);
     }
 
     private void OnCornerRadiusEdited(object? sender, int radius)
@@ -1846,8 +1875,8 @@ public sealed class DiagramEditorPresenter
         [.. _diagram.Shapes.Where(shape => !moving.ContainsKey(shape.Id)).Select(shape => shape.Bounds)];
 
     /// <summary>
-    ///     Changes where some shapes are. The bends of a connector go along when both of its shapes do, so a part of a
-    ///     diagram keeps its look when it's moved or scaled as a whole.
+    ///     Changes where some shapes are, except what they have locked. The bends of a connector go along when both of
+    ///     its shapes do, without locks, so a part of a diagram keeps its look when it's moved or scaled as a whole.
     /// </summary>
     private static DiagramModel WithBounds(
         DiagramModel diagram,
@@ -1855,19 +1884,51 @@ public sealed class DiagramEditorPresenter
         Func<Rectangle, Rectangle> change,
         Func<Point, Point> changeBend)
     {
+        HashSet<int> free =
+        [
+            .. diagram.Shapes
+                .Where(shape => originals.ContainsKey(shape.Id) && shape.Locks == DiagramLock.None)
+                .Select(shape => shape.Id),
+        ];
+
         return new DiagramModel(
             [
                 .. diagram.Shapes.Select(shape => originals.TryGetValue(shape.Id, out Rectangle bounds)
-                    ? shape with { Bounds = change(bounds) }
+                    ? shape with { Bounds = Locked(bounds, change(bounds), shape.Locks) }
                     : shape),
             ],
             [
                 .. diagram.Connectors.Select(connector => connector.Bends is { } bends
-                    && originals.ContainsKey(connector.FromShapeId)
-                    && originals.ContainsKey(connector.ToShapeId)
+                    && free.Contains(connector.FromShapeId)
+                    && free.Contains(connector.ToShapeId)
                         ? connector with { Bends = [.. bends.Select(changeBend)] }
                         : connector),
             ]);
+    }
+
+    /// <summary>
+    ///     The changed bounds with the locked parts as they were. A locked size keeps the edge that didn't move where
+    ///     it was: scaling a shape of locked width by its left edge leaves it, rather than sliding it.
+    /// </summary>
+    private static Rectangle Locked(Rectangle original, Rectangle changed, DiagramLock locks)
+    {
+        if (locks == DiagramLock.None)
+        {
+            return changed;
+        }
+
+        bool isWidthLocked = locks.HasFlag(DiagramLock.Width);
+        bool isHeightLocked = locks.HasFlag(DiagramLock.Height);
+        int width = isWidthLocked ? original.Width : changed.Width;
+        int height = isHeightLocked ? original.Height : changed.Height;
+        int x = locks.HasFlag(DiagramLock.X) || (isWidthLocked && changed.Right == original.Right)
+            ? original.X
+            : changed.X;
+        int y = locks.HasFlag(DiagramLock.Y) || (isHeightLocked && changed.Bottom == original.Bottom)
+            ? original.Y
+            : changed.Y;
+
+        return new Rectangle(x, y, width, height);
     }
 
     private Point Snap(Point point)
@@ -2008,7 +2069,8 @@ public sealed class DiagramEditorPresenter
             connectors.Count > 0 ? connectors[0].Heads : null,
             style.FontFamily,
             style.TextOutlineWidth,
-            style.TextOutlineColor);
+            style.TextOutlineColor,
+            shapes.Count > 0 ? shapes.Aggregate(DiagramLock.All, (locks, shape) => locks & shape.Locks) : null);
     }
 
     private static string TitleOf(List<DiagramShapeModel> shapes, List<DiagramConnectorModel> connectors)

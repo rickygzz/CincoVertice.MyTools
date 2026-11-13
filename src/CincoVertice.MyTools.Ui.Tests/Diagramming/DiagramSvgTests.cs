@@ -1,4 +1,5 @@
 ﻿using System.Drawing;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using CincoVertice.MyTools.Ui.Diagramming.Models;
 using CincoVertice.MyTools.Ui.Diagramming.Services;
@@ -463,6 +464,40 @@ public sealed class DiagramSvgTests : IDisposable
         Assert.Equal(100, shape.Style.LineWidth);
         Assert.Equal(6, shape.Style.FontSize);
         Assert.Equal(string.Empty, shape.Text);
+    }
+
+    [Fact]
+    public void Json_Locks_AreKeptByName_AndOnlyWhenThereAreSome()
+    {
+        // Arrange
+        DiagramModel diagram = Sample() with
+        {
+            Shapes = [Sample().Shapes[0] with { Locks = DiagramLock.X | DiagramLock.Height }, Sample().Shapes[1]],
+            Connectors = [],
+        };
+
+        // Act
+        string json = DiagramJson.Write(diagram);
+        DiagramModel read = DiagramJson.Read(json);
+
+        // Assert
+        Assert.Contains("\"locks\":\"X, Height\"", json);
+        Assert.Single(Regex.Matches(json, "\"locks\""));
+        Assert.Equal(DiagramLock.X | DiagramLock.Height, read.Shapes[0].Locks);
+        Assert.Equal(DiagramLock.None, read.Shapes[1].Locks);
+    }
+
+    [Fact]
+    public void Json_LocksNoShapeCanHave_AreLeftOut()
+    {
+        // Arrange
+        const string json = """
+            { "format": "mytools-diagram", "shapes": [
+                { "id": 1, "kind": "Ellipse", "x": 0, "y": 0, "width": 9, "height": 9, "locks": 255 } ] }
+            """;
+
+        // Act / Assert
+        Assert.Equal(DiagramLock.All, DiagramJson.Read(json).Shapes[0].Locks);
     }
 
     [Fact]

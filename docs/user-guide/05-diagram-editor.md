@@ -58,6 +58,12 @@ A toolbar change goes to everything selected, and to what you draw next.
 
 The Properties panel (show or hide with **F4**) has these fields: Text, X, Y, Width, Height, Corner radius, Fill, Border, Border width, Dashed, Text color, Font, Text size, Text edge, Edge width, Route and Arrows.
 
+**Lock a shape's place or size.** Beside X, Y, Width and Height is a lock button, shown as an open padlock. Click it to lock that value for the selected shapes: the button stays pressed, shows a closed padlock, and the field is grayed out. Click it again to unlock it. Each one is separate, so you can, say, lock only the width.
+
+- A locked value stays as it is when you drag the shape, move it with the arrow keys, scale it by its handles or type in the fields. The rest still changes. For example, with X locked a drag only moves the shape up and down, and with the width locked the side handles do nothing.
+- With several shapes selected, a lock button is pressed only when all of them have that lock, and clicking it locks or unlocks it for all of them. Shapes that are moved or scaled together keep what each one has locked.
+- Locks are saved with the diagram, and locking or unlocking is a step you can undo. Copies and pastes keep them, but a pasted copy still goes where it's pasted.
+
 ## Keys
 
 | Key | Effect |

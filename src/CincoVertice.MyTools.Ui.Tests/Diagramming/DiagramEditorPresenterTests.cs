@@ -366,6 +366,148 @@ public class DiagramEditorPresenterTests
     }
 
     [Fact]
+    public void Lock_X_ThenDrag_OnlyMovesItUpAndDown()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.ToggleLock(DiagramLock.X, isLocked: true);
+
+        // Act
+        _view.Drag(150, 125, 250, 225, alt: true);
+
+        // Assert
+        Assert.Equal(Box(100, 200, 100, 50), Diagram.Shapes[0].Bounds);
+    }
+
+    [Fact]
+    public void Lock_Width_ThenScaleByTheLeftEdge_LeavesIt()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.ToggleLock(DiagramLock.Width, isLocked: true);
+        DiagramModel before = Diagram;
+
+        // Act
+        _view.Drag(100, 125, 50, 125, alt: true);
+
+        // Assert: not slid to the left either
+        Assert.Same(before, Diagram);
+    }
+
+    [Fact]
+    public void Lock_Width_ThenScaleByACorner_OnlyChangesTheHeight()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.ToggleLock(DiagramLock.Width, isLocked: true);
+
+        // Act
+        _view.Drag(200, 150, 300, 200, alt: true);
+
+        // Assert
+        Assert.Equal(Box(100, 100, 100, 100), Diagram.Shapes[0].Bounds);
+    }
+
+    [Fact]
+    public void Lock_Height_ThenTypeTheBounds_KeepsTheHeight()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.ToggleLock(DiagramLock.Height, isLocked: true);
+
+        // Act
+        _view.EditBounds(10, 20, 300, 400);
+
+        // Assert
+        Assert.Equal(Box(10, 20, 300, 50), Diagram.Shapes[0].Bounds);
+    }
+
+    [Fact]
+    public void Lock_XAndY_ThenNudge_IsNothingToUndo()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.ToggleLock(DiagramLock.X, isLocked: true);
+        _view.ToggleLock(DiagramLock.Y, isLocked: true);
+        DiagramModel before = Diagram;
+
+        // Act
+        _view.Nudge(10, 10);
+
+        // Assert
+        Assert.Same(before, Diagram);
+        _view.Command(DiagramCommand.Undo);
+        Assert.Equal(DiagramLock.X, Diagram.Shapes[0].Locks);
+    }
+
+    [Fact]
+    public void Lock_IsAChangeToTheDiagram_ThatCanBeUndone_AndShowsInTheProperties()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.PathToSave = @"C:\Diagrams\flow.svg";
+        _view.Command(DiagramCommand.Save);
+
+        // Act
+        _view.ToggleLock(DiagramLock.Width, isLocked: true);
+
+        // Assert
+        Assert.Equal(DiagramLock.Width, Diagram.Shapes[0].Locks);
+        Assert.Equal(DiagramLock.Width, _view.Properties!.Locks);
+        Assert.True(_view.HasChanges);
+
+        _view.Command(DiagramCommand.Undo);
+        Assert.Equal(DiagramLock.None, Diagram.Shapes[0].Locks);
+        Assert.Equal(DiagramLock.None, _view.Properties!.Locks);
+    }
+
+    [Fact]
+    public void Lock_OfSeveralShapes_ShowsTheLocksAllOfThemHave_AndGoesToEachOfThem()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.ToggleLock(DiagramLock.X, isLocked: true);
+        _view.ToggleLock(DiagramLock.Width, isLocked: true);
+        AddShape(300, 100);
+        _view.ToggleLock(DiagramLock.X, isLocked: true);
+        _view.Command(DiagramCommand.SelectAll);
+        Assert.Equal(DiagramLock.X, _view.Properties!.Locks);
+
+        // Act
+        _view.ToggleLock(DiagramLock.X, isLocked: false);
+        _view.ToggleLock(DiagramLock.Y, isLocked: true);
+
+        // Assert
+        Assert.Equal(DiagramLock.Width | DiagramLock.Y, Diagram.Shapes[0].Locks);
+        Assert.Equal(DiagramLock.Y, Diagram.Shapes[1].Locks);
+        Assert.Equal(DiagramLock.Y, _view.Properties!.Locks);
+    }
+
+    [Fact]
+    public void Lock_OnlyLocksSomeShapes_WhenSeveralMoveTogether()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.ToggleLock(DiagramLock.Y, isLocked: true);
+        AddShape(300, 100);
+        _view.Command(DiagramCommand.SelectAll);
+
+        // Act
+        _view.Nudge(0, 10);
+
+        // Assert
+        Assert.Equal(Box(100, 100, 100, 50), Diagram.Shapes[0].Bounds);
+        Assert.Equal(Box(300, 110, 100, 50), Diagram.Shapes[1].Bounds);
+    }
+
+    [Fact]
+    public void Properties_WithNothingSelected_HaveNoLocks()
+    {
+        // Assert
+        Assert.Null(_view.Properties!.Locks);
+    }
+
+    [Fact]
     public void Scale_ATopHandle_OnlyChangesTheHeight()
     {
         // Arrange
@@ -3330,6 +3472,8 @@ public class DiagramEditorPresenterTests
 
         public event EventHandler<int>? CornerRadiusEdited;
 
+        public event EventHandler<DiagramLockChoiceModel>? LockToggled;
+
         public event EventHandler<string>? TextEdited;
 
         public event EventHandler<string>? TextCommitted;
@@ -3474,6 +3618,9 @@ public class DiagramEditorPresenterTests
             BoundsEdited?.Invoke(this, new Rectangle(x, y, width, height));
 
         public void EditCornerRadius(int radius) => CornerRadiusEdited?.Invoke(this, radius);
+
+        public void ToggleLock(DiagramLock which, bool isLocked) =>
+            LockToggled?.Invoke(this, new DiagramLockChoiceModel(which, isLocked));
 
         public void EditText(string text) => TextEdited?.Invoke(this, text);
 

@@ -12,6 +12,7 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 /// <param name="Style">How it looks.</param>
 /// <param name="GroupId">The shapes with the same value are selected and moved together; null for no group.</param>
 /// <param name="CornerRadius">How round a rectangle's corners are, in pixels; null for its kind's usual ones.</param>
+/// <param name="Locks">What of <paramref name="Bounds"/> stays as it is when the shape is moved or scaled.</param>
 public sealed record DiagramShapeModel(
     int Id,
     DiagramShapeKind Kind,
@@ -19,4 +20,5 @@ public sealed record DiagramShapeModel(
     string Text,
     DiagramStyleModel Style,
     int? GroupId = null,
-    int? CornerRadius = null);
+    int? CornerRadius = null,
+    DiagramLock Locks = DiagramLock.None);

@@ -113,6 +113,8 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
 
     public event EventHandler<Rectangle>? BoundsEdited;
 
+    public event EventHandler<DiagramLockChoiceModel>? LockToggled;
+
     public event EventHandler<int>? CornerRadiusEdited;
 
     public event EventHandler<string>? TextEdited;
@@ -221,6 +223,10 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         ShowNumber(YLabel, YBox, hasBounds ? bounds.Y : null);
         ShowNumber(WidthLabel, WidthBox, hasBounds ? bounds.Width : null);
         ShowNumber(HeightLabel, HeightBox, hasBounds ? bounds.Height : null);
+        ShowLock(XLockCheckBox, XBox, properties.Locks, DiagramLock.X);
+        ShowLock(YLockCheckBox, YBox, properties.Locks, DiagramLock.Y);
+        ShowLock(WidthLockCheckBox, WidthBox, properties.Locks, DiagramLock.Width);
+        ShowLock(HeightLockCheckBox, HeightBox, properties.Locks, DiagramLock.Height);
         ShowNumber(CornerRadiusLabel, CornerRadiusBox, properties.CornerRadius);
         ShowNumber(LineWidthLabel, LineWidthBox, properties.LineWidth);
         ShowNumber(FontSizeLabel, FontSizeBox, properties.FontSize);
@@ -539,6 +545,21 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         }
     }
 
+    /// <summary>
+    ///     A lock beside its field, which can't be typed in while it's locked; null, with no shape selected, hides it.
+    /// </summary>
+    private static void ShowLock(CheckBox lockBox, NumericUpDown box, DiagramLock? locks, DiagramLock which)
+    {
+        bool isLocked = locks is DiagramLock shown && shown.HasFlag(which);
+
+        lockBox.Visible = locks is not null;
+        lockBox.Checked = isLocked;
+        lockBox.Text = LockGlyph(isLocked);
+        box.Enabled = !isLocked;
+    }
+
+    private static string LockGlyph(bool isLocked) => isLocked ? "\U0001F512" : "\U0001F513";
+
     /// <summary>A color on the button; null hides the field, and an empty color reads as none.</summary>
     private static void ShowColor(Label label, Button button, Color? color)
     {
@@ -594,6 +615,20 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
             BoundsEdited?.Invoke(
                 this,
                 new Rectangle((int)XBox.Value, (int)YBox.Value, (int)WidthBox.Value, (int)HeightBox.Value));
+        }
+    }
+
+    private void LockCheckBox_CheckedChanged(object? sender, EventArgs e)
+    {
+        var lockBox = (CheckBox)sender!;
+
+        lockBox.Text = LockGlyph(lockBox.Checked);
+
+        if (!_isShowingChoices)
+        {
+            LockToggled?.Invoke(
+                this,
+                new DiagramLockChoiceModel(Enum.Parse<DiagramLock>((string)lockBox.Tag!), lockBox.Checked));
         }
     }
 

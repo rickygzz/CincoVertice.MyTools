@@ -35,6 +35,7 @@ partial class DiagramEditorForm
     /// </summary>
     private void InitializeComponent()
     {
+        components = new System.ComponentModel.Container();
         SelectionMenu = new ContextMenuStrip();
         CopyStyleContextMenuItem = new ToolStripMenuItem();
         PasteStyleContextMenuItem = new ToolStripMenuItem();
@@ -119,6 +120,11 @@ partial class DiagramEditorForm
         WidthBox = new NumericUpDown();
         HeightLabel = new Label();
         HeightBox = new NumericUpDown();
+        XLockCheckBox = new CheckBox();
+        YLockCheckBox = new CheckBox();
+        WidthLockCheckBox = new CheckBox();
+        HeightLockCheckBox = new CheckBox();
+        PropertiesToolTip = new ToolTip(components);
         CornerRadiusLabel = new Label();
         CornerRadiusBox = new NumericUpDown();
         FillLabel = new Label();
@@ -664,44 +670,62 @@ partial class DiagramEditorForm
         //
         PropertiesTable.AutoSize = true;
         PropertiesTable.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-        PropertiesTable.ColumnCount = 2;
+        PropertiesTable.ColumnCount = 3;
         PropertiesTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90F));
         PropertiesTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        PropertiesTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 30F));
         PropertiesTable.Controls.Add(PropertiesTitleLabel, 0, 0);
-        PropertiesTable.SetColumnSpan(PropertiesTitleLabel, 2);
+        PropertiesTable.SetColumnSpan(PropertiesTitleLabel, 3);
         PropertiesTable.Controls.Add(TextLabel, 0, 1);
         PropertiesTable.Controls.Add(TextPropertyBox, 1, 1);
+        PropertiesTable.SetColumnSpan(TextPropertyBox, 2);
         PropertiesTable.Controls.Add(XLabel, 0, 2);
         PropertiesTable.Controls.Add(XBox, 1, 2);
+        PropertiesTable.Controls.Add(XLockCheckBox, 2, 2);
         PropertiesTable.Controls.Add(YLabel, 0, 3);
         PropertiesTable.Controls.Add(YBox, 1, 3);
+        PropertiesTable.Controls.Add(YLockCheckBox, 2, 3);
         PropertiesTable.Controls.Add(WidthLabel, 0, 4);
         PropertiesTable.Controls.Add(WidthBox, 1, 4);
+        PropertiesTable.Controls.Add(WidthLockCheckBox, 2, 4);
         PropertiesTable.Controls.Add(HeightLabel, 0, 5);
         PropertiesTable.Controls.Add(HeightBox, 1, 5);
+        PropertiesTable.Controls.Add(HeightLockCheckBox, 2, 5);
         PropertiesTable.Controls.Add(CornerRadiusLabel, 0, 6);
         PropertiesTable.Controls.Add(CornerRadiusBox, 1, 6);
+        PropertiesTable.SetColumnSpan(CornerRadiusBox, 2);
         PropertiesTable.Controls.Add(FillLabel, 0, 7);
         PropertiesTable.Controls.Add(FillColorButton, 1, 7);
+        PropertiesTable.SetColumnSpan(FillColorButton, 2);
         PropertiesTable.Controls.Add(LineLabel, 0, 8);
         PropertiesTable.Controls.Add(LineColorButton, 1, 8);
+        PropertiesTable.SetColumnSpan(LineColorButton, 2);
         PropertiesTable.Controls.Add(LineWidthLabel, 0, 9);
         PropertiesTable.Controls.Add(LineWidthBox, 1, 9);
+        PropertiesTable.SetColumnSpan(LineWidthBox, 2);
         PropertiesTable.Controls.Add(DashedCheckBox, 1, 10);
+        PropertiesTable.SetColumnSpan(DashedCheckBox, 2);
         PropertiesTable.Controls.Add(TextColorLabel, 0, 11);
         PropertiesTable.Controls.Add(TextColorButton, 1, 11);
+        PropertiesTable.SetColumnSpan(TextColorButton, 2);
         PropertiesTable.Controls.Add(FontFamilyLabel, 0, 12);
         PropertiesTable.Controls.Add(FontFamilyBox, 1, 12);
+        PropertiesTable.SetColumnSpan(FontFamilyBox, 2);
         PropertiesTable.Controls.Add(FontSizeLabel, 0, 13);
         PropertiesTable.Controls.Add(FontSizeBox, 1, 13);
+        PropertiesTable.SetColumnSpan(FontSizeBox, 2);
         PropertiesTable.Controls.Add(TextOutlineLabel, 0, 14);
         PropertiesTable.Controls.Add(TextOutlineColorButton, 1, 14);
+        PropertiesTable.SetColumnSpan(TextOutlineColorButton, 2);
         PropertiesTable.Controls.Add(TextOutlineWidthLabel, 0, 15);
         PropertiesTable.Controls.Add(TextOutlineWidthBox, 1, 15);
+        PropertiesTable.SetColumnSpan(TextOutlineWidthBox, 2);
         PropertiesTable.Controls.Add(RoutingLabel, 0, 16);
         PropertiesTable.Controls.Add(RoutingPropertyBox, 1, 16);
+        PropertiesTable.SetColumnSpan(RoutingPropertyBox, 2);
         PropertiesTable.Controls.Add(ArrowsLabel, 0, 17);
         PropertiesTable.Controls.Add(ArrowsPropertyBox, 1, 17);
+        PropertiesTable.SetColumnSpan(ArrowsPropertyBox, 2);
         PropertiesTable.Dock = DockStyle.Top;
         PropertiesTable.Name = "PropertiesTable";
         PropertiesTable.Padding = new Padding(6);
@@ -798,6 +822,58 @@ partial class DiagramEditorForm
         HeightBox.TabIndex = 4;
         HeightBox.Value = new decimal(new int[] { 10, 0, 0, 0 });
         HeightBox.ValueChanged += BoundsBox_ValueChanged;
+        //
+        // XLockCheckBox
+        //
+        XLockCheckBox.Appearance = Appearance.Button;
+        XLockCheckBox.Dock = DockStyle.Fill;
+        XLockCheckBox.Font = new Font("Segoe UI Symbol", 9F);
+        XLockCheckBox.Margin = new Padding(0, 3, 0, 3);
+        XLockCheckBox.Name = "XLockCheckBox";
+        XLockCheckBox.Tag = "X";
+        XLockCheckBox.Text = "\U0001F513";
+        XLockCheckBox.TextAlign = ContentAlignment.MiddleCenter;
+        PropertiesToolTip.SetToolTip(XLockCheckBox, "Lock X: moving the shape leaves its X as it is");
+        XLockCheckBox.CheckedChanged += LockCheckBox_CheckedChanged;
+        //
+        // YLockCheckBox
+        //
+        YLockCheckBox.Appearance = Appearance.Button;
+        YLockCheckBox.Dock = DockStyle.Fill;
+        YLockCheckBox.Font = new Font("Segoe UI Symbol", 9F);
+        YLockCheckBox.Margin = new Padding(0, 3, 0, 3);
+        YLockCheckBox.Name = "YLockCheckBox";
+        YLockCheckBox.Tag = "Y";
+        YLockCheckBox.Text = "\U0001F513";
+        YLockCheckBox.TextAlign = ContentAlignment.MiddleCenter;
+        PropertiesToolTip.SetToolTip(YLockCheckBox, "Lock Y: moving the shape leaves its Y as it is");
+        YLockCheckBox.CheckedChanged += LockCheckBox_CheckedChanged;
+        //
+        // WidthLockCheckBox
+        //
+        WidthLockCheckBox.Appearance = Appearance.Button;
+        WidthLockCheckBox.Dock = DockStyle.Fill;
+        WidthLockCheckBox.Font = new Font("Segoe UI Symbol", 9F);
+        WidthLockCheckBox.Margin = new Padding(0, 3, 0, 3);
+        WidthLockCheckBox.Name = "WidthLockCheckBox";
+        WidthLockCheckBox.Tag = "Width";
+        WidthLockCheckBox.Text = "\U0001F513";
+        WidthLockCheckBox.TextAlign = ContentAlignment.MiddleCenter;
+        PropertiesToolTip.SetToolTip(WidthLockCheckBox, "Lock the width: scaling the shape leaves its width as it is");
+        WidthLockCheckBox.CheckedChanged += LockCheckBox_CheckedChanged;
+        //
+        // HeightLockCheckBox
+        //
+        HeightLockCheckBox.Appearance = Appearance.Button;
+        HeightLockCheckBox.Dock = DockStyle.Fill;
+        HeightLockCheckBox.Font = new Font("Segoe UI Symbol", 9F);
+        HeightLockCheckBox.Margin = new Padding(0, 3, 0, 3);
+        HeightLockCheckBox.Name = "HeightLockCheckBox";
+        HeightLockCheckBox.Tag = "Height";
+        HeightLockCheckBox.Text = "\U0001F513";
+        HeightLockCheckBox.TextAlign = ContentAlignment.MiddleCenter;
+        PropertiesToolTip.SetToolTip(HeightLockCheckBox, "Lock the height: scaling the shape leaves its height as it is");
+        HeightLockCheckBox.CheckedChanged += LockCheckBox_CheckedChanged;
         //
         // CornerRadiusLabel
         //
@@ -1136,6 +1212,11 @@ partial class DiagramEditorForm
     private NumericUpDown WidthBox;
     private Label HeightLabel;
     private NumericUpDown HeightBox;
+    private CheckBox XLockCheckBox;
+    private CheckBox YLockCheckBox;
+    private CheckBox WidthLockCheckBox;
+    private CheckBox HeightLockCheckBox;
+    private ToolTip PropertiesToolTip;
     private Label CornerRadiusLabel;
     private NumericUpDown CornerRadiusBox;
     private Label FillLabel;

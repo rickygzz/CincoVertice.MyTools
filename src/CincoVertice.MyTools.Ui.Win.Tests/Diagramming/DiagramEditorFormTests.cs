@@ -554,6 +554,35 @@ public class DiagramEditorFormTests
         Assert.Equal(["text new", "closing"], events);
     }
 
+    [Fact]
+    public void Properties_ALockedField_CantBeTypedIn_AndItsLockFreesIt()
+    {
+        // Arrange
+        using var form = new DiagramEditorForm();
+        List<DiagramLockChoiceModel> toggled = [];
+        form.LockToggled += (_, choice) => toggled.Add(choice);
+
+        // Act
+        form.ShowProperties(new DiagramPropertiesModel(
+            "Rectangle",
+            new Rectangle(0, 0, 100, 50),
+            Locks: DiagramLock.Width));
+
+        // Assert: showing it isn't the user's choice
+        var widthLock = (CheckBox)form.Controls.Find("WidthLockCheckBox", true).Single();
+        var xLock = (CheckBox)form.Controls.Find("XLockCheckBox", true).Single();
+        Assert.True(widthLock.Checked);
+        Assert.Equal("\U0001F512", widthLock.Text);
+        Assert.False(form.Controls.Find("WidthBox", true).Single().Enabled);
+        Assert.False(xLock.Checked);
+        Assert.True(form.Controls.Find("XBox", true).Single().Enabled);
+        Assert.Empty(toggled);
+
+        widthLock.Checked = false;
+        Assert.Equal([new DiagramLockChoiceModel(DiagramLock.Width, false)], toggled);
+        Assert.Equal("\U0001F513", widthLock.Text);
+    }
+
     private sealed class NoSettings : IDiagramEditorSettingsStore
     {
         public DiagramEditorSettingsModel? Load() => null;
