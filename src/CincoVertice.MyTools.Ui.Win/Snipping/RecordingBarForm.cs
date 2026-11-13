@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
 using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.Common.WinApi.Libs.Enums;
@@ -34,6 +36,8 @@ public partial class RecordingBarForm : Form, IRecordingView
     }
 
     public event EventHandler? StopRequested;
+
+    public event EventHandler? PauseRequested;
 
     public event EventHandler? Ticked;
 
@@ -75,33 +79,72 @@ public partial class RecordingBarForm : Form, IRecordingView
         TimeLabel.Text = "● " + elapsed.ToString(format, CultureInfo.InvariantCulture);
     }
 
+    public void ShowCountdown(int seconds)
+    {
+        TimeLabel.Text = seconds > 0 ? $"Starts in {seconds}" : "● 0:00";
+        PauseButton.Enabled = seconds == 0;
+    }
+
+    public void ShowPaused(bool isPaused)
+    {
+        PauseButton.Text = isPaused ? "▶ Resume" : "❚❚ Pause";
+
+        if (isPaused)
+        {
+            TimeLabel.Text = "Paused";
+        }
+    }
+
     public void ShowSaving()
     {
         TickTimer.Stop();
         TimeLabel.Text = "Saving...";
+        PauseButton.Enabled = false;
         StopButton.Enabled = false;
     }
 
-    public string? AskSavePath(string suggestedFileName)
+    public string? AskSavePath(string suggestedFileName, string folder)
     {
         Hide();
         _frame?.Hide();
 
-        string videos = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos);
         using var dialog = new SaveFileDialog
         {
             FileName = suggestedFileName,
-            Filter = "MP4 video (*.mp4)|*.mp4",
-            InitialDirectory = videos,
+            Filter = "MP4 video (*.mp4)|*.mp4|GIF animation (*.gif)|*.gif",
+            InitialDirectory = folder.Length > 0
+                ? folder
+                : Environment.GetFolderPath(Environment.SpecialFolder.MyVideos),
             Title = "Save recording",
         };
 
         return dialog.ShowDialog() == DialogResult.OK ? dialog.FileName : null;
     }
 
-    public void ShowMessage(string message, bool isProblem)
+    public void ShowSaved(string path)
     {
-        _notifications.Show(NotificationTitle, message, isProblem ? ToolTipIcon.Warning : ToolTipIcon.Info);
+        _notifications.Show(
+            NotificationTitle,
+            $"Saved {Path.GetFileName(path)}. Click here to show it in its folder.",
+            () => ShowInFolder(path));
+    }
+
+    public void ShowProblem(string message)
+    {
+        _notifications.Show(NotificationTitle, message, ToolTipIcon.Warning);
+    }
+
+    // Explorer, with the file selected
+    private static void ShowInFolder(string path)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true });
+        }
+        catch (Win32Exception)
+        {
+            // Explorer missing or refusing: there's nothing more to do from a notification
+        }
     }
 
     public void CloseView()
@@ -125,6 +168,8 @@ public partial class RecordingBarForm : Form, IRecordingView
     }
 
     private void StopButton_Click(object? sender, EventArgs e) => StopRequested?.Invoke(this, EventArgs.Empty);
+
+    private void PauseButton_Click(object? sender, EventArgs e) => PauseRequested?.Invoke(this, EventArgs.Empty);
 
     private void TickTimer_Tick(object? sender, EventArgs e) => Ticked?.Invoke(this, EventArgs.Empty);
 

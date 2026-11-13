@@ -14,6 +14,7 @@ using CincoVertice.MyTools.Ui.Win.Setup;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Services;
 using CincoVertice.MyTools.Ui.Win.Shell.Services.Config;
+using CincoVertice.MyTools.Ui.Win.Snipping.Services;
 using CincoVertice.MyTools.Ui.Win.Zones.Services;
 using CincoVertice.MyTools.Ui.Zones.Presenters;
 using Microsoft.Extensions.Configuration;
@@ -39,6 +40,7 @@ public sealed class ConfigEditorTests : IDisposable
         new ActivitySettingsService(Path.Combine(_folder, "activity.cfg")),
         new StartupConfigService(Path.Combine(_folder, "startup.cfg")),
         new ZonesConfigService(Path.Combine(_folder, "zones.cfg"), new TrayNotificationService()),
+        new RecordingSettingsService(Path.Combine(_folder, "recording.cfg")),
         () => [new NamedAction("Known")],
         Path.Combine(_folder, "scripts"));
 

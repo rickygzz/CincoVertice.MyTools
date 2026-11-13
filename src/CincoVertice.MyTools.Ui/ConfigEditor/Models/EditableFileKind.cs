@@ -7,5 +7,6 @@ public enum EditableFileKind
     ActivitySettings,
     StartupActions,
     WindowZones,
+    RecordingSettings,
     Script,
 }

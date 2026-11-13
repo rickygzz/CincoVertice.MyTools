@@ -31,6 +31,7 @@ partial class RecordingBarForm
     {
         components = new System.ComponentModel.Container();
         TimeLabel = new Label();
+        PauseButton = new Button();
         StopButton = new Button();
         TickTimer = new System.Windows.Forms.Timer(components);
         SuspendLayout();
@@ -42,13 +43,23 @@ partial class RecordingBarForm
         TimeLabel.ForeColor = Color.FromArgb(230, 30, 30);
         TimeLabel.Location = new Point(8, 6);
         TimeLabel.Name = "TimeLabel";
-        TimeLabel.Size = new Size(90, 24);
+        TimeLabel.Size = new Size(108, 24);
         TimeLabel.Text = "● 0:00";
         TimeLabel.TextAlign = ContentAlignment.MiddleLeft;
         //
+        // PauseButton
+        //
+        PauseButton.Enabled = false;
+        PauseButton.Location = new Point(118, 5);
+        PauseButton.Name = "PauseButton";
+        PauseButton.Size = new Size(84, 26);
+        PauseButton.Text = "❚❚ Pause";
+        PauseButton.UseVisualStyleBackColor = true;
+        PauseButton.Click += PauseButton_Click;
+        //
         // StopButton
         //
-        StopButton.Location = new Point(102, 5);
+        StopButton.Location = new Point(206, 5);
         StopButton.Name = "StopButton";
         StopButton.Size = new Size(70, 26);
         StopButton.Text = "■ Stop";
@@ -64,8 +75,9 @@ partial class RecordingBarForm
         //
         AutoScaleMode = AutoScaleMode.None;
         BackColor = SystemColors.Window;
-        ClientSize = new Size(180, 36);
+        ClientSize = new Size(284, 36);
         Controls.Add(TimeLabel);
+        Controls.Add(PauseButton);
         Controls.Add(StopButton);
         FormBorderStyle = FormBorderStyle.FixedToolWindow;
         Name = "RecordingBarForm";
@@ -80,6 +92,7 @@ partial class RecordingBarForm
     #endregion
 
     private Label TimeLabel;
+    private Button PauseButton;
     private Button StopButton;
     private System.Windows.Forms.Timer TickTimer;
 }

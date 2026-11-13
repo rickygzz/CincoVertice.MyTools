@@ -1,6 +1,7 @@
 using CincoVertice.MyTools.Ui.Snipping.Presenters;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Services;
+using CincoVertice.MyTools.Ui.Win.Snipping.Models;
 using CincoVertice.MyTools.Ui.Win.Snipping.Services;
 
 namespace CincoVertice.MyTools.Ui.Win.Snipping.Actions;
@@ -14,6 +15,7 @@ public sealed class RecordScreenAction : IAppAction
     private readonly ScreenSnipper _snipper;
     private readonly SnipEditorWindowService _editorWindow;
     private readonly TrayNotificationService _notifications;
+    private readonly RecordingSettingsService _settings;
 
     // The recording going on; null when there's none
     private ScreenRecordingPresenter? _recording;
@@ -21,8 +23,10 @@ public sealed class RecordScreenAction : IAppAction
     public RecordScreenAction(
         ScreenSnipper snipper,
         SnipEditorWindowService editorWindow,
-        TrayNotificationService notifications)
+        TrayNotificationService notifications,
+        RecordingSettingsService settings)
     {
+        _settings = settings;
         _snipper = snipper;
         _editorWindow = editorWindow;
         _notifications = notifications;
@@ -60,6 +64,15 @@ public sealed class RecordScreenAction : IAppAction
             new ScreenRecorder(),
             new RecordingFileStore(),
             TimeProvider.System);
-        await _recording.StartAsync(chosen);
+        // Read at each recording, so a change applies at the next one
+        RecordingSettingsResultModel settings = _settings.Load();
+
+        if (settings.Problems.Count > 0)
+        {
+            string problems = string.Join(Environment.NewLine, settings.Problems);
+            _notifications.Show("recording.cfg", problems, ToolTipIcon.Warning);
+        }
+
+        await _recording.StartAsync(chosen, settings.Settings);
     }
 }

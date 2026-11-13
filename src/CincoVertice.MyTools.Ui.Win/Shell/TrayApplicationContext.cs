@@ -43,6 +43,9 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
     // The page the notification shown last opens when clicked; null when it opens nothing
     private string? _notificationPageUrl;
 
+    // What a click on the notification shown last does, when whoever showed it said
+    private Action? _notificationClicked;
+
     public TrayApplicationContext(
         MainForm mainForm,
         AppIconService appIconService,
@@ -284,6 +287,7 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
 
         // It replaces the one before, so clicking it opens nothing unless whoever shows it says otherwise
         _notificationPageUrl = null;
+        _notificationClicked = null;
         _notifyIcon.ShowBalloonTip(milliseconds, title, text, icon);
     }
 
@@ -294,11 +298,17 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
             _notificationPageUrl = null;
             OpenPage(url);
         }
+        else if (_notificationClicked is { } clicked)
+        {
+            _notificationClicked = null;
+            clicked();
+        }
     }
 
     private void Notification_Requested(object? sender, TrayNotificationModel notification)
     {
         ShowBalloon(notification.Title, notification.Text, notification.Icon);
+        _notificationClicked = notification.Clicked;
     }
 
     private void ShowMainForm()

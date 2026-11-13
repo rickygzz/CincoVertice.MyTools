@@ -107,14 +107,40 @@ Choose Select (V), or end a text with Esc.
 
 ## Recording a video
 
-Press **Ctrl+Alt+R** (`RecordScreen`) and drag over the area to record, as for a snip. Recording starts when you release the button:
+Press **Ctrl+Alt+R** (`RecordScreen`) and drag over the area to record, as for a snip. When you release the button:
 
-- A red frame shows the area, and a small bar below it (or above, when there's no room) shows how long it has recorded. Drag the bar by its time to move it. Neither is in the video, and the bar doesn't take the focus from the program you record.
-- To stop, press **Ctrl+Alt+R** again or click **Stop** on the bar. After a moment, a dialog titled "Save recording" asks where to save the video, starting in your Videos folder with the name `Recording yyyy-MM-dd HHmmss.mp4`. Cancel deletes it.
+- A red frame shows the area, and a small bar below it (or above, when there's no room) counts down, **Starts in 3**, then shows how long it has recorded. Drag the bar by its time to move it. Neither is in the video, and the bar doesn't take the focus from the program you record.
+- **Pause** stops adding to the video, and **Resume** goes on; the time paused isn't in the video.
+- To stop, press **Ctrl+Alt+R** again or click **Stop**. Stopping during the countdown records nothing. After a moment, a dialog titled "Save recording" asks where to save, starting in your Videos folder with the name `Recording yyyy-MM-dd HHmmss.mp4`. Choose **MP4 video** or **GIF animation** as the type. Cancel deletes the recording.
+- A notification says it was saved. Click it to open the folder with the file selected.
 
-The video is an MP4 (H.264), recorded at 20 frames a second with the encoder built into Windows, using the graphics card when it can. It plays in any video player and in browsers. It has the mouse pointer, as it was on the screen, but no sound. When a program hides the pointer, as some do while you type, the video doesn't show it either. Its width and height are made even, which the encoder needs, so an area 1 pixel off loses that pixel. While the video is recorded, it's kept in your temporary folder.
+In the video:
 
-If Windows can't record, a notification says why.
+- **The mouse pointer**, as it was on the screen. When a program hides it, as some do while you type, the video doesn't show it either.
+- **Clicks**: a ring that grows and fades where you click: yellow for the left button, blue for the right, green for the middle.
+- **Shortcuts**: those you press with Ctrl, Alt or Win, and keys such as Enter, Esc, Tab and F1 to F24, in the bottom left corner, as `Ctrl+Shift+P`. What you type is never shown, so a password or message you type doesn't end up in the video.
+
+An MP4 is H.264, made with the encoder built into Windows, using the graphics card when it can; it plays in any video player and in browsers. A GIF is made from the video once you save it, at fewer frames a second and at most 800 pixels wide by default, and plays over and over; it's handy to paste into chats and documents, but its colors are fewer and its file larger. Neither has sound. Width and height are made even, which the encoder needs, so an area 1 pixel off loses that pixel. While it's recorded, the video is kept in your temporary folder.
+
+If Windows can't record, or the file can't be saved, a notification says why.
+
+### recording.cfg
+
+`config\recording.cfg` is created with the defaults the first time you record, and read at each recording, so a change applies at the next one. It's in the config editor's file list.
+
+| Setting | Meaning | Allowed | Default |
+|---|---|---|---|
+| `FramesPerSecond` | How smooth the video is; more makes larger files | 5 to 30 | 20 |
+| `Quality` | How sharp, against how large the file is | `Low`, `Medium`, `High` | `Medium` |
+| `MaxMinutes` | Stops by itself after this long, then asks where to save | 0 to 240; 0 for never | 0 |
+| `Countdown` | Seconds counted down before it starts | 0 to 10; 0 for none | 3 |
+| `ShowClicks` | Show a ring where you click | `true`, `false` | `true` |
+| `ShowKeys` | Show the shortcuts you press | `true`, `false` | `true` |
+| `Folder` | Where the save dialog starts; `%USERPROFILE%`-style variables work | a folder that exists; empty for Videos | empty |
+| `GifFramesPerSecond` | Frames a second kept when you save as a GIF | 2 to 20 | 10 |
+| `GifMaxWidth` | A wider GIF is made smaller, in pixels | 200 to 1920 | 800 |
+
+A value that can't be used is shown in a notification titled `recording.cfg` when you record, and squiggled in the config editor; that setting keeps its default.
 
 ## Copying the text in a snip
 

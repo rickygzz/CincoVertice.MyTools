@@ -14,4 +14,12 @@ public sealed class TrayNotificationService
     {
         Requested?.Invoke(this, new TrayNotificationModel(title, text, icon));
     }
+
+    /// <param name="title">Its title.</param>
+    /// <param name="text">What it says.</param>
+    /// <param name="clicked">What a click on it does, e.g. show a file in its folder.</param>
+    public void Show(string title, string text, Action clicked)
+    {
+        Requested?.Invoke(this, new TrayNotificationModel(title, text, ToolTipIcon.Info, clicked));
+    }
 }

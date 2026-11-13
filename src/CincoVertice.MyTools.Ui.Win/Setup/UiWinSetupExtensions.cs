@@ -106,6 +106,7 @@ public static class UiWinSetupExtensions
             sp.GetRequiredService<ActivitySettingsService>(),
             sp.GetRequiredService<StartupConfigService>(),
             sp.GetRequiredService<ZonesConfigService>(),
+            sp.GetRequiredService<RecordingSettingsService>(),
             () => sp.GetRequiredService<AppActionCatalog>().GetActions().ToList(),
             ScriptCatalog.FolderPath));
         services.AddSingleton<IEditableFileLanguage>(sp => new EditableFileLanguage(
@@ -119,6 +120,7 @@ public static class UiWinSetupExtensions
         services.AddSingleton<SnipRegionAction>();
         services.AddSingleton<SnipAndEditAction>();
         services.AddSingleton<SnipTextAction>();
+        services.AddSingleton(_ => new RecordingSettingsService(RecordingSettingsService.DefaultFilePath));
         services.AddSingleton<RecordScreenAction>();
         services.AddSingleton<IDiagramFileStore, SvgDiagramFileStore>();
         services.AddSingleton<IDiagramEditorSettingsStore>(_ =>

@@ -5,6 +5,7 @@ using CincoVertice.MyTools.Ui.ConfigEditor.Interfaces;
 using CincoVertice.MyTools.Ui.ConfigEditor.Models;
 using CincoVertice.MyTools.Ui.Win.Shell.Models;
 using CincoVertice.MyTools.Ui.Win.Shell.Services.Config;
+using CincoVertice.MyTools.Ui.Win.Snipping.Services;
 using CincoVertice.MyTools.Ui.Win.Zones.Services;
 
 namespace CincoVertice.MyTools.Ui.Win.ConfigEditor.Services;
@@ -34,6 +35,7 @@ public sealed class EditableFileLanguage : IEditableFileLanguage
         EditableFileKind.ActivitySettings => InLineOrder(ActivitySettingsReader.Read(text).LineProblems),
         EditableFileKind.StartupActions => InLineOrder(StartupConfigReader.Read(text, _actionNames()).LineProblems),
         EditableFileKind.WindowZones => InLineOrder(ZonesConfigReader.Read(text).LineProblems),
+        EditableFileKind.RecordingSettings => InLineOrder(RecordingSettingsReader.Read(text).LineProblems),
         _ => ScriptEngine.FindSyntaxError(text) is ScriptException error
             ? [new EditableFileProblemModel(error.Line, error.Message, error.Column)]
             : [],
