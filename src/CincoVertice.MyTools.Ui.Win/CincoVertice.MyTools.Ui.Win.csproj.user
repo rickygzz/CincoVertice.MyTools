@@ -26,6 +26,12 @@
     <Compile Update="Snipping\EmojiPaletteControl.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Update="Snipping\RecordingBarForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Snipping\RecordingFrameForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Snipping\SnipEditorForm.cs">
       <SubType>Form</SubType>
     </Compile>

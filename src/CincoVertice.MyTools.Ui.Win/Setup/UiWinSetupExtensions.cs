@@ -119,6 +119,7 @@ public static class UiWinSetupExtensions
         services.AddSingleton<SnipRegionAction>();
         services.AddSingleton<SnipAndEditAction>();
         services.AddSingleton<SnipTextAction>();
+        services.AddSingleton<RecordScreenAction>();
         services.AddSingleton<IDiagramFileStore, SvgDiagramFileStore>();
         services.AddSingleton<IDiagramEditorSettingsStore>(_ =>
             new JsonFileDiagramEditorSettingsStore(OpenDiagramEditorAction.SettingsFilePath));
@@ -156,6 +157,7 @@ public static class UiWinSetupExtensions
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<SnipRegionAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<SnipAndEditAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<SnipTextAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<RecordScreenAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<MoveToZoneAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<MoveToNextZoneAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<MoveToPreviousZoneAction>());

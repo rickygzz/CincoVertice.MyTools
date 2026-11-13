@@ -8,6 +8,7 @@
 | Ctrl+Alt+S | Snip, then edit |
 | Ctrl+Alt+Shift+S | Snip to the clipboard |
 | Ctrl+Alt+T | Snip, then copy the text in it |
+| Ctrl+Alt+R | Record a video of an area; again to stop |
 | Ctrl+Alt+D | New diagram editor window |
 | Ctrl+Alt+M | Turn the mouse mover on or off |
 

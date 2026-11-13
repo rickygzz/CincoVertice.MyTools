@@ -1,12 +1,13 @@
 # Snipping and the Snip Editor
 
-There are three ways to take a snip.
+There are three ways to take a snip, and one to record a video.
 
 | Hotkey | Action | Result |
 |---|---|---|
 | **Ctrl+Alt+Shift+S** | `SnipRegion` | The area you select is placed on the clipboard as an image. |
 | **Ctrl+Alt+S** | `SnipAndEdit` | The same snip, then the **Snip editor** opens so you can mark it up. |
 | **Ctrl+Alt+T** | `SnipText` | The text in the area you select is placed on the clipboard as text. See [Copying the text in a snip](#copying-the-text-in-a-snip). |
+| **Ctrl+Alt+R** | `RecordScreen` | Records a video of the area you select, until you press Ctrl+Alt+R again. See [Recording a video](#recording-a-video). |
 
 ## Selecting an area
 
@@ -103,6 +104,17 @@ Choose Select (V), or end a text with Esc.
 - **Right-click** a drawing for the menu "Reset to original" and "Delete". "Reset to original" returns that one drawing to how it was first drawn, however many changes it had. It is enabled only when the drawing has changed.
 - While a drawing is selected, the toolbar shows and changes its color, size, transparency, arrow heads and text edge instead of the tool's.
 - Every change can be undone with Ctrl+Z. Esc deselects.
+
+## Recording a video
+
+Press **Ctrl+Alt+R** (`RecordScreen`) and drag over the area to record, as for a snip. Recording starts when you release the button:
+
+- A red frame shows the area, and a small bar below it (or above, when there's no room) shows how long it has recorded. Drag the bar by its time to move it. Neither is in the video, and the bar doesn't take the focus from the program you record.
+- To stop, press **Ctrl+Alt+R** again or click **Stop** on the bar. After a moment, a dialog titled "Save recording" asks where to save the video, starting in your Videos folder with the name `Recording yyyy-MM-dd HHmmss.mp4`. Cancel deletes it.
+
+The video is an MP4 (H.264), recorded at 20 frames a second with the encoder built into Windows, using the graphics card when it can. It plays in any video player and in browsers. It has no sound, and the mouse pointer isn't in it yet. Its width and height are made even, which the encoder needs, so an area 1 pixel off loses that pixel. While the video is recorded, it's kept in your temporary folder.
+
+If Windows can't record, a notification says why.
 
 ## Copying the text in a snip
 

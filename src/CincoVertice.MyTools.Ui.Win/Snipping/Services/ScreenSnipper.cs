@@ -36,7 +36,46 @@ public sealed class ScreenSnipper
         }
     }
 
+    /// <summary>Lets the user drag a rectangle over the frozen screen, as for a snip, e.g. to record it.</summary>
+    /// <returns>The area, in physical screen pixels; null when cancelled or another snip is open.</returns>
+    public async Task<Rectangle?> SelectAreaAsync()
+    {
+        if (_isSnipping)
+        {
+            return null;
+        }
+
+        _isSnipping = true;
+
+        try
+        {
+            (Bitmap screenshot, Rectangle bounds, Rectangle? selection) = await SelectOnceAsync();
+            screenshot.Dispose();
+
+            return selection is Rectangle area ? area with { X = area.X + bounds.X, Y = area.Y + bounds.Y } : null;
+        }
+        finally
+        {
+            _isSnipping = false;
+        }
+    }
+
     private static async Task<Bitmap?> SnipOnceAsync()
+    {
+        (Bitmap screenshot, _, Rectangle? selection) = await SelectOnceAsync();
+
+        using (screenshot)
+        {
+            // 24 bits: an alpha channel pastes as black or transparent in some programs
+            return selection is Rectangle area ? screenshot.Clone(area, PixelFormat.Format24bppRgb) : null;
+        }
+    }
+
+    /// <returns>
+    ///     The frozen screen, which the caller disposes; where it is on the screen; and the part the user selected, in
+    ///     the screenshot's pixels, or null when cancelled.
+    /// </returns>
+    private static async Task<(Bitmap Screenshot, Rectangle Bounds, Rectangle? Selection)> SelectOnceAsync()
     {
         Rectangle bounds;
         Bitmap screenshot;
@@ -49,26 +88,20 @@ public sealed class ScreenSnipper
             screenshot = ScreenCapture.Capture(bounds);
         }
 
-        using (screenshot)
+        SnipOverlayForm overlay;
+        SnipPresenter presenter;
+
+        // The overlay keeps the DPI awareness it's created with, so its pixels are the screenshot's pixels
+        using (DpiAwarenessScope.PerMonitorV2())
         {
-            SnipOverlayForm overlay;
-            SnipPresenter presenter;
+            overlay = new SnipOverlayForm(screenshot, bounds);
+            presenter = new SnipPresenter(overlay, screenshot.Size, TimeProvider.System);
+            overlay.Show();
+        }
 
-            // The overlay keeps the DPI awareness it's created with, so its pixels are the screenshot's pixels
-            using (DpiAwarenessScope.PerMonitorV2())
-            {
-                overlay = new SnipOverlayForm(screenshot, bounds);
-                presenter = new SnipPresenter(overlay, screenshot.Size, TimeProvider.System);
-                overlay.Show();
-            }
-
-            using (overlay)
-            {
-                Rectangle? selection = await presenter.Completion;
-
-                // 24 bits: an alpha channel pastes as black or transparent in some programs
-                return selection is Rectangle area ? screenshot.Clone(area, PixelFormat.Format24bppRgb) : null;
-            }
+        using (overlay)
+        {
+            return (screenshot, bounds, await presenter.Completion);
         }
     }
 }
