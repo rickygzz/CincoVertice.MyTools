@@ -156,7 +156,7 @@ public class DiagramEditorFormTests
     {
         // Arrange
         using var form = new DiagramEditorForm();
-        var presenter = new DiagramEditorPresenter(form, new NoStore(), new NoSettings());
+        var presenter = new DiagramEditorPresenter(form, new NoStore(), new NoSettings(), new NoExporter());
         var list = (ToolStripComboBox)typeof(DiagramEditorForm)
             .GetField("TextOutlineWidthComboBox", BindingFlags.NonPublic | BindingFlags.Instance)!
             .GetValue(form)!;
@@ -187,7 +187,7 @@ public class DiagramEditorFormTests
     {
         // Every tool button's tag, the palettes and the lists are read here
         using var form = new DiagramEditorForm();
-        var presenter = new DiagramEditorPresenter(form, new NoStore(), new NoSettings());
+        var presenter = new DiagramEditorPresenter(form, new NoStore(), new NoSettings(), new NoExporter());
 
         presenter.Start();
 
@@ -354,7 +354,7 @@ public class DiagramEditorFormTests
     {
         // Arrange
         using var form = new DiagramEditorForm();
-        new DiagramEditorPresenter(form, new NoStore(), new NoSettings()).Start();
+        new DiagramEditorPresenter(form, new NoStore(), new NoSettings(), new NoExporter()).Start();
 
         // Act: from a file edited by hand, say; a field's value out of its range would throw
         form.ShowProperties(new DiagramPropertiesModel(
@@ -572,5 +572,12 @@ public class DiagramEditorFormTests
         public DiagramModel Load(string path) => DiagramModel.Empty;
 
         public string? VersionOf(string path) => null;
+    }
+
+    private sealed class NoExporter : IDiagramPdfExporter
+    {
+        public void Export(string path, DiagramModel diagram)
+        {
+        }
     }
 }

@@ -60,6 +60,7 @@ partial class DiagramEditorForm
         OpenMenuItem = new ToolStripMenuItem();
         SaveMenuItem = new ToolStripMenuItem();
         SaveAsMenuItem = new ToolStripMenuItem();
+        ExportPdfMenuItem = new ToolStripMenuItem();
         ExitSeparator = new ToolStripSeparator();
         ExitMenuItem = new ToolStripMenuItem();
         FileSeparator = new ToolStripSeparator();
@@ -332,10 +333,10 @@ partial class DiagramEditorForm
         // FileDropDownButton
         //
         FileDropDownButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
-        FileDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { NewMenuItem, OpenMenuItem, SaveMenuItem, SaveAsMenuItem, ExitSeparator, ExitMenuItem });
+        FileDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { NewMenuItem, OpenMenuItem, SaveMenuItem, SaveAsMenuItem, ExportPdfMenuItem, ExitSeparator, ExitMenuItem });
         FileDropDownButton.Name = "FileDropDownButton";
         FileDropDownButton.Text = "File";
-        FileDropDownButton.ToolTipText = "New, open, save and close";
+        FileDropDownButton.ToolTipText = "New, open, save, export and close";
         //
         // NewMenuItem
         //
@@ -372,6 +373,15 @@ partial class DiagramEditorForm
         SaveAsMenuItem.Text = "Save as...";
         SaveAsMenuItem.ToolTipText = "Save under another name";
         SaveAsMenuItem.Click += CommandButton_Click;
+        //
+        // ExportPdfMenuItem
+        //
+        ExportPdfMenuItem.Name = "ExportPdfMenuItem";
+        ExportPdfMenuItem.ShortcutKeyDisplayString = "Ctrl+E";
+        ExportPdfMenuItem.Tag = "ExportPdf";
+        ExportPdfMenuItem.Text = "Export as PDF...";
+        ExportPdfMenuItem.ToolTipText = "Save a copy as a PDF file, to share or print";
+        ExportPdfMenuItem.Click += CommandButton_Click;
         //
         // ExitSeparator
         //
@@ -1067,6 +1077,7 @@ partial class DiagramEditorForm
     private ToolStripMenuItem OpenMenuItem;
     private ToolStripMenuItem SaveMenuItem;
     private ToolStripMenuItem SaveAsMenuItem;
+    private ToolStripMenuItem ExportPdfMenuItem;
     private ToolStripSeparator ExitSeparator;
     private ToolStripMenuItem ExitMenuItem;
     private ToolStripSeparator FileSeparator;

@@ -15,13 +15,12 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Services;
 public static class DiagramSvg
 {
     private const string MetadataId = "mytools-diagram";
-    private const int Margin = 20;
 
     private static readonly XNamespace _svg = "http://www.w3.org/2000/svg";
 
     public static string Write(DiagramModel diagram)
     {
-        Rectangle area = AreaOf(diagram);
+        Rectangle area = DiagramArea.Of(diagram);
         var root = new XElement(
             _svg + "svg",
             new XAttribute("viewBox", $"{area.X} {area.Y} {area.Width} {area.Height}"),
@@ -95,72 +94,6 @@ public static class DiagramSvg
     private static string Number(float value) => value.ToString("0.##", CultureInfo.InvariantCulture);
 
     private static string Hex(Color color) => $"#{color.R:X2}{color.G:X2}{color.B:X2}";
-
-    /// <summary>Around everything, including text and lines that go past the shapes, with a margin.</summary>
-    private static Rectangle AreaOf(DiagramModel diagram)
-    {
-        if (diagram.Shapes.Count == 0)
-        {
-            return new Rectangle(0, 0, 100, 100);
-        }
-
-        RectangleF area = diagram.Shapes
-            .Select(BoundsWithText)
-            .Aggregate(RectangleF.Union);
-
-        foreach (DiagramConnectorModel connector in diagram.Connectors)
-        {
-            if (DiagramRouter.PathOf(connector, diagram) is not { } path)
-            {
-                continue;
-            }
-
-            IEnumerable<PointF> points = path.Points
-                .Concat(path.StartHead ?? [])
-                .Concat(path.EndHead ?? []);
-
-            foreach (PointF point in points)
-            {
-                area = RectangleF.Union(area, new RectangleF(point, SizeF.Empty));
-            }
-
-            if (connector.Label.Length > 0)
-            {
-                area = RectangleF.Union(
-                    area,
-                    DiagramTextLayout.LayoutAt(connector.Label, path.LabelCenter, connector.Style.FontSize).Bounds);
-            }
-        }
-
-        // Half of a line's width goes outside what it follows
-        int widestLine = diagram.Shapes.Select(shape => shape.Style.LineWidth)
-            .Concat(diagram.Connectors.Select(connector => connector.Style.LineWidth))
-            .Max();
-        int widestTextOutline = diagram.Shapes.Select(shape => shape.Style.TextOutlineWidth)
-            .Concat(diagram.Connectors.Select(connector => connector.Style.TextOutlineWidth))
-            .Max();
-        int margin = Math.Max(Margin, Math.Max(widestLine / 2, widestTextOutline) + 1);
-        var whole = Rectangle.Ceiling(area);
-
-        whole.Inflate(margin, margin);
-
-        return whole;
-    }
-
-    /// <summary>A shape's text isn't cut at its edges, so it can go past them.</summary>
-    private static RectangleF BoundsWithText(DiagramShapeModel shape)
-    {
-        if (shape.Text.Length == 0)
-        {
-            return shape.Bounds;
-        }
-
-        RectangleF textArea = DiagramFigures.TextArea(shape.Kind, shape.Bounds);
-
-        return RectangleF.Union(
-            shape.Bounds,
-            DiagramTextLayout.Layout(shape.Text, textArea, shape.Style.FontSize).Bounds);
-    }
 
     private static XElement ShapeElement(DiagramShapeModel shape)
     {

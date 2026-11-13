@@ -14,11 +14,12 @@ public class DiagramEditorPresenterTests
     private readonly FakeView _view = new();
     private readonly FakeStore _store = new();
     private readonly FakeSettingsStore _settings = new();
+    private readonly FakeExporter _exporter = new();
     private readonly DiagramEditorPresenter _presenter;
 
     public DiagramEditorPresenterTests()
     {
-        _presenter = new DiagramEditorPresenter(_view, _store, _settings);
+        _presenter = new DiagramEditorPresenter(_view, _store, _settings, _exporter);
         _presenter.Start();
     }
 
@@ -1720,7 +1721,7 @@ public class DiagramEditorPresenterTests
     private (FakeView View, DiagramEditorPresenter Presenter) NewEditor(DiagramEditorSettingsModel? saved)
     {
         var view = new FakeView();
-        var presenter = new DiagramEditorPresenter(view, _store, new FakeSettingsStore(saved));
+        var presenter = new DiagramEditorPresenter(view, _store, new FakeSettingsStore(saved), _exporter);
 
         presenter.Start();
 
@@ -1874,7 +1875,7 @@ public class DiagramEditorPresenterTests
             Window: window));
         var view = new FakeView();
 
-        new DiagramEditorPresenter(view, _store, store).Start();
+        new DiagramEditorPresenter(view, _store, store, _exporter).Start();
 
         // Act
         view.SelectLineWidth(5);
@@ -2921,6 +2922,65 @@ public class DiagramEditorPresenterTests
     }
 
     [Fact]
+    public void ExportPdf_AsksWhere_ThenExportsTheDiagram_WhichStaysUnsaved()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.PathToExport = @"C:\Diagrams\flow.pdf";
+
+        // Act
+        _view.Command(DiagramCommand.ExportPdf);
+
+        // Assert
+        Assert.Equal("Diagram.pdf", _view.SuggestedPdfName);
+        Assert.Equal(@"C:\Diagrams\flow.pdf", _exporter.ExportedPath);
+        Assert.Same(Diagram, _exporter.Exported);
+        Assert.Null(_store.SavedPath);
+        Assert.True(_view.HasChanges);
+        Assert.Equal(DiagramEditorPresenter.UntitledName, _view.DocumentName);
+    }
+
+    [Fact]
+    public void ExportPdf_OfASavedDiagram_SuggestsItsName()
+    {
+        // Arrange
+        _view.PathToSave = @"C:\Diagrams\flow.svg";
+        _view.Command(DiagramCommand.Save);
+
+        // Act
+        _view.Command(DiagramCommand.ExportPdf);
+
+        // Assert
+        Assert.Equal("flow.pdf", _view.SuggestedPdfName);
+        Assert.Equal("flow.svg", _view.DocumentName);
+    }
+
+    [Fact]
+    public void ExportPdf_WhenTheUserCancels_ExportsNothing()
+    {
+        // Act
+        _view.Command(DiagramCommand.ExportPdf);
+
+        // Assert
+        Assert.Null(_exporter.ExportedPath);
+        Assert.Null(_view.Error);
+    }
+
+    [Fact]
+    public void ExportPdf_WhenItFails_ShowsWhy()
+    {
+        // Arrange
+        _view.PathToExport = @"C:\Diagrams\flow.pdf";
+        _exporter.Error = new UnauthorizedAccessException("Access denied.");
+
+        // Act
+        _view.Command(DiagramCommand.ExportPdf);
+
+        // Assert
+        Assert.Equal("Could not export flow.pdf: Access denied.", _view.Error);
+    }
+
+    [Fact]
     public void Save_Again_DoesntAsk()
     {
         // Arrange
@@ -3207,6 +3267,25 @@ public class DiagramEditorPresenterTests
         public string? VersionOf(string path) => Version;
     }
 
+    private sealed class FakeExporter : IDiagramPdfExporter
+    {
+        public string? ExportedPath { get; private set; }
+
+        public DiagramModel? Exported { get; private set; }
+
+        public Exception? Error { get; set; }
+
+        public void Export(string path, DiagramModel diagram)
+        {
+            if (Error is not null)
+            {
+                throw Error;
+            }
+
+            (ExportedPath, Exported) = (path, diagram);
+        }
+    }
+
     private sealed class FakeView : IDiagramEditorView
     {
         public event EventHandler<DiagramPointerModel>? PointerPressed;
@@ -3454,6 +3533,17 @@ public class DiagramEditorPresenterTests
             SuggestedName = suggestedFileName;
 
             return PathToSave;
+        }
+
+        public string? PathToExport { get; set; }
+
+        public string? SuggestedPdfName { get; private set; }
+
+        public string? AskExportPdfPath(string suggestedFileName)
+        {
+            SuggestedPdfName = suggestedFileName;
+
+            return PathToExport;
         }
 
         public string? AskOpenPath() => PathToOpen;

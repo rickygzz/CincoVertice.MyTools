@@ -14,17 +14,20 @@ public sealed class OpenDiagramEditorAction : IAppAction
 {
     private readonly IDiagramFileStore _fileStore;
     private readonly IDiagramEditorSettingsStore _settingsStore;
+    private readonly IDiagramPdfExporter _pdfExporter;
     private readonly RobotoFontInstaller _fontInstaller;
     private readonly HelpWindowService _help;
 
     public OpenDiagramEditorAction(
         IDiagramFileStore fileStore,
         IDiagramEditorSettingsStore settingsStore,
+        IDiagramPdfExporter pdfExporter,
         RobotoFontInstaller fontInstaller,
         HelpWindowService help)
     {
         _fileStore = fileStore;
         _settingsStore = settingsStore;
+        _pdfExporter = pdfExporter;
         _fontInstaller = fontInstaller;
         _help = help;
     }
@@ -44,7 +47,7 @@ public sealed class OpenDiagramEditorAction : IAppAction
         // Disposed itself when closed
         var editor = new DiagramEditorForm();
         _help.OpenOnF1(editor, () => HelpTopics.DiagramEditor);
-        var presenter = new DiagramEditorPresenter(editor, _fileStore, _settingsStore);
+        var presenter = new DiagramEditorPresenter(editor, _fileStore, _settingsStore, _pdfExporter);
 
         presenter.Start();
         editor.Show();

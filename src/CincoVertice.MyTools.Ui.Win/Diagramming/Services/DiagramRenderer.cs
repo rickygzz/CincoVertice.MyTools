@@ -198,22 +198,48 @@ public static class DiagramRenderer
         }
     }
 
-    private static void DrawText(Graphics graphics, DiagramTextBlockModel block, DiagramStyleModel style)
+    /// <summary>The letters of a text as a path, placed as they're drawn; the caller disposes it.</summary>
+    public static GraphicsPath TextPath(DiagramTextBlockModel block, Font font)
     {
-        using Font font = DiagramFonts.Create(style.FontFamily, style.FontSize);
-        using var brush = new SolidBrush(style.TextColor);
-        using var format = new StringFormat(StringFormat.GenericTypographic)
+        using StringFormat format = CreateTextFormat();
+
+        // Winding: a letter can be made of overlapping pieces, and the default fill leaves a hole where they overlap
+        var path = new GraphicsPath(FillMode.Winding);
+
+        for (int i = 0; i < block.Lines.Count; i++)
+        {
+            path.AddString(
+                block.Lines[i],
+                font.FontFamily,
+                (int)font.Style,
+                font.Size,
+                new PointF(block.CenterX, block.Top + block.LineHeight * i),
+                format);
+        }
+
+        return path;
+    }
+
+    private static StringFormat CreateTextFormat() =>
+        new(StringFormat.GenericTypographic)
         {
             Alignment = StringAlignment.Center,
             FormatFlags = StringFormatFlags.NoClip | StringFormatFlags.MeasureTrailingSpaces,
         };
 
+    private static void DrawText(Graphics graphics, DiagramTextBlockModel block, DiagramStyleModel style)
+    {
+        using Font font = DiagramFonts.Create(style.FontFamily, style.FontSize);
+        using var brush = new SolidBrush(style.TextColor);
+
         if (style.TextOutlineWidth > 0)
         {
-            DrawOutlinedLines(graphics, block, style, font, brush, format);
+            DrawOutlinedLines(graphics, block, style, font, brush);
 
             return;
         }
+
+        using StringFormat format = CreateTextFormat();
 
         for (int i = 0; i < block.Lines.Count; i++)
         {
@@ -227,22 +253,9 @@ public static class DiagramRenderer
         DiagramTextBlockModel block,
         DiagramStyleModel style,
         Font font,
-        Brush brush,
-        StringFormat format)
+        Brush brush)
     {
-        // Winding: a letter can be made of overlapping pieces, and the default fill leaves a hole where they overlap
-        using var path = new GraphicsPath(FillMode.Winding);
-
-        for (int i = 0; i < block.Lines.Count; i++)
-        {
-            path.AddString(
-                block.Lines[i],
-                font.FontFamily,
-                (int)font.Style,
-                font.Size,
-                new PointF(block.CenterX, block.Top + block.LineHeight * i),
-                format);
-        }
+        using GraphicsPath path = TextPath(block, font);
 
         // Twice as wide, since the letters cover the inner half of the line
         using var pen = new Pen(style.TextOutlineColor, style.TextOutlineWidth * 2) { LineJoin = LineJoin.Round };

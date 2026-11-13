@@ -64,6 +64,7 @@ The Properties panel (show or hide with **F4**) has these fields: Text, X, Y, Wi
 |---|---|
 | Ctrl+N / Ctrl+O | New / open |
 | Ctrl+S / Ctrl+Shift+S | Save / save as |
+| Ctrl+E | Export as PDF |
 | Ctrl+Z | Undo |
 | Ctrl+Y or Ctrl+Shift+Z | Redo |
 | Ctrl+X, Ctrl+C, Ctrl+V | Cut, copy, paste |
@@ -85,15 +86,24 @@ The zoom label shows the percentage; its tooltip reads "Ctrl+wheel to zoom. Clic
 
 ## Saving and opening
 
-- The toolbar's **File** menu has **New** (Ctrl+N), **Open...** (Ctrl+O), **Save** (Ctrl+S), **Save as...** (Ctrl+Shift+S) and **Exit**. Exit closes this window, as its X button does, and asks about unsaved changes; the rest of My Tools keeps running.
+- The toolbar's **File** menu has **New** (Ctrl+N), **Open...** (Ctrl+O), **Save** (Ctrl+S), **Save as...** (Ctrl+Shift+S), **Export as PDF...** (Ctrl+E) and **Exit**. Exit closes this window, as its X button does, and asks about unsaved changes; the rest of My Tools keeps running.
 - The dialogs are "Save diagram" and "Open diagram", with the filter "SVG image (*.svg)". The suggested name is `Diagram.svg`.
 - A saved diagram is a normal SVG image that any browser can show. It carries the diagram's data inside, so only My Tools can edit it again. A failed save leaves the old file as it was.
 - **Only diagrams made by this editor can be opened.** Other files give `This isn't an SVG file.` or `This SVG file wasn't made by the diagram editor, so it can't be edited here.`
 - Messages from the editor, in boxes titled "Diagram editor":
   - "Save the changes to <name>?" (Yes, No or Cancel), shown when closing or leaving unsaved work.
   - "<name> was changed elsewhere since it was opened here. Replace it with this diagram?" (Yes or No).
-  - `Could not open <file name>: <message>` and `Could not save <file name>: <message>`.
-- There is no export to PNG and no printing. SVG is the only file format.
+  - `Could not open <file name>: <message>`, `Could not save <file name>: <message>` and `Could not export <file name>: <message>`.
+- There is no export to PNG and no printing from the editor; print the PDF instead.
+
+### Export as PDF
+
+**Export as PDF...** (Ctrl+E) writes a copy of the diagram as a PDF file, to share or print. The dialog is "Export as PDF", with the filter "PDF document (*.pdf)"; the suggested name is the diagram's, such as `flow.pdf`, or `Diagram.pdf` for a diagram never saved.
+
+- The page is as large as the SVG image would be, around everything with a margin, at the size the diagram has at 100% zoom.
+- Shapes, lines and arrows are drawn as lines and curves, so they stay sharp when you zoom in or print.
+- Text keeps the font it has in the editor, even on a computer without that font, because each letter is drawn as its outline. So the text can't be selected, copied or searched in the PDF.
+- The export doesn't save the diagram: the title keeps its `*` until you save, and the editor can't open the PDF. A failed export leaves the old file as it was.
 
 The editor remembers your last style, routing, arrow heads, whether the Properties panel is shown, and the window size in `config\diagrameditor.json`.
 

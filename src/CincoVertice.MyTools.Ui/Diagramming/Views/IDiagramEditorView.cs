@@ -134,6 +134,9 @@ public interface IDiagramEditorView
     /// <returns>The file to save to; null when the user cancels.</returns>
     string? AskSavePath(string suggestedFileName);
 
+    /// <returns>The PDF file to export to; null when the user cancels.</returns>
+    string? AskExportPdfPath(string suggestedFileName);
+
     /// <returns>The file to open; null when the user cancels.</returns>
     string? AskOpenPath();
 

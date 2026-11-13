@@ -52,6 +52,7 @@ public sealed class DiagramEditorPresenter
 
     private readonly IDiagramEditorView _view;
     private readonly IDiagramFileStore _fileStore;
+    private readonly IDiagramPdfExporter _pdfExporter;
     private readonly IDiagramEditorSettingsStore _settingsStore;
     private readonly Stack<DiagramModel> _undo = new();
     private readonly Stack<DiagramModel> _redo = new();
@@ -111,14 +112,17 @@ public sealed class DiagramEditorPresenter
     ///     Where the last used style and the window's layout are kept: the editor starts with the ones saved last, and
     ///     saves them on every change.
     /// </param>
+    /// <param name="pdfExporter">Writes the diagram as a PDF file.</param>
     public DiagramEditorPresenter(
         IDiagramEditorView view,
         IDiagramFileStore fileStore,
-        IDiagramEditorSettingsStore settingsStore)
+        IDiagramEditorSettingsStore settingsStore,
+        IDiagramPdfExporter pdfExporter)
     {
         _view = view;
         _fileStore = fileStore;
         _settingsStore = settingsStore;
+        _pdfExporter = pdfExporter;
 
         Apply(settingsStore.Load());
 
@@ -1128,6 +1132,9 @@ public sealed class DiagramEditorPresenter
             case DiagramCommand.SaveAs:
                 SaveAs();
                 break;
+            case DiagramCommand.ExportPdf:
+                ExportPdf();
+                break;
             case DiagramCommand.Undo:
                 Undo();
                 break;
@@ -1292,6 +1299,26 @@ public sealed class DiagramEditorPresenter
         Refresh();
 
         return true;
+    }
+
+    /// <summary>Writes a copy to share or print; the diagram stays saved, or not, where it was.</summary>
+    private void ExportPdf()
+    {
+        string suggested = Path.ChangeExtension(_path is null ? "Diagram" : Path.GetFileName(_path), ".pdf");
+
+        if (_view.AskExportPdfPath(suggested) is not string path)
+        {
+            return;
+        }
+
+        try
+        {
+            _pdfExporter.Export(path, _diagram);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _view.ShowError($"Could not export {Path.GetFileName(path)}: {ex.Message}");
+        }
     }
 
     /// <returns>True when the diagram can be left: nothing is lost, or the user said so.</returns>

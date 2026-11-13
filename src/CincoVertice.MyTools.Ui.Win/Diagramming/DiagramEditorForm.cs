@@ -355,6 +355,19 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         return dialog.ShowDialog(this) == DialogResult.OK ? dialog.FileName : null;
     }
 
+    public string? AskExportPdfPath(string suggestedFileName)
+    {
+        using var dialog = new SaveFileDialog
+        {
+            DefaultExt = "pdf",
+            FileName = suggestedFileName,
+            Filter = "PDF document (*.pdf)|*.pdf",
+            Title = "Export as PDF",
+        };
+
+        return dialog.ShowDialog(this) == DialogResult.OK ? dialog.FileName : null;
+    }
+
     public string? AskOpenPath()
     {
         using var dialog = new OpenFileDialog
@@ -1011,6 +1024,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
             (Keys.Control, Keys.O) => DiagramCommand.Open,
             (Keys.Control, Keys.S) => DiagramCommand.Save,
             (Keys.Control | Keys.Shift, Keys.S) => DiagramCommand.SaveAs,
+            (Keys.Control, Keys.E) => DiagramCommand.ExportPdf,
             (Keys.Control, Keys.Z) => DiagramCommand.Undo,
             (Keys.Control, Keys.Y) or (Keys.Control | Keys.Shift, Keys.Z) => DiagramCommand.Redo,
             (Keys.Control, Keys.X) => DiagramCommand.Cut,

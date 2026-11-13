@@ -9,6 +9,9 @@ public enum DiagramCommand
     Open,
     Save,
     SaveAs,
+
+    /// <summary>Writes a copy of the diagram as a PDF file, which can't be opened here again.</summary>
+    ExportPdf,
     Undo,
     Redo,
     Cut,
