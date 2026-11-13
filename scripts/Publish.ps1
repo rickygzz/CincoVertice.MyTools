@@ -91,8 +91,9 @@ finally {
 
 Write-Host "Published $version to $outputFolder" -ForegroundColor Green
 
-# The user guide goes next to the exe as docs\user-guide, the path new scripts' comments give. Copied fresh, so a page
-# removed from the guide isn't left over from an earlier publish
+# The user guide goes next to the exe as docs\user-guide, the path new scripts' comments give, where the help window
+# reads it. The publish copies it there too, but adds to what's there: copied fresh here, so a page removed from the
+# guide isn't left over from an earlier publish
 $guideFolder = Join-Path $outputFolder 'docs\user-guide'
 
 if (Test-Path $guideFolder) {

@@ -159,6 +159,8 @@ public static class UiWinSetupExtensions
 
         // The user guide, docs\user-guide next to the exe
         services.AddSingleton<IHelpPageStore>(_ => new HelpPageStore(HelpPageStore.DefaultFolder));
+        services.AddSingleton<IHelpSettingsStore>(_ =>
+            new JsonFileHelpSettingsStore(HelpWindowService.SettingsFilePath));
         services.AddSingleton<HelpWindowService>();
         services.AddSingleton<ShowHelpAction>();
 

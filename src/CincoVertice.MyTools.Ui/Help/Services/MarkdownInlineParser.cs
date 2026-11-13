@@ -6,207 +6,260 @@ using CincoVertice.MyTools.Ui.Help.Models;
 namespace CincoVertice.MyTools.Ui.Help.Services;
 
 /// <summary>
-///     The text of a Markdown block, as pieces of one style each: **bold**, *italic*, `code`, [links](page.md), web
-///     addresses, &lt;br&gt; and line breaks. Anything it doesn't know stays as written.
+///     The text of a Markdown block, as pieces of one style each: **bold**, *italic*, `code`, [links](page.md),
+///     [links][by-name] to a page's link list, web addresses, &lt;br&gt; and line breaks. Anything it doesn't know
+///     stays as written.
 /// </summary>
-public static partial class MarkdownInlineParser
+public sealed partial class MarkdownInlineParser
 {
-    public static IReadOnlyList<MarkdownInlineModel> Parse(string text)
-    {
-        List<MarkdownInlineModel> pieces = [];
-        Parse(text, MarkdownInlineStyle.None, null, pieces);
+    private static readonly Dictionary<string, string> _noReferences = [];
 
-        return Merge(pieces);
+    private readonly IReadOnlyDictionary<string, string> _references;
+    private readonly List<MarkdownInlineModel> _pieces = [];
+
+    private MarkdownInlineParser(IReadOnlyDictionary<string, string> references)
+    {
+        _references = references;
     }
 
-    private static void Parse(string text, MarkdownInlineStyle style, string? link, List<MarkdownInlineModel> pieces)
+    /// <param name="references">
+    ///     The page's link list, "[name]: target" lines, by <see cref="ReferenceName"/>; none when null.
+    /// </param>
+    public static IReadOnlyList<MarkdownInlineModel> Parse(
+        string text,
+        IReadOnlyDictionary<string, string>? references = null)
     {
-        var plain = new StringBuilder();
+        var parser = new MarkdownInlineParser(references ?? _noReferences);
+        parser.Read(new InlineLevel(text, MarkdownInlineStyle.None, null));
 
-        void Flush()
+        return Merge(parser._pieces);
+    }
+
+    /// <summary>A link name as the link list keeps it: case and runs of spaces don't count.</summary>
+    public static string ReferenceName(string name) =>
+        string.Join(' ', name.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).ToLowerInvariant();
+
+    // One level of text, of one style and link: what's inside emphasis or a link is a level of its own
+    private void Read(InlineLevel level)
+    {
+        while (level.Index < level.Text.Length)
         {
-            if (plain.Length > 0)
+            if (!TryEscape(level) && !TryCode(level) && !TryTag(level) && !TryLink(level) && !TryBareLink(level)
+                && !TryEmphasis(level) && !TryEntity(level))
             {
-                pieces.Add(new MarkdownInlineModel(plain.ToString(), style, link));
-                plain.Clear();
+                level.Plain.Append(level.Text[level.Index++]);
             }
         }
 
-        int i = 0;
-
-        while (i < text.Length)
-        {
-            char character = text[i];
-
-            if (character == '\\' && i + 1 < text.Length && IsEscapable(text[i + 1]))
-            {
-                plain.Append(text[i + 1]);
-                i += 2;
-
-                continue;
-            }
-
-            if (character == '`')
-            {
-                int run = RunLength(text, i);
-                int close = FindCodeEnd(text, i + run, run);
-
-                if (close < 0)
-                {
-                    plain.Append('`', run);
-                    i += run;
-
-                    continue;
-                }
-
-                Flush();
-                pieces.Add(new MarkdownInlineModel(
-                    CodeText(text[(i + run)..close]),
-                    style | MarkdownInlineStyle.Code,
-                    link));
-                i = close + run;
-
-                continue;
-            }
-
-            if (character == '<' && TryReadTag(text, i, link, out string? tagText, out string? url, out int tagLength))
-            {
-                if (url is null)
-                {
-                    plain.Append(tagText);
-                }
-                else
-                {
-                    Flush();
-                    pieces.Add(new MarkdownInlineModel(url, style, url));
-                }
-
-                i += tagLength;
-
-                continue;
-            }
-
-            bool isImage = character == '!' && i + 1 < text.Length && text[i + 1] == '[';
-
-            if (link is null && (character == '[' || isImage)
-                && TryReadLink(text, isImage ? i + 1 : i, out string label, out string target, out int end))
-            {
-                Flush();
-
-                // An image can't be shown: its description is
-                if (isImage)
-                {
-                    Parse(label, style | MarkdownInlineStyle.Italic, null, pieces);
-                }
-                else
-                {
-                    Parse(label, style, target, pieces);
-                }
-
-                i = end;
-
-                continue;
-            }
-
-            if (link is null && character == 'h' && (i == 0 || !char.IsLetterOrDigit(text[i - 1])))
-            {
-                Match address = BareLink().Match(text, i);
-
-                if (address.Success)
-                {
-                    Flush();
-                    string bare = address.Value.TrimEnd('.', ',', ';', ':', '!', '?');
-                    pieces.Add(new MarkdownInlineModel(bare, style, bare));
-                    i += bare.Length;
-
-                    continue;
-                }
-            }
-
-            if (character is '*' or '_')
-            {
-                int run = RunLength(text, i);
-                int length = run >= 2 ? 2 : 1;
-                int close = CanOpen(text, i, run) ? FindEmphasisEnd(text, i + length, character, length) : -1;
-
-                if (close < 0)
-                {
-                    plain.Append(character, run);
-                    i += run;
-
-                    continue;
-                }
-
-                Flush();
-                MarkdownInlineStyle emphasis = length == 2 ? MarkdownInlineStyle.Bold : MarkdownInlineStyle.Italic;
-                Parse(text[(i + length)..close], style | emphasis, link, pieces);
-                i = close + length;
-
-                continue;
-            }
-
-            if (character == '&')
-            {
-                Match entity = Entity().Match(text, i);
-
-                if (entity.Success)
-                {
-                    plain.Append(WebUtility.HtmlDecode(entity.Value));
-                    i += entity.Length;
-
-                    continue;
-                }
-            }
-
-            plain.Append(character);
-            i++;
-        }
-
-        Flush();
+        Flush(level);
     }
 
-    private static bool IsEscapable(char character) => char.IsPunctuation(character) || char.IsSymbol(character);
-
-    // A code span's text: "`` `x` ``" has one space on each side only to keep the backticks apart
-    private static string CodeText(string code)
+    private void Flush(InlineLevel level)
     {
-        code = code.Replace('\n', ' ');
+        if (level.Plain.Length > 0)
+        {
+            _pieces.Add(new MarkdownInlineModel(level.Plain.ToString(), level.Style, level.Link));
+            level.Plain.Clear();
+        }
+    }
 
-        return code.Length >= 2 && code[0] == ' ' && code[^1] == ' ' && code.Trim().Length > 0 ? code[1..^1] : code;
+    private void Add(InlineLevel level, string text, MarkdownInlineStyle style, string? link)
+    {
+        Flush(level);
+        _pieces.Add(new MarkdownInlineModel(text, style, link));
+    }
+
+    // \* is a *, not emphasis
+    private static bool TryEscape(InlineLevel level)
+    {
+        string text = level.Text;
+        int i = level.Index;
+
+        if (text[i] != '\\' || i + 1 >= text.Length || !(char.IsPunctuation(text[i + 1]) || char.IsSymbol(text[i + 1])))
+        {
+            return false;
+        }
+
+        level.Plain.Append(text[i + 1]);
+        level.Index += 2;
+
+        return true;
+    }
+
+    // `code`; backticks that don't close stay as written
+    private bool TryCode(InlineLevel level)
+    {
+        string text = level.Text;
+        int i = level.Index;
+
+        if (text[i] != '`')
+        {
+            return false;
+        }
+
+        int run = RunLength(text, i);
+        int close = FindCodeEnd(text, i + run, run);
+
+        if (close < 0)
+        {
+            level.Plain.Append('`', run);
+            level.Index += run;
+
+            return true;
+        }
+
+        string code = text[(i + run)..close].Replace('\n', ' ');
+
+        // "`` `x` ``": one space on each side is only there to keep the backticks apart
+        if (code.Length >= 2 && code[0] == ' ' && code[^1] == ' ' && code.Trim().Length > 0)
+        {
+            code = code[1..^1];
+        }
+
+        Add(level, code, level.Style | MarkdownInlineStyle.Code, level.Link);
+        level.Index = close + run;
+
+        return true;
     }
 
     // <br> is a line break; <https://...> a link; any other tag stays as written
-    private static bool TryReadTag(
-        string text,
-        int start,
-        string? link,
-        out string? tagText,
-        out string? url,
-        out int length)
+    private bool TryTag(InlineLevel level)
     {
-        tagText = url = null;
-        length = 0;
-        Match tag = BreakTag().Match(text, start);
+        if (level.Text[level.Index] != '<')
+        {
+            return false;
+        }
+
+        Match tag = BreakTag().Match(level.Text, level.Index);
 
         if (tag.Success)
         {
-            tagText = "\n";
-            length = tag.Length;
+            level.Plain.Append('\n');
+            level.Index += tag.Length;
 
             return true;
         }
 
-        Match address = AngleLink().Match(text, start);
+        Match address = AngleLink().Match(level.Text, level.Index);
 
-        if (address.Success && link is null)
+        if (!address.Success || level.Link is not null)
         {
-            url = address.Groups["url"].Value;
-            length = address.Length;
+            return false;
+        }
+
+        string url = address.Groups["url"].Value;
+        Add(level, url, level.Style, url);
+        level.Index += address.Length;
+
+        return true;
+    }
+
+    // [label](target), [label][name], [label][] or [name], and images, ![description](file), whose description shows
+    private bool TryLink(InlineLevel level)
+    {
+        string text = level.Text;
+        int i = level.Index;
+        bool isImage = text[i] == '!' && i + 1 < text.Length && text[i + 1] == '[';
+
+        if (level.Link is not null || text[i] != '[' && !isImage
+            || !TryReadLink(text, isImage ? i + 1 : i, out string label, out string target, out int end))
+        {
+            return false;
+        }
+
+        Flush(level);
+
+        if (isImage)
+        {
+            Read(new InlineLevel(label, level.Style | MarkdownInlineStyle.Italic, null));
+        }
+        else
+        {
+            Read(new InlineLevel(label, level.Style, target));
+        }
+
+        level.Index = end;
+
+        return true;
+    }
+
+    // A web address in the text
+    private bool TryBareLink(InlineLevel level)
+    {
+        string text = level.Text;
+        int i = level.Index;
+
+        if (level.Link is not null || text[i] != 'h' || i > 0 && char.IsLetterOrDigit(text[i - 1]))
+        {
+            return false;
+        }
+
+        Match address = BareLink().Match(text, i);
+
+        if (!address.Success)
+        {
+            return false;
+        }
+
+        // The punctuation after it ends the sentence
+        string url = address.Value.TrimEnd('.', ',', ';', ':', '!', '?');
+        Add(level, url, level.Style, url);
+        level.Index += url.Length;
+
+        return true;
+    }
+
+    // *italic*, **bold**, _italic_, __bold__; marks that don't close stay as written
+    private bool TryEmphasis(InlineLevel level)
+    {
+        string text = level.Text;
+        int i = level.Index;
+        char mark = text[i];
+
+        if (mark is not ('*' or '_'))
+        {
+            return false;
+        }
+
+        int run = RunLength(text, i);
+        int length = run >= 2 ? 2 : 1;
+        int close = CanOpen(text, i, run) ? FindEmphasisEnd(text, i + length, mark, length) : -1;
+
+        if (close < 0)
+        {
+            level.Plain.Append(mark, run);
+            level.Index += run;
 
             return true;
         }
 
-        return false;
+        Flush(level);
+        MarkdownInlineStyle emphasis = length == 2 ? MarkdownInlineStyle.Bold : MarkdownInlineStyle.Italic;
+        Read(new InlineLevel(text[(i + length)..close], level.Style | emphasis, level.Link));
+        level.Index = close + length;
+
+        return true;
+    }
+
+    // &amp; and the like
+    private static bool TryEntity(InlineLevel level)
+    {
+        if (level.Text[level.Index] != '&')
+        {
+            return false;
+        }
+
+        Match entity = Entity().Match(level.Text, level.Index);
+
+        if (!entity.Success)
+        {
+            return false;
+        }
+
+        level.Plain.Append(WebUtility.HtmlDecode(entity.Value));
+        level.Index += entity.Length;
+
+        return true;
     }
 
     // How many of the same character there are from start
@@ -339,29 +392,60 @@ public static partial class MarkdownInlineParser
         return (-1, 0);
     }
 
-    // "[label](target)" from the "[" at start, brackets inside it included
-    private static bool TryReadLink(string text, int start, out string label, out string target, out int end)
+    // A link from the "[" at start, brackets inside its label included: to a target, or to a name in the link list
+    private bool TryReadLink(string text, int start, out string label, out string target, out int end)
     {
-        label = target = string.Empty;
+        target = string.Empty;
         end = start;
         int close = FindClosing(text, start, '[', ']');
+        label = close < 0 ? string.Empty : text[(start + 1)..close];
 
-        if (close < 0 || close + 1 >= text.Length || text[close + 1] != '(')
+        if (close < 0)
         {
             return false;
         }
 
-        int targetEnd = FindClosing(text, close + 1, '(', ')');
+        if (close + 1 < text.Length && text[close + 1] == '(' && TryReadTarget(text, close + 1, out target, out end))
+        {
+            return true;
+        }
 
-        if (targetEnd < 0)
+        // [label][name], or [label][] for the label as the name
+        if (close + 1 < text.Length && text[close + 1] == '[')
+        {
+            int nameEnd = text.IndexOf(']', close + 2);
+
+            if (nameEnd > 0)
+            {
+                string name = text[(close + 2)..nameEnd];
+                end = nameEnd + 1;
+
+                return TryFindReference(name.Length == 0 ? label : name, out target);
+            }
+        }
+
+        // [name] alone
+        end = close + 1;
+
+        return TryFindReference(label, out target);
+    }
+
+    private bool TryFindReference(string name, out string target) =>
+        _references.TryGetValue(ReferenceName(name), out target!);
+
+    // "(target)", or "(target "Title")": a title isn't part of it
+    private static bool TryReadTarget(string text, int open, out string target, out int end)
+    {
+        target = string.Empty;
+        end = open;
+        int close = FindClosing(text, open, '(', ')');
+
+        if (close < 0)
         {
             return false;
         }
 
-        label = text[(start + 1)..close];
-        target = text[(close + 2)..targetEnd].Trim();
-
-        // A title after the address, as in (page.md "Title"), isn't part of it
+        target = text[(open + 1)..close].Trim();
         int space = target.IndexOf(' ', StringComparison.Ordinal);
 
         if (space > 0)
@@ -370,7 +454,7 @@ public static partial class MarkdownInlineParser
         }
 
         target = target.TrimStart('<').TrimEnd('>');
-        end = targetEnd + 1;
+        end = close + 1;
 
         return target.Length > 0;
     }
@@ -444,4 +528,18 @@ public static partial class MarkdownInlineParser
 
     [GeneratedRegex(@"\G&(amp|lt|gt|quot|apos|nbsp|#[0-9]{1,6}|#x[0-9a-fA-F]{1,6});")]
     private static partial Regex Entity();
+
+    /// <summary>A level of text being read: its text, its style and link, and how far it's read.</summary>
+    private sealed class InlineLevel(string text, MarkdownInlineStyle style, string? link)
+    {
+        public string Text { get; } = text;
+
+        public MarkdownInlineStyle Style { get; } = style;
+
+        public string? Link { get; } = link;
+
+        public StringBuilder Plain { get; } = new();
+
+        public int Index { get; set; }
+    }
 }

@@ -1,3 +1,4 @@
+using System.Drawing;
 using CincoVertice.MyTools.Ui.Help.Models;
 using CincoVertice.MyTools.Ui.Help.Presenters;
 using Xunit;
@@ -7,6 +8,7 @@ namespace CincoVertice.MyTools.Ui.Tests.Help;
 public class HelpPresenterTests
 {
     private readonly FakeHelpView _view = new();
+    private readonly FakeHelpSettingsStore _settings = new();
 
     private readonly FakeHelpPageStore _store = new(new Dictionary<string, string>
     {
@@ -17,10 +19,86 @@ public class HelpPresenterTests
     });
 
     [Fact]
+    public void Search_ListsThePagesWithTheText_TheMostFirst_ThenInTheGuidesOrder()
+    {
+        // Arrange
+        new HelpPresenter(_view, _store, _settings).Start();
+
+        // Act: in a heading, a list and a paragraph, whatever its case
+        _view.SearchFor("  ZONES ");
+
+        // Assert
+        Assert.Equal("ZONES", _view.Search!.Value.Text);
+        Assert.Equal(
+            [
+                new HelpSearchResultModel("README.md", "User Guide", "Zones", 1),
+                new HelpSearchResultModel("01-zones.md", "Window Zones", "Window Zones", 1),
+                new HelpSearchResultModel("02-hotkeys.md", "Hotkeys", "See zones.", 1),
+            ],
+            _view.Search.Value.Results);
+    }
+
+    [Fact]
+    public void ChoosingAFoundPage_OpensIt_AtTheText_AndAnEmptySearch_ListsThePagesAgain()
+    {
+        // Arrange
+        new HelpPresenter(_view, _store, _settings).Start();
+        _view.SearchFor("usage");
+
+        // Act
+        _view.ChooseResult(Assert.Single(_view.Search!.Value.Results));
+        _view.SearchFor("");
+
+        // Assert
+        Assert.Equal(("01-zones.md", "Window Zones", null), _view.Shown[^1]);
+        Assert.Equal(["usage"], _view.Highlights);
+        Assert.Null(_view.Search);
+        Assert.Equal(4, _view.Pages.Count);
+    }
+
+    [Fact]
+    public void Closing_SavesThePageAndTheWindow_WhichTheNextOneOpensWith()
+    {
+        // Arrange
+        new HelpPresenter(_view, _store, _settings).Start("02-hotkeys.md");
+        _view.WindowBounds = new Rectangle(100, 50, 900, 700);
+        _view.IsMaximized = true;
+
+        // Act
+        _view.Close();
+        var next = new FakeHelpView();
+        var presenter = new HelpPresenter(next, _store, _settings);
+        presenter.RestoreWindow();
+        presenter.Start();
+
+        // Assert
+        Assert.Equal((new Rectangle(100, 50, 900, 700), true), next.Placed);
+        Assert.Equal(("02-hotkeys.md", "Hotkeys", null), next.Shown[^1]);
+    }
+
+    [Fact]
+    public void Start_AtAPage_OrWithALastPageNoLongerThere_DoesntUseTheLastPage()
+    {
+        // Arrange
+        _settings.Saved = new HelpSettingsModel("02-hotkeys.md", null, false);
+        var gone = new FakeHelpView();
+        var settingsOfGone = new FakeHelpSettingsStore { Saved = new HelpSettingsModel("old.md", null, false) };
+
+        // Act
+        new HelpPresenter(_view, _store, _settings).Start("01-zones.md");
+        new HelpPresenter(gone, _store, settingsOfGone).Start();
+
+        // Assert
+        Assert.Equal("01-zones.md", _view.Shown[^1].Name);
+        Assert.Equal("README.md", gone.Shown[^1].Name);
+        Assert.Empty(gone.Problems);
+    }
+
+    [Fact]
     public void Start_ListsThePages_TheContentsFirst_ByTheirTitles_AndShowsTheContents()
     {
         // Act
-        new HelpPresenter(_view, _store).Start();
+        new HelpPresenter(_view, _store, _settings).Start();
 
         // Assert
         Assert.Equal(
@@ -39,7 +117,7 @@ public class HelpPresenterTests
     public void ALink_OpensItsPage_AtItsHeading_AndBackGoesBack()
     {
         // Arrange
-        new HelpPresenter(_view, _store).Start("02-hotkeys.md");
+        new HelpPresenter(_view, _store, _settings).Start("02-hotkeys.md");
 
         // Act
         _view.ClickLink("01-zones.md#usage");
@@ -62,7 +140,7 @@ public class HelpPresenterTests
     public void ALinkToAHeadingOfThePageShown_ScrollsThere_WithoutShowingItAgain()
     {
         // Arrange
-        new HelpPresenter(_view, _store).Start("01-zones.md");
+        new HelpPresenter(_view, _store, _settings).Start("01-zones.md");
 
         // Act
         _view.ClickLink("#window-zones");
@@ -79,7 +157,7 @@ public class HelpPresenterTests
     public void BackAndForward_ShowEachPlace_ScrolledWhereItWasLeft()
     {
         // Arrange: scrolled down a page, then a link followed, and that page scrolled too
-        new HelpPresenter(_view, _store).Start("02-hotkeys.md");
+        new HelpPresenter(_view, _store, _settings).Start("02-hotkeys.md");
         _view.TopPosition = 500;
         _view.ClickLink("01-zones.md#usage");
         _view.TopPosition = 42;
@@ -98,7 +176,7 @@ public class HelpPresenterTests
     public void Start_AtAHeading_ShowsThePageThere()
     {
         // Act
-        new HelpPresenter(_view, _store).Start("01-zones.md", "usage");
+        new HelpPresenter(_view, _store, _settings).Start("01-zones.md", "usage");
 
         // Assert
         Assert.Equal([("01-zones.md", "Window Zones", "usage")], _view.Shown);
@@ -108,7 +186,7 @@ public class HelpPresenterTests
     public void AWebLink_OpensOutside()
     {
         // Arrange
-        new HelpPresenter(_view, _store).Start("01-zones.md");
+        new HelpPresenter(_view, _store, _settings).Start("01-zones.md");
 
         // Act
         _view.ClickLink("https://example.com");
@@ -124,7 +202,7 @@ public class HelpPresenterTests
     public void ALinkToNoPage_IsAProblem_AndStaysWhereItIs(string target, string problem)
     {
         // Arrange
-        new HelpPresenter(_view, _store).Start();
+        new HelpPresenter(_view, _store, _settings).Start();
 
         // Act
         _view.ClickLink(target);
@@ -139,7 +217,7 @@ public class HelpPresenterTests
     public void ChoosingAPage_AfterGoingBack_DropsWhatWasForward()
     {
         // Arrange
-        new HelpPresenter(_view, _store).Start();
+        new HelpPresenter(_view, _store, _settings).Start();
         _view.ChoosePage("01-zones.md");
         _view.Back();
 
@@ -155,7 +233,7 @@ public class HelpPresenterTests
     public void Open_TheSamePageAgain_AddsNothingToGoBackTo()
     {
         // Arrange
-        var presenter = new HelpPresenter(_view, _store);
+        var presenter = new HelpPresenter(_view, _store, _settings);
         presenter.Start();
 
         // Act
@@ -170,7 +248,7 @@ public class HelpPresenterTests
     public void Start_WithoutTheGuide_SaysWhereItShouldBe()
     {
         // Arrange
-        var presenter = new HelpPresenter(_view, new FakeHelpPageStore([]));
+        var presenter = new HelpPresenter(_view, new FakeHelpPageStore([]), _settings);
 
         // Act
         presenter.Start();

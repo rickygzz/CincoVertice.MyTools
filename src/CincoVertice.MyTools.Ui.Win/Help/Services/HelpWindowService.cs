@@ -13,16 +13,21 @@ namespace CincoVertice.MyTools.Ui.Win.Help.Services;
 public sealed class HelpWindowService
 {
     private readonly IHelpPageStore _pages;
+    private readonly IHelpSettingsStore _settings;
     private readonly AppIconService _appIcon;
 
     private HelpForm? _form;
     private HelpPresenter? _presenter;
 
-    public HelpWindowService(IHelpPageStore pages, AppIconService appIcon)
+    public HelpWindowService(IHelpPageStore pages, IHelpSettingsStore settings, AppIconService appIcon)
     {
         _pages = pages;
+        _settings = settings;
         _appIcon = appIcon;
     }
+
+    /// <summary>Where the window keeps its place and last page: config\help.json.</summary>
+    public static string SettingsFilePath { get; } = Path.Combine(AppContext.BaseDirectory, "config", "help.json");
 
     /// <param name="link">
     ///     The page to show, and a heading in it, e.g. "04-snipping.md#recordingcfg"; null for the contents, or what's
@@ -36,10 +41,11 @@ public sealed class HelpWindowService
         {
             _form = new HelpForm { Icon = _appIcon.Current };
             _form.FormClosed += Form_FormClosed;
+            _presenter = new HelpPresenter(_form, _pages, _settings);
 
-            // Shown first: the page is laid out at the window's size
+            // Where it was, then shown: the page is laid out at the window's size
+            _presenter.RestoreWindow();
             _form.Show();
-            _presenter = new HelpPresenter(_form, _pages);
             _presenter.Start(place?.Page, place?.Anchor);
         }
         else if (place?.Page is not null)

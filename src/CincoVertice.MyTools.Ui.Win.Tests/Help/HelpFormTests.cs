@@ -99,7 +99,7 @@ public sealed class HelpFormTests
         // Act and assert: forward, then round to the first, then back round to the last
         Assert.Equal(["One", "Two", "Three", "One"], Enumerable.Range(0, 4).Select(_ => Tab(form, page, true)));
         Assert.Equal("Three", Tab(form, page, false));
-        Assert.Equal("#c", (string?)Invoke(form, "LinkAtCaret"));
+        Assert.Equal("#c", form.LinkAtCaret());
     }
 
     [Fact]
@@ -121,6 +121,71 @@ public sealed class HelpFormTests
     }
 
     [Fact]
+    public void AFoundText_IsSelected_AndEscClearsIt_BeforeItClosesTheWindow()
+    {
+        // Arrange
+        using HelpForm form = ShownForm(new Point(-3000, 300));
+        MarkdownDocumentModel document = MarkdownParser.Parse("# Guide\n\nSome text.\n\nThe needle is here.");
+        form.ShowPage(new HelpPageModel("README.md", "Guide"), document, null);
+
+        // Act
+        form.HighlightText("needle");
+        string found = form.Page.SelectedText;
+        bool isCleared = form.ClearFindOrSearch();
+
+        // Assert: cleared once, then there's nothing more to clear
+        Assert.Equal("needle", found);
+        Assert.True(isCleared);
+        Assert.Equal(0, form.Page.SelectionLength);
+        Assert.False(form.ClearFindOrSearch());
+    }
+
+    [Fact]
+    public void SearchResults_ReplaceThePages_AndNoneSaysSo()
+    {
+        // Arrange
+        using HelpForm form = ShownForm(new Point(-3000, 300));
+        var result = new HelpSearchResultModel("a.md", "A", "…the needle…", 2);
+
+        // Act and assert
+        form.ShowSearchResults("needle", [result]);
+        Assert.Equal([result], form.ListItems);
+
+        form.ShowSearchResults("hay", []);
+        Assert.Equal(["No page has \"hay\"."], form.ListItems);
+
+        form.ShowPages([new HelpPageModel("a.md", "A")]);
+        Assert.Equal([new HelpPageModel("a.md", "A")], form.ListItems);
+    }
+
+    [Theory]
+    [InlineData(false, @"\red32\green32\blue32")]
+    [InlineData(true, @"\red222\green222\blue222")]
+    public void ThePage_IsInTheColorsOfWindowsMode(bool isDark, string textColor)
+    {
+        // Act
+        string rtf = MarkdownRtfWriter.Write(MarkdownParser.Parse("Text."), 9000, isDark).Rtf;
+
+        // Assert
+        Assert.Contains(@"{\colortbl ;" + textColor, rtf);
+    }
+
+    [Fact]
+    public void QuotesAreQuieter_AndTableColumnsLineUpAsWritten()
+    {
+        // Act
+        string rtf = MarkdownRtfWriter.Write(
+            MarkdownParser.Parse("> Quoted.\n\n| a | b | c |\n|---|:-:|--:|\n| 1 | 2 | 3 |"),
+            9000).Rtf;
+
+        // Assert
+        Assert.Contains(@"\sa120\cf4 {Quoted.}\cf1\par", rtf);
+        Assert.Contains(@"\ql\b {a}", rtf);
+        Assert.Contains(@"\qc\b {b}", rtf);
+        Assert.Contains(@"\qr {3}", rtf);
+    }
+
+    [Fact]
     public void TheLongestPage_IsShownQuickly()
     {
         // Arrange
@@ -138,22 +203,17 @@ public sealed class HelpFormTests
         Assert.True(watch.ElapsedMilliseconds < 1500, $"{name} took {watch.ElapsedMilliseconds} ms");
     }
 
-    private static RichTextBox PageOf(HelpForm form) =>
-        (RichTextBox)typeof(HelpForm).GetField("PageTextBox", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .GetValue(form)!;
+    private static RichTextBox PageOf(HelpForm form) => form.Page;
 
-    private static string? LinkAt(HelpForm form, Point point) => (string?)Invoke(form, "LinkAt", point);
+    private static string? LinkAt(HelpForm form, Point point) => form.LinkAt(point);
 
     // What Tab or Shift+Tab in the page does: the link it selects
     private static string Tab(HelpForm form, RichTextBox page, bool forward)
     {
-        Invoke(form, "SelectLink", forward);
+        form.SelectLink(forward);
 
         return page.SelectedText;
     }
-
-    private static object? Invoke(HelpForm form, string method, params object[] arguments) =>
-        typeof(HelpForm).GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(form, arguments);
 
     // Through the box itself: its positions count a table's cells as Text doesn't
     private static string TextAt(RichTextBox page, int start, int length)

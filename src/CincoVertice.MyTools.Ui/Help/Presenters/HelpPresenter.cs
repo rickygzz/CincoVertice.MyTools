@@ -1,3 +1,4 @@
+using System.Drawing;
 using CincoVertice.MyTools.Ui.Help.Interfaces;
 using CincoVertice.MyTools.Ui.Help.Models;
 using CincoVertice.MyTools.Ui.Help.Services;
@@ -8,7 +9,8 @@ namespace CincoVertice.MyTools.Ui.Help.Presenters;
 /// <summary>
 ///     The user guide reader: the guide's pages, the contents first, and one page at a time. Its links open other
 ///     pages and their headings, and web pages outside; back and forward go through the pages and headings opened,
-///     as in a browser, each scrolled to where it was left.
+///     as in a browser, each scrolled to where it was left. A search lists the pages with the text, the most first.
+///     The window opens where it was, at the page it showed last.
 /// </summary>
 public sealed class HelpPresenter
 {
@@ -22,21 +24,36 @@ public sealed class HelpPresenter
 
     private readonly IHelpView _view;
     private readonly IHelpPageStore _store;
+    private readonly IHelpSettingsStore _settings;
 
     // Where back and forward go
     private readonly List<HelpPlaceModel> _history = [];
 
+    // Every page, read once: the guide doesn't change while the app runs
+    private readonly Dictionary<string, MarkdownDocumentModel> _documents = [];
+
     private IReadOnlyList<HelpPageModel> _pages = [];
     private int _position = -1;
     private string? _shownPage;
+    private string _searchText = string.Empty;
 
-    public HelpPresenter(IHelpView view, IHelpPageStore store)
+    public HelpPresenter(IHelpView view, IHelpPageStore store, IHelpSettingsStore settings)
     {
         _view = view;
         _store = store;
+        _settings = settings;
     }
 
-    /// <param name="page">The page to open first; the contents when null.</param>
+    /// <summary>Puts the window where it was when it closed last; before it's shown, so it doesn't jump.</summary>
+    public void RestoreWindow()
+    {
+        if (_settings.Load() is { Bounds: Rectangle bounds } saved)
+        {
+            _view.PlaceWindow(bounds, saved.IsMaximized);
+        }
+    }
+
+    /// <param name="page">The page to open first; when null, the one shown last, or else the contents.</param>
     /// <param name="anchor">The heading to open it at; the top when null.</param>
     public void Start(string? page = null, string? anchor = null)
     {
@@ -44,6 +61,9 @@ public sealed class HelpPresenter
         _view.PageChosen += OnPageChosen;
         _view.BackRequested += OnBackRequested;
         _view.ForwardRequested += OnForwardRequested;
+        _view.SearchRequested += OnSearchRequested;
+        _view.SearchResultChosen += OnSearchResultChosen;
+        _view.WindowClosing += OnClosing;
 
         _pages = ReadPages();
         _view.ShowPages(_pages);
@@ -57,7 +77,8 @@ public sealed class HelpPresenter
             return;
         }
 
-        Open(page ?? _pages[0].Name, anchor);
+        string? last = _settings.Load()?.Page;
+        Open(page ?? (last is not null && _documents.ContainsKey(NameOf(last)) ? last : _pages[0].Name), anchor);
     }
 
     /// <summary>Opens a page, at a heading, after the place shown, which back goes to.</summary>
@@ -92,12 +113,11 @@ public sealed class HelpPresenter
 
         foreach (string name in _store.GetPageNames())
         {
-            string? markdown = _store.Read(name);
-
-            if (markdown is not null)
+            if (_store.Read(name) is string markdown)
             {
-                string? title = MarkdownParser.Parse(markdown).Title;
-                pages.Add(new HelpPageModel(name, title ?? Path.GetFileNameWithoutExtension(name)));
+                MarkdownDocumentModel document = MarkdownParser.Parse(markdown);
+                _documents[name] = document;
+                pages.Add(new HelpPageModel(name, document.Title ?? Path.GetFileNameWithoutExtension(name)));
             }
         }
 
@@ -121,16 +141,13 @@ public sealed class HelpPresenter
 
         if (page != _shownPage)
         {
-            string? markdown = _pages.Any(known => known.Name == page) ? _store.Read(page) : null;
-
-            if (markdown is null)
+            if (!_documents.TryGetValue(page, out MarkdownDocumentModel? document))
             {
                 _view.ShowProblem($"The user guide has no page {page}.");
 
                 return false;
             }
 
-            MarkdownDocumentModel document = MarkdownParser.Parse(markdown);
             _view.ShowPage(new HelpPageModel(page, document.Title ?? page), document, place.Anchor);
             _shownPage = page;
         }
@@ -203,5 +220,33 @@ public sealed class HelpPresenter
 
         _position = position;
         ShowNavigation();
+    }
+
+    private void OnSearchRequested(object? sender, string text)
+    {
+        _searchText = text.Trim();
+
+        if (_searchText.Length == 0)
+        {
+            _view.ShowPages(_pages);
+
+            return;
+        }
+
+        IEnumerable<(HelpPageModel, MarkdownDocumentModel)> pages =
+            _pages.Select(page => (page, _documents[page.Name]));
+        _view.ShowSearchResults(_searchText, HelpSearch.Find(pages, _searchText));
+    }
+
+    // The page, at the first time it has the text
+    private void OnSearchResultChosen(object? sender, HelpSearchResultModel result)
+    {
+        Open(result.Page);
+        _view.HighlightText(_searchText);
+    }
+
+    private void OnClosing(object? sender, EventArgs e)
+    {
+        _settings.Save(new HelpSettingsModel(_shownPage, _view.WindowBounds, _view.IsMaximized));
     }
 }

@@ -6,7 +6,8 @@ namespace CincoVertice.MyTools.Ui.Help.Services;
 
 /// <summary>
 ///     Reads a Markdown page as GitHub shows it, as far as the user guide needs: headings, paragraphs, lists inside
-///     lists, fenced and indented code, tables, quotes and rules. A line it doesn't know is text of a paragraph.
+///     lists, task lists, fenced and indented code, tables, quotes of any of these, rules, and the page's link list
+///     ("[name]: target" lines). A line it doesn't know is text of a paragraph.
 /// </summary>
 public sealed partial class MarkdownParser
 {
@@ -15,8 +16,12 @@ public sealed partial class MarkdownParser
     private readonly string[] _lines;
     private readonly List<MarkdownBlockModel> _blocks = [];
 
-    // How many headings had each anchor, so a second "Usage" is "usage-1", as on GitHub
-    private readonly Dictionary<string, int> _anchors = [];
+    // How many headings had each anchor, so a second "Usage" is "usage-1", as on GitHub; a quote's count too
+    private readonly Dictionary<string, int> _anchors;
+
+    // The page's link list, by name; the lines it's on show nothing
+    private readonly Dictionary<string, string> _references;
+    private readonly HashSet<int> _referenceLines = [];
 
     // The list items the lines are in, the deepest last: where their marker is, and where their text starts
     private readonly List<(int Marker, int Text)> _openItems = [];
@@ -30,12 +35,39 @@ public sealed partial class MarkdownParser
     private int _pendingLevel;
     private string? _pendingMarker;
 
-    private MarkdownParser(string markdown)
+    private MarkdownParser(string markdown, Dictionary<string, int> anchors, Dictionary<string, string> references)
     {
         _lines = markdown.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n');
+        _anchors = anchors;
+        _references = references;
+        ReadReferences();
     }
 
-    public static MarkdownDocumentModel Parse(string markdown) => new MarkdownParser(markdown).Read();
+    public static MarkdownDocumentModel Parse(string markdown) => new MarkdownParser(markdown, [], []).Read();
+
+    // First, as the links before them use them too; never in code
+    private void ReadReferences()
+    {
+        string? fence = null;
+
+        for (int i = 0; i < _lines.Length; i++)
+        {
+            string text = _lines[i].TrimStart();
+
+            if (FenceLine().Match(text) is { Success: true } opening)
+            {
+                string marks = opening.Groups["fence"].Value;
+                fence = fence is null ? marks : text.TrimEnd().Trim(fence[0]).Length == 0 ? null : fence;
+            }
+            else if (fence is null && ReferenceLine().Match(_lines[i]) is { Success: true } reference)
+            {
+                _references.TryAdd(
+                    MarkdownInlineParser.ReferenceName(reference.Groups["name"].Value),
+                    reference.Groups["target"].Value);
+                _referenceLines.Add(i);
+            }
+        }
+    }
 
     private MarkdownDocumentModel Read()
     {
@@ -43,7 +75,7 @@ public sealed partial class MarkdownParser
         {
             string line = LineAt(_index);
 
-            if (string.IsNullOrWhiteSpace(line))
+            if (string.IsNullOrWhiteSpace(line) || _referenceLines.Contains(_index))
             {
                 FlushPending();
                 _isAfterBlank = true;
@@ -156,7 +188,16 @@ public sealed partial class MarkdownParser
         _openItems.Add((indent, indent + marker.Length + (spaces is >= 1 and <= 4 ? spaces : 1)));
 
         string shown = char.IsDigit(marker[0]) ? marker[..^1] + "." : _bullets[level % _bullets.Length];
-        StartPending(MarkdownBlockKind.ListItem, level, shown, item.Groups["text"].Value);
+        string text = item.Groups["text"].Value;
+
+        // "- [ ] task" and "- [x] done": a box instead of the bullet
+        if (TaskItem().Match(text) is { Success: true } task)
+        {
+            shown = task.Groups["done"].Value.Trim().Length == 0 ? "☐" : "☑";
+            text = task.Groups["text"].Value;
+        }
+
+        StartPending(MarkdownBlockKind.ListItem, level, shown, text);
 
         return true;
     }
@@ -224,6 +265,7 @@ public sealed partial class MarkdownParser
     {
         List<IReadOnlyList<IReadOnlyList<MarkdownInlineModel>>> rows = [CellsOf(LineAt(_index))];
         int columns = rows[0].Count;
+        IReadOnlyList<MarkdownAlignment> alignments = AlignmentsOf(LineAt(_index + 1), columns);
 
         // Past the header and the line under it
         _index += 2;
@@ -241,28 +283,57 @@ public sealed partial class MarkdownParser
                 [], Math.Max(0, columns - cells.Count))];
         }
 
-        _blocks.Add(new MarkdownBlockModel(MarkdownBlockKind.Table, [], level, Rows: rows));
+        _blocks.Add(new MarkdownBlockModel(
+            MarkdownBlockKind.Table,
+            [],
+            level,
+            Rows: rows,
+            Alignments: alignments));
     }
 
+    // ":---:" centers its column, "---:" lines it up on the right
+    private static IReadOnlyList<MarkdownAlignment> AlignmentsOf(string separator, int columns)
+    {
+        string[] cells = separator.Trim().Trim('|').Split('|');
+
+        return
+        [
+            .. Enumerable.Range(0, columns).Select(column =>
+            {
+                string cell = column < cells.Length ? cells[column].Trim() : string.Empty;
+
+                return (cell.StartsWith(':'), cell.EndsWith(':')) switch
+                {
+                    (true, true) => MarkdownAlignment.Center,
+                    (false, true) => MarkdownAlignment.Right,
+                    _ => MarkdownAlignment.Left,
+                };
+            }),
+        ];
+    }
+
+    // What's in a quote is a page of its own: paragraphs, lists, code...
     private void ReadQuote(int level)
     {
         List<string> lines = [];
 
         while (_index < _lines.Length && QuoteLine().Match(LineAt(_index)) is { Success: true } quote)
         {
-            lines.Add(quote.Groups["text"].Value.Trim());
+            lines.Add(quote.Groups["text"].Value);
             _index++;
         }
 
-        _blocks.Add(new MarkdownBlockModel(
-            MarkdownBlockKind.Quote,
-            MarkdownInlineParser.Parse(JoinLines(lines)),
-            level));
+        MarkdownDocumentModel quoted = new MarkdownParser(string.Join("\n", lines), _anchors, _references).Read();
+
+        foreach (MarkdownBlockModel block in quoted.Blocks)
+        {
+            _blocks.Add(block with { Level = block.Level + level, IsQuoted = true });
+        }
     }
 
     private void AddHeading(int level, string text)
     {
-        IReadOnlyList<MarkdownInlineModel> inlines = MarkdownInlineParser.Parse(text.Trim());
+        IReadOnlyList<MarkdownInlineModel> inlines = MarkdownInlineParser.Parse(text.Trim(), _references);
         string anchor = MarkdownAnchor.Of(string.Concat(inlines.Select(inline => inline.Text)));
 
         if (_anchors.TryGetValue(anchor, out int count))
@@ -296,7 +367,7 @@ public sealed partial class MarkdownParser
 
         _blocks.Add(new MarkdownBlockModel(
             _pendingKind,
-            MarkdownInlineParser.Parse(JoinLines(_pendingLines)),
+            MarkdownInlineParser.Parse(JoinLines(_pendingLines), _references),
             _pendingLevel,
             _pendingMarker));
         _pendingLines.Clear();
@@ -370,7 +441,7 @@ public sealed partial class MarkdownParser
     }
 
     // "| a | `b \| c` |": the cells between the bars, but not an escaped one, nor one inside code
-    private static IReadOnlyList<IReadOnlyList<MarkdownInlineModel>> CellsOf(string row)
+    private IReadOnlyList<IReadOnlyList<MarkdownInlineModel>> CellsOf(string row)
     {
         string text = row.Trim();
         List<string> cells = [];
@@ -404,7 +475,7 @@ public sealed partial class MarkdownParser
             cells.Add(cell.ToString());
         }
 
-        return [.. cells.Select(cellText => MarkdownInlineParser.Parse(cellText.Trim()))];
+        return [.. cells.Select(cellText => MarkdownInlineParser.Parse(cellText.Trim(), _references))];
     }
 
     [GeneratedRegex(@"^ {0,3}(?<marks>#{1,6})(?:[ \t]+(?<text>.*?))?(?:[ \t]+#+)?[ \t]*$")]
@@ -424,6 +495,15 @@ public sealed partial class MarkdownParser
 
     [GeneratedRegex(@"^ *> ?(?<text>.*)$")]
     private static partial Regex QuoteLine();
+
+    // [name]: target, or [name]: <target> "Title"
+    [GeneratedRegex(
+        @"^ {0,3}\[(?<name>[^\]]+)\]:[ \t]*<?(?<target>[^\s>]+)>?"
+        + @"(?:[ \t]+(?:""[^""]*""|'[^']*'|\([^)]*\)))?[ \t]*$")]
+    private static partial Regex ReferenceLine();
+
+    [GeneratedRegex(@"^\[(?<done>[ xX])\][ \t]+(?<text>.*)$")]
+    private static partial Regex TaskItem();
 
     [GeneratedRegex(@"^ *\|? *:?-+:? *(\| *:?-+:? *)*\|? *$")]
     private static partial Regex TableSeparatorLine();

@@ -1,6 +1,6 @@
 # My Tools User Guide
 
-Version 0.0.6
+For the version you have, choose **About My Tools...** in the tray menu.
 
 ## Overview
 

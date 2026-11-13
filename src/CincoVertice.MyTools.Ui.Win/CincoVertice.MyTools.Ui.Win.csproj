@@ -24,6 +24,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Forms' parts that the tests reach, without making them public -->
+    <InternalsVisibleTo Include="CincoVertice.MyTools.Ui.Win.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <EmbeddedResource Include="Diagramming\Fonts\Roboto.ttf" LogicalName="Roboto.ttf" />
     <Content Include="Diagramming\Fonts\OFL.txt" Link="licenses\Roboto-OFL.txt" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
     <Content Include="Snipping\Licenses\Vortice-MIT.txt" Link="licenses\Vortice-MIT.txt" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" />

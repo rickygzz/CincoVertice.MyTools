@@ -16,6 +16,7 @@ partial class HelpForm
         if (disposing)
         {
             components?.Dispose();
+            _boldFont.Dispose();
         }
 
         base.Dispose(disposing);
@@ -34,14 +35,18 @@ partial class HelpForm
         BackButton = new ToolStripButton();
         ForwardButton = new ToolStripButton();
         HistorySeparator = new ToolStripSeparator();
+        OutlineButton = new ToolStripDropDownButton();
+        OutlineSeparator = new ToolStripSeparator();
         FindLabel = new ToolStripLabel();
         FindTextBox = new ToolStripTextBox();
         FindNextButton = new ToolStripButton();
         Split = new SplitContainer();
         PagesListBox = new ListBox();
+        SearchTextBox = new TextBox();
         PagePanel = new Panel();
         PageTextBox = new RichTextBox();
         ResizeTimer = new System.Windows.Forms.Timer(components);
+        SearchTimer = new System.Windows.Forms.Timer(components);
         Tools.SuspendLayout();
         ((System.ComponentModel.ISupportInitialize)Split).BeginInit();
         Split.Panel1.SuspendLayout();
@@ -55,7 +60,8 @@ partial class HelpForm
         Tools.GripStyle = ToolStripGripStyle.Hidden;
         Tools.Items.AddRange(new ToolStripItem[]
         {
-            BackButton, ForwardButton, HistorySeparator, FindLabel, FindTextBox, FindNextButton,
+            BackButton, ForwardButton, HistorySeparator, OutlineButton, OutlineSeparator, FindLabel, FindTextBox,
+            FindNextButton,
         });
         Tools.Location = new Point(0, 0);
         Tools.Name = "Tools";
@@ -83,6 +89,18 @@ partial class HelpForm
         // HistorySeparator
         //
         HistorySeparator.Name = "HistorySeparator";
+        //
+        // OutlineButton
+        //
+        OutlineButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
+        OutlineButton.Enabled = false;
+        OutlineButton.Name = "OutlineButton";
+        OutlineButton.Text = "&Outline";
+        OutlineButton.ToolTipText = "Go to a heading of this page";
+        //
+        // OutlineSeparator
+        //
+        OutlineSeparator.Name = "OutlineSeparator";
         //
         // FindLabel
         //
@@ -113,23 +131,36 @@ partial class HelpForm
         Split.Name = "Split";
         Split.Panel1.BackColor = SystemColors.Window;
         Split.Panel1.Controls.Add(PagesListBox);
+        Split.Panel1.Controls.Add(SearchTextBox);
         Split.Panel1.Padding = new Padding(8, 8, 0, 0);
         Split.Panel2.Controls.Add(PagePanel);
         Split.Size = new Size(1000, 675);
-        Split.SplitterDistance = 240;
+        Split.SplitterDistance = 260;
         Split.TabIndex = 1;
+        //
+        // SearchTextBox
+        //
+        SearchTextBox.Dock = DockStyle.Top;
+        SearchTextBox.Location = new Point(8, 8);
+        SearchTextBox.Name = "SearchTextBox";
+        SearchTextBox.PlaceholderText = "Search the guide (Ctrl+E)";
+        SearchTextBox.Size = new Size(252, 23);
+        SearchTextBox.TabIndex = 0;
+        SearchTextBox.KeyDown += SearchTextBox_KeyDown;
+        SearchTextBox.TextChanged += SearchTextBox_TextChanged;
         //
         // PagesListBox
         //
         PagesListBox.BorderStyle = BorderStyle.None;
-        PagesListBox.DisplayMember = "Title";
         PagesListBox.Dock = DockStyle.Fill;
+        PagesListBox.DrawMode = DrawMode.OwnerDrawVariable;
         PagesListBox.IntegralHeight = false;
-        PagesListBox.ItemHeight = 15;
-        PagesListBox.Location = new Point(8, 8);
+        PagesListBox.Location = new Point(8, 31);
         PagesListBox.Name = "PagesListBox";
-        PagesListBox.Size = new Size(240, 675);
-        PagesListBox.TabIndex = 0;
+        PagesListBox.Size = new Size(252, 644);
+        PagesListBox.TabIndex = 1;
+        PagesListBox.DrawItem += PagesListBox_DrawItem;
+        PagesListBox.MeasureItem += PagesListBox_MeasureItem;
         PagesListBox.SelectedIndexChanged += PagesListBox_SelectedIndexChanged;
         //
         // PagePanel
@@ -140,7 +171,7 @@ partial class HelpForm
         PagePanel.Location = new Point(0, 0);
         PagePanel.Name = "PagePanel";
         PagePanel.Padding = new Padding(16, 8, 0, 0);
-        PagePanel.Size = new Size(756, 675);
+        PagePanel.Size = new Size(736, 675);
         PagePanel.TabIndex = 0;
         //
         // PageTextBox
@@ -154,7 +185,7 @@ partial class HelpForm
         PageTextBox.Name = "PageTextBox";
         PageTextBox.ReadOnly = true;
         PageTextBox.ScrollBars = RichTextBoxScrollBars.ForcedVertical;
-        PageTextBox.Size = new Size(740, 667);
+        PageTextBox.Size = new Size(720, 667);
         PageTextBox.TabIndex = 0;
         PageTextBox.Text = "";
         PageTextBox.MouseMove += PageTextBox_MouseMove;
@@ -165,6 +196,11 @@ partial class HelpForm
         //
         ResizeTimer.Interval = 250;
         ResizeTimer.Tick += ResizeTimer_Tick;
+        //
+        // SearchTimer
+        //
+        SearchTimer.Interval = 300;
+        SearchTimer.Tick += SearchTimer_Tick;
         //
         // HelpForm
         //
@@ -178,10 +214,12 @@ partial class HelpForm
         Name = "HelpForm";
         StartPosition = FormStartPosition.CenterScreen;
         Text = "My Tools help";
+        FormClosing += HelpForm_FormClosing;
         KeyDown += HelpForm_KeyDown;
         Tools.ResumeLayout(false);
         Tools.PerformLayout();
         Split.Panel1.ResumeLayout(false);
+        Split.Panel1.PerformLayout();
         Split.Panel2.ResumeLayout(false);
         ((System.ComponentModel.ISupportInitialize)Split).EndInit();
         Split.ResumeLayout(false);
@@ -196,12 +234,16 @@ partial class HelpForm
     private ToolStripButton BackButton;
     private ToolStripButton ForwardButton;
     private ToolStripSeparator HistorySeparator;
+    private ToolStripDropDownButton OutlineButton;
+    private ToolStripSeparator OutlineSeparator;
     private ToolStripLabel FindLabel;
     private ToolStripTextBox FindTextBox;
     private ToolStripButton FindNextButton;
     private SplitContainer Split;
     private ListBox PagesListBox;
+    private TextBox SearchTextBox;
     private Panel PagePanel;
     private RichTextBox PageTextBox;
     private System.Windows.Forms.Timer ResizeTimer;
+    private System.Windows.Forms.Timer SearchTimer;
 }

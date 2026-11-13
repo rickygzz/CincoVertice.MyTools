@@ -127,15 +127,73 @@ public class MarkdownParserTests
     }
 
     [Fact]
-    public void QuotesAndRules_AreTheirOwnBlocks()
+    public void AQuote_HasBlocksOfAnyKind_AndRulesAreTheirOwn()
     {
         // Act
-        IReadOnlyList<MarkdownBlockModel> blocks = MarkdownParser.Parse("> Note:\n> read this\n\n---\n\n***").Blocks;
+        IReadOnlyList<MarkdownBlockModel> blocks = MarkdownParser.Parse(
+            "> Note:\n> read this\n>\n> - one\n> - two\n>\n> ```\n> code\n> ```\n\nAfter.\n\n---\n\n***").Blocks;
 
         // Assert
         Assert.Equal(
-            [(MarkdownBlockKind.Quote, "Note: read this"), (MarkdownBlockKind.Rule, ""), (MarkdownBlockKind.Rule, "")],
-            blocks.Select(block => (block.Kind, block.PlainText)));
+            [
+                (MarkdownBlockKind.Paragraph, true, "Note: read this"),
+                (MarkdownBlockKind.ListItem, true, "one"),
+                (MarkdownBlockKind.ListItem, true, "two"),
+                (MarkdownBlockKind.CodeBlock, true, "code"),
+                (MarkdownBlockKind.Paragraph, false, "After."),
+                (MarkdownBlockKind.Rule, false, ""),
+                (MarkdownBlockKind.Rule, false, ""),
+            ],
+            blocks.Select(block => (block.Kind, block.IsQuoted, block.PlainText)));
+    }
+
+    [Fact]
+    public void ReferenceLinks_GoWhereThePagesLinkListSays_AndTheListShowsNothing()
+    {
+        // Act: used before the list, by name, by label, alone; a name not in the list stays as written
+        MarkdownDocumentModel document = MarkdownParser.Parse(
+            "See [the hotkeys][keys], [Zones][], [zones] and [none].\n\n"
+            + "[keys]: 02-hotkeys.md#how \"How\"\n[ZONES]: <13-window-zones.md>\n\n```\n[code]: not.md\n```");
+
+        // Assert
+        Assert.Equal(2, document.Blocks.Count);
+        Assert.Equal(
+            [
+                ("See ", null),
+                ("the hotkeys", "02-hotkeys.md#how"),
+                (", ", null),
+                ("Zones", "13-window-zones.md"),
+                (", ", null),
+                ("zones", "13-window-zones.md"),
+                (" and [none].", null),
+            ],
+            document.Blocks[0].Inlines.Select(piece => (piece.Text, piece.Link)));
+        Assert.Equal("[code]: not.md", document.Blocks[1].PlainText);
+    }
+
+    [Fact]
+    public void TaskListItems_HaveABox_TickedWhenDone()
+    {
+        // Act
+        IReadOnlyList<MarkdownBlockModel> blocks =
+            MarkdownParser.Parse("- [ ] To do\n- [x] Done\n- [link](a.md)").Blocks;
+
+        // Assert
+        Assert.Equal(
+            [("☐", "To do"), ("☑", "Done"), ("•", "link")],
+            blocks.Select(block => (block.Marker, block.PlainText)));
+    }
+
+    [Fact]
+    public void ATablesColumns_LineUpAsTheirDashesSay()
+    {
+        // Act
+        MarkdownBlockModel table = Assert.Single(MarkdownParser.Parse("| a | b | c | d |\n|---|:---:|--:|:--|").Blocks);
+
+        // Assert
+        Assert.Equal(
+            [MarkdownAlignment.Left, MarkdownAlignment.Center, MarkdownAlignment.Right, MarkdownAlignment.Left],
+            table.Alignments);
     }
 
     [Fact]

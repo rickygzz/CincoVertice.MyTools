@@ -1,3 +1,4 @@
+using System.Drawing;
 using System.Globalization;
 using System.Text;
 using CincoVertice.MyTools.Ui.Help.Models;
@@ -23,17 +24,25 @@ public static class MarkdownRtfWriter
     private const int LevelIndent = 360;
     private const int MarkerWidth = 300;
 
-    // In the color table: 1 text, 2 links, 3 code's background, 4 quiet text, 5 lines, 6 a table header's background
-    private const string ColorTable =
+    // In the color tables: 1 text, 2 links, 3 code's background, 4 quiet text, 5 lines, 6 a table header's background
+    private const string LightColors =
         @"{\colortbl ;\red32\green32\blue32;\red0\green95\blue184;\red243\green243\blue243;\red96\green96\blue96;"
         + @"\red208\green208\blue208;\red234\green238\blue242;}";
 
+    private const string DarkColors =
+        @"{\colortbl ;\red222\green222\blue222;\red110\green170\blue255;\red48\green48\blue48;\red160\green160\blue160;"
+        + @"\red80\green80\blue80;\red45\green52\blue62;}";
+
+    /// <summary>The page's background, under the RTF's colors.</summary>
+    public static Color BackgroundOf(bool isDark) => isDark ? Color.FromArgb(30, 30, 30) : SystemColors.Window;
+
     /// <param name="width">How wide the text can be, in twips: tables and code boxes take all of it.</param>
-    public static HelpRtfModel Write(MarkdownDocumentModel document, int width)
+    /// <param name="isDark">Light text on a dark background, for Windows' dark mode.</param>
+    public static HelpRtfModel Write(MarkdownDocumentModel document, int width, bool isDark = false)
     {
         var rtf = new StringBuilder(@"{\rtf1\ansi\ansicpg1252\deff0\uc1");
         rtf.Append(@"{\fonttbl{\f0\fswiss\fcharset0 Segoe UI;}{\f1\fmodern\fcharset0 Consolas;}}");
-        rtf.Append(ColorTable);
+        rtf.Append(isDark ? DarkColors : LightColors);
         rtf.Append(CultureInfo.InvariantCulture, $@"\viewkind4\f0\fs{TextSize}\cf1 ");
         List<HelpRtfMarkModel> marks = [];
 
@@ -54,7 +63,9 @@ public static class MarkdownRtfWriter
         bool isFirst,
         int width)
     {
-        int indent = block.Level * LevelIndent;
+        // A quote is further in, its text quieter
+        int indent = (block.Level + (block.IsQuoted ? 1 : 0)) * LevelIndent;
+        string color = block.IsQuoted ? @"\cf4" : @"\cf1";
 
         switch (block.Kind)
         {
@@ -64,10 +75,10 @@ public static class MarkdownRtfWriter
 
             case MarkdownBlockKind.ListItem:
                 int itemIndent = indent + LevelIndent;
-                Append(rtf, $@"\pard\li{itemIndent}\fi-{MarkerWidth}\tx{itemIndent}\sa60 ");
+                Append(rtf, $@"\pard\li{itemIndent}\fi-{MarkerWidth}\tx{itemIndent}\sa60{color} ");
                 rtf.Append(Escape(block.Marker ?? "•")).Append(@"\tab ");
                 WriteInlines(rtf, marks, block.Inlines, TextSize);
-                rtf.Append(@"\par").AppendLine();
+                rtf.Append(@"\cf1\par").AppendLine();
                 break;
 
             case MarkdownBlockKind.CodeBlock:
@@ -78,12 +89,6 @@ public static class MarkdownRtfWriter
                 WriteTable(rtf, marks, block, indent, width);
                 break;
 
-            case MarkdownBlockKind.Quote:
-                Append(rtf, $@"\pard\li{indent + LevelIndent}\sa120\cf4 ");
-                WriteInlines(rtf, marks, block.Inlines, TextSize);
-                rtf.Append(@"\cf1\par").AppendLine();
-                break;
-
             case MarkdownBlockKind.Rule:
                 // A row with a line under it, and nothing in it: RichEdit doesn't draw a paragraph's borders
                 Append(rtf, $@"\trowd\trgaph0\trleft{indent}\clbrdrb\brdrs\brdrw10\brdrcf5\cellx{width}");
@@ -92,9 +97,9 @@ public static class MarkdownRtfWriter
                 break;
 
             default:
-                Append(rtf, $@"\pard\li{indent}\sa120 ");
+                Append(rtf, $@"\pard\li{indent}\sa120{color} ");
                 WriteInlines(rtf, marks, block.Inlines, TextSize);
-                rtf.Append(@"\par").AppendLine();
+                rtf.Append(@"\cf1\par").AppendLine();
                 break;
         }
     }
@@ -164,7 +169,17 @@ public static class MarkdownRtfWriter
 
             for (int column = 0; column < rights.Length; column++)
             {
-                rtf.Append(row == 0 ? @"\pard\intbl\sb40\sa40\b " : @"\pard\intbl\sb40\sa40 ");
+                MarkdownAlignment alignment = column < (block.Alignments?.Count ?? 0)
+                    ? block.Alignments![column]
+                    : MarkdownAlignment.Left;
+                string lineUp = alignment switch
+                {
+                    MarkdownAlignment.Center => @"\qc",
+                    MarkdownAlignment.Right => @"\qr",
+                    _ => @"\ql",
+                };
+
+                rtf.Append(@"\pard\intbl\sb40\sa40").Append(lineUp).Append(row == 0 ? @"\b " : " ");
                 WriteInlines(rtf, marks, column < rows[row].Count ? rows[row][column] : [], TextSize);
                 rtf.Append(row == 0 ? @"\b0\cell" : @"\cell");
             }

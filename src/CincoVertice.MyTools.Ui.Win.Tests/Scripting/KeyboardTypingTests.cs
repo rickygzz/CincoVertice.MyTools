@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 using CincoVertice.Common.WinApi.Helpers;
+using CincoVertice.Common.WinApi.Libs;
 using CincoVertice.Common.WinApi.Libs.Enums;
 using Xunit;
 
@@ -63,10 +64,13 @@ public class KeyboardTypingTests
 
     /// <summary>
     ///     A key that types a character with AltGr on the current layout, and the character; skips the test when there
-    ///     is none, as on an English (US) layout.
+    ///     is none, as on an English (US) layout. Not one another program has as a hotkey with Ctrl+Alt, which AltGr
+    ///     is to Windows, such as My Tools' MoveToZone = Ctrl+Alt+1: that program would get it, not the text box.
     /// </summary>
     private static (KeyCode Key, string Text) FirstAltGrCharacter()
     {
+        bool isAnyTaken = false;
+
         var state = new byte[256];
         state[(int)KeyCode.VK_CONTROL] = KeyDown;
         state[(int)KeyCode.VK_LCONTROL] = KeyDown;
@@ -81,16 +85,42 @@ public class KeyboardTypingTests
             // Flag 4: leaves the layout as it was, so a dead key doesn't change what's typed next
             int length = ToUnicode((uint)key, MapVirtualKey((uint)key, MAPVK_VK_TO_VSC), state, text, text.Capacity, 4);
 
-            if (length == 1 && !char.IsControl(text[0]))
+            if (length != 1 || char.IsControl(text[0]))
             {
-                return (key, text.ToString(0, 1));
+                continue;
             }
+
+            if (IsTakenAsHotkey(key))
+            {
+                isAnyTaken = true;
+
+                continue;
+            }
+
+            return (key, text.ToString(0, 1));
         }
 
-        Assert.Skip("This keyboard layout types nothing with AltGr on the letters and digits.");
+        Assert.Skip(isAnyTaken
+            ? "Every key that types something with AltGr is another program's Ctrl+Alt hotkey, e.g. My Tools'."
+            : "This keyboard layout types nothing with AltGr on the letters and digits.");
 
         // Skip throws; the compiler doesn't know it
         return default;
+    }
+
+    // Whether Ctrl+Alt and the key is a hotkey already: Windows lets one program have it
+    private static bool IsTakenAsHotkey(KeyCode key)
+    {
+        const int Id = 0xBFFF;
+
+        if (User32.RegisterHotKey(0, Id, FSModifiers.MOD_CONTROL | FSModifiers.MOD_ALT, key) == 0)
+        {
+            return true;
+        }
+
+        User32.UnregisterHotKey(0, Id);
+
+        return false;
     }
 
     /// <summary>A text box of several lines in the window in front, with the keyboard focus.</summary>
