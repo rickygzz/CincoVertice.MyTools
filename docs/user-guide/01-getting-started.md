@@ -72,6 +72,7 @@ Only one copy runs at a time. If you start the exe while it is already running, 
 | **Check for updates at start** | A checkable item, off at first. When checked, the app looks for a newer version a minute after it starts. See [Updating](10-files-and-updates.md#updating). |
 | (separator) | |
 | **Check for updates...** | Asks GitHub for the latest release now, and offers to open its page if it is newer |
+| **Help...** | Opens this user guide in a window. The pages are listed on the left, and links go between them. **Back** and **Forward** also work with Alt+Left and Alt+Right, or the mouse's side buttons. **Find** searches the page: press Ctrl+F, then Enter or F3 for the next match. Esc closes the window. The guide is read from the `docs\user-guide` folder next to the exe. |
 | **About My Tools...** | Shows which version you have, and the address of the releases page |
 | **Exit** | Hides the icon and ends the app |
 

@@ -9,6 +9,7 @@ using CincoVertice.MyTools.Ui.ConfigEditor.Interfaces;
 using CincoVertice.MyTools.Ui.ConfigEditor.Services;
 using CincoVertice.MyTools.Ui.Diagramming.Interfaces;
 using CincoVertice.MyTools.Ui.Diagramming.Services;
+using CincoVertice.MyTools.Ui.Help.Interfaces;
 using CincoVertice.MyTools.Ui.Setup;
 using CincoVertice.MyTools.Ui.Shell.Interfaces;
 using CincoVertice.MyTools.Ui.Shell.Presenters;
@@ -24,6 +25,8 @@ using CincoVertice.MyTools.Ui.Win.CodeReview.Services;
 using CincoVertice.MyTools.Ui.Win.ConfigEditor.Services;
 using CincoVertice.MyTools.Ui.Win.Diagramming.Actions;
 using CincoVertice.MyTools.Ui.Win.Diagramming.Services;
+using CincoVertice.MyTools.Ui.Win.Help.Actions;
+using CincoVertice.MyTools.Ui.Win.Help.Services;
 using CincoVertice.MyTools.Ui.Win.Scripting.Actions;
 using CincoVertice.MyTools.Ui.Win.Scripting.Services;
 using CincoVertice.MyTools.Ui.Win.Shell;
@@ -147,6 +150,11 @@ public static class UiWinSetupExtensions
         services.AddSingleton<MoveToPreviousZoneAction>();
         services.AddSingleton<EditZonesAction>();
 
+        // The user guide, docs\user-guide next to the exe
+        services.AddSingleton<IHelpPageStore>(_ => new HelpPageStore(HelpPageStore.DefaultFolder));
+        services.AddSingleton<HelpWindowService>();
+        services.AddSingleton<ShowHelpAction>();
+
         // Every action can be bound to a shortcut in hotkeys.cfg; same instances as above
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ShowCalculatorAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ToggleActivityAction>());
@@ -165,6 +173,7 @@ public static class UiWinSetupExtensions
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<MoveToPreviousZoneAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<EditZonesAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<OpenDiagramEditorAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ShowHelpAction>());
 
         // The built-in actions above, plus one per script in config\scripts, read again on every hotkey reload
         services.AddSingleton(_ => new ScriptEngine(

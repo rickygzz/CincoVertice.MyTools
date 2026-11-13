@@ -7,6 +7,7 @@ using CincoVertice.MyTools.Ui.Shell.Views;
 using CincoVertice.MyTools.Ui.Win.Behaviors;
 using CincoVertice.MyTools.Ui.Win.CodeReview.Actions;
 using CincoVertice.MyTools.Ui.Win.Diagramming.Actions;
+using CincoVertice.MyTools.Ui.Win.Help.Actions;
 using CincoVertice.MyTools.Ui.Win.Scripting.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Models;
@@ -58,7 +59,8 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
         EditZonesAction editZonesAction,
         OpenScriptsFolderAction openScriptsFolderAction,
         EditScriptsAction editScriptsAction,
-        OpenDiagramEditorAction openDiagramEditorAction)
+        OpenDiagramEditorAction openDiagramEditorAction,
+        ShowHelpAction showHelpAction)
     {
         _mainForm = mainForm;
         _appIconService = appIconService;
@@ -99,6 +101,7 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
             () => CheckAtStartRequested?.Invoke(this, !_checkAtStartItem!.Checked));
         menu.Items.Add(new ToolStripSeparator());
         AddItem(menu.Items, "Check for &updates...", () => CheckForUpdatesRequested?.Invoke(this, EventArgs.Empty));
+        AddAction(menu.Items, "He&lp...", showHelpAction);
         AddItem(menu.Items, "A&bout My Tools...", () => AboutRequested?.Invoke(this, EventArgs.Empty));
         AddItem(menu.Items, "&Exit", Exit);
         menu.Opening += (_, _) => MenuOpening?.Invoke(this, EventArgs.Empty);

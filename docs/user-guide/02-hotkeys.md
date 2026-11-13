@@ -21,6 +21,7 @@
 | `MoveToNextZone` | none | Moves the active window to the next zone |
 | `MoveToPreviousZone` | none | Moves the active window to the zone before |
 | `EditZones` | none | Opens the window zones editor |
+| `ShowHelp` | none | Opens this user guide in the help window |
 | each script | none | Runs the script |
 
 Hotkeys work in the same way whichever window is active, including My Tools' own windows. Holding a hotkey down does not repeat it.
@@ -54,6 +55,7 @@ DiagramEditor = Ctrl+Alt+D
 # OpenScriptsFolder = Ctrl+Alt+
 RecordScreen = Ctrl+Alt+R
 ShowCalculator = Ctrl+Alt+C
+# ShowHelp = Ctrl+Alt+
 SnipAndEdit = Ctrl+Alt+S
 SnipRegion = Ctrl+Alt+Shift+S
 SnipText = Ctrl+Alt+T

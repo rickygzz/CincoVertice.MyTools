@@ -27,6 +27,8 @@
     <EmbeddedResource Include="Diagramming\Fonts\Roboto.ttf" LogicalName="Roboto.ttf" />
     <Content Include="Diagramming\Fonts\OFL.txt" Link="licenses\Roboto-OFL.txt" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
     <Content Include="Snipping\Licenses\Vortice-MIT.txt" Link="licenses\Vortice-MIT.txt" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <!-- The user guide, which the help window reads; next to the exe, where the release zip has it too -->
+    <Content Include="..\..\docs\user-guide\**\*" Link="docs\user-guide\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
   </ItemGroup>
 
   <ItemGroup>
