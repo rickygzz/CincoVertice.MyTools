@@ -1,5 +1,7 @@
 ﻿using CincoVertice.Common.WinApi.Helpers;
+using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Models;
+using CincoVertice.MyTools.Ui.Win.Shell.Services;
 using CincoVertice.MyTools.Ui.Win.Shell.Services.Config;
 using Xunit;
 
@@ -238,5 +240,97 @@ public sealed class ActivitySettingsTests : IDisposable
         // Assert
         Assert.Empty(result.Problems);
         Assert.Equal(MouseMoveSettings.Default, result.Settings);
+    }
+
+    [Theory]
+    [InlineData("", true, true)]
+    [InlineData("MoveMouse = false", false, true)]
+    [InlineData("KeepAwake = false", true, false)]
+    [InlineData("movemouse = TRUE # look present\nkeepawake = true", true, true)]
+    public void Read_MoveMouseAndKeepAwake_AreBothOnUnlessSaidOtherwise(string text, bool moveMouse, bool keepAwake)
+    {
+        // Act
+        ActivitySettingsResultModel result = ActivitySettingsReader.Read(text);
+
+        // Assert
+        Assert.Empty(result.Problems);
+        Assert.Equal(moveMouse, result.MoveMouse);
+        Assert.Equal(keepAwake, result.KeepAwake);
+    }
+
+    [Fact]
+    public void Read_MoveMouseAndKeepAwakeBothFalse_IsAProblem_AndTheMouseIsMoved()
+    {
+        // Act
+        ActivitySettingsResultModel result = ActivitySettingsReader.Read("KeepAwake = false\nMoveMouse = false");
+
+        // Assert: activity must do something when it's turned on
+        Assert.Equal(
+            "MoveMouse and KeepAwake are both false, so activity would do nothing; the mouse is moved.",
+            Assert.Single(result.LineProblems) is { Line: 2 } problem ? problem.Message : null);
+        Assert.True(result.MoveMouse);
+        Assert.False(result.KeepAwake);
+    }
+
+    [Fact]
+    public void Read_KeepAwakeThatIsNotTrueOrFalse_KeepsTheDefault()
+    {
+        // Act
+        ActivitySettingsResultModel result = ActivitySettingsReader.Read("KeepAwake = maybe");
+
+        // Assert
+        Assert.Equal("KeepAwake: must be true or false; the default is used.", Assert.Single(result.Problems));
+        Assert.True(result.KeepAwake);
+    }
+
+    [Fact]
+    public void TheNewFile_MovesTheMouse_AndKeepsAwake_WithoutProblems()
+    {
+        // Act
+        ActivitySettingsResultModel result = ActivitySettingsReader.Read(ActivitySettingsService.CreateDefaultText());
+
+        // Assert
+        Assert.Empty(result.Problems);
+        Assert.True(result.MoveMouse);
+        Assert.True(result.KeepAwake);
+        Assert.Equal(MouseMoveSettings.Default, result.Settings);
+    }
+
+    [Fact]
+    public void Toggle_WithKeepAwakeOnly_KeepsTheComputerAwake_WithoutMovingTheMouse_AndTurnsItOff()
+    {
+        // Arrange: the toggle runs on this thread, as on the UI thread
+        Directory.CreateDirectory(_folder);
+        string path = Path.Combine(_folder, "activity.cfg");
+        File.WriteAllText(path, "MoveMouse = false\nKeepAwake = true");
+        using var simulator = new MouseMoveSimulator();
+        var keeper = new AwakeKeeper();
+        using var icons = new AppIconService();
+        var action = new ToggleActivityAction(
+            simulator,
+            keeper,
+            icons,
+            new ActivitySettingsService(path),
+            new TrayNotificationService());
+
+        try
+        {
+            // Act
+            action.ExecuteAsync();
+
+            // Assert
+            Assert.True(action.IsOn);
+            Assert.True(keeper.IsOn);
+            Assert.False(simulator.IsRunning);
+
+            // And
+            action.ExecuteAsync();
+            Assert.False(action.IsOn);
+            Assert.False(keeper.IsOn);
+        }
+        finally
+        {
+            keeper.TurnOff();
+        }
     }
 }

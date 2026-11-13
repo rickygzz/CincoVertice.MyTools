@@ -1,6 +1,6 @@
 # Mouse Mover (Activity)
 
-The mouse mover keeps your computer looking active by moving the mouse pointer when you have been away. Turn it on and off with **Ctrl+Alt+M** (action `ToggleActivity`).
+Activity keeps your computer looking active by moving the mouse pointer when you have been away, and keeps it awake, even with the screen locked. Turn it on and off with **Ctrl+Alt+M** (action `ToggleActivity`). Each of the two can be turned off in `activity.cfg`: see [Moving the mouse, keeping awake, or both](#moving-the-mouse-keeping-awake-or-both).
 
 - While it is on, the tray icon is **red**. When you turn it off, the normal icon returns.
 - No balloon announces that it is on or off. The red icon is how you tell.
@@ -36,14 +36,39 @@ flowchart TD
     E --> C
 ```
 
+## Moving the mouse, keeping awake, or both
+
+Activity does two things, each turned on or off in `activity.cfg`:
+
+| Setting | What it does | Covers |
+|---|---|---|
+| `MoveMouse = true` | Moves the pointer while you are away, as described above | Sleep, the screen turning off, the screen saver, the lock after the time without input, and "Away" in chat programs such as Teams |
+| `KeepAwake = true` | Asks Windows to keep the computer awake and the screen on, as a program playing a video does. Nothing touches your mouse or keyboard | Sleep and the screen turning off, **also while the screen is locked** |
+
+Both are on by default, and turning activity on with **Ctrl+Alt+M** does both. They cover each other's gaps:
+
+- **KeepAwake alone** doesn't stop the screen saver, the lock, or "Away" in chat programs, since those count only real input. Use `MoveMouse = false` and `KeepAwake = true` when you want the computer to stay on, such as for a long download, without the pointer ever moving.
+- **MoveMouse alone** stops working once the screen is locked: Windows doesn't let programs send input to the lock screen, so the computer can then go to sleep. That's how activity worked before these settings; `KeepAwake = false` brings it back.
+
+They can't both be false, since activity would then do nothing. That's a problem shown when you turn activity on, and the mouse is moved.
+
+When activity is turned off, or My Tools exits, Windows' usual sleep and screen settings apply again.
+
 ## activity.cfg
 
 The file `config\activity.cfg` is created with the defaults when you first turn the mover on or open it in the config editor. Open it with **Edit activity settings...**. It is read each time you turn the mover on, so edits apply the **next time** it starts, not while it runs.
 
 ```
-# MyTools activity, which moves the mouse while you are away (the ToggleActivity hotkey).
+# MyTools activity (the ToggleActivity hotkey, Ctrl+Alt+M).
 # Changes apply the next time you turn it on.
 #
+# MoveMouse: true to move the mouse while you are away, so you look present: no screen saver,
+#   no lock after the time without input, no Away in chat programs.
+# KeepAwake: true to keep the computer from sleeping and the screen on, even with the screen
+#   locked, where the mouse can't be moved. Nothing touches the mouse or the keyboard.
+#   One of the two must be true.
+#
+# How the mouse is moved:
 # Interval: milliseconds between checks of the mouse (100 to 3600000).
 # IdleTicksBeforeMove: checks to wait after you move the mouse before it moves again.
 #   The wait is about Interval x IdleTicksBeforeMove: 5000 x 20 is 100 seconds.
@@ -52,6 +77,8 @@ The file `config\activity.cfg` is created with the defaults when you first turn 
 # MoveImmediately: true to move the mouse as soon as you turn it on; false to wait first,
 #   as after you move the mouse.
 
+MoveMouse = true
+KeepAwake = true
 Interval = 5000
 IdleTicksBeforeMove = 20
 SpeedMin = 40
@@ -61,6 +88,8 @@ MoveImmediately = true
 
 | Setting | Meaning | Allowed | Default |
 |---|---|---|---|
+| `MoveMouse` | Move the mouse while you are away | `true` or `false` | `true` |
+| `KeepAwake` | Keep the computer awake and the screen on | `true` or `false` | `true` |
 | `Interval` | Milliseconds between checks | whole number 100 to 3,600,000 | 5000 |
 | `IdleTicksBeforeMove` | Checks to wait after the mouse was moved by you | whole number 0 to 100,000 | 20 |
 | `SpeedMin` | Fastest move; higher is slower | whole number 20 to 100, not above `SpeedMax` | 40 |
@@ -77,7 +106,8 @@ Names are not case sensitive. In this file, a `#` anywhere ends the value, so `I
 
 **Problems.** When you turn the mover on, problems in the file appear as one warning balloon titled `activity.cfg`, one line per problem. Bad values fall back to the defaults. The editor shows the same messages with a "Line N: " prefix.
 
-- `<name>: unknown setting. Settings: Interval, IdleTicksBeforeMove, SpeedMin, SpeedMax, MoveImmediately.`
+- `<name>: unknown setting. Settings: Interval, IdleTicksBeforeMove, SpeedMin, SpeedMax, MoveImmediately, MoveMouse, KeepAwake.`
+- `MoveMouse and KeepAwake are both false, so activity would do nothing; the mouse is moved.`
 - `<name>: set more than once; the first line is used.`
 - `<name>: must be true or false; the default is used.`
 - `<name>: must be a whole number from <min> to <max>; the default is used.`

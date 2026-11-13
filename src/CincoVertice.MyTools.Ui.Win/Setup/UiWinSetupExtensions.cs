@@ -88,6 +88,7 @@ public static class UiWinSetupExtensions
             UpdateCheckStartDelay));
         services.AddSingleton<AppIconService>();
         services.AddSingleton<MouseMoveSimulator>();
+        services.AddSingleton<AwakeKeeper>();
         services.AddSingleton<CodeReviewWindowService>();
         services.AddSingleton<CheckFolderAction>();
         services.AddSingleton<FixFolderAction>();
