@@ -58,7 +58,7 @@ Only one copy runs at a time. If you start the exe while it is already running, 
 | **Open** (bold) | Shows the main window |
 | **Diagram editor** | Opens a new diagram editor window |
 | **Check folder for standard...** | Checks a folder of C# and JavaScript files |
-| **Fix folder for standard...** | Rewrites a folder of C# and JavaScript files to match the standard |
+| **Fix folder for standard** | Submenu: **Fix a folder...** rewrites a folder of C# and JavaScript files to match the standard, with the fixers ticked below it. Click a fixer to turn it on or off. See [Choosing the fixers](09-code-review.md#choosing-the-fixers). |
 | (separator) | |
 | **Actions** | Submenu: every action My Tools has, by name, such as "Snip and edit" or "Move to next zone", with its hotkey on the right when it has one. Click one to run it, whether or not it has a hotkey. Hover over one to see its name in `hotkeys.cfg`, to give it a hotkey there. It is refreshed when the hotkeys reload. |
 | **Scripts** | Submenu: one item per script (click to run it), with its hotkey when it has one, then **Edit scripts...** and **Open scripts folder**. A separator appears between the scripts and these two items only when at least one script exists. |
@@ -76,7 +76,7 @@ Only one copy runs at a time. If you start the exe while it is already running, 
 | **About My Tools...** | Shows which version you have, and the address of the releases page |
 | **Exit** | Hides the icon and ends the app |
 
-**Main window.** Its title is "My Tools" and it has only a **File > Code review** menu. That item opens an empty Code Review window and starts nothing. Use the tray items **Check folder for standard...** and **Fix folder for standard...** instead. Minimizing or closing the main window hides it in the tray.
+**Main window.** Its title is "My Tools" and it has only a **File > Code review** menu. That item opens an empty Code Review window and starts nothing. Use the tray items **Check folder for standard...** and **Fix folder for standard > Fix a folder...** instead. Minimizing or closing the main window hides it in the tray.
 
 **Notifications.** The app shows balloons from the tray icon. Informational ones stay about 5 seconds, warnings about 10 seconds. Examples:
 

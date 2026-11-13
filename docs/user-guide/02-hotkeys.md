@@ -12,7 +12,7 @@
 | `RecordScreen` | Ctrl+Alt+R | Records a video of an area of the screen; again to stop |
 | `DiagramEditor` | Ctrl+Alt+D | Opens a new diagram editor window |
 | `CheckFolder` | none | Pick a folder, check the C# standard |
-| `FixFolder` | none | Pick a folder, fix it in place |
+| `FixFolder` | none | Pick a folder, fix it in place, with the fixers ticked in the tray menu |
 | `EditHotkeys` | none | Opens `hotkeys.cfg` in the config editor |
 | `EditActivitySettings` | none | Opens `activity.cfg` in the config editor |
 | `EditScripts` | none | Opens the first script in the config editor |

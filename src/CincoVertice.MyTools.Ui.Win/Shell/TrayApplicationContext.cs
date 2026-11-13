@@ -1,5 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Diagnostics;
+using CincoVertice.MyTools.Ui.CodeReview.Models;
+using CincoVertice.MyTools.Ui.CodeReview.Services;
 using CincoVertice.MyTools.Ui.Shell.Models;
 using CincoVertice.MyTools.Ui.Shell.Presenters;
 using CincoVertice.MyTools.Ui.Shell.Services;
@@ -24,6 +26,9 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
 {
     private const int InfoNotificationMilliseconds = 5000;
     private const int WarningNotificationMilliseconds = 10000;
+
+    // The tag of a menu item that leaves its menu open when clicked; a fixer's item has its name
+    private const string KeepOpen = "KeepOpen";
 
     private readonly MainForm _mainForm;
     private readonly AppIconService _appIconService;
@@ -60,7 +65,8 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
         OpenScriptsFolderAction openScriptsFolderAction,
         EditScriptsAction editScriptsAction,
         OpenDiagramEditorAction openDiagramEditorAction,
-        ShowHelpAction showHelpAction)
+        ShowHelpAction showHelpAction,
+        FixerSelection fixerSelection)
     {
         _mainForm = mainForm;
         _appIconService = appIconService;
@@ -80,7 +86,7 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
         open.Font = new Font(open.Font, FontStyle.Bold);
         AddAction(menu.Items, "&Diagram editor", openDiagramEditorAction);
         AddAction(menu.Items, "Check folder for &standard...", checkFolderAction);
-        AddAction(menu.Items, "&Fix folder for standard...", fixFolderAction);
+        menu.Items.Add(CreateFixMenu(fixFolderAction, fixerSelection));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(_actionsMenu);
         menu.Items.Add(_scriptsMenu);
@@ -279,6 +285,79 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
     public void ShowNotification(string title, string text, bool isWarning)
     {
         ShowBalloon(title, text, isWarning ? ToolTipIcon.Warning : ToolTipIcon.Info);
+    }
+
+    /// <summary>
+    ///     Fix folder for standard: the fix itself, then every fixer, ticked when it runs. Ticking one keeps the menu
+    ///     open, to choose several; the choice is saved at once.
+    /// </summary>
+    internal static ToolStripMenuItem CreateFixMenu(FixFolderAction fixFolderAction, FixerSelection selection)
+    {
+        var menu = new ToolStripMenuItem("&Fix folder for standard");
+        menu.DropDown.ShowItemToolTips = true;
+        var fix = AddAction(menu.DropDownItems, "&Fix a folder...", fixFolderAction);
+        fix.Font = new Font(fix.Font, FontStyle.Bold);
+        menu.DropDownItems.Add(new ToolStripSeparator());
+
+        List<ToolStripMenuItem> fixerItems = [];
+
+        void ShowChoices()
+        {
+            Dictionary<string, bool> isOn =
+                selection.Choices.ToDictionary(choice => choice.Name, choice => choice.IsOn);
+
+            foreach (ToolStripMenuItem item in fixerItems)
+            {
+                item.Checked = isOn[(string)item.Tag!];
+            }
+        }
+
+        var allOn = AddItem(menu.DropDownItems, "Turn &all on", () =>
+        {
+            selection.SetAll(true);
+            ShowChoices();
+        });
+        var allOff = AddItem(menu.DropDownItems, "Turn all &off", () =>
+        {
+            selection.SetAll(false);
+            ShowChoices();
+        });
+        allOn.Tag = allOff.Tag = KeepOpen;
+        menu.DropDownItems.Add(new ToolStripSeparator());
+
+        foreach (FixerChoiceModel choice in selection.Choices)
+        {
+            var item = new ToolStripMenuItem(choice.Title.Replace("&", "&&", StringComparison.Ordinal))
+            {
+                Tag = choice.Name,
+                Checked = choice.IsOn,
+                ToolTipText = choice.Description.Length > 0
+                    ? $"{choice.Description}{Environment.NewLine}{choice.Languages}"
+                    : choice.Languages,
+            };
+            item.Click += (_, _) =>
+            {
+                selection.Set(choice.Name, !item.Checked);
+                item.Checked = !item.Checked;
+            };
+            menu.DropDownItems.Add(item);
+            fixerItems.Add(item);
+        }
+
+        // A tick, or all on or off, doesn't close the menu: the fix and the rest of the tray menu do
+        bool isKeptOpen = false;
+        menu.DropDown.ItemClicked += (_, e) => isKeptOpen = e.ClickedItem?.Tag is not null;
+        menu.DropDown.Closing += (_, e) =>
+        {
+            if (e.CloseReason == ToolStripDropDownCloseReason.ItemClicked && isKeptOpen)
+            {
+                e.Cancel = true;
+            }
+
+            isKeptOpen = false;
+        };
+
+        return menu;
     }
 
     private static ToolStripMenuItem AddItem(ToolStripItemCollection items, string text, Action onClick)

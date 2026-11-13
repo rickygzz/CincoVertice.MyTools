@@ -4,6 +4,9 @@ using CincoVertice.Common.Application.Scripting.Services;
 using CincoVertice.Common.Application.Setup;
 using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.MyTools.Ui.Calculator.Views;
+using CincoVertice.Common.Application.CodeStandard.Models;
+using CincoVertice.MyTools.Ui.CodeReview.Interfaces;
+using CincoVertice.MyTools.Ui.CodeReview.Services;
 using CincoVertice.MyTools.Ui.CodeReview.Views;
 using CincoVertice.MyTools.Ui.ConfigEditor.Interfaces;
 using CincoVertice.MyTools.Ui.ConfigEditor.Services;
@@ -102,6 +105,13 @@ public static class UiWinSetupExtensions
         services.AddSingleton<CodeReviewWindowService>();
         services.AddSingleton<CheckFolderAction>();
         services.AddSingleton<FixFolderAction>();
+
+        // Which fixers Fix folder runs, chosen in the tray menu
+        services.AddSingleton<IFixerSelectionStore>(_ => new JsonFileFixerSelectionStore(
+            Path.Combine(AppContext.BaseDirectory, "config", "fixers.json")));
+        services.AddSingleton(sp => new FixerSelection(
+            sp.GetRequiredService<IFixerSelectionStore>(),
+            CodeLanguageModel.All));
         services.AddSingleton<ShowCalculatorAction>();
         services.AddSingleton<ToggleActivityAction>();
         services.AddSingleton<EditHotkeysAction>();

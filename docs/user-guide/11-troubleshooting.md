@@ -24,7 +24,7 @@
 | **A script does nothing or shows an error** | The error box is titled `My Tools: <Action>` and gives file, line and column. Scripts are only checked when they run, so open the script in the config editor to see its first syntax error. |
 | **A script is stuck waiting** | There is no cancel command. Press Cancel in its dialog, or choose **Exit** from the tray menu. |
 | **A diagram will not open** | Only SVG files saved by the diagram editor can be opened. |
-| **The Code Review window is empty and titled "CodeReviewForm"** | That is **File > Code review** in the main window, which starts nothing. Use **Check folder for standard...** or **Fix folder for standard...** from the tray menu. |
+| **The Code Review window is empty and titled "CodeReviewForm"** | That is **File > Code review** in the main window, which starts nothing. Use **Check folder for standard...** or **Fix folder for standard > Fix a folder...** from the tray menu. |
 | **A folder fix changed files I did not want changed** | Fix has no undo. Restore your files from your commit or backup. |
 | **The app shows "Application error"** | An unexpected error occurred. The box shows the error text, or "Unknown error." Note the text if you need to ask for help. |
 
