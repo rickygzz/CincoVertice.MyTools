@@ -30,6 +30,7 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
     private readonly OpenScriptsFolderAction _openScriptsFolderAction;
     private readonly EditScriptsAction _editScriptsAction;
     private readonly NotifyIcon _notifyIcon;
+    private readonly ToolStripMenuItem _actionsMenu = new("Act&ions");
     private readonly ToolStripMenuItem _scriptsMenu = new("S&cripts");
 
     // The Hotkey problems item goes above it
@@ -79,6 +80,7 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
         AddAction(menu.Items, "Check folder for &standard...", checkFolderAction);
         AddAction(menu.Items, "&Fix folder for standard...", fixFolderAction);
         menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add(_actionsMenu);
         menu.Items.Add(_scriptsMenu);
         _editHotkeysItem = AddAction(menu.Items, "Edit &hotkeys...", editHotkeysAction);
 
@@ -207,7 +209,10 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
             _scriptsMenu.DropDownItems.Add(new ToolStripMenuItem(
                 script.Name,
                 null,
-                async (_, _) => await script.RunAsync()));
+                async (_, _) => await script.RunAsync())
+            {
+                ShortcutKeyDisplayString = script.Shortcut,
+            });
         }
 
         if (scripts.Count > 0)
@@ -217,6 +222,29 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
 
         AddAction(_scriptsMenu.DropDownItems, "&Edit scripts...", _editScriptsAction);
         AddAction(_scriptsMenu.DropDownItems, "Open scripts &folder", _openScriptsFolderAction);
+    }
+
+    public void ShowActions(IReadOnlyList<ActionMenuItemModel> actions)
+    {
+        ClearAndDispose(_actionsMenu.DropDownItems);
+        _actionsMenu.DropDown.ShowItemToolTips = true;
+
+        foreach (ActionMenuItemModel action in actions)
+        {
+            // Its hotkey on the right, as menus show shortcuts; hotkeys.cfg's name in the tooltip, to bind it there
+            _actionsMenu.DropDownItems.Add(new ToolStripMenuItem(
+                action.Title,
+                null,
+                async (_, _) => await action.RunAsync())
+            {
+                ShortcutKeyDisplayString = action.Shortcut,
+                ToolTipText = action.Shortcut is null
+                    ? $"{action.Name}: no hotkey. Add one in hotkeys.cfg."
+                    : $"{action.Name} = {action.Shortcut}",
+            });
+        }
+
+        _actionsMenu.Visible = actions.Count > 0;
     }
 
     public void ShowHotkeyProblems(IReadOnlyList<string> problems)

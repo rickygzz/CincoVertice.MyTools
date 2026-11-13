@@ -44,7 +44,8 @@ public sealed class GlobalHotkeyService : IHotkeyRegistrar, IDisposable
     /// </summary>
     /// <returns>
     ///     One problem per hotkey that is not active: a line that can't be used, or a shortcut that Windows refused
-    ///     (e.g. another application already uses it); and the scripts, for the Scripts menu.
+    ///     (e.g. another application already uses it); and the scripts and the other actions, with
+    ///     their hotkeys, for the Scripts and Actions menus.
     /// </returns>
     public HotkeyRegistrationModel Register()
     {
@@ -53,6 +54,9 @@ public sealed class GlobalHotkeyService : IHotkeyRegistrar, IDisposable
 
         var config = _hotkeyConfig.Load(actions);
         List<string> problems = [.. config.Problems];
+
+        // The hotkey of each action that works, for the menus: the one without a value, else the first with one
+        Dictionary<string, string> shortcuts = new(StringComparer.OrdinalIgnoreCase);
 
         foreach (var binding in config.Bindings)
         {
@@ -85,14 +89,29 @@ public sealed class GlobalHotkeyService : IHotkeyRegistrar, IDisposable
             {
                 problems.Add($"{binding.ActionName}: {binding.Shortcut} is not available. {error}");
             }
+            else if (binding.Argument is null)
+            {
+                shortcuts[action.Name] = binding.Shortcut;
+            }
+            else
+            {
+                shortcuts.TryAdd(action.Name, $"{binding.Shortcut} ({binding.Argument})");
+            }
         }
 
         List<ScriptMenuItemModel> scripts =
         [
-            .. actions.OfType<ScriptAction>().Select(s => new ScriptMenuItemModel(s.Name, s.ExecuteAsync))
+            .. actions.OfType<ScriptAction>()
+                .Select(s => new ScriptMenuItemModel(s.Name, s.ExecuteAsync, shortcuts.GetValueOrDefault(s.Name))),
         ];
 
-        return new HotkeyRegistrationModel(problems, scripts);
+        List<ActionMenuItemModel> others =
+        [
+            .. actions.Where(a => a is not ScriptAction)
+                .Select(a => new ActionMenuItemModel(a.Name, shortcuts.GetValueOrDefault(a.Name), a.ExecuteAsync)),
+        ];
+
+        return new HotkeyRegistrationModel(problems, scripts, others);
     }
 
     private void FilesWatcher_Changed(object? sender, EventArgs e)

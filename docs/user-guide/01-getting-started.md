@@ -60,7 +60,8 @@ Only one copy runs at a time. If you start the exe while it is already running, 
 | **Check folder for standard...** | Checks a folder of C# and JavaScript files |
 | **Fix folder for standard...** | Rewrites a folder of C# and JavaScript files to match the standard |
 | (separator) | |
-| **Scripts** | Submenu: one item per script (click to run it), then **Edit scripts...** and **Open scripts folder**. A separator appears between the scripts and these two items only when at least one script exists. |
+| **Actions** | Submenu: every action My Tools has, by name, such as "Snip and edit" or "Move to next zone", with its hotkey on the right when it has one. Click one to run it, whether or not it has a hotkey. Hover over one to see its name in `hotkeys.cfg`, to give it a hotkey there. It is refreshed when the hotkeys reload. |
+| **Scripts** | Submenu: one item per script (click to run it), with its hotkey when it has one, then **Edit scripts...** and **Open scripts folder**. A separator appears between the scripts and these two items only when at least one script exists. |
 | **Hotkey problems (N)...** | Appears only while some hotkeys are off. Shows all the problems. |
 | **Edit hotkeys...** | Opens `hotkeys.cfg` in the config editor |
 | **Reload hotkeys** | Re-reads `hotkeys.cfg` and the scripts folder |
