@@ -1,5 +1,7 @@
 ﻿using CincoVertice.MyTools.Ui.CodeReview.Presenters;
 using CincoVertice.MyTools.Ui.CodeReview.Views;
+using CincoVertice.MyTools.Ui.Help.Services;
+using CincoVertice.MyTools.Ui.Win.Help.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CincoVertice.MyTools.Ui.Win.CodeReview.Services;
@@ -10,10 +12,12 @@ namespace CincoVertice.MyTools.Ui.Win.CodeReview.Services;
 public sealed class CodeReviewWindowService
 {
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly HelpWindowService _help;
 
-    public CodeReviewWindowService(IServiceScopeFactory scopeFactory)
+    public CodeReviewWindowService(IServiceScopeFactory scopeFactory, HelpWindowService help)
     {
         _scopeFactory = scopeFactory;
+        _help = help;
     }
 
     /// <summary>
@@ -26,6 +30,7 @@ public sealed class CodeReviewWindowService
         var sp = scope.ServiceProvider;
 
         var form = sp.GetRequiredService<CodeReviewForm>();
+        _help.OpenOnF1(form, () => HelpTopics.CodeReview);
 
         // Build presenter using the same form instance as ICodeReviewView
         var presenter = ActivatorUtilities.CreateInstance<CodeReviewPresenter>(sp, (ICodeReviewView)form);

@@ -68,10 +68,40 @@ public class HelpPresenterTests
         _view.ClickLink("#window-zones");
         _view.Back();
 
-        // Assert
+        // Assert: back where it was, at the top
         Assert.Single(_view.Shown);
-        Assert.Equal(["window-zones", null], _view.Scrolls);
+        Assert.Equal(["window-zones"], _view.Scrolls);
+        Assert.Equal([0], _view.Positions);
         Assert.Equal((false, true), _view.Navigation);
+    }
+
+    [Fact]
+    public void BackAndForward_ShowEachPlace_ScrolledWhereItWasLeft()
+    {
+        // Arrange: scrolled down a page, then a link followed, and that page scrolled too
+        new HelpPresenter(_view, _store).Start("02-hotkeys.md");
+        _view.TopPosition = 500;
+        _view.ClickLink("01-zones.md#usage");
+        _view.TopPosition = 42;
+
+        // Act and assert
+        _view.Back();
+        Assert.Equal(("02-hotkeys.md", "Hotkeys", null), _view.Shown[^1]);
+        Assert.Equal([500], _view.Positions);
+
+        _view.Forward();
+        Assert.Equal(("01-zones.md", "Window Zones", "usage"), _view.Shown[^1]);
+        Assert.Equal([500, 42], _view.Positions);
+    }
+
+    [Fact]
+    public void Start_AtAHeading_ShowsThePageThere()
+    {
+        // Act
+        new HelpPresenter(_view, _store).Start("01-zones.md", "usage");
+
+        // Assert
+        Assert.Equal([("01-zones.md", "Window Zones", "usage")], _view.Shown);
     }
 
     [Fact]

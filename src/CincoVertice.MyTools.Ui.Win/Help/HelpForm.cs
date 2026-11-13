@@ -46,6 +46,8 @@ public partial class HelpForm : Form, IHelpView
     /// <summary>Where each link of the page shown starts, in the text, how long it is, and where it goes.</summary>
     public IReadOnlyList<(int Start, int Length, string Target)> Links => _links;
 
+    public int TopPosition => PageTextBox.GetCharIndexFromPosition(new Point(1, 1));
+
     /// <returns>Where the heading starts in the text; null when the page has no such heading.</returns>
     public int? PositionOf(string anchor) => _anchors.TryGetValue(anchor, out int position) ? position : null;
 
@@ -159,7 +161,7 @@ public partial class HelpForm : Form, IHelpView
     }
 
     // At the top of the window: to the end first, or ScrollToCaret would leave it at the bottom
-    private void ScrollToPosition(int position)
+    public void ScrollToPosition(int position)
     {
         if (position > 0)
         {
@@ -194,6 +196,67 @@ public partial class HelpForm : Form, IHelpView
             int right = next.Y == left.Y && next.X > left.X ? next.X : left.X + LogicalToDeviceUnits(12);
 
             return point.X >= left.X - 1 && point.X <= right && point.Y >= left.Y ? target : null;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    ///     Tab and Shift+Tab in the page go from link to link, selecting it; Enter opens the one selected, or the one
+    ///     the caret is in. Tab never reaches KeyDown: the form takes it to move the focus first.
+    /// </summary>
+    protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+    {
+        if (PageTextBox.Focused && _links.Count > 0)
+        {
+            switch (keyData)
+            {
+                case Keys.Tab:
+                    SelectLink(forward: true);
+                    return true;
+
+                case Keys.Shift | Keys.Tab:
+                    SelectLink(forward: false);
+                    return true;
+
+                case Keys.Enter when LinkAtCaret() is string target:
+                    LinkClicked?.Invoke(this, target);
+                    return true;
+            }
+        }
+
+        return base.ProcessCmdKey(ref msg, keyData);
+    }
+
+    // The next link after the selection, or the one before it, round to the other end of the page
+    private void SelectLink(bool forward)
+    {
+        // Past what's selected; with nothing selected, from the caret, so a page that starts with a link starts at it
+        int caret = PageTextBox.SelectionStart;
+        int end = caret + PageTextBox.SelectionLength;
+        int index = forward
+            ? _links.FindIndex(link => link.Start >= end)
+            : _links.FindLastIndex(link => link.Start < caret);
+
+        if (index < 0)
+        {
+            index = forward ? 0 : _links.Count - 1;
+        }
+
+        PageTextBox.Select(_links[index].Start, _links[index].Length);
+        PageTextBox.ScrollToCaret();
+    }
+
+    private string? LinkAtCaret()
+    {
+        int caret = PageTextBox.SelectionStart;
+
+        foreach ((int start, int length, string target) in _links)
+        {
+            if (caret >= start && caret < start + length)
+            {
+                return target;
+            }
         }
 
         return null;
@@ -295,7 +358,7 @@ public partial class HelpForm : Form, IHelpView
     private void ResizeTimer_Tick(object? sender, EventArgs e)
     {
         ResizeTimer.Stop();
-        int top = PageTextBox.GetCharIndexFromPosition(new Point(1, 1));
+        int top = TopPosition;
         LayOut();
         ScrollToPosition(top);
     }

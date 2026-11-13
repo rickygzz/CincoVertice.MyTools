@@ -1,6 +1,8 @@
 using CincoVertice.MyTools.Ui.Diagramming.Interfaces;
 using CincoVertice.MyTools.Ui.Diagramming.Presenters;
+using CincoVertice.MyTools.Ui.Help.Services;
 using CincoVertice.MyTools.Ui.Win.Diagramming.Services;
+using CincoVertice.MyTools.Ui.Win.Help.Services;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 
 namespace CincoVertice.MyTools.Ui.Win.Diagramming.Actions;
@@ -13,15 +15,18 @@ public sealed class OpenDiagramEditorAction : IAppAction
     private readonly IDiagramFileStore _fileStore;
     private readonly IDiagramEditorSettingsStore _settingsStore;
     private readonly RobotoFontInstaller _fontInstaller;
+    private readonly HelpWindowService _help;
 
     public OpenDiagramEditorAction(
         IDiagramFileStore fileStore,
         IDiagramEditorSettingsStore settingsStore,
-        RobotoFontInstaller fontInstaller)
+        RobotoFontInstaller fontInstaller,
+        HelpWindowService help)
     {
         _fileStore = fileStore;
         _settingsStore = settingsStore;
         _fontInstaller = fontInstaller;
+        _help = help;
     }
 
     /// <summary>Where the editor keeps the last used style and its layout: config\diagrameditor.json.</summary>
@@ -38,6 +43,7 @@ public sealed class OpenDiagramEditorAction : IAppAction
 
         // Disposed itself when closed
         var editor = new DiagramEditorForm();
+        _help.OpenOnF1(editor, () => HelpTopics.DiagramEditor);
         var presenter = new DiagramEditorPresenter(editor, _fileStore, _settingsStore);
 
         presenter.Start();

@@ -270,6 +270,19 @@ public static partial class MarkdownInlineParser
     // Where the closing marks begin: after a word, never inside a code span
     private static int FindEmphasisEnd(string text, int start, char mark, int length)
     {
+        (int run, int marks) = FindClosingRun(text, start, mark, length);
+
+        // "***both***": the last two close the bold, the one before them the italic inside it
+        return run < 0 ? -1 : run + marks - length;
+    }
+
+    /// <returns>
+    ///     The run of marks that closes emphasis opened just before start: where it starts and how many marks it
+    ///     has; (-1, 0) when there's none. Emphasis that opens inside is skipped to its own end, so in
+    ///     "*a **b** c*" the italic doesn't end at the bold's closing marks.
+    /// </returns>
+    private static (int Start, int Marks) FindClosingRun(string text, int start, char mark, int length)
+    {
         int i = start;
 
         while (i < text.Length)
@@ -304,14 +317,26 @@ public static partial class MarkdownInlineParser
 
             if (marks >= length && isAfterWord && isWordEnd)
             {
-                // "***both***": the last two close the bold, the one before them the italic inside it
-                return after - length;
+                return (i, marks);
+            }
+
+            // Emphasis of its own: past the marks that close it, the first of their run; the rest can close this one
+            if (!isAfterWord && CanOpen(text, i, marks))
+            {
+                (int inner, _) = FindClosingRun(text, after, mark, marks);
+
+                if (inner >= 0)
+                {
+                    i = inner + marks;
+
+                    continue;
+                }
             }
 
             i = after;
         }
 
-        return -1;
+        return (-1, 0);
     }
 
     // "[label](target)" from the "[" at start, brackets inside it included

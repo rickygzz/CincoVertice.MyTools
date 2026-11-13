@@ -44,6 +44,9 @@ public sealed class ConfigEditorPresenter
         _view.CloseRequested += View_CloseRequested;
     }
 
+    /// <summary>The file shown; null before one is.</summary>
+    public string? FilePath => _file?.Path;
+
     private bool IsModified => _saved is not null && _view.CodeText != _saved.Text;
 
     /// <summary>Shows a file, after dealing with the changes to the one open; or the first when path is null.</summary>

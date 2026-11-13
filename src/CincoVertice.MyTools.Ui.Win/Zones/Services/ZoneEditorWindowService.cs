@@ -1,4 +1,6 @@
+using CincoVertice.MyTools.Ui.Help.Services;
 using CincoVertice.MyTools.Ui.Win.ConfigEditor.Services;
+using CincoVertice.MyTools.Ui.Win.Help.Services;
 using CincoVertice.MyTools.Ui.Win.Shell.Services;
 using CincoVertice.MyTools.Ui.Zones.Interfaces;
 using CincoVertice.MyTools.Ui.Zones.Presenters;
@@ -15,6 +17,7 @@ public sealed class ZoneEditorWindowService
     private readonly IZoneDesktop _desktop;
     private readonly ConfigEditorWindowService _configEditor;
     private readonly AppIconService _appIcon;
+    private readonly HelpWindowService _help;
 
     private ZoneEditorForm? _form;
 
@@ -22,12 +25,14 @@ public sealed class ZoneEditorWindowService
         ZonesConfigService zones,
         IZoneDesktop desktop,
         ConfigEditorWindowService configEditor,
-        AppIconService appIcon)
+        AppIconService appIcon,
+        HelpWindowService help)
     {
         _zones = zones;
         _desktop = desktop;
         _configEditor = configEditor;
         _appIcon = appIcon;
+        _help = help;
     }
 
     public void Open()
@@ -36,6 +41,7 @@ public sealed class ZoneEditorWindowService
         {
             _form = new ZoneEditorForm { Icon = _appIcon.Current };
             _form.FormClosed += Form_FormClosed;
+            _help.OpenOnF1(_form, () => HelpTopics.WindowZones);
             new ZoneEditorPresenter(_form, _zones, _desktop, OpenAsText).Start();
             _form.Show();
         }

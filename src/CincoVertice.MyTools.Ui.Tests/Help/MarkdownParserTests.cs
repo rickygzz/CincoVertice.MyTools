@@ -165,6 +165,41 @@ public class MarkdownParserTests
     }
 
     [Theory]
+    [InlineData("*a **b** c*", MarkdownInlineStyle.Italic)]
+    [InlineData("**a *b* c**", MarkdownInlineStyle.Bold)]
+    [InlineData("_a **b** c_", MarkdownInlineStyle.Italic)]
+    public void Emphasis_InsideEmphasis_EndsAtItsOwnMarks(string markdown, MarkdownInlineStyle outer)
+    {
+        // Act
+        IReadOnlyList<MarkdownInlineModel> inlines = MarkdownInlineParser.Parse(markdown);
+
+        // Assert
+        MarkdownInlineStyle both = MarkdownInlineStyle.Bold | MarkdownInlineStyle.Italic;
+        Assert.Equal(
+            [
+                new MarkdownInlineModel("a ", outer),
+                new MarkdownInlineModel("b", both),
+                new MarkdownInlineModel(" c", outer),
+            ],
+            inlines);
+    }
+
+    [Fact]
+    public void Emphasis_WhoseClosingMarksAreShared_EndsInsideFirst()
+    {
+        // Act
+        IReadOnlyList<MarkdownInlineModel> inlines = MarkdownInlineParser.Parse("**a *b***");
+
+        // Assert
+        Assert.Equal(
+            [
+                new MarkdownInlineModel("a ", MarkdownInlineStyle.Bold),
+                new MarkdownInlineModel("b", MarkdownInlineStyle.Bold | MarkdownInlineStyle.Italic),
+            ],
+            inlines);
+    }
+
+    [Theory]
     [InlineData("snake_case_name stays", "snake_case_name stays")]
     [InlineData("2 * 3 * 4", "2 * 3 * 4")]
     [InlineData(@"\*not italic\*", "*not italic*")]
@@ -201,6 +236,17 @@ public class MarkdownParserTests
     }
 
     [Theory]
+    [InlineData(@"C:\MyTools\config\hotkeys.cfg", "02-hotkeys.md")]
+    [InlineData(@"C:\MyTools\config\Recording.CFG", "04-snipping.md#recordingcfg")]
+    [InlineData(@"C:\MyTools\config\scripts\GoogleSearch.mts", "08-scripts.md")]
+    [InlineData(@"C:\MyTools\config\other.json", "07-config-editor.md")]
+    [InlineData(null, "07-config-editor.md")]
+    public void TheHelpTopicOfAFile_IsThePageAboutIt(string? path, string topic)
+    {
+        Assert.Equal(topic, HelpTopics.ForFile(path));
+    }
+
+    [Theory]
     [InlineData("02-hotkeys.md", "02-hotkeys.md", null, null)]
     [InlineData("02-hotkeys.md#default-hotkeys", "02-hotkeys.md", "default-hotkeys", null)]
     [InlineData("./13-window-zones.md#", "13-window-zones.md", null, null)]
@@ -213,7 +259,7 @@ public class MarkdownParserTests
     }
 
     [Fact]
-    public void EveryLinkOfTheUserGuide_GoesToAPageAndHeadingItHas()
+    public void EveryLinkOfTheUserGuide_AndEveryHelpTopic_GoesToAPageAndHeadingItHas()
     {
         // Arrange: the guide in the repository
         string folder = UserGuideFolder();
@@ -223,23 +269,24 @@ public class MarkdownParserTests
             StringComparer.OrdinalIgnoreCase);
         List<string> broken = [];
 
-        // Act
-        foreach ((string name, MarkdownDocumentModel document) in pages)
+        // Act: the guide's own links, and the pages F1 opens from each window
+        IEnumerable<(string Name, string Target)> links = pages
+            .SelectMany(page => LinksOf(page.Value).Select(target => (page.Key, target)))
+            .Concat(HelpTopics.All.Select(topic => ("F1", topic)));
+
+        foreach ((string name, string target) in links)
         {
-            foreach (string target in LinksOf(document))
+            HelpLinkModel link = HelpLinkModel.Parse(target);
+
+            if (link.Url is not null)
             {
-                HelpLinkModel link = HelpLinkModel.Parse(target);
+                continue;
+            }
 
-                if (link.Url is not null)
-                {
-                    continue;
-                }
-
-                if (!pages.TryGetValue(link.Page ?? name, out MarkdownDocumentModel? linked)
-                    || link.Anchor is not null && linked.Blocks.All(block => block.Anchor != link.Anchor))
-                {
-                    broken.Add($"{name}: {target}");
-                }
+            if (!pages.TryGetValue(link.Page ?? name, out MarkdownDocumentModel? linked)
+                || link.Anchor is not null && linked.Blocks.All(block => block.Anchor != link.Anchor))
+            {
+                broken.Add($"{name}: {target}");
             }
         }
 

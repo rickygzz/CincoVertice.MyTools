@@ -15,6 +15,9 @@ public interface IHelpView
 
     event EventHandler? ForwardRequested;
 
+    /// <summary>Where the text at the top of the window is, in the page's text.</summary>
+    int TopPosition { get; }
+
     void ShowPages(IReadOnlyList<HelpPageModel> pages);
 
     /// <param name="anchor">The heading to scroll to; null for the top.</param>
@@ -22,6 +25,10 @@ public interface IHelpView
 
     /// <summary>Scrolls the page shown to a heading; null, or one it doesn't have, is the top.</summary>
     void ScrollTo(string? anchor);
+
+    /// <summary>Scrolls the page so the text at a position is at the top.</summary>
+    /// <param name="position">As <see cref="TopPosition"/> gave it.</param>
+    void ScrollToPosition(int position);
 
     void ShowNavigation(bool canGoBack, bool canGoForward);
 

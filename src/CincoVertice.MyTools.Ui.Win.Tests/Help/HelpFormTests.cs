@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Forms;
 using CincoVertice.MyTools.Ui.Help.Models;
 using CincoVertice.MyTools.Ui.Help.Services;
+using CincoVertice.MyTools.Ui.Win.Behaviors;
 using CincoVertice.MyTools.Ui.Win.Help;
 using CincoVertice.MyTools.Ui.Win.Help.Services;
 using Xunit;
@@ -87,6 +88,39 @@ public sealed class HelpFormTests
     }
 
     [Fact]
+    public void TabGoesFromLinkToLink_RoundTheEnds_AndEnterOpensTheOneSelected()
+    {
+        // Arrange
+        using HelpForm form = ShownForm(new Point(-3000, 700));
+        MarkdownDocumentModel document = MarkdownParser.Parse("[One](01.md) text [Two](02.md#b) more [Three](#c)");
+        form.ShowPage(new HelpPageModel("README.md", "Guide"), document, null);
+        RichTextBox page = PageOf(form);
+
+        // Act and assert: forward, then round to the first, then back round to the last
+        Assert.Equal(["One", "Two", "Three", "One"], Enumerable.Range(0, 4).Select(_ => Tab(form, page, true)));
+        Assert.Equal("Three", Tab(form, page, false));
+        Assert.Equal("#c", (string?)Invoke(form, "LinkAtCaret"));
+    }
+
+    [Fact]
+    public void F1_InAControlOfTheForm_OpensItsTopic()
+    {
+        // Arrange
+        using var form = new Form();
+        var box = new TextBox();
+        form.Controls.Add(box);
+        List<string> opened = [];
+        form.OpenHelpOnF1(() => "04-snipping.md#recordingcfg", opened.Add);
+
+        // Act: what F1 in the text box does
+        typeof(Control).GetMethod("OnHelpRequested", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(box, [new HelpEventArgs(Point.Empty)]);
+
+        // Assert
+        Assert.Equal(["04-snipping.md#recordingcfg"], opened);
+    }
+
+    [Fact]
     public void TheLongestPage_IsShownQuickly()
     {
         // Arrange
@@ -108,9 +142,18 @@ public sealed class HelpFormTests
         (RichTextBox)typeof(HelpForm).GetField("PageTextBox", BindingFlags.Instance | BindingFlags.NonPublic)!
             .GetValue(form)!;
 
-    private static string? LinkAt(HelpForm form, Point point) =>
-        (string?)typeof(HelpForm).GetMethod("LinkAt", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .Invoke(form, [point]);
+    private static string? LinkAt(HelpForm form, Point point) => (string?)Invoke(form, "LinkAt", point);
+
+    // What Tab or Shift+Tab in the page does: the link it selects
+    private static string Tab(HelpForm form, RichTextBox page, bool forward)
+    {
+        Invoke(form, "SelectLink", forward);
+
+        return page.SelectedText;
+    }
+
+    private static object? Invoke(HelpForm form, string method, params object[] arguments) =>
+        typeof(HelpForm).GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(form, arguments);
 
     // Through the box itself: its positions count a table's cells as Text doesn't
     private static string TextAt(RichTextBox page, int start, int length)

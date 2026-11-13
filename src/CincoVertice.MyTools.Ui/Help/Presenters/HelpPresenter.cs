@@ -8,7 +8,7 @@ namespace CincoVertice.MyTools.Ui.Help.Presenters;
 /// <summary>
 ///     The user guide reader: the guide's pages, the contents first, and one page at a time. Its links open other
 ///     pages and their headings, and web pages outside; back and forward go through the pages and headings opened,
-///     as in a browser.
+///     as in a browser, each scrolled to where it was left.
 /// </summary>
 public sealed class HelpPresenter
 {
@@ -23,8 +23,8 @@ public sealed class HelpPresenter
     private readonly IHelpView _view;
     private readonly IHelpPageStore _store;
 
-    // Where back and forward go; every place has its page
-    private readonly List<HelpLinkModel> _history = [];
+    // Where back and forward go
+    private readonly List<HelpPlaceModel> _history = [];
 
     private IReadOnlyList<HelpPageModel> _pages = [];
     private int _position = -1;
@@ -37,7 +37,8 @@ public sealed class HelpPresenter
     }
 
     /// <param name="page">The page to open first; the contents when null.</param>
-    public void Start(string? page = null)
+    /// <param name="anchor">The heading to open it at; the top when null.</param>
+    public void Start(string? page = null, string? anchor = null)
     {
         _view.LinkClicked += OnLinkClicked;
         _view.PageChosen += OnPageChosen;
@@ -56,21 +57,23 @@ public sealed class HelpPresenter
             return;
         }
 
-        Open(page ?? _pages[0].Name);
+        Open(page ?? _pages[0].Name, anchor);
     }
 
     /// <summary>Opens a page, at a heading, after the place shown, which back goes to.</summary>
     /// <param name="page">Its file name, e.g. "02-hotkeys.md".</param>
     public void Open(string page, string? anchor = null)
     {
-        var place = new HelpLinkModel(NameOf(page), anchor);
+        var place = new HelpPlaceModel(NameOf(page), anchor);
 
-        if (_position >= 0 && _history[_position] == place)
+        if (_position >= 0 && _history[_position].Page == place.Page && _history[_position].Anchor == anchor)
         {
             _view.ScrollTo(anchor);
 
             return;
         }
+
+        RememberTop();
 
         if (!Show(place))
         {
@@ -111,31 +114,46 @@ public sealed class HelpPresenter
         _pages.FirstOrDefault(known => string.Equals(known.Name, page, StringComparison.OrdinalIgnoreCase))?.Name
         ?? page;
 
-    private bool Show(HelpLinkModel place)
+    /// <summary>Shows a place: where it was scrolled to when it was left, or else at its heading.</summary>
+    private bool Show(HelpPlaceModel place)
     {
-        string page = place.Page!;
+        string page = place.Page;
 
-        if (page == _shownPage)
+        if (page != _shownPage)
+        {
+            string? markdown = _pages.Any(known => known.Name == page) ? _store.Read(page) : null;
+
+            if (markdown is null)
+            {
+                _view.ShowProblem($"The user guide has no page {page}.");
+
+                return false;
+            }
+
+            MarkdownDocumentModel document = MarkdownParser.Parse(markdown);
+            _view.ShowPage(new HelpPageModel(page, document.Title ?? page), document, place.Anchor);
+            _shownPage = page;
+        }
+        else if (place.Top is null)
         {
             _view.ScrollTo(place.Anchor);
-
-            return true;
         }
 
-        string? markdown = _pages.Any(known => known.Name == page) ? _store.Read(page) : null;
-
-        if (markdown is null)
+        if (place.Top is int top)
         {
-            _view.ShowProblem($"The user guide has no page {page}.");
-
-            return false;
+            _view.ScrollToPosition(top);
         }
-
-        MarkdownDocumentModel document = MarkdownParser.Parse(markdown);
-        _view.ShowPage(new HelpPageModel(page, document.Title ?? page), document, place.Anchor);
-        _shownPage = page;
 
         return true;
+    }
+
+    // Where the place shown is scrolled to, for when it's come back to
+    private void RememberTop()
+    {
+        if (_position >= 0)
+        {
+            _history[_position] = _history[_position] with { Top = _view.TopPosition };
+        }
     }
 
     private void ShowNavigation()
@@ -171,7 +189,14 @@ public sealed class HelpPresenter
     {
         int position = _position + step;
 
-        if (position < 0 || position >= _history.Count || !Show(_history[position]))
+        if (position < 0 || position >= _history.Count)
+        {
+            return;
+        }
+
+        RememberTop();
+
+        if (!Show(_history[position]))
         {
             return;
         }

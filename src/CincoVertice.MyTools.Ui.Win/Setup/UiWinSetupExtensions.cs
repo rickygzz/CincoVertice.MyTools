@@ -10,6 +10,7 @@ using CincoVertice.MyTools.Ui.ConfigEditor.Services;
 using CincoVertice.MyTools.Ui.Diagramming.Interfaces;
 using CincoVertice.MyTools.Ui.Diagramming.Services;
 using CincoVertice.MyTools.Ui.Help.Interfaces;
+using CincoVertice.MyTools.Ui.Help.Services;
 using CincoVertice.MyTools.Ui.Setup;
 using CincoVertice.MyTools.Ui.Shell.Interfaces;
 using CincoVertice.MyTools.Ui.Shell.Presenters;
@@ -69,7 +70,13 @@ public static class UiWinSetupExtensions
         services.AddSingleton<ITrayView>(sp => sp.GetRequiredService<TrayApplicationContext>());
 
         services.AddSingleton<MainForm>();
-        services.AddSingleton<CalculatorForm>();
+        services.AddSingleton(sp =>
+        {
+            var calculator = new CalculatorForm();
+            sp.GetRequiredService<HelpWindowService>().OpenOnF1(calculator, () => HelpTopics.Calculator);
+
+            return calculator;
+        });
         services.AddSingleton<ICalculatorView>(sp => sp.GetRequiredService<CalculatorForm>());
 
         services.AddSingleton<GlobalHotkeyService>();

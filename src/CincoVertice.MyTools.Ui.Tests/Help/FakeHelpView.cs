@@ -13,6 +13,12 @@ public sealed class FakeHelpView : IHelpView
 
     public event EventHandler? ForwardRequested;
 
+    /// <summary>Where the window is scrolled to; set by the test, as the user scrolling.</summary>
+    public int TopPosition { get; set; }
+
+    /// <summary>Every scroll to a position the presenter remembered.</summary>
+    public List<int> Positions { get; } = [];
+
     public IReadOnlyList<HelpPageModel> Pages { get; private set; } = [];
 
     /// <summary>Every page shown, in order, with the heading it was shown at.</summary>
@@ -38,6 +44,8 @@ public sealed class FakeHelpView : IHelpView
     }
 
     public void ScrollTo(string? anchor) => Scrolls.Add(anchor);
+
+    public void ScrollToPosition(int position) => Positions.Add(position);
 
     public void ShowNavigation(bool canGoBack, bool canGoForward) => Navigation = (canGoBack, canGoForward);
 

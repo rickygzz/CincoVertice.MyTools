@@ -1,5 +1,7 @@
 using CincoVertice.MyTools.Ui.Help.Interfaces;
+using CincoVertice.MyTools.Ui.Help.Models;
 using CincoVertice.MyTools.Ui.Help.Presenters;
+using CincoVertice.MyTools.Ui.Win.Behaviors;
 using CincoVertice.MyTools.Ui.Win.Shell.Services;
 
 namespace CincoVertice.MyTools.Ui.Win.Help.Services;
@@ -22,9 +24,14 @@ public sealed class HelpWindowService
         _appIcon = appIcon;
     }
 
-    /// <param name="page">The page to show, e.g. "13-window-zones.md"; null for the contents, or what's shown.</param>
-    public void Open(string? page = null)
+    /// <param name="link">
+    ///     The page to show, and a heading in it, e.g. "04-snipping.md#recordingcfg"; null for the contents, or what's
+    ///     shown.
+    /// </param>
+    public void Open(string? link = null)
     {
+        HelpLinkModel? place = link is null ? null : HelpLinkModel.Parse(link);
+
         if (_form is null || _presenter is null)
         {
             _form = new HelpForm { Icon = _appIcon.Current };
@@ -33,11 +40,11 @@ public sealed class HelpWindowService
             // Shown first: the page is laid out at the window's size
             _form.Show();
             _presenter = new HelpPresenter(_form, _pages);
-            _presenter.Start(page);
+            _presenter.Start(place?.Page, place?.Anchor);
         }
-        else if (page is not null)
+        else if (place?.Page is not null)
         {
-            _presenter.Open(page);
+            _presenter.Open(place.Page, place.Anchor);
         }
 
         if (_form.WindowState == FormWindowState.Minimized)
@@ -46,6 +53,13 @@ public sealed class HelpWindowService
         }
 
         _form.Activate();
+    }
+
+    /// <summary>Makes F1 in a window open the guide at the page about it.</summary>
+    /// <param name="topic">The page, as a link; asked at each F1, for a window whose page changes.</param>
+    public void OpenOnF1(Form form, Func<string> topic)
+    {
+        form.OpenHelpOnF1(topic, Open);
     }
 
     private void Form_FormClosed(object? sender, FormClosedEventArgs e)
