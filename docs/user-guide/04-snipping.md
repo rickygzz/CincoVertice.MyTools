@@ -112,7 +112,7 @@ Press **Ctrl+Alt+R** (`RecordScreen`) and drag over the area to record, as for a
 - A red frame shows the area, and a small bar below it (or above, when there's no room) shows how long it has recorded. Drag the bar by its time to move it. Neither is in the video, and the bar doesn't take the focus from the program you record.
 - To stop, press **Ctrl+Alt+R** again or click **Stop** on the bar. After a moment, a dialog titled "Save recording" asks where to save the video, starting in your Videos folder with the name `Recording yyyy-MM-dd HHmmss.mp4`. Cancel deletes it.
 
-The video is an MP4 (H.264), recorded at 20 frames a second with the encoder built into Windows, using the graphics card when it can. It plays in any video player and in browsers. It has no sound, and the mouse pointer isn't in it yet. Its width and height are made even, which the encoder needs, so an area 1 pixel off loses that pixel. While the video is recorded, it's kept in your temporary folder.
+The video is an MP4 (H.264), recorded at 20 frames a second with the encoder built into Windows, using the graphics card when it can. It plays in any video player and in browsers. It has the mouse pointer, as it was on the screen, but no sound. When a program hides the pointer, as some do while you type, the video doesn't show it either. Its width and height are made even, which the encoder needs, so an area 1 pixel off loses that pixel. While the video is recorded, it's kept in your temporary folder.
 
 If Windows can't record, a notification says why.
 

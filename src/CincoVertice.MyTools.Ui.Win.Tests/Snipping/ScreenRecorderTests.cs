@@ -44,10 +44,13 @@ public sealed class ScreenRecorderTests : IDisposable
 
         var recorder = new ScreenRecorder();
 
-        // Act
-        await recorder.StartAsync(form.Bounds, _path);
-        await Pump(TimeSpan.FromSeconds(1.5));
-        await recorder.StopAsync();
+        // Act: with the pointer away, as it's in the video too
+        using (MovePointer(new Point(screen.Right - 20, screen.Bottom - 20)))
+        {
+            await recorder.StartAsync(form.Bounds, _path);
+            await Pump(TimeSpan.FromSeconds(1.5));
+            await recorder.StopAsync();
+        }
 
         // Assert
         Assert.True(new FileInfo(_path).Length > 1000);
@@ -55,6 +58,72 @@ public sealed class ScreenRecorderTests : IDisposable
         Assert.Equal(new Size(200, 120), frame.Size);
         AssertNear(Color.Red, frame.GetPixel(30, 20));
         AssertNear(Color.Blue, frame.GetPixel(170, 100));
+    }
+
+    [Fact]
+    public async Task Recording_HasTheMousePointer_WhereItIs()
+    {
+        // Arrange: a white window, with the pointer in its middle
+        Rectangle screen = Screen.PrimaryScreen!.WorkingArea;
+        using var form = new Form
+        {
+            FormBorderStyle = FormBorderStyle.None,
+            ShowInTaskbar = false,
+            StartPosition = FormStartPosition.Manual,
+            TopMost = true,
+            BackColor = Color.White,
+            Bounds = new Rectangle(screen.Left + 40, screen.Top + 40, 200, 120),
+        };
+        form.Show();
+        Application.DoEvents();
+
+        var recorder = new ScreenRecorder();
+
+        // Act
+        using (MovePointer(new Point(form.Left + 100, form.Top + 60)))
+        {
+            await recorder.StartAsync(form.Bounds, _path);
+            await Pump(TimeSpan.FromSeconds(1.5));
+            await recorder.StopAsync();
+        }
+
+        // Assert: the pointer's arrow, at the middle, and nothing at the corner
+        using Bitmap frame = await FrameAt(TimeSpan.FromSeconds(0.5));
+        Assert.True(Dark(frame, new Rectangle(98, 58, 20, 30)) > 10, "The pointer isn't in the video.");
+        Assert.Equal(0, Dark(frame, new Rectangle(0, 0, 40, 40)));
+    }
+
+    // Puts the pointer there until disposed, then back where it was
+    private static IDisposable MovePointer(Point point)
+    {
+        Point before = Cursor.Position;
+        Cursor.Position = point;
+        Application.DoEvents();
+
+        return new PointerBack(before);
+    }
+
+    private static int Dark(Bitmap image, Rectangle area)
+    {
+        int count = 0;
+
+        for (int x = area.Left; x < area.Right; x++)
+        {
+            for (int y = area.Top; y < area.Bottom; y++)
+            {
+                if (image.GetPixel(x, y).GetBrightness() < 0.5f)
+                {
+                    count++;
+                }
+            }
+        }
+
+        return count;
+    }
+
+    private sealed class PointerBack(Point position) : IDisposable
+    {
+        public void Dispose() => Cursor.Position = position;
     }
 
     // Keeps the window drawn while the recorder copies it

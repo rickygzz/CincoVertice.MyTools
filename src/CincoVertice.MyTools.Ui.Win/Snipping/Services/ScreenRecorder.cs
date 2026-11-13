@@ -186,10 +186,14 @@ public sealed class ScreenRecorder : IScreenRecorder
     {
         Bitmap frame;
 
-        // Physical pixels on every monitor, as the area is
+        // Physical pixels on every monitor, as the area is, the pointer's position too
         using (DpiAwarenessScope.PerMonitorV2())
         {
             frame = ScreenCapture.Capture(_area);
+
+            // A copy of the screen doesn't have the pointer: Windows draws it over the screen apart
+            using var graphics = Graphics.FromImage(frame);
+            CursorPainter.Draw(graphics, _area.Location);
         }
 
         using (frame)
