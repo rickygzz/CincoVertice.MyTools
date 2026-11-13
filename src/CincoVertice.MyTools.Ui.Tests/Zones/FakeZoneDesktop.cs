@@ -31,6 +31,9 @@ internal sealed class FakeZoneDesktop : IZoneDesktop, IZoneLayoutSource
         set => Layouts = Layouts with { DefaultLayout = value };
     }
 
+    /// <summary>How narrow the window can be made, as some programs keep their windows; 0 for any width.</summary>
+    public int MinimumWidth { get; set; }
+
     /// <summary>When set, MoveWindow fails with it.</summary>
     public string? MoveProblem { get; set; }
 
@@ -55,7 +58,7 @@ internal sealed class FakeZoneDesktop : IZoneDesktop, IZoneLayoutSource
         }
 
         Moves.Add((window, bounds));
-        WindowBounds = bounds;
+        WindowBounds = bounds with { Width = Math.Max(bounds.Width, MinimumWidth) };
 
         return null;
     }

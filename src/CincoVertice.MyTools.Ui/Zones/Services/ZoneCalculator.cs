@@ -96,23 +96,37 @@ public static class ZoneCalculator
         return nearest;
     }
 
-    /// <returns>The index of the zone the window fills, as far as a few pixels; null when it fills none.</returns>
+    /// <returns>
+    ///     The index of the zone the window was put in: the one whose top left corner it's at, as far as a few pixels,
+    ///     since a window put in a zone always starts there; of those, the one nearest its size. Not its size alone: a
+    ///     program can keep its window larger than a small zone, or size it in steps, as a terminal does by rows. Null
+    ///     when it's at no zone's corner.
+    /// </returns>
     public static int? ZoneOf(IReadOnlyList<Rectangle> zones, Rectangle window)
     {
+        int? found = null;
+        int best = int.MaxValue;
+
         for (int i = 0; i < zones.Count; i++)
         {
             Rectangle zone = zones[i];
 
-            if (Math.Abs(zone.Left - window.Left) <= SameZoneTolerance
-                && Math.Abs(zone.Top - window.Top) <= SameZoneTolerance
-                && Math.Abs(zone.Right - window.Right) <= SameZoneTolerance
-                && Math.Abs(zone.Bottom - window.Bottom) <= SameZoneTolerance)
+            if (Math.Abs(zone.Left - window.Left) > SameZoneTolerance
+                || Math.Abs(zone.Top - window.Top) > SameZoneTolerance)
             {
-                return i;
+                continue;
+            }
+
+            int difference = Math.Abs(zone.Width - window.Width) + Math.Abs(zone.Height - window.Height);
+
+            if (difference < best)
+            {
+                found = i;
+                best = difference;
             }
         }
 
-        return null;
+        return found;
     }
 
     /// <returns>

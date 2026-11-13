@@ -103,7 +103,7 @@ These actions have no default hotkey. Add them to `hotkeys.cfg` (see [Hotkeys](0
 | Action | What it does |
 |---|---|
 | `MoveToZone` | Moves the active window to the zone whose number follows the shortcut. Add one line per zone. |
-| `MoveToNextZone` | Moves the active window to the next zone of its monitor; from the last zone to the first. A window in no zone goes to the first. |
+| `MoveToNextZone` | Moves the active window to the next zone of its monitor; from the last zone to the first. A window in no zone goes to the first. A window counts as in the zone whose top left corner it is at, even when its program keeps it larger or smaller than the zone. |
 | `MoveToPreviousZone` | The same, backwards. A window in no zone goes to the last. |
 | `EditZones` | Opens the window zones editor. |
 

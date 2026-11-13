@@ -147,4 +147,43 @@ public class ZoneCalculatorTests
         // Assert
         Assert.Equal(expected, zone);
     }
+
+    [Theory]
+    [InlineData(0, 516, 900, 516, 2)]
+    [InlineData(0, 516, 690, 509, 2)]
+    [InlineData(0, 0, 940, 745, 0)]
+    public void ZoneOf_AWindowNotTheZonesSize_IsInTheZoneWhoseCornerItsAt(
+        int x,
+        int y,
+        int width,
+        int height,
+        int expected)
+    {
+        // Arrange: zones that overlap, as a user saved them; the third is too narrow for some programs, which keep
+        // their windows wider, and a terminal sizes its window in rows
+        IReadOnlyList<Rectangle> zones =
+        [
+            new Rectangle(0, 0, 938, 745),
+            new Rectangle(703, 0, 1217, 745),
+            new Rectangle(0, 516, 703, 516),
+            new Rectangle(703, 375, 1217, 657),
+        ];
+
+        // Act
+        int? zone = ZoneCalculator.ZoneOf(zones, new Rectangle(x, y, width, height));
+
+        // Assert
+        Assert.Equal(expected, zone);
+    }
+
+    [Fact]
+    public void ZoneOf_ZonesWithTheSameCorner_IsTheOneNearestTheWindowsSize()
+    {
+        // Arrange
+        IReadOnlyList<Rectangle> zones = [new Rectangle(0, 0, 1000, 600), new Rectangle(0, 0, 500, 300)];
+
+        // Act and assert
+        Assert.Equal(1, ZoneCalculator.ZoneOf(zones, new Rectangle(0, 0, 520, 310)));
+        Assert.Equal(0, ZoneCalculator.ZoneOf(zones, new Rectangle(0, 0, 990, 600)));
+    }
 }

@@ -102,6 +102,28 @@ public class ZoneMoverTests
         Assert.Equal(new Rectangle(0, 0, 500, 600), _desktop.WindowBounds);
     }
 
+    [Theory]
+    [InlineData(1, new[] { 0, 250, 500, 750, 0 })]
+    [InlineData(-1, new[] { 750, 500, 250, 0, 750 })]
+    public void MoveActiveWindowBy_AWindowWiderThanTheZones_StillGoesThroughEveryZone(int step, int[] lefts)
+    {
+        // Arrange: four columns of 250 pixels, and a program that keeps its window at least 400 wide
+        _desktop.Layout = new ZoneLayoutModel(ZoneLayoutModel.Columns(ZoneLayoutModel.Equal(4)), 0);
+        _desktop.MinimumWidth = 400;
+
+        // Act
+        List<int> visited = [];
+
+        foreach (int _ in lefts)
+        {
+            _mover.MoveActiveWindowBy(step);
+            visited.Add(_desktop.WindowBounds.Left);
+        }
+
+        // Assert: before, the window wasn't seen as in a zone it didn't fill, and went back to the first or last
+        Assert.Equal(lefts, visited);
+    }
+
     [Fact]
     public void MoveActiveWindowBy_Back_FromNoZone_GoesToTheLast()
     {
