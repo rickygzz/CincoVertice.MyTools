@@ -14,6 +14,21 @@ Press **Ctrl+Alt+C**. A small bar opens, centered on the screen where your mouse
 
 The calculator also hides when it loses focus. The calculator has no title-bar buttons, and Alt+F4 also hides it rather than closing it.
 
+**Suggestions.** While you type, a list under the box offers what can come next in a conversion:
+
+- After a time and a space (`10:30 `, `3 pm `, `now `), the places, each with its UTC offset today: `Mexico City (UTC-6)`. Type the start of a place to narrow them; any of its names works, in any case and without accents (`sao`, `cdmx`). After a 12-hour time, `a` or `p` also offers `am` or `pm`.
+- After a number and a space (`10 `), the units, each with its name and kind: `km (kilometer, length)`. Type the start of a symbol or a name (`kilo`) to narrow them. After anything other than a single number, such as `1 + 2 `, the units wait for a letter, so they don't pop up at every space of a sum.
+- Choosing the first place or unit writes `to` after it, and the list goes on with the second: the places to convert to, or the units of the same kind. So `10:30 `, then Mexico City, then India writes `10:30 Mexico City to India`.
+
+| Key | In the list |
+|---|---|
+| **Down** / **Up** | Goes through the list |
+| **Tab** | Writes the one chosen, or else the first |
+| **Enter** | Writes the one chosen; with none chosen, it calculates |
+| **Esc** | Hides the list (pressed again, it hides the calculator) |
+
+Clicking one writes it too. The list shows only while the caret is at the end of the text.
+
 The calculator never touches your clipboard. To copy a result, select it with the mouse and press **Ctrl+C**.
 
 **History.** Kept until you exit the app, up to 200 entries; the oldest are dropped. It is shown as `operation = result` lines, and with "No operations yet" when empty. Only successful calculations are added. You cannot recall an entry into the input box with a key; retype it or copy it with the mouse.

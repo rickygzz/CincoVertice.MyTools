@@ -233,11 +233,92 @@ public class CalculatorPresenterTests
         _view.RequestEvaluate();
     }
 
+    [Fact]
+    public void Suggestions_ATimeThenPlaces_WriteTheConversion_WhichCalculates()
+    {
+        // Arrange: in winter, so Mexico City is UTC-6
+        var view = new FakeCalculatorView();
+        var winter = new DateTime(2026, 1, 15, 12, 0, 0);
+        var presenter = new CalculatorPresenter(view, new ExpressionCalculator(), () => winter);
+
+        // Act / Assert: the first place writes "to", so the second follows
+        view.Type("10:30 ");
+        Assert.Equal("Mexico City (UTC-6)", view.Suggestions![0]);
+
+        view.Choose(0);
+        Assert.Equal(("10:30 Mexico City to ", 21), (view.Expression, view.Caret));
+        Assert.Contains("India (UTC+5:30)", view.Suggestions!);
+
+        view.Type("10:30 Mexico City to ind");
+        Assert.Equal(["India (UTC+5:30)"], view.Suggestions);
+
+        view.Choose(0);
+        Assert.Equal("10:30 Mexico City to India", view.Expression);
+
+        presenter.Evaluate();
+        Assert.Null(view.Suggestions);
+        Assert.Null(view.Error);
+    }
+
+    [Fact]
+    public void Suggestions_ANumberThenUnits_WriteTheConversion_WithUnitsOfTheSameKind()
+    {
+        // Act / Assert
+        _view.Type("10 ");
+        Assert.Contains("km (kilometer, length)", _view.Suggestions!);
+        Assert.Contains("kg (kilogram, mass)", _view.Suggestions!);
+
+        _view.Choose(_view.Suggestions!.ToList().IndexOf("km (kilometer, length)"));
+        Assert.Equal("10 km to ", _view.Expression);
+        Assert.All(_view.Suggestions!, item => Assert.EndsWith("length)", item));
+        Assert.DoesNotContain("km (kilometer, length)", _view.Suggestions!);
+
+        _view.Type("10 km to mi");
+        _view.Choose(0);
+        Assert.Equal("10 km to mi", _view.Expression);
+    }
+
+    [Fact]
+    public void Suggestions_AChoiceWhenNoneAreShown_DoesNothing()
+    {
+        // Arrange
+        _view.Type("2+2");
+
+        // Act
+        _view.Choose(0);
+
+        // Assert
+        Assert.Null(_view.Suggestions);
+        Assert.Equal("2+2", _view.Expression);
+    }
+
     private sealed class FakeCalculatorView : ICalculatorView
     {
         public event EventHandler? EvaluateRequested;
 
         public event EventHandler? ToggleHistoryRequested;
+
+        public event EventHandler? ExpressionChanged;
+
+        public event EventHandler<int>? SuggestionChosen;
+
+        public int Caret { get; set; }
+
+        public IReadOnlyList<string>? Suggestions { get; private set; }
+
+        public void Type(string expression) => SetExpression(expression, expression.Length);
+
+        public void Choose(int index) => SuggestionChosen?.Invoke(this, index);
+
+        public void SetExpression(string expression, int caret)
+        {
+            (Expression, Caret) = (expression, caret);
+            ExpressionChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void ShowSuggestions(IReadOnlyList<string> items) => Suggestions = items;
+
+        public void HideSuggestions() => Suggestions = null;
 
         public List<string> Calls { get; } = [];
 

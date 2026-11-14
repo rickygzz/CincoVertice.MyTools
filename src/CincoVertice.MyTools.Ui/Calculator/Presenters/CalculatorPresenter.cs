@@ -1,12 +1,14 @@
 ﻿using CincoVertice.Common.Application.Calculator;
 using CincoVertice.MyTools.Ui.Calculator.Models;
+using CincoVertice.MyTools.Ui.Calculator.Services;
 using CincoVertice.MyTools.Ui.Calculator.Views;
 
 namespace CincoVertice.MyTools.Ui.Calculator.Presenters;
 
 /// <summary>
 ///     Shows the calculator view, evaluates the expression typed in it, and shows the result or the error. Keeps the
-///     history of the operations that worked, until the app exits, and shows it when asked.
+///     history of the operations that worked, until the app exits, and shows it when asked. While the expression is
+///     typed, offers places and units to write next (<see cref="CalculatorSuggester"/>).
 /// </summary>
 public class CalculatorPresenter
 {
@@ -19,23 +21,34 @@ public class CalculatorPresenter
     private readonly ICalculatorView _view;
     private readonly ExpressionCalculator _calculator;
     private readonly List<CalculatorHistoryEntryModel> _history = [];
+    private readonly Func<DateTime> _utcNow;
+
+    // What the list shows, to know what a choice in it writes
+    private CalculatorSuggestionsModel? _suggestions;
 
     // What the normal height output shows, for when the history is hidden again
     private Action _showCurrent;
     private bool _historyShown;
 
-    public CalculatorPresenter(ICalculatorView view, ExpressionCalculator calculator)
+    /// <param name="view">The window.</param>
+    /// <param name="calculator">Evaluates the expressions.</param>
+    /// <param name="utcNow">The time now, for the UTC offsets the suggestions show; the clock's if null.</param>
+    public CalculatorPresenter(ICalculatorView view, ExpressionCalculator calculator, Func<DateTime>? utcNow = null)
     {
         _view = view;
         _calculator = calculator;
+        _utcNow = utcNow ?? (() => DateTime.UtcNow);
         _showCurrent = () => _view.ShowResult(string.Empty);
 
         _view.EvaluateRequested += OnEvaluateRequested;
         _view.ToggleHistoryRequested += OnToggleHistoryRequested;
+        _view.ExpressionChanged += OnExpressionChanged;
+        _view.SuggestionChosen += OnSuggestionChosen;
     }
 
     public void Show()
     {
+        HideSuggestions();
         _view.ShowAndActivate();
     }
 
@@ -44,6 +57,8 @@ public class CalculatorPresenter
     /// </summary>
     public void Evaluate()
     {
+        HideSuggestions();
+
         string expression = _view.Expression;
 
         if (string.IsNullOrWhiteSpace(expression))
@@ -126,5 +141,42 @@ public class CalculatorPresenter
     private void OnToggleHistoryRequested(object? sender, EventArgs e)
     {
         ToggleHistory();
+    }
+
+    private void HideSuggestions()
+    {
+        _suggestions = null;
+        _view.HideSuggestions();
+    }
+
+    private void OnExpressionChanged(object? sender, EventArgs e)
+    {
+        _suggestions = CalculatorSuggester.Suggest(_view.Expression, _view.Caret, _utcNow());
+
+        if (_suggestions is null)
+        {
+            _view.HideSuggestions();
+        }
+        else
+        {
+            _view.ShowSuggestions([.. _suggestions.Items.Select(item => item.Text)]);
+        }
+    }
+
+    /// <summary>Writes the choice over what was typed of it; what follows it is offered next.</summary>
+    private void OnSuggestionChosen(object? sender, int index)
+    {
+        if (_suggestions is not { } suggestions || index < 0 || index >= suggestions.Items.Count)
+        {
+            return;
+        }
+
+        string expression = _view.Expression;
+        string insert = suggestions.Items[index].Insert;
+        int end = Math.Min(suggestions.Start + suggestions.Length, expression.Length);
+
+        _view.SetExpression(
+            expression[..suggestions.Start] + insert + expression[end..],
+            suggestions.Start + insert.Length);
     }
 }
