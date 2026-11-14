@@ -1,4 +1,7 @@
 ﻿using CincoVertice.MyTools.Ui.Calculator.Models;
+using CincoVertice.Common.Application.Calculator;
+using CincoVertice.Common.Application.Calculator.Functions;
+using CincoVertice.Common.Application.Calculator.Models;
 using CincoVertice.MyTools.Ui.Calculator.Services;
 using Xunit;
 
@@ -143,6 +146,90 @@ public class CalculatorSuggesterTests
         Assert.DoesNotContain(suggestions.Items, item => item.Insert == "kg");
         Assert.All(suggestions.Items, item => Assert.EndsWith("mass)", item.Text));
         Assert.Equal(["lb (pound, mass)"], afterAnUnknownUnit);
+    }
+
+    [Theory]
+    [InlineData("s", "sin(x): sine, in radians", "sqrt(x): square root")]
+    [InlineData("SQ", "sqrt(x): square root")]
+    [InlineData("2 * (ro", "round(x, decimals): rounds; decimals are optional")]
+    [InlineData("max(1, mi", "min(a, ...): smallest")]
+    [InlineData("x = fl", "floor(x): rounds down")]
+    [InlineData("p", "pi: 3.14159...")]
+    [InlineData("tod", "today: today's date")]
+    [InlineData("e", "e: 2.71828...", "exp(x): e to the power x")]
+    public void WhereAValueStarts_TheFunctionsAndConstants_WhoseNameStartsWithWhatsTyped(
+        string expression,
+        params string[] expected)
+    {
+        // Act / Assert
+        Assert.Equal(expected, Texts(expression));
+    }
+
+    [Theory]
+    [InlineData("sq", 0, 2, "sqrt(")]
+    [InlineData("1 + ipc", 4, 3, "ipconfig()")]
+    [InlineData("an", 0, 2, "ans")]
+    public void AFunction_WritesItsParenthesis(string expression, int start, int length, string insert)
+    {
+        // Act
+        CalculatorSuggestionsModel suggestions = Suggest(expression)!;
+
+        // Assert
+        Assert.Equal((start, length, insert), (suggestions.Start, suggestions.Length, suggestions.Items[0].Insert));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("1 + ")]
+    [InlineData("sqrt(")]
+    [InlineData("len(\"s")]
+    [InlineData("zz")]
+    public void WithoutLettersWhereAValueStarts_NoFunctions(string expression)
+    {
+        // Act / Assert
+        Assert.Null(Suggest(expression));
+    }
+
+    [Fact]
+    public void AfterANumber_UnitsComeBeforeFunctions()
+    {
+        // Act / Assert: 2 s is two seconds, never a function
+        Assert.All(Texts("2 s"), text => Assert.DoesNotContain("(x)", text));
+    }
+
+    [Fact]
+    public void TheNamesGivenValues_AreOffered_WithTheirValues_CutShortWhenLong()
+    {
+        // Arrange
+        var names = new Dictionary<string, CalculatorValue>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Total"] = CalculatorValue.FromNumber(1234.5m),
+            ["tip"] = CalculatorValue.FromText(new string('a', 50)),
+            [ExpressionCalculator.LastAnswerName] = CalculatorValue.FromNumber(7),
+        };
+
+        // Act
+        List<string> texts =
+            [.. CalculatorSuggester.Suggest("2 + t", 5, _now, names)!.Items.Select(item => item.Text)];
+        string answer = CalculatorSuggester.Suggest("an", 2, _now, names)!.Items.Single().Text;
+
+        // Assert
+        Assert.Equal(
+            ["tan(x): tangent, in radians", $"tip: {new string('a', 37)}...", "today: today's date", "Total: 1,234.5"],
+            texts);
+        Assert.Equal("ans: the last answer, 7", answer);
+    }
+
+    [Fact]
+    public void EveryFunctionOfTheCalculator_IsOffered()
+    {
+        // Arrange
+        IEnumerable<string> functions = BuiltIns.Functions.Keys.Concat(BuiltIns.TextFunctions);
+
+        // Act / Assert
+        Assert.Equal(
+            functions.Order(StringComparer.OrdinalIgnoreCase),
+            CalculatorFunctionHelp.Functions.Keys.Order(StringComparer.OrdinalIgnoreCase));
     }
 
     [Fact]

@@ -9,7 +9,8 @@ namespace CincoVertice.MyTools.Ui.Calculator.Presenters;
 /// <summary>
 ///     Shows the calculator view, evaluates the expression typed in it, and shows the result or the error. Keeps the
 ///     history of the operations that worked, until the app exits, and shows it when asked. While the expression is
-///     typed, offers places and units to write next (<see cref="CalculatorSuggester"/>).
+///     typed, offers places, units, functions and the names given values to write next
+///     (<see cref="CalculatorSuggester"/>).
 /// </summary>
 public class CalculatorPresenter
 {
@@ -258,7 +259,7 @@ public class CalculatorPresenter
 
         _recalled = -1;
 
-        _suggestions = CalculatorSuggester.Suggest(_view.Expression, _view.Caret, _utcNow());
+        _suggestions = CalculatorSuggester.Suggest(_view.Expression, _view.Caret, _utcNow(), _names);
 
         if (_suggestions is null)
         {

@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using CincoVertice.Common.Application.Calculator;
 using CincoVertice.Common.Application.Calculator.Conversions;
+using CincoVertice.Common.Application.Calculator.Models;
 using CincoVertice.Common.Application.Calculator.TimeZones;
 using CincoVertice.MyTools.Ui.Calculator.Models;
 
@@ -13,7 +14,10 @@ namespace CincoVertice.MyTools.Ui.Calculator.Services;
 ///     <list type="bullet">
 ///         <item>after a time (<c>10:30 </c>, <c>3 pm </c>, <c>now </c>), the places to convert it from, then after
 ///         <c>to</c> the places to convert it to;</item>
-///         <item>after a number, the units, then after <c>to</c> the units of the same kind.</item>
+///         <item>after a number, the units, then after <c>to</c> the units of the same kind;</item>
+///         <item>where a value starts (at the start, or after an operator, <c>(</c> or <c>,</c>), the functions and
+///         constants, and the names given values, whose name starts with the letters typed; a function writes its
+///         <c>(</c>.</item>
 ///     </list>
 ///     Choosing a first place or unit writes <c>to</c> after it, so the second ones follow. Only a single number shows
 ///     every unit as soon as a space follows it; after anything else, the units wait for a letter, so they don't pop up
@@ -30,8 +34,15 @@ public static partial class CalculatorSuggester
     /// <param name="expression">What's typed.</param>
     /// <param name="caret">Where the caret is; there are suggestions only at the end.</param>
     /// <param name="utcNow">The time now, for each place's UTC offset, which changes with daylight saving time.</param>
+    /// <param name="names">
+    ///     The names given values (<c>x = 5</c>) and the last answer, offered with the functions, each with its value.
+    /// </param>
     /// <returns>Null when there's nothing to offer.</returns>
-    public static CalculatorSuggestionsModel? Suggest(string expression, int caret, DateTime utcNow)
+    public static CalculatorSuggestionsModel? Suggest(
+        string expression,
+        int caret,
+        DateTime utcNow,
+        IReadOnlyDictionary<string, CalculatorValue>? names = null)
     {
         if (caret != expression.Length)
         {
@@ -41,8 +52,69 @@ public static partial class CalculatorSuggester
         Match time = TimeRegex().Match(expression);
 
         // After a time, places or nothing: a word there is never a unit
-        return time.Success ? ForTime(expression, time, utcNow) : ForUnits(expression);
+        return time.Success
+            ? ForTime(expression, time, utcNow)
+            : ForUnits(expression) ?? ForFunctions(expression, names ?? new Dictionary<string, CalculatorValue>());
     }
+
+    private static CalculatorSuggestionsModel? ForFunctions(
+        string expression,
+        IReadOnlyDictionary<string, CalculatorValue> names)
+    {
+        Match word = FunctionNameRegex().Match(expression);
+
+        if (!word.Success)
+        {
+            return null;
+        }
+
+        string typed = word.Groups["query"].Value;
+
+        IEnumerable<(string Name, CalculatorSuggestionModel Item)> functions = CalculatorFunctionHelp.Functions
+            .Where(function => StartsWith(function.Key, typed))
+            .Select(function => (function.Key, FunctionItem(function.Key, function.Value)));
+        IEnumerable<(string Name, CalculatorSuggestionModel Item)> values = CalculatorFunctionHelp.Values
+            .Where(value => StartsWith(value.Name, typed))
+            .Select(value => (value.Name, ValueItem(value.Name, value.Meaning, names)));
+        IEnumerable<(string Name, CalculatorSuggestionModel Item)> given = names
+            .Where(name => !name.Key.Equals(ExpressionCalculator.LastAnswerName, StringComparison.OrdinalIgnoreCase)
+                           && StartsWith(name.Key, typed))
+            .Select(name => (name.Key, new CalculatorSuggestionModel($"{name.Key}: {Shown(name.Value)}", name.Key)));
+
+        return Result(
+            word.Groups["query"],
+            functions
+                .Concat(values)
+                .Concat(given)
+                .OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(item => item.Item));
+    }
+
+    /// <summary>A constant, or the last answer with its value once there's one: "ans: the last answer, 42".</summary>
+    private static CalculatorSuggestionModel ValueItem(
+        string name,
+        string meaning,
+        IReadOnlyDictionary<string, CalculatorValue> names) =>
+        new(
+            names.TryGetValue(name, out CalculatorValue? value)
+                ? $"{name}: {meaning}, {Shown(value)}"
+                : $"{name}: {meaning}",
+            name);
+
+    /// <summary>A value as the calculator shows it, cut short when it's long, as a text can be.</summary>
+    private static string Shown(CalculatorValue value)
+    {
+        const int Longest = 40;
+        string text = value.ToText(groupThousands: true);
+
+        return text.Length <= Longest ? text : text[..(Longest - 3)] + "...";
+    }
+
+    /// <summary>A function writes its name and (, or both parentheses when it takes nothing, as ipconfig().</summary>
+    private static CalculatorSuggestionModel FunctionItem(string name, (string Usage, string Meaning) help) =>
+        new(
+            $"{help.Usage}: {help.Meaning}",
+            help.Usage.EndsWith("()", StringComparison.Ordinal) ? help.Usage : name + "(");
 
     private static CalculatorSuggestionsModel? ForTime(string expression, Match time, DateTime utcNow)
     {
@@ -255,6 +327,10 @@ public static partial class CalculatorSuggester
     // A number or a closing parenthesis, and the unit being typed after it
     [GeneratedRegex(@"(?:\d|\))\s*(?<query>(?:[A-Za-z][\w/^]*)?)$")]
     private static partial Regex FromUnitRegex();
+
+    // Letters where a value starts: at the start, or after an operator, an opening parenthesis or a comma
+    [GeneratedRegex(@"(?:^|[-+*/^%(,=])\s*(?<query>[A-Za-z]\w*)$")]
+    private static partial Regex FunctionNameRegex();
 
     [GeneratedRegex(@"^\s*(?:\d+(?:\.\d*)?|\.\d+)\s+$")]
     private static partial Regex SingleNumberRegex();

@@ -292,6 +292,23 @@ public class CalculatorPresenterTests
         Assert.Equal("2+2", _view.Expression);
     }
 
+    [Fact]
+    public void Suggestions_TheNamesGivenValues_AndTheLastAnswer_WithTheirValues()
+    {
+        // Arrange
+        Enter("rate = 1500");
+        Enter("2 * 21");
+
+        // Act
+        _view.Type("10 * r");
+        IReadOnlyList<string> named = _view.Suggestions!;
+        _view.Type("an");
+
+        // Assert
+        Assert.Equal(["rate: 1,500", "round(x, decimals): rounds; decimals are optional"], named);
+        Assert.Equal(["ans: the last answer, 42"], _view.Suggestions);
+    }
+
     private void Enter(string expression)
     {
         _view.Type(expression);

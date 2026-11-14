@@ -15,7 +15,9 @@ Press **Ctrl+Alt+C**. A small bar opens, centered on the screen where your mouse
 
 The calculator also hides when it loses focus. The calculator has no title-bar buttons, and Alt+F4 also hides it rather than closing it.
 
-**Suggestions.** While you type, a list under the box offers what can come next in a conversion:
+**Suggestions.** While you type, a list under the box offers the functions and what can come next in a conversion:
+
+- Where a value starts (at the start of the line, or after an operator, `(`, `,` or `=`), the letters you type offer the functions and constants whose name starts with them, each with what it gives: `s` offers `sin(x): sine, in radians` and `sqrt(x): square root`. Choosing a function writes its name and `(`, so you go on with its values; `ipconfig()` comes whole. `pi`, `e`, `ans` and `today` are offered too, and the names you gave values (`rate = 1500`), each with its value: `rate: 1,500`, `ans: the last answer, 42`.
 
 - After a time and a space (`10:30 `, `3 pm `, `now `), the places, each with its UTC offset today: `Mexico City (UTC-6)`. Type the start of a place to narrow them; any of its names works, in any case and without accents (`sao`, `cdmx`). After a 12-hour time, `a` or `p` also offers `am` or `pm`.
 - After a number and a space (`10 `), the units, each with its name and kind: `km (kilometer, length)`. Type the start of a symbol or a name (`kilo`) to narrow them. After anything other than a single number, such as `1 + 2 `, the units wait for a letter, so they don't pop up at every space of a sum.
