@@ -1,6 +1,6 @@
 # Snipping and the Snip Editor
 
-There are three ways to take a snip, and one to record a video.
+There are three ways to take a snip, one to record a video, and one to pick a color from the screen.
 
 | Hotkey | Action | Result |
 |---|---|---|
@@ -8,6 +8,7 @@ There are three ways to take a snip, and one to record a video.
 | **Ctrl+Alt+S** | `SnipAndEdit` | The same snip, then the **Snip editor** opens so you can mark it up. |
 | **Ctrl+Alt+T** | `SnipText` | The text in the area you select is placed on the clipboard as text. See [Copying the text in a snip](#copying-the-text-in-a-snip). |
 | **Ctrl+Alt+R** | `RecordScreen` | Records a video of the area you select, until you press Ctrl+Alt+R again. See [Recording a video](#recording-a-video). |
+| **Ctrl+Alt+P** | `PickColor` | The color of the pixel you click is placed on the clipboard as text. See [Picking a color from the screen](#picking-a-color-from-the-screen). |
 
 ## Selecting an area
 
@@ -164,6 +165,22 @@ The hotkey **Ctrl+Alt+T** is in the `hotkeys.cfg` that a new install creates. If
 Press **Ctrl+S** or click **Save**. The dialog is titled "Save snip", with the file types "PNG image (*.png)", "JPEG image (*.jpg)" and "Bitmap (*.bmp)" (PNG first). It starts in `Pictures\Screenshots` if that folder exists, otherwise in `Pictures`, and suggests the name `Snip yyyy-MM-dd HHmmss.png`, which is the date and time of the save. For example, `Snip 2026-11-04 153012.png` is a snip saved on 4 November 2026 at 15:30:12. The file extension decides the format; any other extension saves a PNG.
 
 Your tool choices are saved in `config\snipeditor.json` after every change. If that file is missing or damaged, the defaults are used.
+
+## Picking a color from the screen
+
+Press **Ctrl+Alt+P** (`PickColor`). The screen freezes, as for a snip, and a magnifier follows the pointer, showing the pixels around it larger, with the one in the middle framed. Under it are that pixel's color and its value, such as `#1E90FF` and `rgb(30, 144, 255)`.
+
+| Key or mouse | Effect |
+|---|---|
+| Click, or **Enter** | Copies the color as HEX: `#1E90FF` |
+| **Ctrl**+click, or **Ctrl+Enter** | Copies the color as RGB: `rgb(30, 144, 255)` |
+| Arrow keys | Move the pointer by one pixel; with **Shift**, by ten |
+| Mouse wheel, **+** and **-** | Zoom the magnifier in and out, from 2 to 32 times |
+| **Esc**, or a right click | Closes it without copying anything |
+
+A notification says what was copied, followed by the same color written the other ways, HEX, RGB and HSL (`hsl(210, 100%, 56%)`), so you can type the one you need. The color is the pixel's as it was when the screen froze, on any monitor.
+
+The hotkey **Ctrl+Alt+P** is in the `hotkeys.cfg` that a new install creates. If your `hotkeys.cfg` is older, add the line `PickColor = Ctrl+Alt+P` yourself: see [Hotkeys](02-hotkeys.md).
 
 ---
 

@@ -23,6 +23,8 @@ using CincoVertice.MyTools.Ui.Snipping.Interfaces;
 using CincoVertice.MyTools.Ui.Snipping.Services;
 using CincoVertice.MyTools.Ui.Win.Calculator;
 using CincoVertice.MyTools.Ui.Win.Calculator.Actions;
+using CincoVertice.MyTools.Ui.Win.ColorPicker.Actions;
+using CincoVertice.MyTools.Ui.Win.ColorPicker.Services;
 using CincoVertice.MyTools.Ui.Win.CodeReview;
 using CincoVertice.MyTools.Ui.Win.CodeReview.Actions;
 using CincoVertice.MyTools.Ui.Win.CodeReview.Services;
@@ -142,6 +144,8 @@ public static class UiWinSetupExtensions
         services.AddSingleton<SnipTextAction>();
         services.AddSingleton(_ => new RecordingSettingsService(RecordingSettingsService.DefaultFilePath));
         services.AddSingleton<RecordScreenAction>();
+        services.AddSingleton<ScreenColorPicker>();
+        services.AddSingleton<PickColorAction>();
         services.AddSingleton<IDiagramFileStore, SvgDiagramFileStore>();
         services.AddSingleton<IDiagramTextOutliner, GdiTextOutliner>();
         services.AddSingleton<IDiagramImageRasterizer, Direct2DImageRasterizer>();
@@ -193,6 +197,7 @@ public static class UiWinSetupExtensions
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<SnipAndEditAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<SnipTextAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<RecordScreenAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<PickColorAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<MoveToZoneAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<MoveToNextZoneAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<MoveToPreviousZoneAction>());

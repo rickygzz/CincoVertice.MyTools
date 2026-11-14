@@ -10,6 +10,7 @@
 | `SnipRegion` | Ctrl+Alt+Shift+S | Takes a snip to the clipboard |
 | `SnipText` | Ctrl+Alt+T | Takes a snip and copies the text in it, as text |
 | `RecordScreen` | Ctrl+Alt+R | Records a video of an area of the screen; again to stop |
+| `PickColor` | Ctrl+Alt+P | Copies the color of a pixel you click on the screen, as HEX (Ctrl+click: RGB) |
 | `DiagramEditor` | Ctrl+Alt+D | Opens a new diagram editor window |
 | `CheckFolder` | none | Pick a folder, check the C# standard |
 | `FixFolder` | none | Pick a folder, fix it in place, with the fixers ticked in the tray menu |
@@ -53,6 +54,7 @@ DiagramEditor = Ctrl+Alt+D
 # MoveToPreviousZone = Ctrl+Alt+
 # MoveToZone = Ctrl+Alt+
 # OpenScriptsFolder = Ctrl+Alt+
+PickColor = Ctrl+Alt+P
 RecordScreen = Ctrl+Alt+R
 ShowCalculator = Ctrl+Alt+C
 # ShowHelp = Ctrl+Alt+
