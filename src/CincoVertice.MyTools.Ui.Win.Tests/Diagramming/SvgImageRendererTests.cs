@@ -74,6 +74,29 @@ public class SvgImageRendererTests
     }
 
     [Fact]
+    public void Render_AnInkscapeFile_Filling_IsDrawn()
+    {
+        // Arrange: Inkscape names the SVG namespace twice, and adds its own elements and attributes
+        string markup = DiagramSvgImage.Filling(DiagramSvgImage.Prepare("""
+            <svg xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"
+                 xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+                 xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+                 sodipodi:docname="icon.svg" inkscape:version="1.2.2" viewBox="0 0 32 32">
+              <sodipodi:namedview id="view" pagecolor="#ffffff" inkscape:zoom="26"/>
+              <defs><style>.cls-1{fill:#0078d4;}</style></defs>
+              <title>Icon</title>
+              <rect class="cls-1" width="32" height="32" inkscape:label="box"/>
+            </svg>
+            """));
+
+        // Act
+        Bitmap image = SvgImageRenderer.Render(markup, 40, 40)!;
+
+        // Assert
+        AssertNear(Color.FromArgb(0, 120, 212), image.GetPixel(20, 20));
+    }
+
+    [Fact]
     public void Render_MarkupWindowsCantRead_IsNothing()
     {
         // Act / Assert

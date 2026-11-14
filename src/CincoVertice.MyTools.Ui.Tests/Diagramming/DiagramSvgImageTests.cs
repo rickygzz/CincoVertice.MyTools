@@ -68,6 +68,25 @@ public sealed class DiagramSvgImageTests
     }
 
     [Fact]
+    public void Prepare_TheSvgNamespaceNamedAlsoWithAPrefix_AsInkscapeDoes_IsWrittenWithoutIt()
+    {
+        // Arrange
+        const string markup = """
+            <svg xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg"
+                 xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" inkscape:version="1.2.2"
+                 viewBox="0 0 18 18"><path d="M0,0H18V18Z"/></svg>
+            """;
+
+        // Act
+        string prepared = DiagramSvgImage.Prepare(markup);
+
+        // Assert
+        Assert.StartsWith("<svg ", prepared);
+        Assert.DoesNotContain("svg:", prepared);
+        Assert.Contains("<path ", prepared);
+    }
+
+    [Fact]
     public void Prepare_ADoctype_IsSkipped()
     {
         // Arrange
@@ -100,6 +119,10 @@ public sealed class DiagramSvgImageTests
     [InlineData(
         """<svg xmlns="s"><svg preserveAspectRatio="xMidYMid"/></svg>""",
         """<svg preserveAspectRatio="none" xmlns="s"><svg preserveAspectRatio="xMidYMid"/></svg>""")]
+    [InlineData(
+        """<svg:svg xmlns="s" xmlns:svg="s"><svg:g/></svg:svg>""",
+        """<svg:svg preserveAspectRatio="none" xmlns="s" xmlns:svg="s"><svg:g/></svg:svg>""")]
+    [InlineData("""<svgx a="1"/>""", """<svgx a="1"/>""")]
     [InlineData("not markup", "not markup")]
     public void Filling_StretchesOnlyTheRootToItsBox(string markup, string expected)
     {

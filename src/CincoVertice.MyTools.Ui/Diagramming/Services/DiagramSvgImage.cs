@@ -44,6 +44,17 @@ public static partial class DiagramSvgImage
             handler.Remove();
         }
 
+        // Inkscape also names the SVG namespace svg:, which would make the markup <svg:svg>
+        foreach (XAttribute alias in root.DescendantsAndSelf()
+                     .Attributes()
+                     .Where(attribute => attribute.IsNamespaceDeclaration
+                                         && attribute.Name.Namespace == XNamespace.Xmlns
+                                         && attribute.Value == _svg.NamespaceName)
+                     .ToList())
+        {
+            alias.Remove();
+        }
+
         InlineStyleSheets(root);
 
         // Its own size goes into the view box, so it fills the box it's drawn in, keeping its proportions
@@ -95,7 +106,10 @@ public static partial class DiagramSvgImage
     {
         int end = markup.IndexOf('>');
 
-        if (!markup.StartsWith("<svg", StringComparison.Ordinal) || end < 0)
+        // The root's name may have a prefix, as <svg:svg> in diagrams saved before Prepare left it out
+        Match name = RootNameRegex().Match(markup);
+
+        if (!name.Success || end < 0)
         {
             return markup;
         }
@@ -108,7 +122,7 @@ public static partial class DiagramSvgImage
             return FitRegex().Replace(tag, "preserveAspectRatio=\"none\"") + rest;
         }
 
-        return "<svg preserveAspectRatio=\"none\"" + markup[4..];
+        return markup[..name.Length] + " preserveAspectRatio=\"none\"" + markup[name.Length..];
     }
 
     /// <summary>The image as a link that holds it, for an SVG file's image element.</summary>
@@ -266,6 +280,9 @@ public static partial class DiagramSvgImage
 
     [GeneratedRegex("""\bpreserveAspectRatio\s*=\s*("[^"]*"|'[^']*')""")]
     private static partial Regex FitRegex();
+
+    [GeneratedRegex(@"^<(?:[\w.-]+:)?svg(?=[\s/>])")]
+    private static partial Regex RootNameRegex();
 
     [GeneratedRegex(@"/\*.*?\*/", RegexOptions.Singleline)]
     private static partial Regex CommentRegex();
