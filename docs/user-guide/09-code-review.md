@@ -146,4 +146,4 @@ Typical examples: `int a;  ` (trailing spaces) becomes `int a;`; `if(x)` becomes
 
 ---
 
-← Previous: [Scripts](08-scripts.md) | [Contents](README.md) | Next: [Files and Updates](10-files-and-updates.md) →
+← Previous: [Script Errors and Limits](08d-script-errors.md) | [Contents](README.md) | Next: [Files and Updates](10-files-and-updates.md) →

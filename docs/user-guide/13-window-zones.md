@@ -127,7 +127,7 @@ script.wait(2000)
 window.tozone(3)
 ```
 
-See [Scripts](08-scripts.md#window).
+See [Scripts](08b-script-functions.md#window).
 
 ## Limits
 

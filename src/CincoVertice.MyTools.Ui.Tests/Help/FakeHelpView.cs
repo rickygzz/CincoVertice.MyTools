@@ -20,6 +20,8 @@ public sealed class FakeHelpView : IHelpView
 
     public event EventHandler? WindowClosing;
 
+    public event EventHandler? ThemeToggled;
+
     /// <summary>Where the window is scrolled to; set by the test, as the user scrolling.</summary>
     public int TopPosition { get; set; }
 
@@ -27,6 +29,18 @@ public sealed class FakeHelpView : IHelpView
     public Rectangle WindowBounds { get; set; } = new(10, 20, 800, 600);
 
     public bool IsMaximized { get; set; }
+
+    public bool IsDark { get; set; }
+
+    public List<bool> ThemesShown { get; } = [];
+
+    public void ShowTheme(bool isDark)
+    {
+        IsDark = isDark;
+        ThemesShown.Add(isDark);
+    }
+
+    public void ToggleTheme() => ThemeToggled?.Invoke(this, EventArgs.Empty);
 
     /// <summary>Where the presenter put the window; null when it didn't.</summary>
     public (Rectangle Bounds, bool IsMaximized)? Placed { get; private set; }

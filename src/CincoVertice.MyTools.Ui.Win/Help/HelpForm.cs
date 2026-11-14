@@ -12,7 +12,8 @@ namespace CincoVertice.MyTools.Ui.Win.Help;
 
 /// <summary>
 ///     The user guide reader: on the left a search box over the pages, or the pages a search found; on the right the
-///     page in a RichTextBox, with back and forward, its outline, and find in the page. Dark when Windows' apps are.
+///     page in a RichTextBox, with back and forward, its outline, and find in the page. Dark when Windows' apps are,
+///     until its button chooses dark or light.
 ///     <see cref="Ui.Help.Presenters.HelpPresenter"/> decides what to show; the form shows it, and says what was
 ///     clicked.
 /// </summary>
@@ -27,8 +28,8 @@ public partial class HelpForm : Form, IHelpView
     private readonly List<(int Start, int Length, string Target)> _links = [];
     private readonly Dictionary<string, int> _anchors = [];
 
-    // As Windows' apps are when the window opens
-    private readonly bool _isDark;
+    // As Windows' apps are when the window opens, or as chosen with its button
+    private bool _isDark;
     private readonly Font _boldFont;
 
     private MarkdownDocumentModel? _document;
@@ -67,6 +68,8 @@ public partial class HelpForm : Form, IHelpView
 
     public event EventHandler<HelpSearchResultModel>? SearchResultChosen;
 
+    public event EventHandler? ThemeToggled;
+
     public event EventHandler? WindowClosing;
 
     /// <summary>Where each link of the page shown starts, in the text, how long it is, and where it goes.</summary>
@@ -77,6 +80,8 @@ public partial class HelpForm : Form, IHelpView
     public Rectangle WindowBounds => WindowState == FormWindowState.Normal ? Bounds : RestoreBounds;
 
     public bool IsMaximized => WindowState == FormWindowState.Maximized;
+
+    public bool IsDark => _isDark;
 
     /// <summary>The page's text box, for the tests.</summary>
     internal RichTextBox Page => PageTextBox;
@@ -164,6 +169,38 @@ public partial class HelpForm : Form, IHelpView
         }
     }
 
+    public void ShowTheme(bool isDark)
+    {
+        if (isDark == _isDark)
+        {
+            return;
+        }
+
+        _isDark = isDark;
+        ApplyColors();
+
+        if (IsHandleCreated)
+        {
+            ApplyWindowTheme();
+        }
+
+        foreach (ToolStripItem item in OutlineButton.DropDownItems)
+        {
+            item.ForeColor = Tools.ForeColor;
+        }
+
+        PagesListBox.Invalidate();
+
+        // The page's colors are in its RTF
+        if (_document is not null)
+        {
+            int top = TopPosition;
+
+            LayOut();
+            ScrollToPosition(top);
+        }
+    }
+
     public void ShowProblem(string message)
     {
         MessageBox.Show(this, message, BaseTitle, MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -176,10 +213,15 @@ public partial class HelpForm : Form, IHelpView
 
         if (_isDark)
         {
-            DarkMode.UseDarkTitleBar(Handle, true);
-            DarkMode.UseDarkScrollBars(PageTextBox.Handle, true);
-            DarkMode.UseDarkScrollBars(PagesListBox.Handle, true);
+            ApplyWindowTheme();
         }
+    }
+
+    private void ApplyWindowTheme()
+    {
+        DarkMode.UseDarkTitleBar(Handle, _isDark);
+        DarkMode.UseDarkScrollBars(PageTextBox.Handle, _isDark);
+        DarkMode.UseDarkScrollBars(PagesListBox.Handle, _isDark);
     }
 
     /// <summary>
@@ -271,25 +313,32 @@ public partial class HelpForm : Form, IHelpView
         return null;
     }
 
+    /// <summary>The window's colors, dark or light; light ones are Windows' own, as the designer has them.</summary>
     private void ApplyColors()
     {
-        if (!_isDark)
+        Color page = MarkdownRtfWriter.BackgroundOf(_isDark);
+        Color side = _isDark ? Color.FromArgb(37, 37, 38) : SystemColors.Window;
+        Color text = _isDark ? HelpDarkColorTable.Text : SystemColors.WindowText;
+
+        BackColor = _isDark ? HelpDarkColorTable.Background : SystemColors.Control;
+        ForeColor = _isDark ? text : SystemColors.ControlText;
+
+        if (_isDark)
         {
-            return;
+            Tools.Renderer = new ToolStripProfessionalRenderer(new HelpDarkColorTable()) { RoundedEdges = false };
+        }
+        else
+        {
+            Tools.RenderMode = ToolStripRenderMode.ManagerRenderMode;
         }
 
-        Color page = MarkdownRtfWriter.BackgroundOf(true);
-        Color side = Color.FromArgb(37, 37, 38);
-        Color text = HelpDarkColorTable.Text;
-
-        BackColor = HelpDarkColorTable.Background;
-        ForeColor = text;
-        Tools.Renderer = new ToolStripProfessionalRenderer(new HelpDarkColorTable()) { RoundedEdges = false };
-        Tools.ForeColor = text;
+        Tools.ForeColor = _isDark ? text : SystemColors.ControlText;
+        ThemeButton.Text = _isDark ? "&Light" : "&Dark";
+        ThemeButton.ToolTipText = _isDark ? "Show the help in light colors" : "Show the help in dark colors";
         OutlineButton.DropDown.ForeColor = text;
         FindTextBox.BackColor = side;
         FindTextBox.ForeColor = text;
-        Split.BackColor = HelpDarkColorTable.Background;
+        Split.BackColor = BackColor;
         Split.Panel1.BackColor = side;
         PagesListBox.BackColor = side;
         PagesListBox.ForeColor = text;
@@ -342,11 +391,7 @@ public partial class HelpForm : Form, IHelpView
                 null,
                 (_, _) => LinkClicked?.Invoke(this, "#" + anchor));
 
-            if (_isDark)
-            {
-                item.ForeColor = HelpDarkColorTable.Text;
-            }
-
+            item.ForeColor = Tools.ForeColor;
             OutlineButton.DropDownItems.Add(item);
         }
 
@@ -496,6 +541,8 @@ public partial class HelpForm : Form, IHelpView
     private void ForwardButton_Click(object? sender, EventArgs e) => ForwardRequested?.Invoke(this, EventArgs.Empty);
 
     private void FindNextButton_Click(object? sender, EventArgs e) => FindNext();
+
+    private void ThemeButton_Click(object? sender, EventArgs e) => ThemeToggled?.Invoke(this, EventArgs.Empty);
 
     private void FindTextBox_TextChanged(object? sender, EventArgs e) => Find(PageTextBox.SelectionStart);
 

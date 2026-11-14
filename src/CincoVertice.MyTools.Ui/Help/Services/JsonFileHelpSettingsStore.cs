@@ -47,7 +47,7 @@ public sealed class JsonFileHelpSettingsStore : IHelpSettingsStore
                 ? new Rectangle(file.Left, file.Top, file.Width, file.Height)
                 : null;
 
-            return new HelpSettingsModel(file.Page, bounds, file.Maximized);
+            return new HelpSettingsModel(file.Page, bounds, file.Maximized, file.Dark);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
@@ -64,7 +64,8 @@ public sealed class JsonFileHelpSettingsStore : IHelpSettingsStore
             bounds.Top,
             bounds.Width,
             bounds.Height,
-            settings.IsMaximized);
+            settings.IsMaximized,
+            settings.IsDark);
 
         try
         {
@@ -83,5 +84,6 @@ public sealed class JsonFileHelpSettingsStore : IHelpSettingsStore
         int Top,
         int Width,
         int Height,
-        bool Maximized);
+        bool Maximized,
+        bool? Dark = null);
 }

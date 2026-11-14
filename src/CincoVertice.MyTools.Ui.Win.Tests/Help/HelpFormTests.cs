@@ -203,6 +203,36 @@ public sealed class HelpFormTests
         Assert.True(watch.ElapsedMilliseconds < 1500, $"{name} took {watch.ElapsedMilliseconds} ms");
     }
 
+    [Fact]
+    public void ShowTheme_Light_RecolorsTheWindowAndThePage_KeepingItsLinks_AndTheButtonAsksForIt()
+    {
+        // Arrange
+        using var form = new HelpForm(isDark: true)
+        {
+            StartPosition = FormStartPosition.Manual,
+            Location = new Point(-3000, 900),
+        };
+        form.Show();
+        MarkdownDocumentModel document = MarkdownParser.Parse("# Guide\n\nSee [the hotkeys](02-hotkeys.md).");
+        form.ShowPage(new HelpPageModel("README.md", "Guide"), document, null);
+        var tools = (ToolStrip)form.Controls.Find("Tools", true).Single();
+        ToolStripItem button = tools.Items["ThemeButton"]!;
+        int toggled = 0;
+        form.ThemeToggled += (_, _) => toggled++;
+        Assert.Equal("&Light", button.Text);
+
+        // Act
+        form.ShowTheme(false);
+        button.PerformClick();
+
+        // Assert
+        Assert.False(form.IsDark);
+        Assert.Equal(SystemColors.Window, PageOf(form).BackColor);
+        Assert.Equal("&Dark", button.Text);
+        Assert.Single(form.Links);
+        Assert.Equal(1, toggled);
+    }
+
     private static RichTextBox PageOf(HelpForm form) => form.Page;
 
     private static string? LinkAt(HelpForm form, Point point) => form.LinkAt(point);

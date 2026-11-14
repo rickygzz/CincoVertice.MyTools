@@ -37,6 +37,9 @@ public sealed class HelpPresenter
     private string? _shownPage;
     private string _searchText = string.Empty;
 
+    // Chosen with the button; null while it follows Windows' mode
+    private bool? _isDark;
+
     public HelpPresenter(IHelpView view, IHelpPageStore store, IHelpSettingsStore settings)
     {
         _view = view;
@@ -44,12 +47,24 @@ public sealed class HelpPresenter
         _settings = settings;
     }
 
-    /// <summary>Puts the window where it was when it closed last; before it's shown, so it doesn't jump.</summary>
+    /// <summary>
+    ///     Puts the window where it was when it closed last, dark or light as chosen; before it's shown, so it doesn't
+    ///     jump or flash.
+    /// </summary>
     public void RestoreWindow()
     {
-        if (_settings.Load() is { Bounds: Rectangle bounds } saved)
+        HelpSettingsModel? saved = _settings.Load();
+
+        if (saved is { Bounds: Rectangle bounds })
         {
             _view.PlaceWindow(bounds, saved.IsMaximized);
+        }
+
+        _isDark = saved?.IsDark;
+
+        if (_isDark is bool isDark)
+        {
+            _view.ShowTheme(isDark);
         }
     }
 
@@ -63,6 +78,7 @@ public sealed class HelpPresenter
         _view.ForwardRequested += OnForwardRequested;
         _view.SearchRequested += OnSearchRequested;
         _view.SearchResultChosen += OnSearchResultChosen;
+        _view.ThemeToggled += OnThemeToggled;
         _view.WindowClosing += OnClosing;
 
         _pages = ReadPages();
@@ -247,6 +263,13 @@ public sealed class HelpPresenter
 
     private void OnClosing(object? sender, EventArgs e)
     {
-        _settings.Save(new HelpSettingsModel(_shownPage, _view.WindowBounds, _view.IsMaximized));
+        _settings.Save(new HelpSettingsModel(_shownPage, _view.WindowBounds, _view.IsMaximized, _isDark));
+    }
+
+    /// <summary>The other of dark and light, kept for the next time the window opens.</summary>
+    private void OnThemeToggled(object? sender, EventArgs e)
+    {
+        _isDark = !_view.IsDark;
+        _view.ShowTheme(_isDark.Value);
     }
 }

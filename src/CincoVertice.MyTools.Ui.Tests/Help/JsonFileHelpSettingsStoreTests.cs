@@ -32,6 +32,23 @@ public sealed class JsonFileHelpSettingsStoreTests : IDisposable
     }
 
     [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    [InlineData(null)]
+    public void TheThemeChosen_IsLoaded_OrNoneToFollowWindows(bool? isDark)
+    {
+        // Arrange
+        var store = new JsonFileHelpSettingsStore(Path.Combine(_folder, "help.json"));
+        var settings = new HelpSettingsModel(null, null, false, isDark);
+
+        // Act
+        store.Save(settings);
+
+        // Assert
+        Assert.Equal(isDark, store.Load()!.IsDark);
+    }
+
+    [Theory]
     [InlineData(null)]
     [InlineData("not json")]
     public void NoFile_OrABrokenOne_GivesNoSettings(string? text)

@@ -40,6 +40,7 @@ partial class HelpForm
         FindLabel = new ToolStripLabel();
         FindTextBox = new ToolStripTextBox();
         FindNextButton = new ToolStripButton();
+        ThemeButton = new ToolStripButton();
         Split = new SplitContainer();
         PagesListBox = new ListBox();
         SearchTextBox = new TextBox();
@@ -61,7 +62,7 @@ partial class HelpForm
         Tools.Items.AddRange(new ToolStripItem[]
         {
             BackButton, ForwardButton, HistorySeparator, OutlineButton, OutlineSeparator, FindLabel, FindTextBox,
-            FindNextButton,
+            FindNextButton, ThemeButton,
         });
         Tools.Location = new Point(0, 0);
         Tools.Name = "Tools";
@@ -122,6 +123,14 @@ partial class HelpForm
         FindNextButton.Text = "&Next";
         FindNextButton.ToolTipText = "Find the next (F3)";
         FindNextButton.Click += FindNextButton_Click;
+        //
+        // ThemeButton
+        //
+        ThemeButton.Alignment = ToolStripItemAlignment.Right;
+        ThemeButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
+        ThemeButton.Name = "ThemeButton";
+        ThemeButton.Text = "&Dark";
+        ThemeButton.Click += ThemeButton_Click;
         //
         // Split
         //
@@ -239,6 +248,7 @@ partial class HelpForm
     private ToolStripLabel FindLabel;
     private ToolStripTextBox FindTextBox;
     private ToolStripButton FindNextButton;
+    private ToolStripButton ThemeButton;
     private SplitContainer Split;
     private ListBox PagesListBox;
     private TextBox SearchTextBox;

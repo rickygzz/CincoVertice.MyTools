@@ -57,6 +57,43 @@ public class HelpPresenterTests
     }
 
     [Fact]
+    public void ThemeButton_ShowsTheOther_AndTheNextWindowOpensWithIt()
+    {
+        // Arrange: dark, as Windows is
+        _view.IsDark = true;
+        var presenter = new HelpPresenter(_view, _store, _settings);
+        presenter.RestoreWindow();
+        presenter.Start();
+
+        // Act
+        _view.ToggleTheme();
+        _view.Close();
+        var next = new FakeHelpView { IsDark = true };
+        new HelpPresenter(next, _store, _settings).RestoreWindow();
+
+        // Assert
+        Assert.Equal([false], _view.ThemesShown);
+        Assert.False(_settings.Saved!.IsDark);
+        Assert.Equal([false], next.ThemesShown);
+    }
+
+    [Fact]
+    public void Theme_NeverChosen_FollowsWindows()
+    {
+        // Arrange
+        var presenter = new HelpPresenter(_view, _store, _settings);
+
+        // Act
+        presenter.RestoreWindow();
+        presenter.Start();
+        _view.Close();
+
+        // Assert
+        Assert.Empty(_view.ThemesShown);
+        Assert.Null(_settings.Saved!.IsDark);
+    }
+
+    [Fact]
     public void Closing_SavesThePageAndTheWindow_WhichTheNextOneOpensWith()
     {
         // Arrange

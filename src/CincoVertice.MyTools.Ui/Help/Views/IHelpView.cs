@@ -24,6 +24,9 @@ public interface IHelpView
     /// <summary>A page the search found was chosen.</summary>
     event EventHandler<HelpSearchResultModel>? SearchResultChosen;
 
+    /// <summary>The user wants the other of dark and light.</summary>
+    event EventHandler? ThemeToggled;
+
     /// <summary>The window is closing.</summary>
     event EventHandler? WindowClosing;
 
@@ -34,6 +37,12 @@ public interface IHelpView
     Rectangle WindowBounds { get; }
 
     bool IsMaximized { get; }
+
+    /// <summary>Whether it's dark now.</summary>
+    bool IsDark { get; }
+
+    /// <summary>Makes it dark or light, keeping the place in the page.</summary>
+    void ShowTheme(bool isDark);
 
     /// <summary>Puts the window where it was, if that's on a screen now.</summary>
     void PlaceWindow(Rectangle bounds, bool isMaximized);

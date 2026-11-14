@@ -15,7 +15,7 @@ Everything below is in the `config` folder next to the exe unless noted.
 | `global.vars` | The first time a script uses `global.set` | Values scripts keep between runs |
 | `snipeditor.json` | After the first snip editor setting change | Snip editor tool choices |
 | `diagrameditor.json` | After diagram editor settings are saved | Diagram editor choices and window size |
-| `help.json` | When the help window closes | Where the help window was, and the page it showed last |
+| `help.json` | When the help window closes | Where the help window was, the page it showed last, and dark or light if you chose one with its button |
 | `fixers.json` | When you change a choice under **Fix folder for standard** | The fixers that **Fix a folder...** doesn't run, and the line ending and encoding it gives the files |
 | `updates.json` | The first time you click **Check for updates at start** | Whether to look for a newer version at start |
 | `%LocalAppData%\Microsoft\Windows\Fonts\Roboto.ttf` and a Fonts registry entry | The first time the diagram editor opens, if Roboto is not installed | Lets other programs show saved diagrams in the right font |
