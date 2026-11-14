@@ -64,7 +64,9 @@ public sealed class JsonFileSnipEditorSettingsStore : ISnipEditorSettingsStore
                     ? new SnipTextOutlineModel(outline.Width, ParseColor(outline.Color))
                     : null,
                 file.CornerRadius,
-                file.HideWhileSnipping ?? true);
+                file.HideWhileSnipping ?? true,
+                file.Emoji,
+                file.RecentEmojis is { } recent ? [.. recent.OfType<string>()] : null);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
@@ -85,7 +87,9 @@ public sealed class JsonFileSnipEditorSettingsStore : ISnipEditorSettingsStore
                 ? new TextOutlineFile(outline.Width, FormatColor(outline.Color))
                 : null,
             settings.CornerRadius,
-            settings.HideWhileSnipping);
+            settings.HideWhileSnipping,
+            settings.Emoji,
+            settings.RecentEmojis is { } recent ? [.. recent] : null);
 
         try
         {
@@ -122,7 +126,9 @@ public sealed class JsonFileSnipEditorSettingsStore : ISnipEditorSettingsStore
         SnipArrowHeads ArrowHeads = SnipArrowHeads.End,
         TextOutlineFile? TextOutline = null,
         int? CornerRadius = null,
-        bool? HideWhileSnipping = null);
+        bool? HideWhileSnipping = null,
+        string? Emoji = null,
+        List<string?>? RecentEmojis = null);
 
     private sealed record ToolFile(
         int Size,

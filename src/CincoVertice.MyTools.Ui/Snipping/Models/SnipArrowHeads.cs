@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Snipping.Models;
+﻿namespace CincoVertice.MyTools.Ui.Snipping.Models;
 
 /// <summary>
 ///     Which ends of an arrow have a head.

@@ -16,6 +16,10 @@ partial class DiagramEditorForm
         if (disposing)
         {
             components?.Dispose();
+            SelectionMenu.Dispose();
+
+            // On no toolbar, so nothing else disposes it: the properties panel shows its menu
+            TitleFillDropDownButton.Dispose();
             _textFont?.Dispose();
 
             foreach (Image image in _images.Concat(_swatches.Values))
@@ -34,9 +38,40 @@ partial class DiagramEditorForm
     /// </summary>
     private void InitializeComponent()
     {
+        components = new System.ComponentModel.Container();
+        SelectionMenu = new ContextMenuStrip();
+        AlignDropDownButton = new ToolStripDropDownButton();
+        AlignContextMenuItem = new ToolStripMenuItem();
+        AlignContextSeparator = new ToolStripSeparator();
+        AlignLeftMenuItem = new ToolStripMenuItem();
+        AlignLeftContextMenuItem = new ToolStripMenuItem();
+        AlignCenterMenuItem = new ToolStripMenuItem();
+        AlignCenterContextMenuItem = new ToolStripMenuItem();
+        AlignRightMenuItem = new ToolStripMenuItem();
+        AlignRightContextMenuItem = new ToolStripMenuItem();
+        AlignSeparator1 = new ToolStripSeparator();
+        AlignContextSeparator2 = new ToolStripSeparator();
+        AlignTopMenuItem = new ToolStripMenuItem();
+        AlignTopContextMenuItem = new ToolStripMenuItem();
+        AlignMiddleMenuItem = new ToolStripMenuItem();
+        AlignMiddleContextMenuItem = new ToolStripMenuItem();
+        AlignBottomMenuItem = new ToolStripMenuItem();
+        AlignBottomContextMenuItem = new ToolStripMenuItem();
+        AlignSeparator3 = new ToolStripSeparator();
+        AlignContextSeparator4 = new ToolStripSeparator();
+        DistributeHorizontallyMenuItem = new ToolStripMenuItem();
+        DistributeHorizontallyContextMenuItem = new ToolStripMenuItem();
+        DistributeVerticallyMenuItem = new ToolStripMenuItem();
+        DistributeVerticallyContextMenuItem = new ToolStripMenuItem();
+        CopyStyleContextMenuItem = new ToolStripMenuItem();
+        PasteStyleContextMenuItem = new ToolStripMenuItem();
+        GroupContextSeparator = new ToolStripSeparator();
+        GroupContextMenuItem = new ToolStripMenuItem();
+        UngroupContextMenuItem = new ToolStripMenuItem();
         ToolsStrip = new ToolStrip();
         SelectButton = new ToolStripButton();
         ConnectorButton = new ToolStripButton();
+        LineButton = new ToolStripButton();
         ToolsSeparator = new ToolStripSeparator();
         RectangleButton = new ToolStripButton();
         RoundedRectangleButton = new ToolStripButton();
@@ -46,20 +81,37 @@ partial class DiagramEditorForm
         HexagonButton = new ToolStripButton();
         CylinderButton = new ToolStripButton();
         DocumentButton = new ToolStripButton();
+        ContainerButton = new ToolStripButton();
         TextButton = new ToolStripButton();
         StyleStrip = new ToolStrip();
-        NewButton = new ToolStripButton();
-        OpenButton = new ToolStripButton();
-        SaveButton = new ToolStripButton();
+        FileDropDownButton = new ToolStripDropDownButton();
+        NewMenuItem = new ToolStripMenuItem();
+        OpenMenuItem = new ToolStripMenuItem();
+        SaveMenuItem = new ToolStripMenuItem();
+        SaveAsMenuItem = new ToolStripMenuItem();
+        ExportPdfMenuItem = new ToolStripMenuItem();
+        ExportPngMenuItem = new ToolStripMenuItem();
+        ExitSeparator = new ToolStripSeparator();
+        ExitMenuItem = new ToolStripMenuItem();
         FileSeparator = new ToolStripSeparator();
-        UndoButton = new ToolStripButton();
-        RedoButton = new ToolStripButton();
+        EditDropDownButton = new ToolStripDropDownButton();
+        GroupSeparator = new ToolStripSeparator();
+        UndoMenuItem = new ToolStripMenuItem();
+        RedoMenuItem = new ToolStripMenuItem();
         HistorySeparator = new ToolStripSeparator();
         FillDropDownButton = new ToolStripDropDownButton();
         FillPalette = new Snipping.ColorPaletteControl();
         FillPaletteHost = new ToolStripControlHost(FillPalette);
         NoFillMenuItem = new ToolStripMenuItem();
         MoreFillColorsMenuItem = new ToolStripMenuItem();
+        TitleFillDropDownButton = new ToolStripDropDownButton();
+        TitleFillPalette = new Snipping.ColorPaletteControl();
+        TitleFillPaletteHost = new ToolStripControlHost(TitleFillPalette);
+        SameAsFillMenuItem = new ToolStripMenuItem();
+        NoTitleFillMenuItem = new ToolStripMenuItem();
+        MoreTitleFillColorsMenuItem = new ToolStripMenuItem();
+        TitleFillLabel = new Label();
+        TitleFillColorButton = new Button();
         LineDropDownButton = new ToolStripDropDownButton();
         LinePalette = new Snipping.ColorPaletteControl();
         LinePaletteHost = new ToolStripControlHost(LinePalette);
@@ -74,22 +126,33 @@ partial class DiagramEditorForm
         TextOutlineDropDownButton = new ToolStripDropDownButton();
         TextOutlinePalette = new Snipping.ColorPaletteControl();
         TextOutlinePaletteHost = new ToolStripControlHost(TextOutlinePalette);
+        NoTextOutlineMenuItem = new ToolStripMenuItem();
         MoreTextOutlineColorsMenuItem = new ToolStripMenuItem();
         TextOutlineWidthComboBox = new ToolStripComboBox();
+        CopyStyleMenuItem = new ToolStripMenuItem();
+        PasteStyleMenuItem = new ToolStripMenuItem();
         StyleSeparator = new ToolStripSeparator();
         RoutingComboBox = new ToolStripComboBox();
         ArrowHeadsComboBox = new ToolStripComboBox();
         ResetRouteButton = new ToolStripButton();
         ConnectorsSeparator = new ToolStripSeparator();
-        GroupButton = new ToolStripButton();
-        UngroupButton = new ToolStripButton();
+        GroupMenuItem = new ToolStripMenuItem();
+        UngroupMenuItem = new ToolStripMenuItem();
+        ImageSeparator = new ToolStripSeparator();
+        InsertImageMenuItem = new ToolStripMenuItem();
         FrontButton = new ToolStripButton();
         BackButton = new ToolStripButton();
         PropertiesButton = new ToolStripButton();
+        ImagesButton = new ToolStripButton();
         ZoomLabel = new ToolStripLabel();
         Canvas = new DiagramCanvasControl();
         TextInputBox = new TextBox();
         PropertiesPanel = new Panel();
+        ImagesPanel = new Panel();
+        ImagesListView = new ListView();
+        ImagesEmptyLabel = new Label();
+        ImageSearchBox = new TextBox();
+        ImagesFolderButton = new Button();
         PropertiesTable = new TableLayoutPanel();
         PropertiesTitleLabel = new Label();
         TextLabel = new Label();
@@ -102,8 +165,15 @@ partial class DiagramEditorForm
         WidthBox = new NumericUpDown();
         HeightLabel = new Label();
         HeightBox = new NumericUpDown();
+        XLockCheckBox = new CheckBox();
+        YLockCheckBox = new CheckBox();
+        WidthLockCheckBox = new CheckBox();
+        HeightLockCheckBox = new CheckBox();
+        PropertiesToolTip = new ToolTip(components);
         CornerRadiusLabel = new Label();
         CornerRadiusBox = new NumericUpDown();
+        BottomCornerRadiusLabel = new Label();
+        BottomCornerRadiusBox = new NumericUpDown();
         FillLabel = new Label();
         FillColorButton = new Button();
         LineLabel = new Label();
@@ -117,6 +187,8 @@ partial class DiagramEditorForm
         FontFamilyBox = new ComboBox();
         FontSizeLabel = new Label();
         FontSizeBox = new NumericUpDown();
+        TextAlignLabel = new Label();
+        TextAlignPropertyBox = new ComboBox();
         TextOutlineLabel = new Label();
         TextOutlineColorButton = new Button();
         TextOutlineWidthLabel = new Label();
@@ -125,16 +197,23 @@ partial class DiagramEditorForm
         RoutingPropertyBox = new ComboBox();
         ArrowsLabel = new Label();
         ArrowsPropertyBox = new ComboBox();
+        DirectionLabel = new Label();
+        DirectionPropertyBox = new ComboBox();
+        ProportionsCheckBox = new CheckBox();
+        ResetSizeButton = new Button();
+        ResetSizeMenuItem = new ToolStripMenuItem();
         ToolsStrip.SuspendLayout();
         StyleStrip.SuspendLayout();
         Canvas.SuspendLayout();
         PropertiesPanel.SuspendLayout();
+        ImagesPanel.SuspendLayout();
         PropertiesTable.SuspendLayout();
         ((System.ComponentModel.ISupportInitialize)XBox).BeginInit();
         ((System.ComponentModel.ISupportInitialize)YBox).BeginInit();
         ((System.ComponentModel.ISupportInitialize)WidthBox).BeginInit();
         ((System.ComponentModel.ISupportInitialize)HeightBox).BeginInit();
         ((System.ComponentModel.ISupportInitialize)CornerRadiusBox).BeginInit();
+        ((System.ComponentModel.ISupportInitialize)BottomCornerRadiusBox).BeginInit();
         ((System.ComponentModel.ISupportInitialize)LineWidthBox).BeginInit();
         ((System.ComponentModel.ISupportInitialize)FontSizeBox).BeginInit();
         ((System.ComponentModel.ISupportInitialize)TextOutlineWidthBox).BeginInit();
@@ -144,7 +223,7 @@ partial class DiagramEditorForm
         //
         ToolsStrip.Dock = DockStyle.Left;
         ToolsStrip.GripStyle = ToolStripGripStyle.Hidden;
-        ToolsStrip.Items.AddRange(new ToolStripItem[] { SelectButton, ConnectorButton, ToolsSeparator, RectangleButton, RoundedRectangleButton, EllipseButton, DiamondButton, ParallelogramButton, HexagonButton, CylinderButton, DocumentButton, TextButton });
+        ToolsStrip.Items.AddRange(new ToolStripItem[] { SelectButton, ConnectorButton, LineButton, ToolsSeparator, RectangleButton, RoundedRectangleButton, EllipseButton, DiamondButton, ParallelogramButton, HexagonButton, CylinderButton, DocumentButton, ContainerButton, TextButton });
         ToolsStrip.LayoutStyle = ToolStripLayoutStyle.VerticalStackWithOverflow;
         ToolsStrip.Name = "ToolsStrip";
         ToolsStrip.TabIndex = 2;
@@ -166,6 +245,15 @@ partial class DiagramEditorForm
         ConnectorButton.Text = "Connector";
         ConnectorButton.ToolTipText = "Connector (C): drag from one shape to another. Double-click it for a label";
         ConnectorButton.Click += ToolButton_Click;
+        //
+        // LineButton
+        //
+        LineButton.DisplayStyle = ToolStripItemDisplayStyle.Image;
+        LineButton.Name = "LineButton";
+        LineButton.Tag = "Line";
+        LineButton.Text = "Line";
+        LineButton.ToolTipText = "Line (L): drag from one point to another. Shift keeps it level, upright or diagonal";
+        LineButton.Click += ToolButton_Click;
         //
         // ToolsSeparator
         //
@@ -243,6 +331,15 @@ partial class DiagramEditorForm
         DocumentButton.ToolTipText = "Document (M)";
         DocumentButton.Click += ToolButton_Click;
         //
+        // ContainerButton
+        //
+        ContainerButton.DisplayStyle = ToolStripItemDisplayStyle.Image;
+        ContainerButton.Name = "ContainerButton";
+        ContainerButton.Tag = "Container";
+        ContainerButton.Text = "Container";
+        ContainerButton.ToolTipText = "Container (B): a box with a title; what's inside goes along when it's moved";
+        ContainerButton.Click += ToolButton_Click;
+        //
         // TextButton
         //
         TextButton.DisplayStyle = ToolStripItemDisplayStyle.Image;
@@ -255,54 +352,323 @@ partial class DiagramEditorForm
         // StyleStrip
         //
         StyleStrip.GripStyle = ToolStripGripStyle.Hidden;
-        StyleStrip.Items.AddRange(new ToolStripItem[] { NewButton, OpenButton, SaveButton, FileSeparator, UndoButton, RedoButton, HistorySeparator, FillDropDownButton, LineDropDownButton, LineWidthComboBox, DashedButton, TextColorDropDownButton, FontSizeComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, StyleSeparator, RoutingComboBox, ArrowHeadsComboBox, ResetRouteButton, ConnectorsSeparator, GroupButton, UngroupButton, FrontButton, BackButton, ZoomLabel, PropertiesButton });
+        StyleStrip.Items.AddRange(new ToolStripItem[] { FileDropDownButton, EditDropDownButton, FileSeparator, FillDropDownButton, LineDropDownButton, LineWidthComboBox, DashedButton, TextColorDropDownButton, FontSizeComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, StyleSeparator, RoutingComboBox, ArrowHeadsComboBox, ResetRouteButton, ConnectorsSeparator, FrontButton, BackButton, AlignDropDownButton, ZoomLabel, PropertiesButton, ImagesButton });
         StyleStrip.Name = "StyleStrip";
         StyleStrip.Padding = new Padding(4, 2, 4, 2);
         StyleStrip.TabIndex = 1;
         //
-        // NewButton
+        // EditDropDownButton
         //
-        NewButton.Name = "NewButton";
-        NewButton.Tag = "New";
-        NewButton.Text = "New";
-        NewButton.ToolTipText = "New diagram (Ctrl+N)";
-        NewButton.Click += CommandButton_Click;
+        EditDropDownButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
+        EditDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { UndoMenuItem, RedoMenuItem, HistorySeparator, CopyStyleMenuItem, PasteStyleMenuItem, GroupSeparator, GroupMenuItem, UngroupMenuItem, ImageSeparator, InsertImageMenuItem, ResetSizeMenuItem });
+        EditDropDownButton.Name = "EditDropDownButton";
+        EditDropDownButton.Text = "Edit";
+        EditDropDownButton.ToolTipText = "Undo, redo, copy and paste a style, group";
         //
-        // OpenButton
+        // GroupSeparator
         //
-        OpenButton.Name = "OpenButton";
-        OpenButton.Tag = "Open";
-        OpenButton.Text = "Open";
-        OpenButton.ToolTipText = "Open a diagram saved here (Ctrl+O)";
-        OpenButton.Click += CommandButton_Click;
+        GroupSeparator.Name = "GroupSeparator";
         //
-        // SaveButton
+        // AlignDropDownButton
         //
-        SaveButton.Name = "SaveButton";
-        SaveButton.Tag = "Save";
-        SaveButton.Text = "Save";
-        SaveButton.ToolTipText = "Save as an SVG image that opens here again (Ctrl+S; Ctrl+Shift+S to save as)";
-        SaveButton.Click += CommandButton_Click;
+        AlignDropDownButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
+        AlignDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { AlignLeftMenuItem, AlignCenterMenuItem, AlignRightMenuItem, AlignSeparator1, AlignTopMenuItem, AlignMiddleMenuItem, AlignBottomMenuItem, AlignSeparator3, DistributeHorizontallyMenuItem, DistributeVerticallyMenuItem });
+        AlignDropDownButton.Name = "AlignDropDownButton";
+        AlignDropDownButton.Text = "Align";
+        AlignDropDownButton.ToolTipText = "Line up the selected shapes, or space them evenly";
+        //
+        // AlignContextMenuItem
+        //
+        AlignContextMenuItem.DropDownItems.AddRange(new ToolStripItem[] { AlignLeftContextMenuItem, AlignCenterContextMenuItem, AlignRightContextMenuItem, AlignContextSeparator2, AlignTopContextMenuItem, AlignMiddleContextMenuItem, AlignBottomContextMenuItem, AlignContextSeparator4, DistributeHorizontallyContextMenuItem, DistributeVerticallyContextMenuItem });
+        AlignContextMenuItem.Name = "AlignContextMenuItem";
+        AlignContextMenuItem.Text = "Align";
+        //
+        // AlignContextSeparator
+        //
+        AlignContextSeparator.Name = "AlignContextSeparator";
+        //
+        // AlignLeftMenuItem
+        //
+        AlignLeftMenuItem.Name = "AlignLeftMenuItem";
+        AlignLeftMenuItem.Tag = "AlignLeft";
+        AlignLeftMenuItem.Text = "Align left";
+        AlignLeftMenuItem.ToolTipText = "Line up the left edges with the leftmost";
+        AlignLeftMenuItem.Click += CommandButton_Click;
+        //
+        // AlignLeftContextMenuItem
+        //
+        AlignLeftContextMenuItem.Name = "AlignLeftContextMenuItem";
+        AlignLeftContextMenuItem.Tag = "AlignLeft";
+        AlignLeftContextMenuItem.Text = "Align left";
+        AlignLeftContextMenuItem.ToolTipText = "Line up the left edges with the leftmost";
+        AlignLeftContextMenuItem.Click += CommandButton_Click;
+        //
+        // AlignCenterMenuItem
+        //
+        AlignCenterMenuItem.Name = "AlignCenterMenuItem";
+        AlignCenterMenuItem.Tag = "AlignCenter";
+        AlignCenterMenuItem.Text = "Align centers";
+        AlignCenterMenuItem.ToolTipText = "Line up the middles, left to right";
+        AlignCenterMenuItem.Click += CommandButton_Click;
+        //
+        // AlignCenterContextMenuItem
+        //
+        AlignCenterContextMenuItem.Name = "AlignCenterContextMenuItem";
+        AlignCenterContextMenuItem.Tag = "AlignCenter";
+        AlignCenterContextMenuItem.Text = "Align centers";
+        AlignCenterContextMenuItem.ToolTipText = "Line up the middles, left to right";
+        AlignCenterContextMenuItem.Click += CommandButton_Click;
+        //
+        // AlignRightMenuItem
+        //
+        AlignRightMenuItem.Name = "AlignRightMenuItem";
+        AlignRightMenuItem.Tag = "AlignRight";
+        AlignRightMenuItem.Text = "Align right";
+        AlignRightMenuItem.ToolTipText = "Line up the right edges with the rightmost";
+        AlignRightMenuItem.Click += CommandButton_Click;
+        //
+        // AlignRightContextMenuItem
+        //
+        AlignRightContextMenuItem.Name = "AlignRightContextMenuItem";
+        AlignRightContextMenuItem.Tag = "AlignRight";
+        AlignRightContextMenuItem.Text = "Align right";
+        AlignRightContextMenuItem.ToolTipText = "Line up the right edges with the rightmost";
+        AlignRightContextMenuItem.Click += CommandButton_Click;
+        //
+        // AlignTopMenuItem
+        //
+        AlignTopMenuItem.Name = "AlignTopMenuItem";
+        AlignTopMenuItem.Tag = "AlignTop";
+        AlignTopMenuItem.Text = "Align tops";
+        AlignTopMenuItem.ToolTipText = "Line up the top edges with the highest";
+        AlignTopMenuItem.Click += CommandButton_Click;
+        //
+        // AlignTopContextMenuItem
+        //
+        AlignTopContextMenuItem.Name = "AlignTopContextMenuItem";
+        AlignTopContextMenuItem.Tag = "AlignTop";
+        AlignTopContextMenuItem.Text = "Align tops";
+        AlignTopContextMenuItem.ToolTipText = "Line up the top edges with the highest";
+        AlignTopContextMenuItem.Click += CommandButton_Click;
+        //
+        // AlignMiddleMenuItem
+        //
+        AlignMiddleMenuItem.Name = "AlignMiddleMenuItem";
+        AlignMiddleMenuItem.Tag = "AlignMiddle";
+        AlignMiddleMenuItem.Text = "Align middles";
+        AlignMiddleMenuItem.ToolTipText = "Line up the middles, top to bottom";
+        AlignMiddleMenuItem.Click += CommandButton_Click;
+        //
+        // AlignMiddleContextMenuItem
+        //
+        AlignMiddleContextMenuItem.Name = "AlignMiddleContextMenuItem";
+        AlignMiddleContextMenuItem.Tag = "AlignMiddle";
+        AlignMiddleContextMenuItem.Text = "Align middles";
+        AlignMiddleContextMenuItem.ToolTipText = "Line up the middles, top to bottom";
+        AlignMiddleContextMenuItem.Click += CommandButton_Click;
+        //
+        // AlignBottomMenuItem
+        //
+        AlignBottomMenuItem.Name = "AlignBottomMenuItem";
+        AlignBottomMenuItem.Tag = "AlignBottom";
+        AlignBottomMenuItem.Text = "Align bottoms";
+        AlignBottomMenuItem.ToolTipText = "Line up the bottom edges with the lowest";
+        AlignBottomMenuItem.Click += CommandButton_Click;
+        //
+        // AlignBottomContextMenuItem
+        //
+        AlignBottomContextMenuItem.Name = "AlignBottomContextMenuItem";
+        AlignBottomContextMenuItem.Tag = "AlignBottom";
+        AlignBottomContextMenuItem.Text = "Align bottoms";
+        AlignBottomContextMenuItem.ToolTipText = "Line up the bottom edges with the lowest";
+        AlignBottomContextMenuItem.Click += CommandButton_Click;
+        //
+        // DistributeHorizontallyMenuItem
+        //
+        DistributeHorizontallyMenuItem.Name = "DistributeHorizontallyMenuItem";
+        DistributeHorizontallyMenuItem.Tag = "DistributeHorizontally";
+        DistributeHorizontallyMenuItem.Text = "Distribute horizontally";
+        DistributeHorizontallyMenuItem.ToolTipText = "The same space between each two, side by side";
+        DistributeHorizontallyMenuItem.Click += CommandButton_Click;
+        //
+        // DistributeHorizontallyContextMenuItem
+        //
+        DistributeHorizontallyContextMenuItem.Name = "DistributeHorizontallyContextMenuItem";
+        DistributeHorizontallyContextMenuItem.Tag = "DistributeHorizontally";
+        DistributeHorizontallyContextMenuItem.Text = "Distribute horizontally";
+        DistributeHorizontallyContextMenuItem.ToolTipText = "The same space between each two, side by side";
+        DistributeHorizontallyContextMenuItem.Click += CommandButton_Click;
+        //
+        // DistributeVerticallyMenuItem
+        //
+        DistributeVerticallyMenuItem.Name = "DistributeVerticallyMenuItem";
+        DistributeVerticallyMenuItem.Tag = "DistributeVertically";
+        DistributeVerticallyMenuItem.Text = "Distribute vertically";
+        DistributeVerticallyMenuItem.ToolTipText = "The same space between each two, one above the other";
+        DistributeVerticallyMenuItem.Click += CommandButton_Click;
+        //
+        // DistributeVerticallyContextMenuItem
+        //
+        DistributeVerticallyContextMenuItem.Name = "DistributeVerticallyContextMenuItem";
+        DistributeVerticallyContextMenuItem.Tag = "DistributeVertically";
+        DistributeVerticallyContextMenuItem.Text = "Distribute vertically";
+        DistributeVerticallyContextMenuItem.ToolTipText = "The same space between each two, one above the other";
+        DistributeVerticallyContextMenuItem.Click += CommandButton_Click;
+        //
+        // SelectionMenu
+        //
+        SelectionMenu.Items.AddRange(new ToolStripItem[] { CopyStyleContextMenuItem, PasteStyleContextMenuItem, GroupContextSeparator, GroupContextMenuItem, UngroupContextMenuItem, AlignContextSeparator, AlignContextMenuItem });
+        SelectionMenu.Name = "SelectionMenu";
+        //
+        // CopyStyleContextMenuItem
+        //
+        CopyStyleContextMenuItem.Name = "CopyStyleContextMenuItem";
+        CopyStyleContextMenuItem.ShortcutKeyDisplayString = "Ctrl+Shift+C";
+        CopyStyleContextMenuItem.Tag = "CopyStyle";
+        CopyStyleContextMenuItem.Text = "Copy style";
+        CopyStyleContextMenuItem.Click += CommandButton_Click;
+        //
+        // PasteStyleContextMenuItem
+        //
+        PasteStyleContextMenuItem.Name = "PasteStyleContextMenuItem";
+        PasteStyleContextMenuItem.ShortcutKeyDisplayString = "Ctrl+Shift+V";
+        PasteStyleContextMenuItem.Tag = "PasteStyle";
+        PasteStyleContextMenuItem.Text = "Paste style";
+        PasteStyleContextMenuItem.Click += CommandButton_Click;
+        //
+        // GroupContextSeparator
+        //
+        GroupContextSeparator.Name = "GroupContextSeparator";
+        //
+        // GroupContextMenuItem
+        //
+        GroupContextMenuItem.Name = "GroupContextMenuItem";
+        GroupContextMenuItem.ShortcutKeyDisplayString = "Ctrl+G";
+        GroupContextMenuItem.Tag = "Group";
+        GroupContextMenuItem.Text = "Group";
+        GroupContextMenuItem.Click += CommandButton_Click;
+        //
+        // UngroupContextMenuItem
+        //
+        UngroupContextMenuItem.Name = "UngroupContextMenuItem";
+        UngroupContextMenuItem.ShortcutKeyDisplayString = "Ctrl+Shift+G";
+        UngroupContextMenuItem.Tag = "Ungroup";
+        UngroupContextMenuItem.Text = "Ungroup";
+        UngroupContextMenuItem.Click += CommandButton_Click;
+        //
+        // FileDropDownButton
+        //
+        FileDropDownButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
+        FileDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { NewMenuItem, OpenMenuItem, SaveMenuItem, SaveAsMenuItem, ExportPdfMenuItem, ExportPngMenuItem, ExitSeparator, ExitMenuItem });
+        FileDropDownButton.Name = "FileDropDownButton";
+        FileDropDownButton.Text = "File";
+        FileDropDownButton.ToolTipText = "New, open, save, export and close";
+        //
+        // NewMenuItem
+        //
+        NewMenuItem.Name = "NewMenuItem";
+        NewMenuItem.ShortcutKeyDisplayString = "Ctrl+N";
+        NewMenuItem.Tag = "New";
+        NewMenuItem.Text = "New";
+        NewMenuItem.ToolTipText = "Start an empty diagram";
+        NewMenuItem.Click += CommandButton_Click;
+        //
+        // OpenMenuItem
+        //
+        OpenMenuItem.Name = "OpenMenuItem";
+        OpenMenuItem.ShortcutKeyDisplayString = "Ctrl+O";
+        OpenMenuItem.Tag = "Open";
+        OpenMenuItem.Text = "Open...";
+        OpenMenuItem.ToolTipText = "Open a diagram saved here";
+        OpenMenuItem.Click += CommandButton_Click;
+        //
+        // SaveMenuItem
+        //
+        SaveMenuItem.Name = "SaveMenuItem";
+        SaveMenuItem.ShortcutKeyDisplayString = "Ctrl+S";
+        SaveMenuItem.Tag = "Save";
+        SaveMenuItem.Text = "Save";
+        SaveMenuItem.ToolTipText = "Save as an SVG image that opens here again";
+        SaveMenuItem.Click += CommandButton_Click;
+        //
+        // SaveAsMenuItem
+        //
+        SaveAsMenuItem.Name = "SaveAsMenuItem";
+        SaveAsMenuItem.ShortcutKeyDisplayString = "Ctrl+Shift+S";
+        SaveAsMenuItem.Tag = "SaveAs";
+        SaveAsMenuItem.Text = "Save as...";
+        SaveAsMenuItem.ToolTipText = "Save under another name";
+        SaveAsMenuItem.Click += CommandButton_Click;
+        //
+        // ExportPdfMenuItem
+        //
+        ExportPdfMenuItem.Name = "ExportPdfMenuItem";
+        ExportPdfMenuItem.ShortcutKeyDisplayString = "Ctrl+E";
+        ExportPdfMenuItem.Tag = "ExportPdf";
+        ExportPdfMenuItem.Text = "Export as PDF...";
+        ExportPdfMenuItem.ToolTipText = "Save a copy as a PDF file, to share or print";
+        ExportPdfMenuItem.Click += CommandButton_Click;
+        //
+        // ExportPngMenuItem
+        //
+        ExportPngMenuItem.Name = "ExportPngMenuItem";
+        ExportPngMenuItem.ShortcutKeyDisplayString = "Ctrl+Shift+E";
+        ExportPngMenuItem.Tag = "ExportPng";
+        ExportPngMenuItem.Text = "Export as PNG...";
+        ExportPngMenuItem.ToolTipText = "Save a copy as a PNG picture, for chats and emails";
+        ExportPngMenuItem.Click += CommandButton_Click;
+        //
+        // ExitSeparator
+        //
+        ExitSeparator.Name = "ExitSeparator";
+        //
+        // ExitMenuItem
+        //
+        ExitMenuItem.Name = "ExitMenuItem";
+        ExitMenuItem.ShortcutKeyDisplayString = "Alt+F4";
+        ExitMenuItem.Text = "Exit";
+        ExitMenuItem.ToolTipText = "Close this window";
+        ExitMenuItem.Click += ExitMenuItem_Click;
+        //
+        // CopyStyleMenuItem
+        //
+        CopyStyleMenuItem.Name = "CopyStyleMenuItem";
+        CopyStyleMenuItem.Tag = "CopyStyle";
+        CopyStyleMenuItem.Text = "Copy style";
+        CopyStyleMenuItem.ShortcutKeyDisplayString = "Ctrl+Shift+C";
+        CopyStyleMenuItem.ToolTipText = "Copy the style of what's selected";
+        CopyStyleMenuItem.Click += CommandButton_Click;
+        //
+        // PasteStyleMenuItem
+        //
+        PasteStyleMenuItem.Name = "PasteStyleMenuItem";
+        PasteStyleMenuItem.Tag = "PasteStyle";
+        PasteStyleMenuItem.Text = "Paste style";
+        PasteStyleMenuItem.ShortcutKeyDisplayString = "Ctrl+Shift+V";
+        PasteStyleMenuItem.ToolTipText = "Give what's selected, and what you draw next, the copied style";
+        PasteStyleMenuItem.Click += CommandButton_Click;
         //
         // FileSeparator
         //
         FileSeparator.Name = "FileSeparator";
         //
-        // UndoButton
+        // UndoMenuItem
         //
-        UndoButton.Name = "UndoButton";
-        UndoButton.Tag = "Undo";
-        UndoButton.Text = "Undo";
-        UndoButton.ToolTipText = "Undo (Ctrl+Z)";
-        UndoButton.Click += CommandButton_Click;
+        UndoMenuItem.Name = "UndoMenuItem";
+        UndoMenuItem.Tag = "Undo";
+        UndoMenuItem.Text = "Undo";
+        UndoMenuItem.ShortcutKeyDisplayString = "Ctrl+Z";
+        UndoMenuItem.ToolTipText = "Undo the last change";
+        UndoMenuItem.Click += CommandButton_Click;
         //
-        // RedoButton
+        // RedoMenuItem
         //
-        RedoButton.Name = "RedoButton";
-        RedoButton.Tag = "Redo";
-        RedoButton.Text = "Redo";
-        RedoButton.ToolTipText = "Redo (Ctrl+Y)";
-        RedoButton.Click += CommandButton_Click;
+        RedoMenuItem.Name = "RedoMenuItem";
+        RedoMenuItem.Tag = "Redo";
+        RedoMenuItem.Text = "Redo";
+        RedoMenuItem.ShortcutKeyDisplayString = "Ctrl+Y";
+        RedoMenuItem.ToolTipText = "Redo what was undone";
+        RedoMenuItem.Click += CommandButton_Click;
         //
         // HistorySeparator
         //
@@ -336,6 +702,40 @@ partial class DiagramEditorForm
         MoreFillColorsMenuItem.Name = "MoreFillColorsMenuItem";
         MoreFillColorsMenuItem.Text = "More colors...";
         MoreFillColorsMenuItem.Click += MoreFillColorsMenuItem_Click;
+        //
+        // TitleFillDropDownButton
+        //
+        TitleFillDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { TitleFillPaletteHost, SameAsFillMenuItem, NoTitleFillMenuItem, MoreTitleFillColorsMenuItem });
+        TitleFillDropDownButton.Name = "TitleFillDropDownButton";
+        TitleFillDropDownButton.Text = "Title fill";
+        //
+        // TitleFillPalette
+        //
+        TitleFillPalette.Name = "TitleFillPalette";
+        TitleFillPalette.ColorPicked += TitleFillPalette_ColorPicked;
+        //
+        // TitleFillPaletteHost
+        //
+        TitleFillPaletteHost.AutoSize = true;
+        TitleFillPaletteHost.Name = "TitleFillPaletteHost";
+        //
+        // SameAsFillMenuItem
+        //
+        SameAsFillMenuItem.Name = "SameAsFillMenuItem";
+        SameAsFillMenuItem.Text = "Same as fill";
+        SameAsFillMenuItem.Click += SameAsFillMenuItem_Click;
+        //
+        // NoTitleFillMenuItem
+        //
+        NoTitleFillMenuItem.Name = "NoTitleFillMenuItem";
+        NoTitleFillMenuItem.Text = "No title fill";
+        NoTitleFillMenuItem.Click += NoTitleFillMenuItem_Click;
+        //
+        // MoreTitleFillColorsMenuItem
+        //
+        MoreTitleFillColorsMenuItem.Name = "MoreTitleFillColorsMenuItem";
+        MoreTitleFillColorsMenuItem.Text = "More colors...";
+        MoreTitleFillColorsMenuItem.Click += MoreTitleFillColorsMenuItem_Click;
         //
         // LineDropDownButton
         //
@@ -408,7 +808,7 @@ partial class DiagramEditorForm
         //
         // TextOutlineDropDownButton
         //
-        TextOutlineDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { TextOutlinePaletteHost, MoreTextOutlineColorsMenuItem });
+        TextOutlineDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { TextOutlinePaletteHost, NoTextOutlineMenuItem, MoreTextOutlineColorsMenuItem });
         TextOutlineDropDownButton.Name = "TextOutlineDropDownButton";
         TextOutlineDropDownButton.Text = "Edge";
         TextOutlineDropDownButton.ToolTipText = "Color of the edge around the text's letters";
@@ -422,6 +822,12 @@ partial class DiagramEditorForm
         //
         TextOutlinePaletteHost.AutoSize = true;
         TextOutlinePaletteHost.Name = "TextOutlinePaletteHost";
+        //
+        // NoTextOutlineMenuItem
+        //
+        NoTextOutlineMenuItem.Name = "NoTextOutlineMenuItem";
+        NoTextOutlineMenuItem.Text = "No edge";
+        NoTextOutlineMenuItem.Click += NoTextOutlineMenuItem_Click;
         //
         // MoreTextOutlineColorsMenuItem
         //
@@ -469,21 +875,44 @@ partial class DiagramEditorForm
         //
         ConnectorsSeparator.Name = "ConnectorsSeparator";
         //
-        // GroupButton
+        // GroupMenuItem
         //
-        GroupButton.Name = "GroupButton";
-        GroupButton.Tag = "Group";
-        GroupButton.Text = "Group";
-        GroupButton.ToolTipText = "Group the selected shapes (Ctrl+G)";
-        GroupButton.Click += CommandButton_Click;
+        GroupMenuItem.Name = "GroupMenuItem";
+        GroupMenuItem.Tag = "Group";
+        GroupMenuItem.Text = "Group";
+        GroupMenuItem.ShortcutKeyDisplayString = "Ctrl+G";
+        GroupMenuItem.ToolTipText = "Group the selected shapes";
+        GroupMenuItem.Click += CommandButton_Click;
         //
-        // UngroupButton
+        // UngroupMenuItem
         //
-        UngroupButton.Name = "UngroupButton";
-        UngroupButton.Tag = "Ungroup";
-        UngroupButton.Text = "Ungroup";
-        UngroupButton.ToolTipText = "Ungroup (Ctrl+Shift+G)";
-        UngroupButton.Click += CommandButton_Click;
+        UngroupMenuItem.Name = "UngroupMenuItem";
+        UngroupMenuItem.Tag = "Ungroup";
+        UngroupMenuItem.Text = "Ungroup";
+        UngroupMenuItem.ShortcutKeyDisplayString = "Ctrl+Shift+G";
+        UngroupMenuItem.ToolTipText = "Ungroup the selected groups";
+        UngroupMenuItem.Click += CommandButton_Click;
+        //
+        // ImageSeparator
+        //
+        ImageSeparator.Name = "ImageSeparator";
+        //
+        // InsertImageMenuItem
+        //
+        InsertImageMenuItem.Name = "InsertImageMenuItem";
+        InsertImageMenuItem.Tag = "InsertImage";
+        InsertImageMenuItem.Text = "Insert image...";
+        InsertImageMenuItem.ShortcutKeyDisplayString = "Ctrl+I";
+        InsertImageMenuItem.ToolTipText = "Add SVG images, such as icons; you can also drop them on the canvas";
+        InsertImageMenuItem.Click += CommandButton_Click;
+        //
+        // ResetSizeMenuItem
+        //
+        ResetSizeMenuItem.Name = "ResetSizeMenuItem";
+        ResetSizeMenuItem.Tag = "ResetSize";
+        ResetSizeMenuItem.Text = "Reset image size";
+        ResetSizeMenuItem.ToolTipText = "Give the selected images the size they were inserted at";
+        ResetSizeMenuItem.Click += CommandButton_Click;
         //
         // FrontButton
         //
@@ -511,6 +940,69 @@ partial class DiagramEditorForm
         PropertiesButton.ToolTipText = "Show or hide the properties panel (F4)";
         PropertiesButton.Click += PropertiesButton_Click;
         //
+        // ImagesButton
+        //
+        ImagesButton.Alignment = ToolStripItemAlignment.Right;
+        ImagesButton.Checked = true;
+        ImagesButton.Name = "ImagesButton";
+        ImagesButton.Overflow = ToolStripItemOverflow.Never;
+        ImagesButton.Text = "Images";
+        ImagesButton.ToolTipText = "Show or hide the images to insert again";
+        ImagesButton.Click += ImagesButton_Click;
+        //
+        // ImagesPanel
+        //
+        ImagesPanel.BorderStyle = BorderStyle.FixedSingle;
+        ImagesPanel.Controls.Add(ImagesListView);
+        ImagesPanel.Controls.Add(ImagesEmptyLabel);
+        ImagesPanel.Controls.Add(ImageSearchBox);
+        ImagesPanel.Controls.Add(ImagesFolderButton);
+        ImagesPanel.Dock = DockStyle.Left;
+        ImagesPanel.Name = "ImagesPanel";
+        ImagesPanel.Padding = new Padding(4);
+        ImagesPanel.Size = new Size(230, 700);
+        ImagesPanel.TabIndex = 4;
+        //
+        // ImagesListView
+        //
+        ImagesListView.BorderStyle = BorderStyle.None;
+        ImagesListView.Dock = DockStyle.Fill;
+        ImagesListView.MultiSelect = false;
+        ImagesListView.Name = "ImagesListView";
+        ImagesListView.OwnerDraw = true;
+        ImagesListView.ShowItemToolTips = true;
+        ImagesListView.TabIndex = 1;
+        ImagesListView.View = View.LargeIcon;
+        ImagesListView.DrawItem += ImagesListView_DrawItem;
+        ImagesListView.ItemActivate += ImagesListView_ItemActivate;
+        ImagesListView.ItemDrag += ImagesListView_ItemDrag;
+        //
+        // ImagesEmptyLabel
+        //
+        ImagesEmptyLabel.Dock = DockStyle.Fill;
+        ImagesEmptyLabel.ForeColor = SystemColors.GrayText;
+        ImagesEmptyLabel.Name = "ImagesEmptyLabel";
+        ImagesEmptyLabel.Padding = new Padding(4, 8, 4, 0);
+        ImagesEmptyLabel.Visible = false;
+        //
+        // ImageSearchBox
+        //
+        ImageSearchBox.Dock = DockStyle.Top;
+        ImageSearchBox.Name = "ImageSearchBox";
+        ImageSearchBox.PlaceholderText = "Search images";
+        ImageSearchBox.TabIndex = 0;
+        ImageSearchBox.TextChanged += ImageSearchBox_TextChanged;
+        //
+        // ImagesFolderButton
+        //
+        ImagesFolderButton.AutoSize = true;
+        ImagesFolderButton.Dock = DockStyle.Bottom;
+        ImagesFolderButton.Name = "ImagesFolderButton";
+        ImagesFolderButton.TabIndex = 2;
+        ImagesFolderButton.Text = "Open the images folder";
+        ImagesFolderButton.UseVisualStyleBackColor = true;
+        ImagesFolderButton.Click += ImagesFolderButton_Click;
+        //
         // PropertiesPanel
         //
         PropertiesPanel.AutoScroll = true;
@@ -525,48 +1017,97 @@ partial class DiagramEditorForm
         //
         PropertiesTable.AutoSize = true;
         PropertiesTable.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-        PropertiesTable.ColumnCount = 2;
+        PropertiesTable.ColumnCount = 3;
         PropertiesTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90F));
         PropertiesTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        PropertiesTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 30F));
         PropertiesTable.Controls.Add(PropertiesTitleLabel, 0, 0);
-        PropertiesTable.SetColumnSpan(PropertiesTitleLabel, 2);
+
+        PropertiesTable.SetColumnSpan(PropertiesTitleLabel, 3);
         PropertiesTable.Controls.Add(TextLabel, 0, 1);
+
         PropertiesTable.Controls.Add(TextPropertyBox, 1, 1);
+
+        PropertiesTable.SetColumnSpan(TextPropertyBox, 2);
         PropertiesTable.Controls.Add(XLabel, 0, 2);
+
         PropertiesTable.Controls.Add(XBox, 1, 2);
+
+        PropertiesTable.Controls.Add(XLockCheckBox, 2, 2);
+
         PropertiesTable.Controls.Add(YLabel, 0, 3);
+
         PropertiesTable.Controls.Add(YBox, 1, 3);
+
+        PropertiesTable.Controls.Add(YLockCheckBox, 2, 3);
+
         PropertiesTable.Controls.Add(WidthLabel, 0, 4);
+
         PropertiesTable.Controls.Add(WidthBox, 1, 4);
+
+        PropertiesTable.Controls.Add(WidthLockCheckBox, 2, 4);
+
         PropertiesTable.Controls.Add(HeightLabel, 0, 5);
+
         PropertiesTable.Controls.Add(HeightBox, 1, 5);
-        PropertiesTable.Controls.Add(CornerRadiusLabel, 0, 6);
-        PropertiesTable.Controls.Add(CornerRadiusBox, 1, 6);
-        PropertiesTable.Controls.Add(FillLabel, 0, 7);
-        PropertiesTable.Controls.Add(FillColorButton, 1, 7);
-        PropertiesTable.Controls.Add(LineLabel, 0, 8);
-        PropertiesTable.Controls.Add(LineColorButton, 1, 8);
-        PropertiesTable.Controls.Add(LineWidthLabel, 0, 9);
-        PropertiesTable.Controls.Add(LineWidthBox, 1, 9);
-        PropertiesTable.Controls.Add(DashedCheckBox, 1, 10);
-        PropertiesTable.Controls.Add(TextColorLabel, 0, 11);
-        PropertiesTable.Controls.Add(TextColorButton, 1, 11);
-        PropertiesTable.Controls.Add(FontFamilyLabel, 0, 12);
-        PropertiesTable.Controls.Add(FontFamilyBox, 1, 12);
-        PropertiesTable.Controls.Add(FontSizeLabel, 0, 13);
-        PropertiesTable.Controls.Add(FontSizeBox, 1, 13);
-        PropertiesTable.Controls.Add(TextOutlineLabel, 0, 14);
-        PropertiesTable.Controls.Add(TextOutlineColorButton, 1, 14);
-        PropertiesTable.Controls.Add(TextOutlineWidthLabel, 0, 15);
-        PropertiesTable.Controls.Add(TextOutlineWidthBox, 1, 15);
-        PropertiesTable.Controls.Add(RoutingLabel, 0, 16);
-        PropertiesTable.Controls.Add(RoutingPropertyBox, 1, 16);
-        PropertiesTable.Controls.Add(ArrowsLabel, 0, 17);
-        PropertiesTable.Controls.Add(ArrowsPropertyBox, 1, 17);
+
+        PropertiesTable.Controls.Add(HeightLockCheckBox, 2, 5);
+        PropertiesTable.Controls.Add(ProportionsCheckBox, 1, 6);
+        PropertiesTable.SetColumnSpan(ProportionsCheckBox, 2);
+        PropertiesTable.Controls.Add(ResetSizeButton, 1, 7);
+        PropertiesTable.SetColumnSpan(ResetSizeButton, 2);
+
+        PropertiesTable.Controls.Add(CornerRadiusLabel, 0, 8);
+        PropertiesTable.Controls.Add(CornerRadiusBox, 1, 8);
+        PropertiesTable.SetColumnSpan(CornerRadiusBox, 2);
+        PropertiesTable.Controls.Add(BottomCornerRadiusLabel, 0, 9);
+        PropertiesTable.Controls.Add(BottomCornerRadiusBox, 1, 9);
+        PropertiesTable.SetColumnSpan(BottomCornerRadiusBox, 2);
+        PropertiesTable.Controls.Add(FillLabel, 0, 10);
+        PropertiesTable.Controls.Add(FillColorButton, 1, 10);
+        PropertiesTable.SetColumnSpan(FillColorButton, 2);
+        PropertiesTable.Controls.Add(TitleFillLabel, 0, 11);
+        PropertiesTable.Controls.Add(TitleFillColorButton, 1, 11);
+        PropertiesTable.SetColumnSpan(TitleFillColorButton, 2);
+        PropertiesTable.Controls.Add(LineLabel, 0, 12);
+        PropertiesTable.Controls.Add(LineColorButton, 1, 12);
+        PropertiesTable.SetColumnSpan(LineColorButton, 2);
+        PropertiesTable.Controls.Add(LineWidthLabel, 0, 13);
+        PropertiesTable.Controls.Add(LineWidthBox, 1, 13);
+        PropertiesTable.SetColumnSpan(LineWidthBox, 2);
+        PropertiesTable.Controls.Add(DashedCheckBox, 1, 14);
+        PropertiesTable.SetColumnSpan(DashedCheckBox, 2);
+        PropertiesTable.Controls.Add(TextColorLabel, 0, 15);
+        PropertiesTable.Controls.Add(TextColorButton, 1, 15);
+        PropertiesTable.SetColumnSpan(TextColorButton, 2);
+        PropertiesTable.Controls.Add(FontFamilyLabel, 0, 16);
+        PropertiesTable.Controls.Add(FontFamilyBox, 1, 16);
+        PropertiesTable.SetColumnSpan(FontFamilyBox, 2);
+        PropertiesTable.Controls.Add(FontSizeLabel, 0, 17);
+        PropertiesTable.Controls.Add(FontSizeBox, 1, 17);
+        PropertiesTable.Controls.Add(TextAlignLabel, 0, 18);
+        PropertiesTable.Controls.Add(TextAlignPropertyBox, 1, 18);
+        PropertiesTable.SetColumnSpan(TextAlignPropertyBox, 2);
+        PropertiesTable.SetColumnSpan(FontSizeBox, 2);
+        PropertiesTable.Controls.Add(TextOutlineLabel, 0, 19);
+        PropertiesTable.Controls.Add(TextOutlineColorButton, 1, 19);
+        PropertiesTable.SetColumnSpan(TextOutlineColorButton, 2);
+        PropertiesTable.Controls.Add(TextOutlineWidthLabel, 0, 20);
+        PropertiesTable.Controls.Add(TextOutlineWidthBox, 1, 20);
+        PropertiesTable.SetColumnSpan(TextOutlineWidthBox, 2);
+        PropertiesTable.Controls.Add(RoutingLabel, 0, 21);
+        PropertiesTable.Controls.Add(RoutingPropertyBox, 1, 21);
+        PropertiesTable.SetColumnSpan(RoutingPropertyBox, 2);
+        PropertiesTable.Controls.Add(ArrowsLabel, 0, 22);
+        PropertiesTable.Controls.Add(ArrowsPropertyBox, 1, 22);
+        PropertiesTable.SetColumnSpan(ArrowsPropertyBox, 2);
+        PropertiesTable.Controls.Add(DirectionLabel, 0, 23);
+        PropertiesTable.Controls.Add(DirectionPropertyBox, 1, 23);
+        PropertiesTable.SetColumnSpan(DirectionPropertyBox, 2);
         PropertiesTable.Dock = DockStyle.Top;
         PropertiesTable.Name = "PropertiesTable";
         PropertiesTable.Padding = new Padding(6);
-        PropertiesTable.RowCount = 18;
+        PropertiesTable.RowCount = 24;
         PropertiesTable.TabIndex = 0;
         //
         // PropertiesTitleLabel
@@ -660,12 +1201,64 @@ partial class DiagramEditorForm
         HeightBox.Value = new decimal(new int[] { 10, 0, 0, 0 });
         HeightBox.ValueChanged += BoundsBox_ValueChanged;
         //
+        // XLockCheckBox
+        //
+        XLockCheckBox.Appearance = Appearance.Button;
+        XLockCheckBox.Dock = DockStyle.Fill;
+        XLockCheckBox.Font = new Font("Segoe UI Symbol", 9F);
+        XLockCheckBox.Margin = new Padding(0, 3, 0, 3);
+        XLockCheckBox.Name = "XLockCheckBox";
+        XLockCheckBox.Tag = "X";
+        XLockCheckBox.Text = "\U0001F513";
+        XLockCheckBox.TextAlign = ContentAlignment.MiddleCenter;
+        PropertiesToolTip.SetToolTip(XLockCheckBox, "Lock X: moving the shape leaves its X as it is");
+        XLockCheckBox.CheckedChanged += LockCheckBox_CheckedChanged;
+        //
+        // YLockCheckBox
+        //
+        YLockCheckBox.Appearance = Appearance.Button;
+        YLockCheckBox.Dock = DockStyle.Fill;
+        YLockCheckBox.Font = new Font("Segoe UI Symbol", 9F);
+        YLockCheckBox.Margin = new Padding(0, 3, 0, 3);
+        YLockCheckBox.Name = "YLockCheckBox";
+        YLockCheckBox.Tag = "Y";
+        YLockCheckBox.Text = "\U0001F513";
+        YLockCheckBox.TextAlign = ContentAlignment.MiddleCenter;
+        PropertiesToolTip.SetToolTip(YLockCheckBox, "Lock Y: moving the shape leaves its Y as it is");
+        YLockCheckBox.CheckedChanged += LockCheckBox_CheckedChanged;
+        //
+        // WidthLockCheckBox
+        //
+        WidthLockCheckBox.Appearance = Appearance.Button;
+        WidthLockCheckBox.Dock = DockStyle.Fill;
+        WidthLockCheckBox.Font = new Font("Segoe UI Symbol", 9F);
+        WidthLockCheckBox.Margin = new Padding(0, 3, 0, 3);
+        WidthLockCheckBox.Name = "WidthLockCheckBox";
+        WidthLockCheckBox.Tag = "Width";
+        WidthLockCheckBox.Text = "\U0001F513";
+        WidthLockCheckBox.TextAlign = ContentAlignment.MiddleCenter;
+        PropertiesToolTip.SetToolTip(WidthLockCheckBox, "Lock the width: scaling the shape leaves its width as it is");
+        WidthLockCheckBox.CheckedChanged += LockCheckBox_CheckedChanged;
+        //
+        // HeightLockCheckBox
+        //
+        HeightLockCheckBox.Appearance = Appearance.Button;
+        HeightLockCheckBox.Dock = DockStyle.Fill;
+        HeightLockCheckBox.Font = new Font("Segoe UI Symbol", 9F);
+        HeightLockCheckBox.Margin = new Padding(0, 3, 0, 3);
+        HeightLockCheckBox.Name = "HeightLockCheckBox";
+        HeightLockCheckBox.Tag = "Height";
+        HeightLockCheckBox.Text = "\U0001F513";
+        HeightLockCheckBox.TextAlign = ContentAlignment.MiddleCenter;
+        PropertiesToolTip.SetToolTip(HeightLockCheckBox, "Lock the height: scaling the shape leaves its height as it is");
+        HeightLockCheckBox.CheckedChanged += LockCheckBox_CheckedChanged;
+        //
         // CornerRadiusLabel
         //
         CornerRadiusLabel.Anchor = AnchorStyles.Left;
         CornerRadiusLabel.AutoSize = true;
         CornerRadiusLabel.Name = "CornerRadiusLabel";
-        CornerRadiusLabel.Text = "Corner radius";
+        CornerRadiusLabel.Text = "Top corners";
         //
         // CornerRadiusBox
         //
@@ -674,6 +1267,22 @@ partial class DiagramEditorForm
         CornerRadiusBox.Name = "CornerRadiusBox";
         CornerRadiusBox.TabIndex = 5;
         CornerRadiusBox.ValueChanged += CornerRadiusBox_ValueChanged;
+        PropertiesToolTip.SetToolTip(CornerRadiusBox, "How round the top corners are, the title band's too");
+        //
+        // BottomCornerRadiusLabel
+        //
+        BottomCornerRadiusLabel.Anchor = AnchorStyles.Left;
+        BottomCornerRadiusLabel.AutoSize = true;
+        BottomCornerRadiusLabel.Name = "BottomCornerRadiusLabel";
+        BottomCornerRadiusLabel.Text = "Bottom corners";
+        //
+        // BottomCornerRadiusBox
+        //
+        BottomCornerRadiusBox.Dock = DockStyle.Fill;
+        BottomCornerRadiusBox.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
+        BottomCornerRadiusBox.Name = "BottomCornerRadiusBox";
+        BottomCornerRadiusBox.TabIndex = 22;
+        BottomCornerRadiusBox.ValueChanged += BottomCornerRadiusBox_ValueChanged;
         //
         // FillLabel
         //
@@ -689,6 +1298,21 @@ partial class DiagramEditorForm
         FillColorButton.Name = "FillColorButton";
         FillColorButton.TabIndex = 6;
         FillColorButton.Click += FillColorButton_Click;
+        //
+        // TitleFillLabel
+        //
+        TitleFillLabel.Anchor = AnchorStyles.Left;
+        TitleFillLabel.AutoSize = true;
+        TitleFillLabel.Name = "TitleFillLabel";
+        TitleFillLabel.Text = "Title fill";
+        //
+        // TitleFillColorButton
+        //
+        TitleFillColorButton.Dock = DockStyle.Fill;
+        TitleFillColorButton.FlatStyle = FlatStyle.Flat;
+        TitleFillColorButton.Name = "TitleFillColorButton";
+        TitleFillColorButton.TabIndex = 21;
+        TitleFillColorButton.Click += TitleFillColorButton_Click;
         //
         // LineLabel
         //
@@ -718,6 +1342,26 @@ partial class DiagramEditorForm
         LineWidthBox.Name = "LineWidthBox";
         LineWidthBox.TabIndex = 8;
         LineWidthBox.ValueChanged += LineWidthBox_ValueChanged;
+        //
+        // ProportionsCheckBox
+        //
+        ProportionsCheckBox.AutoSize = true;
+        ProportionsCheckBox.Name = "ProportionsCheckBox";
+        ProportionsCheckBox.TabIndex = 18;
+        ProportionsCheckBox.Tag = "AspectRatio";
+        ProportionsCheckBox.Text = "Keep proportions";
+        PropertiesToolTip.SetToolTip(ProportionsCheckBox, "Scaling the shape keeps its width and height in proportion");
+        ProportionsCheckBox.CheckedChanged += ProportionsCheckBox_CheckedChanged;
+        //
+        // ResetSizeButton
+        //
+        ResetSizeButton.AutoSize = true;
+        ResetSizeButton.Name = "ResetSizeButton";
+        ResetSizeButton.TabIndex = 19;
+        ResetSizeButton.Text = "Reset size";
+        ResetSizeButton.UseVisualStyleBackColor = true;
+        PropertiesToolTip.SetToolTip(ResetSizeButton, "Give the selected images the size they were inserted at");
+        ResetSizeButton.Click += ResetSizeButton_Click;
         //
         // DashedCheckBox
         //
@@ -774,6 +1418,21 @@ partial class DiagramEditorForm
         FontSizeBox.TabIndex = 11;
         FontSizeBox.Value = new decimal(new int[] { 6, 0, 0, 0 });
         FontSizeBox.ValueChanged += FontSizeBox_ValueChanged;
+        //
+        // TextAlignLabel
+        //
+        TextAlignLabel.Anchor = AnchorStyles.Left;
+        TextAlignLabel.AutoSize = true;
+        TextAlignLabel.Name = "TextAlignLabel";
+        TextAlignLabel.Text = "Text align";
+        //
+        // TextAlignPropertyBox
+        //
+        TextAlignPropertyBox.Dock = DockStyle.Fill;
+        TextAlignPropertyBox.DropDownStyle = ComboBoxStyle.DropDownList;
+        TextAlignPropertyBox.Name = "TextAlignPropertyBox";
+        TextAlignPropertyBox.TabIndex = 20;
+        TextAlignPropertyBox.SelectedIndexChanged += TextAlignPropertyBox_SelectedIndexChanged;
         //
         // TextOutlineLabel
         //
@@ -835,6 +1494,21 @@ partial class DiagramEditorForm
         ArrowsPropertyBox.TabIndex = 13;
         ArrowsPropertyBox.SelectedIndexChanged += ArrowsPropertyBox_SelectedIndexChanged;
         //
+        // DirectionLabel
+        //
+        DirectionLabel.Anchor = AnchorStyles.Left;
+        DirectionLabel.AutoSize = true;
+        DirectionLabel.Name = "DirectionLabel";
+        DirectionLabel.Text = "Direction";
+        //
+        // DirectionPropertyBox
+        //
+        DirectionPropertyBox.Dock = DockStyle.Fill;
+        DirectionPropertyBox.DropDownStyle = ComboBoxStyle.DropDownList;
+        DirectionPropertyBox.Name = "DirectionPropertyBox";
+        DirectionPropertyBox.TabIndex = 17;
+        DirectionPropertyBox.SelectedIndexChanged += DirectionPropertyBox_SelectedIndexChanged;
+        //
         // ZoomLabel
         //
         ZoomLabel.Alignment = ToolStripItemAlignment.Right;
@@ -859,6 +1533,8 @@ partial class DiagramEditorForm
         Canvas.MouseDoubleClick += Canvas_MouseDoubleClick;
         Canvas.MouseLeave += Canvas_MouseLeave;
         Canvas.MouseWheel += Canvas_MouseWheel;
+        Canvas.DragEnter += Canvas_DragEnter;
+        Canvas.DragDrop += Canvas_DragDrop;
         //
         // TextInputBox
         //
@@ -878,6 +1554,7 @@ partial class DiagramEditorForm
         AutoScaleMode = AutoScaleMode.Font;
         ClientSize = new Size(1280, 760);
         Controls.Add(Canvas);
+        Controls.Add(ImagesPanel);
         Controls.Add(PropertiesPanel);
         Controls.Add(ToolsStrip);
         Controls.Add(StyleStrip);
@@ -888,6 +1565,7 @@ partial class DiagramEditorForm
         Text = "Diagram editor";
         FormClosing += DiagramEditorForm_FormClosing;
         KeyDown += DiagramEditorForm_KeyDown;
+        Activated += DiagramEditorForm_Activated;
         KeyUp += DiagramEditorForm_KeyUp;
         ToolsStrip.ResumeLayout(false);
         ToolsStrip.PerformLayout();
@@ -900,6 +1578,7 @@ partial class DiagramEditorForm
         ((System.ComponentModel.ISupportInitialize)WidthBox).EndInit();
         ((System.ComponentModel.ISupportInitialize)HeightBox).EndInit();
         ((System.ComponentModel.ISupportInitialize)CornerRadiusBox).EndInit();
+        ((System.ComponentModel.ISupportInitialize)BottomCornerRadiusBox).EndInit();
         ((System.ComponentModel.ISupportInitialize)LineWidthBox).EndInit();
         ((System.ComponentModel.ISupportInitialize)FontSizeBox).EndInit();
         ((System.ComponentModel.ISupportInitialize)TextOutlineWidthBox).EndInit();
@@ -907,15 +1586,47 @@ partial class DiagramEditorForm
         PropertiesTable.PerformLayout();
         PropertiesPanel.ResumeLayout(false);
         PropertiesPanel.PerformLayout();
+        ImagesPanel.ResumeLayout(false);
+        ImagesPanel.PerformLayout();
         ResumeLayout(false);
         PerformLayout();
     }
 
     #endregion
 
+    private ContextMenuStrip SelectionMenu;
+    private ToolStripDropDownButton AlignDropDownButton;
+    private ToolStripMenuItem AlignContextMenuItem;
+    private ToolStripSeparator AlignContextSeparator;
+    private ToolStripMenuItem AlignLeftMenuItem;
+    private ToolStripMenuItem AlignLeftContextMenuItem;
+    private ToolStripMenuItem AlignCenterMenuItem;
+    private ToolStripMenuItem AlignCenterContextMenuItem;
+    private ToolStripMenuItem AlignRightMenuItem;
+    private ToolStripMenuItem AlignRightContextMenuItem;
+    private ToolStripSeparator AlignSeparator1;
+    private ToolStripSeparator AlignContextSeparator2;
+    private ToolStripMenuItem AlignTopMenuItem;
+    private ToolStripMenuItem AlignTopContextMenuItem;
+    private ToolStripMenuItem AlignMiddleMenuItem;
+    private ToolStripMenuItem AlignMiddleContextMenuItem;
+    private ToolStripMenuItem AlignBottomMenuItem;
+    private ToolStripMenuItem AlignBottomContextMenuItem;
+    private ToolStripSeparator AlignSeparator3;
+    private ToolStripSeparator AlignContextSeparator4;
+    private ToolStripMenuItem DistributeHorizontallyMenuItem;
+    private ToolStripMenuItem DistributeHorizontallyContextMenuItem;
+    private ToolStripMenuItem DistributeVerticallyMenuItem;
+    private ToolStripMenuItem DistributeVerticallyContextMenuItem;
+    private ToolStripMenuItem CopyStyleContextMenuItem;
+    private ToolStripMenuItem PasteStyleContextMenuItem;
+    private ToolStripSeparator GroupContextSeparator;
+    private ToolStripMenuItem GroupContextMenuItem;
+    private ToolStripMenuItem UngroupContextMenuItem;
     private ToolStrip ToolsStrip;
     private ToolStripButton SelectButton;
     private ToolStripButton ConnectorButton;
+    private ToolStripButton LineButton;
     private ToolStripSeparator ToolsSeparator;
     private ToolStripButton RectangleButton;
     private ToolStripButton RoundedRectangleButton;
@@ -925,14 +1636,23 @@ partial class DiagramEditorForm
     private ToolStripButton HexagonButton;
     private ToolStripButton CylinderButton;
     private ToolStripButton DocumentButton;
+    private ToolStripButton ContainerButton;
     private ToolStripButton TextButton;
     private ToolStrip StyleStrip;
-    private ToolStripButton NewButton;
-    private ToolStripButton OpenButton;
-    private ToolStripButton SaveButton;
+    private ToolStripDropDownButton FileDropDownButton;
+    private ToolStripMenuItem NewMenuItem;
+    private ToolStripMenuItem OpenMenuItem;
+    private ToolStripMenuItem SaveMenuItem;
+    private ToolStripMenuItem SaveAsMenuItem;
+    private ToolStripMenuItem ExportPdfMenuItem;
+    private ToolStripMenuItem ExportPngMenuItem;
+    private ToolStripSeparator ExitSeparator;
+    private ToolStripMenuItem ExitMenuItem;
     private ToolStripSeparator FileSeparator;
-    private ToolStripButton UndoButton;
-    private ToolStripButton RedoButton;
+    private ToolStripDropDownButton EditDropDownButton;
+    private ToolStripSeparator GroupSeparator;
+    private ToolStripMenuItem UndoMenuItem;
+    private ToolStripMenuItem RedoMenuItem;
     private ToolStripSeparator HistorySeparator;
     private ToolStripDropDownButton FillDropDownButton;
     private Snipping.ColorPaletteControl FillPalette;
@@ -953,15 +1673,20 @@ partial class DiagramEditorForm
     private ToolStripDropDownButton TextOutlineDropDownButton;
     private Snipping.ColorPaletteControl TextOutlinePalette;
     private ToolStripControlHost TextOutlinePaletteHost;
+    private ToolStripMenuItem NoTextOutlineMenuItem;
     private ToolStripMenuItem MoreTextOutlineColorsMenuItem;
     private ToolStripComboBox TextOutlineWidthComboBox;
+    private ToolStripMenuItem CopyStyleMenuItem;
+    private ToolStripMenuItem PasteStyleMenuItem;
     private ToolStripSeparator StyleSeparator;
     private ToolStripComboBox RoutingComboBox;
     private ToolStripComboBox ArrowHeadsComboBox;
     private ToolStripButton ResetRouteButton;
     private ToolStripSeparator ConnectorsSeparator;
-    private ToolStripButton GroupButton;
-    private ToolStripButton UngroupButton;
+    private ToolStripMenuItem GroupMenuItem;
+    private ToolStripMenuItem UngroupMenuItem;
+    private ToolStripSeparator ImageSeparator;
+    private ToolStripMenuItem InsertImageMenuItem;
     private ToolStripButton FrontButton;
     private ToolStripButton BackButton;
     private ToolStripButton PropertiesButton;
@@ -969,6 +1694,12 @@ partial class DiagramEditorForm
     private DiagramCanvasControl Canvas;
     private TextBox TextInputBox;
     private Panel PropertiesPanel;
+    private ToolStripButton ImagesButton;
+    private Panel ImagesPanel;
+    private ListView ImagesListView;
+    private Label ImagesEmptyLabel;
+    private TextBox ImageSearchBox;
+    private Button ImagesFolderButton;
     private TableLayoutPanel PropertiesTable;
     private Label PropertiesTitleLabel;
     private Label TextLabel;
@@ -981,6 +1712,11 @@ partial class DiagramEditorForm
     private NumericUpDown WidthBox;
     private Label HeightLabel;
     private NumericUpDown HeightBox;
+    private CheckBox XLockCheckBox;
+    private CheckBox YLockCheckBox;
+    private CheckBox WidthLockCheckBox;
+    private CheckBox HeightLockCheckBox;
+    private ToolTip PropertiesToolTip;
     private Label CornerRadiusLabel;
     private NumericUpDown CornerRadiusBox;
     private Label FillLabel;
@@ -1004,4 +1740,21 @@ partial class DiagramEditorForm
     private ComboBox RoutingPropertyBox;
     private Label ArrowsLabel;
     private ComboBox ArrowsPropertyBox;
+    private Label DirectionLabel;
+    private ComboBox DirectionPropertyBox;
+    private ToolStripDropDownButton TitleFillDropDownButton;
+    private Snipping.ColorPaletteControl TitleFillPalette;
+    private ToolStripControlHost TitleFillPaletteHost;
+    private ToolStripMenuItem SameAsFillMenuItem;
+    private ToolStripMenuItem NoTitleFillMenuItem;
+    private Label BottomCornerRadiusLabel;
+    private NumericUpDown BottomCornerRadiusBox;
+    private ToolStripMenuItem MoreTitleFillColorsMenuItem;
+    private Label TitleFillLabel;
+    private Button TitleFillColorButton;
+    private Label TextAlignLabel;
+    private ComboBox TextAlignPropertyBox;
+    private CheckBox ProportionsCheckBox;
+    private Button ResetSizeButton;
+    private ToolStripMenuItem ResetSizeMenuItem;
 }

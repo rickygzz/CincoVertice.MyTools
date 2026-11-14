@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Drawing;
 using System.Globalization;
 using CincoVertice.MyTools.Ui.Snipping.Interfaces;
@@ -46,6 +46,9 @@ public sealed class SnipEditorPresenter
     /// <summary>How wide a step's circle can be, in pixels.</summary>
     public static IReadOnlyList<int> StepSizes { get; } = [16, 20, 24, 28, 32, 40, 48, 64, 80];
 
+    /// <summary>How large an emoji can be, in pixels.</summary>
+    public static IReadOnlyList<int> EmojiSizes { get; } = [16, 20, 24, 32, 40, 48, 64, 80, 96, 128, 160, 200];
+
     /// <summary>The transparencies to choose from, in percent; 100 would be invisible.</summary>
     public static IReadOnlyList<int> Transparencies { get; } = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90];
 
@@ -64,6 +67,7 @@ public sealed class SnipEditorPresenter
     private readonly ISnipEditorView _view;
     private readonly TimeProvider _timeProvider;
     private readonly ISnipEditorSettingsStore _settingsStore;
+    private readonly ITextRecognizer _textRecognizer;
 
     // Every snip of the window, oldest first; starts with the one it opened with
     private readonly List<SnipPage> _pages = [new SnipPage()];
@@ -79,6 +83,9 @@ public sealed class SnipEditorPresenter
         [SnipTool.Text] = new SnipToolSettingsModel(24, 0, Palette[0]),
 
         [SnipTool.Step] = new SnipToolSettingsModel(28, 0, Palette[0]),
+
+        // Its color isn't used: an emoji keeps its own colors
+        [SnipTool.Emoji] = new SnipToolSettingsModel(48, 0, Palette[16]),
         [SnipTool.SmoothPen] = new SnipToolSettingsModel(4, 0, Palette[0]),
 
         // Not used: a blur has no color, size or transparency, and the select tool doesn't draw
@@ -89,6 +96,10 @@ public sealed class SnipEditorPresenter
 
     // Colors picked with More colors that aren't in the palette, newest first, at most MaxCustomColors
     private readonly List<Color> _customColors = [];
+
+    // The emoji the emoji tool drops, and those dropped last, most recent first, at most EmojiCatalog.MaxRecent
+    private string _emoji = EmojiCatalog.DefaultEmoji;
+    private readonly List<string> _recentEmojis = [];
 
     private SnipTool _tool = SnipTool.Pen;
     private SnipArrowHeads _arrowHeads = SnipArrowHeads.End;
@@ -126,6 +137,9 @@ public sealed class SnipEditorPresenter
     // The selected text while it's being typed over, when it isn't drawn since the text box stands in for it
     private bool _isEditingText;
 
+    // While the text of a snip is being read, asking again does nothing
+    private bool _isReadingText;
+
     private SnipCursor _cursor = SnipCursor.Cross;
 
     // The crop being adjusted before it's applied, and the drag of it; and the crop the view shows, to tell it only of a
@@ -141,14 +155,17 @@ public sealed class SnipEditorPresenter
     ///     Where the tool, each tool's settings and the custom colors are kept: the editor starts with the ones saved
     ///     last, and saves them on every change.
     /// </param>
+    /// <param name="textRecognizer">Reads the text of the snip shown, for Copy text.</param>
     public SnipEditorPresenter(
         ISnipEditorView view,
         TimeProvider timeProvider,
-        ISnipEditorSettingsStore settingsStore)
+        ISnipEditorSettingsStore settingsStore,
+        ITextRecognizer textRecognizer)
     {
         _view = view;
         _timeProvider = timeProvider;
         _settingsStore = settingsStore;
+        _textRecognizer = textRecognizer;
 
         Apply(settingsStore.Load());
 
@@ -168,6 +185,7 @@ public sealed class SnipEditorPresenter
         _view.DeselectRequested += OnDeselectRequested;
         _view.TextEscaped += OnTextEscaped;
         _view.ToolSelected += OnToolSelected;
+        _view.EmojiSelected += OnEmojiSelected;
         _view.ColorSelected += OnColorSelected;
         _view.MoreColorsRequested += OnMoreColorsRequested;
         _view.SizeSelected += OnSizeSelected;
@@ -183,6 +201,7 @@ public sealed class SnipEditorPresenter
         _view.UndoRequested += OnUndoRequested;
         _view.RedoRequested += OnRedoRequested;
         _view.CopyRequested += OnCopyRequested;
+        _view.CopyTextRequested += OnCopyTextRequested;
         _view.SaveRequested += OnSaveRequested;
         _view.CloseRequested += OnCloseRequested;
         _view.HideWhileSnippingSelected += OnHideWhileSnippingSelected;
@@ -236,6 +255,7 @@ public sealed class SnipEditorPresenter
     {
         SnipTool.Text => FontSizes,
         SnipTool.Step => StepSizes,
+        SnipTool.Emoji => EmojiSizes,
         _ => LineSizes,
     };
 
@@ -287,6 +307,16 @@ public sealed class SnipEditorPresenter
                 settings.Color.IsEmpty ? defaults.Color : Solid(settings.Color));
         }
 
+        if (!string.IsNullOrEmpty(saved.Emoji))
+        {
+            _emoji = saved.Emoji;
+        }
+
+        _recentEmojis.AddRange((saved.RecentEmojis ?? [])
+            .Where(emoji => !string.IsNullOrEmpty(emoji))
+            .Distinct()
+            .Take(EmojiCatalog.MaxRecent));
+
         // Oldest last, so adding each in turn at the front keeps the saved order
         foreach (Color color in saved.CustomColors.Reverse())
         {
@@ -304,7 +334,9 @@ public sealed class SnipEditorPresenter
             _arrowHeads,
             _textOutline,
             _cornerRadius,
-            _hideWhileSnipping));
+            _hideWhileSnipping,
+            _emoji,
+            [.. _recentEmojis]));
     }
 
     /// <summary>
@@ -354,6 +386,8 @@ public sealed class SnipEditorPresenter
             _view.ShowArrowHeads(_tool == SnipTool.Arrow ? _arrowHeads : null);
             _view.ShowCornerRadius(CornerRadii, _tool == SnipTool.Rectangle ? _cornerRadius : null);
             ShowTextOutline();
+            _view.ShowEmojis([.. _recentEmojis], _tool == SnipTool.Emoji ? _emoji : null);
+            _view.ShowColorChoice(_tool != SnipTool.Emoji);
 
             return;
         }
@@ -374,6 +408,10 @@ public sealed class SnipEditorPresenter
         _view.ShowArrowHeads(selected.OfType<ArrowAnnotationModel>().FirstOrDefault()?.Heads);
         _view.ShowCornerRadius(CornerRadii, selected.Select(CornerRadiusOf).FirstOrDefault(radius => radius is not null));
         ShowTextOutline();
+
+        // An emoji keeps its own colors: the color shows only when something else is selected too
+        _view.ShowEmojis([.. _recentEmojis], selected.OfType<EmojiAnnotationModel>().FirstOrDefault()?.Emoji);
+        _view.ShowColorChoice(selected.Any(annotation => annotation is not EmojiAnnotationModel));
     }
 
     private static int? CornerRadiusOf(AnnotationModel annotation) => annotation switch
@@ -388,6 +426,7 @@ public sealed class SnipEditorPresenter
     {
         TextAnnotationModel => FontSizes,
         StepAnnotationModel => StepSizes,
+        EmojiAnnotationModel => EmojiSizes,
         HighlightAnnotationModel or BlurAnnotationModel => [],
         _ => LineSizes,
     };
@@ -416,6 +455,7 @@ public sealed class SnipEditorPresenter
             RectangleAnnotationModel rectangle => rectangle.Width,
             TextAnnotationModel text => text.FontSize,
             StepAnnotationModel step => step.Diameter,
+            EmojiAnnotationModel emoji => emoji.Size,
             _ => 0,
         };
         int transparency = (int)Math.Round(100 - annotation.Color.A * 100 / 255.0, MidpointRounding.AwayFromZero);
@@ -647,6 +687,18 @@ public sealed class SnipEditorPresenter
         if (_tool == SnipTool.Crop)
         {
             PressWithCropTool(point);
+
+            return;
+        }
+
+        if (_tool == SnipTool.Emoji)
+        {
+            Add(new EmojiAnnotationModel(
+                point,
+                _emoji,
+                WithTransparency(Settings.Color, Settings.Transparency),
+                Settings.Size));
+            RememberEmoji(_emoji);
 
             return;
         }
@@ -1144,6 +1196,52 @@ public sealed class SnipEditorPresenter
         SaveSettings();
     }
 
+    // With emoji selected, it changes them; else it's the one the emoji tool drops, which it turns to
+    private void OnEmojiSelected(object? sender, string emoji)
+    {
+        if (string.IsNullOrEmpty(emoji))
+        {
+            return;
+        }
+
+        _emoji = emoji;
+
+        if (HasSelection && SelectedAll.Any(annotation => annotation is EmojiAnnotationModel))
+        {
+            ChangeSelected(annotation => annotation is EmojiAnnotationModel selected
+                ? selected with { Emoji = emoji }
+                : annotation);
+            RememberEmoji(emoji);
+
+            return;
+        }
+
+        if (_tool == SnipTool.Emoji)
+        {
+            ShowChoices();
+            SaveSettings();
+
+            return;
+        }
+
+        OnToolSelected(this, SnipTool.Emoji);
+    }
+
+    // First among the recent ones, the oldest beyond EmojiCatalog.MaxRecent dropped, and saved
+    private void RememberEmoji(string emoji)
+    {
+        _recentEmojis.Remove(emoji);
+        _recentEmojis.Insert(0, emoji);
+
+        if (_recentEmojis.Count > EmojiCatalog.MaxRecent)
+        {
+            _recentEmojis.RemoveAt(EmojiCatalog.MaxRecent);
+        }
+
+        ShowChoices();
+        SaveSettings();
+    }
+
     private void OnColorSelected(object? sender, Color color)
     {
         if (HasSelection)
@@ -1212,6 +1310,7 @@ public sealed class SnipEditorPresenter
                 RectangleAnnotationModel rectangle => rectangle with { Width = size },
                 TextAnnotationModel text => text with { FontSize = size },
                 StepAnnotationModel step => step with { Diameter = size },
+                EmojiAnnotationModel emoji => emoji with { Size = size },
                 _ => annotation,
             });
 
@@ -1490,6 +1589,40 @@ public sealed class SnipEditorPresenter
     private void OnCopyRequested(object? sender, EventArgs e)
     {
         _view.CopyImageToClipboard();
+    }
+
+    private async void OnCopyTextRequested(object? sender, EventArgs e)
+    {
+        if (_isReadingText)
+        {
+            return;
+        }
+
+        _isReadingText = true;
+
+        try
+        {
+            IReadOnlyList<string> lines =
+                RecognizedText.Format(await _textRecognizer.ReadLinesAsync(_view.RenderImagePng()));
+
+            if (lines.Count == 0)
+            {
+                _view.ShowNotice(RecognizedText.NoneFoundMessage);
+
+                return;
+            }
+
+            _view.CopyTextToClipboard(RecognizedText.Join(lines));
+            _view.ShowNotice(RecognizedText.CopiedMessage(lines.Count));
+        }
+        catch (TextRecognitionException ex)
+        {
+            _view.ShowNotice(ex.Message);
+        }
+        finally
+        {
+            _isReadingText = false;
+        }
     }
 
     private void OnSaveRequested(object? sender, EventArgs e)

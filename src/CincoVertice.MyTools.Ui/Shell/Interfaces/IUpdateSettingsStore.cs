@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Shell.Interfaces;
+﻿namespace CincoVertice.MyTools.Ui.Shell.Interfaces;
 
 /// <summary>Keeps whether the app looks for a newer version when it starts.</summary>
 public interface IUpdateSettingsStore

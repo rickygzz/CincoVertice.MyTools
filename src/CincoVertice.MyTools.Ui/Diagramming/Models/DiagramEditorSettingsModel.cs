@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Diagramming.Models;
+﻿namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 
 /// <summary>
 ///     What the diagram editor remembers between windows and runs. Nothing about any one diagram.
@@ -8,9 +8,11 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 /// <param name="Heads">Which ends of new connectors have a head.</param>
 /// <param name="IsPropertiesPanelVisible">True when the properties panel is shown.</param>
 /// <param name="Window">How large the window was; null when it isn't known yet.</param>
+/// <param name="IsImagesPanelVisible">True when the images panel is shown.</param>
 public sealed record DiagramEditorSettingsModel(
     DiagramStyleModel Style,
     DiagramRouting Routing,
     DiagramArrowHeads Heads,
     bool IsPropertiesPanelVisible = true,
-    DiagramWindowSizeModel? Window = null);
+    DiagramWindowSizeModel? Window = null,
+    bool IsImagesPanelVisible = true);

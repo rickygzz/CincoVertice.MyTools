@@ -1,4 +1,4 @@
-using System.Security;
+﻿using System.Security;
 using CincoVertice.MyTools.Ui.Shell.Interfaces;
 using CincoVertice.MyTools.Ui.Shell.Views;
 
@@ -42,6 +42,19 @@ public class TrayPresenter
     {
         Reload(announceSuccess: false);
         _hotkeys.WatchFiles();
+        UpdateStartWithWindows();
+    }
+
+    // Quietly: the older command still starts the app, only without running the startup actions
+    private void UpdateStartWithWindows()
+    {
+        try
+        {
+            _startWithWindows.UpdateCommand();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+        {
+        }
     }
 
     /// <summary>
@@ -74,6 +87,8 @@ public class TrayPresenter
         var registration = _hotkeys.Register();
 
         _view.ShowScripts(registration.Scripts);
+        _view.ShowActions(
+            [.. (registration.Actions ?? []).OrderBy(action => action.Title, StringComparer.CurrentCultureIgnoreCase)]);
         _view.ShowHotkeyProblems(registration.Problems);
 
         if (registration.Problems.Count > 0)

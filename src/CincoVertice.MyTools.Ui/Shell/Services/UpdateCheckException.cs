@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Shell.Services;
+﻿namespace CincoVertice.MyTools.Ui.Shell.Services;
 
 /// <summary>The latest release couldn't be found out: no network, no answer, or an answer that can't be read.</summary>
 public sealed class UpdateCheckException : Exception

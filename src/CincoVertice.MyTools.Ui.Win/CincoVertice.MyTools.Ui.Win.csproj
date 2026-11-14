@@ -2,12 +2,13 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- Windows 10, version 2004, for its text recognition (Windows.Media.Ocr) -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>Resources\RG.ico</ApplicationIcon>
-    <Version>0.0.6</Version>
+    <Version>0.0.9</Version>
     <!-- Where the releases are: the app looks there for a newer version, read from the assembly at run time -->
     <RepositoryUrl>https://github.com/rickygzz/CincoVertice.MyTools</RepositoryUrl>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -18,11 +19,21 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.14" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.14" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.14" />
+    <!-- Direct2D, which draws emoji in color: GDI+ draws them in black and white -->
+    <PackageReference Include="Vortice.Direct2D1" Version="3.8.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Forms' parts that the tests reach, without making them public -->
+    <InternalsVisibleTo Include="CincoVertice.MyTools.Ui.Win.Tests" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="Diagramming\Fonts\Roboto.ttf" LogicalName="Roboto.ttf" />
     <Content Include="Diagramming\Fonts\OFL.txt" Link="licenses\Roboto-OFL.txt" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <Content Include="Snipping\Licenses\Vortice-MIT.txt" Link="licenses\Vortice-MIT.txt" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <!-- The user guide, which the help window reads; next to the exe, where the release zip has it too -->
+    <Content Include="..\..\docs\user-guide\**\*" Link="docs\user-guide\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
   </ItemGroup>
 
   <ItemGroup>

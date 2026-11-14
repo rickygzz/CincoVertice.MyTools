@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using CincoVertice.MyTools.Ui.ConfigEditor.Models;
 using CincoVertice.MyTools.Ui.ConfigEditor.Services;
 using Xunit;

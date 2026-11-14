@@ -1,4 +1,4 @@
-using System.Drawing.Drawing2D;
+﻿using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Drawing.Text;
 using CincoVertice.MyTools.Ui.Snipping.Models;
@@ -63,6 +63,17 @@ public static class AnnotationRenderer
                     break;
                 case StepAnnotationModel step:
                     DrawStep(graphics, step);
+                    break;
+                case EmojiAnnotationModel emoji:
+                    ColorEmojiRenderer.Draw(
+                        graphics,
+                        emoji.Emoji,
+                        new RectangleF(
+                            emoji.Center.X - (emoji.Size / 2f),
+                            emoji.Center.Y - (emoji.Size / 2f),
+                            emoji.Size,
+                            emoji.Size),
+                        emoji.Color.A);
                     break;
             }
         }

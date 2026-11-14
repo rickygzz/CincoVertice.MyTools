@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using CincoVertice.Common.Utils.Highlighting;
 using CincoVertice.MyTools.Ui.ConfigEditor.Models;
 

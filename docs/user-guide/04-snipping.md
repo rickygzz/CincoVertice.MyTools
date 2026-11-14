@@ -1,11 +1,14 @@
 # Snipping and the Snip Editor
 
-There are two ways to take a snip.
+There are three ways to take a snip, one to record a video, and one to pick a color from the screen.
 
 | Hotkey | Action | Result |
 |---|---|---|
 | **Ctrl+Alt+Shift+S** | `SnipRegion` | The area you select is placed on the clipboard as an image. |
 | **Ctrl+Alt+S** | `SnipAndEdit` | The same snip, then the **Snip editor** opens so you can mark it up. |
+| **Ctrl+Alt+T** | `SnipText` | The text in the area you select is placed on the clipboard as text. See [Copying the text in a snip](#copying-the-text-in-a-snip). |
+| **Ctrl+Alt+R** | `RecordScreen` | Records a video of the area you select, until you press Ctrl+Alt+R again. See [Recording a video](#recording-a-video). |
+| **Ctrl+Alt+P** | `PickColor` | The color of the pixel you click is placed on the clipboard as text. See [Picking a color from the screen](#picking-a-color-from-the-screen). |
 
 ## Selecting an area
 
@@ -51,17 +54,20 @@ The window is titled "Snip editor". It opens at the snip's size (at most 90% of 
 | Rectangle | R | "Rounded rectangle (R)" |
 | Text | T | "Text (T): click where it goes, Enter to end, Esc to end and select it, Shift+Enter for a new line" |
 | Blur | B | "Blur (B): drag over what to hide. It can't be recovered from the copied or saved image" |
+| Emoji | E | "Emoji (E): click where it goes; pick which one from the emoji list beside the sizes" |
 
 **Blur** is not a true blur. The covered area is replaced by the average color of the pixels just outside it, with a fixed cloudy pattern. Nothing from the covered pixels is kept, so it cannot be reversed from the copied or saved image. Blur has no color, size or transparency choices.
+
+**Emoji** drops an emoji, in its own colors as Windows shows them, where you click, and again at each click. Choose which one from the emoji list that shows beside the sizes while the tool is chosen: at its top, **Used last** has the 10 emoji you dropped most recently, newest first, and below are all of them by group: Faces, Gestures, Marks and arrows, Work, Hearts and symbols, Nature and food. Picking one from the list also chooses the tool. With an emoji selected, picking another one changes it. An emoji has no color choice, but it has a size, from 16 to 200 pixels, and a transparency. The emoji chosen and the ones used last are remembered between runs. Flags are not offered: Windows draws them as two letters.
 
 ## Toolbar choices
 
 - **Color of this tool** (a drop-down): a palette of 24 colors, plus "More colors...". Up to 8 custom colors are remembered, newest first.
-- **Line width, or text size, in pixels (- and +)**: line widths 1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48; text sizes 10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 64, 72.
+- **Line width, or text size, in pixels (- and +)**: line widths 1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48; text sizes 10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 64, 72. Emoji sizes 16, 20, 24, 32, 40, 48, 64, 80, 96, 128, 160, 200 (48 at first).
 - **Transparency**: 0 to 90% in steps of 10.
 - **Arrow heads:** "Head at the end", "Head at the start", "Heads at both ends".
 - **Text edge:** an "Edge" color drop-down and an edge width list ("No edge" for 0, otherwise "N px": 0, 1, 2, 3, 4, 5, 6, 8, 10, 12).
-- Buttons for Undo, Redo, Copy and Save.
+- Buttons for Undo, Redo, Copy, Copy text and Save.
 
 Defaults: the Pen is the starting tool unless you used another last time. Pen, Arrow and Rectangle are 4 px, the Highlighter is 16 px, 50% transparent and yellow, and Text is 24 px. Everything else starts red. Arrow heads start at the end, and the text edge starts off with white as the edge color. Each tool remembers its own color, size and transparency between runs.
 
@@ -72,11 +78,12 @@ Defaults: the Pen is the starting tool unless you used another last time. Pen, A
 | Ctrl+Z | Undo |
 | Ctrl+Y or Ctrl+Shift+Z | Redo |
 | Ctrl+C | Copy the snip with its drawings to the clipboard |
+| Ctrl+Shift+C | Copy the text in the snip, as text |
 | Ctrl+S | Save |
 | Alt+Left / Alt+Right | Previous / next snip |
 | `-` or `[` | Next smaller size |
 | `+` or `]` | Next larger size |
-| V, P, H, A, R, T, B | Choose a tool |
+| V, P, H, A, R, T, B, E | Choose a tool |
 | Esc | Ends a text being typed; else deselects the selection; else closes the editor |
 | Enter / Shift+Enter | End a text / start a new line in a text |
 
@@ -99,11 +106,99 @@ Choose Select (V), or end a text with Esc.
 - While a drawing is selected, the toolbar shows and changes its color, size, transparency, arrow heads and text edge instead of the tool's.
 - Every change can be undone with Ctrl+Z. Esc deselects.
 
+## Recording a video
+
+Press **Ctrl+Alt+R** (`RecordScreen`) and drag over the area to record, as for a snip. When you release the button:
+
+- A red frame shows the area, and a small bar below it (or above, when there's no room) counts down, **Starts in 3**, then shows how long it has recorded. Drag the bar by its time to move it. Neither is in the video, and the bar doesn't take the focus from the program you record.
+- **Pause** stops adding to the video, and **Resume** goes on; the time paused isn't in the video.
+- To stop, press **Ctrl+Alt+R** again or click **Stop**. Stopping during the countdown records nothing. After a moment, a dialog titled "Save recording" asks where to save, starting in your Videos folder with the name `Recording yyyy-MM-dd HHmmss.mp4`. Choose **MP4 video** or **GIF animation** as the type. Cancel deletes the recording.
+- A notification says it was saved. Click it to open the folder with the file selected.
+
+In the video:
+
+- **The mouse pointer**, as it was on the screen. When a program hides it, as some do while you type, the video doesn't show it either.
+- **Clicks**: a ring that grows and fades where you click: yellow for the left button, blue for the right, green for the middle.
+- **Shortcuts**: those you press with Ctrl, Alt or Win, and keys such as Enter, Esc, Tab and F1 to F24, in the bottom left corner, as `Ctrl+Shift+P`. What you type is never shown, so a password or message you type doesn't end up in the video.
+
+An MP4 is H.264, made with the encoder built into Windows, using the graphics card when it can; it plays in any video player and in browsers. A GIF is made from the video once you save it, at fewer frames a second and at most 800 pixels wide by default, and plays over and over; it's handy to paste into chats and documents, but its colors are fewer and its file larger. Neither has sound. Width and height are made even, which the encoder needs, so an area 1 pixel off loses that pixel. While it's recorded, the video is kept in your temporary folder.
+
+If Windows can't record, or the file can't be saved, a notification says why.
+
+### recording.cfg
+
+`config\recording.cfg` is created with the defaults the first time you record, and read at each recording, so a change applies at the next one. It's in the config editor's file list.
+
+| Setting | Meaning | Allowed | Default |
+|---|---|---|---|
+| `FramesPerSecond` | How smooth the video is; more makes larger files | 5 to 30 | 20 |
+| `Quality` | How sharp, against how large the file is | `Low`, `Medium`, `High` | `Medium` |
+| `MaxMinutes` | Stops by itself after this long, then asks where to save | 0 to 240; 0 for never | 0 |
+| `Countdown` | Seconds counted down before it starts | 0 to 10; 0 for none | 3 |
+| `ShowClicks` | Show a ring where you click | `true`, `false` | `true` |
+| `ShowKeys` | Show the shortcuts you press | `true`, `false` | `true` |
+| `Folder` | Where the save dialog starts; `%USERPROFILE%`-style variables work | a folder that exists; empty for Videos | empty |
+| `GifFramesPerSecond` | Frames a second kept when you save as a GIF | 2 to 20 | 10 |
+| `GifMaxWidth` | A wider GIF is made smaller, in pixels | 200 to 1920 | 800 |
+
+A value that can't be used is shown in a notification titled `recording.cfg` when you record, and squiggled in the config editor; that setting keeps its default.
+
+## Copying the text in a snip
+
+My Tools can read the text in a snip (OCR) and put it on the clipboard as text, to paste anywhere. It uses the text recognition built into Windows, so nothing leaves your computer.
+
+- **Ctrl+Alt+T** (`SnipText`): select an area as for any snip. Its text goes on the clipboard, and a notification says "Copied N lines of text." The image is not copied, and no window opens.
+- In the snip editor, click **Copy text** or press **Ctrl+Shift+C**. It reads the snip as it is shown: cropped, with your drawings. A blurred area stays unreadable, and text you added is read too. A note under the button says how many lines were copied. The next change in the editor copies the image again, replacing the text on the clipboard.
+
+Each line of text on the screen becomes one line, top to bottom, indented with spaces as far as it is in the snip, so code keeps its indentation. Tables and columns come out as plain lines, without their layout. Handwriting isn't read.
+
+Some editors draw a dot for each space, such as Visual Studio with **View White Space** on. Those dots are left out of the text. A dot first on a line, before a word, is kept as a bullet. Code still reads best with them turned off (in Visual Studio, **Ctrl+R, Ctrl+W**).
+
+If nothing could be read, you are told "No text found in the snip." Very small text, or text on a busy background, may be read with mistakes or not at all: zoom in on it before you snip it. Code is harder than ordinary text: expect a few wrong letters, such as `I` for `l`.
+
+Windows reads the languages you have added in **Settings > Time & language > Language & region**, using the first one in that list that it can read. If none of them can be read, you are told so. Add a language there, with its **Optical character recognition** feature.
+
+The hotkey **Ctrl+Alt+T** is in the `hotkeys.cfg` that a new install creates. If your `hotkeys.cfg` is older, add the line `SnipText = Ctrl+Alt+T` yourself: see [Hotkeys](02-hotkeys.md).
+
 ## Saving
 
 Press **Ctrl+S** or click **Save**. The dialog is titled "Save snip", with the file types "PNG image (*.png)", "JPEG image (*.jpg)" and "Bitmap (*.bmp)" (PNG first). It starts in `Pictures\Screenshots` if that folder exists, otherwise in `Pictures`, and suggests the name `Snip yyyy-MM-dd HHmmss.png`, which is the date and time of the save. For example, `Snip 2026-11-04 153012.png` is a snip saved on 4 November 2026 at 15:30:12. The file extension decides the format; any other extension saves a PNG.
 
 Your tool choices are saved in `config\snipeditor.json` after every change. If that file is missing or damaged, the defaults are used.
+
+## Picking a color from the screen
+
+Press **Ctrl+Alt+P** (`PickColor`). The screen freezes, as for a snip, and a magnifier follows the pointer, showing the pixels around it larger, with the one in the middle framed. Under it are that pixel's color and its value, such as `#1E90FF` and `rgb(30, 144, 255)`.
+
+| Key or mouse | Effect |
+|---|---|
+| Click, or **Enter** | Copies the color as HEX: `#1E90FF` |
+| **Ctrl**+click, or **Ctrl+Enter** | Copies the color as RGB: `rgb(30, 144, 255)` |
+| Arrow keys | Move the pointer by one pixel; with **Shift**, by ten |
+| Mouse wheel, **+** and **-** | Zoom the magnifier in and out, from 2 to 32 times |
+| **Esc**, or a right click | Closes it without copying anything |
+
+The color is the pixel's as it was when the screen froze, on any monitor.
+
+### The Color window
+
+After a pick, the **Color** window opens (or, if it's open, shows the new color):
+
+- **In the middle**, the chosen color, large, with its values, each with a **Copy** button:
+  - **HEX**: `#1E90FF`
+  - **RGB**: `rgb(30, 144, 255)`, each from 0 to 255
+  - **HSL**: `hsl(210, 100%, 56%)`, hue, saturation and lightness
+  - **HSV**: `hsv(210, 88%, 100%)`, hue, saturation and value
+- **On the left**, its shades: three darker above it and three lighter below it. The color picked is the one in the middle, marked with a dot.
+- **On the right**, under **Goes well with**, a dark and a light color of each hue that goes well with it: **Neutral** (nearly gray, with a hint of its hue, for text and backgrounds), **Complementary** (the opposite hue), **Analogous** (30° either side) and **Triadic** (120° either side).
+
+Click any of those colors to see its values in the middle; the one shown is framed. **Use as base** makes the shades and the colors that go well from the color shown, instead of the one picked. **Back to picked** shows the color you picked again, with its own shades and colors that go well; it's grayed out while that's what is shown.
+
+**Pick another color from the screen** freezes the whole screen again to pick a new color, as **Ctrl+Alt+P** does: the Color window isn't in the frozen screen, so you see what's behind it. The new color is copied as HEX (Ctrl+click: RGB) and replaces the one in the window, and **Back to picked** then goes back to it. **Esc** cancels the pick and leaves the window as it was.
+
+Hover over a color to see its HEX value. **Esc** closes the window, and **F1** opens this page.
+
+The hotkey **Ctrl+Alt+P** is in the `hotkeys.cfg` that a new install creates. If your `hotkeys.cfg` is older, add the line `PickColor = Ctrl+Alt+P` yourself: see [Hotkeys](02-hotkeys.md).
 
 ---
 

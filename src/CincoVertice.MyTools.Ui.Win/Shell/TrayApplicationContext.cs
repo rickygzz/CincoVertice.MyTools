@@ -1,5 +1,8 @@
 ﻿using System.ComponentModel;
 using System.Diagnostics;
+using CincoVertice.Common.Application.CodeStandard.Models;
+using CincoVertice.MyTools.Ui.CodeReview.Models;
+using CincoVertice.MyTools.Ui.CodeReview.Services;
 using CincoVertice.MyTools.Ui.Shell.Models;
 using CincoVertice.MyTools.Ui.Shell.Presenters;
 using CincoVertice.MyTools.Ui.Shell.Services;
@@ -7,10 +10,12 @@ using CincoVertice.MyTools.Ui.Shell.Views;
 using CincoVertice.MyTools.Ui.Win.Behaviors;
 using CincoVertice.MyTools.Ui.Win.CodeReview.Actions;
 using CincoVertice.MyTools.Ui.Win.Diagramming.Actions;
+using CincoVertice.MyTools.Ui.Win.Help.Actions;
 using CincoVertice.MyTools.Ui.Win.Scripting.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Models;
 using CincoVertice.MyTools.Ui.Win.Shell.Services;
+using CincoVertice.MyTools.Ui.Win.Zones.Actions;
 
 namespace CincoVertice.MyTools.Ui.Win.Shell;
 
@@ -23,12 +28,16 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
     private const int InfoNotificationMilliseconds = 5000;
     private const int WarningNotificationMilliseconds = 10000;
 
+    // The tag of a menu item that leaves its menu open when clicked; a fixer's item has its name
+    private const string KeepOpen = "KeepOpen";
+
     private readonly MainForm _mainForm;
     private readonly AppIconService _appIconService;
     private readonly TrayNotificationService _notifications;
     private readonly OpenScriptsFolderAction _openScriptsFolderAction;
     private readonly EditScriptsAction _editScriptsAction;
     private readonly NotifyIcon _notifyIcon;
+    private readonly ToolStripMenuItem _actionsMenu = new("Act&ions");
     private readonly ToolStripMenuItem _scriptsMenu = new("S&cripts");
 
     // The Hotkey problems item goes above it
@@ -42,6 +51,9 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
     // The page the notification shown last opens when clicked; null when it opens nothing
     private string? _notificationPageUrl;
 
+    // What a click on the notification shown last does, when whoever showed it said
+    private Action? _notificationClicked;
+
     public TrayApplicationContext(
         MainForm mainForm,
         AppIconService appIconService,
@@ -49,10 +61,15 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
         CheckFolderAction checkFolderAction,
         FixFolderAction fixFolderAction,
         EditHotkeysAction editHotkeysAction,
+        ToggleActivityAction toggleActivityAction,
+        ToggleKeepAwakeAction toggleKeepAwakeAction,
         EditActivitySettingsAction editActivitySettingsAction,
+        EditZonesAction editZonesAction,
         OpenScriptsFolderAction openScriptsFolderAction,
         EditScriptsAction editScriptsAction,
-        OpenDiagramEditorAction openDiagramEditorAction)
+        OpenDiagramEditorAction openDiagramEditorAction,
+        ShowHelpAction showHelpAction,
+        FixerSelection fixerSelection)
     {
         _mainForm = mainForm;
         _appIconService = appIconService;
@@ -72,14 +89,20 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
         open.Font = new Font(open.Font, FontStyle.Bold);
         AddAction(menu.Items, "&Diagram editor", openDiagramEditorAction);
         AddAction(menu.Items, "Check folder for &standard...", checkFolderAction);
-        AddAction(menu.Items, "&Fix folder for standard...", fixFolderAction);
+        menu.Items.Add(CreateFixMenu(fixFolderAction, fixerSelection));
         menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add(_actionsMenu);
         menu.Items.Add(_scriptsMenu);
         _editHotkeysItem = AddAction(menu.Items, "Edit &hotkeys...", editHotkeysAction);
 
         // For when the file watcher misses a change, e.g. on a network drive
         AddItem(menu.Items, "&Reload hotkeys", () => ReloadHotkeysRequested?.Invoke(this, EventArgs.Empty));
+
+        // Ticked while on; separate, so the computer can be kept awake with the mouse mover off
+        ToolStripMenuItem mouseMoverItem = AddAction(menu.Items, "&Mouse mover", toggleActivityAction);
+        ToolStripMenuItem keepAwakeItem = AddAction(menu.Items, "&Keep awake", toggleKeepAwakeAction);
         AddAction(menu.Items, "Edit &activity settings...", editActivitySettingsAction);
+        AddAction(menu.Items, "Edit window &zones...", editZonesAction);
         menu.Items.Add(new ToolStripSeparator());
         _startWithWindowsItem = AddItem(
             menu.Items,
@@ -91,14 +114,20 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
             () => CheckAtStartRequested?.Invoke(this, !_checkAtStartItem!.Checked));
         menu.Items.Add(new ToolStripSeparator());
         AddItem(menu.Items, "Check for &updates...", () => CheckForUpdatesRequested?.Invoke(this, EventArgs.Empty));
+        AddAction(menu.Items, "He&lp...", showHelpAction);
         AddItem(menu.Items, "A&bout My Tools...", () => AboutRequested?.Invoke(this, EventArgs.Empty));
         AddItem(menu.Items, "&Exit", Exit);
-        menu.Opening += (_, _) => MenuOpening?.Invoke(this, EventArgs.Empty);
+        menu.Opening += (_, _) =>
+        {
+            mouseMoverItem.Checked = toggleActivityAction.IsOn;
+            keepAwakeItem.Checked = toggleKeepAwakeAction.IsOn;
+            MenuOpening?.Invoke(this, EventArgs.Empty);
+        };
 
         _notifyIcon = new NotifyIcon
         {
             Icon = _appIconService.Current,
-            Text = TrayPresenter.AppTitle,
+            Text = _appIconService.ToolTipText,
             ContextMenuStrip = menu,
             Visible = true,
         };
@@ -201,7 +230,10 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
             _scriptsMenu.DropDownItems.Add(new ToolStripMenuItem(
                 script.Name,
                 null,
-                async (_, _) => await script.RunAsync()));
+                async (_, _) => await script.RunAsync())
+            {
+                ShortcutKeyDisplayString = script.Shortcut,
+            });
         }
 
         if (scripts.Count > 0)
@@ -211,6 +243,29 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
 
         AddAction(_scriptsMenu.DropDownItems, "&Edit scripts...", _editScriptsAction);
         AddAction(_scriptsMenu.DropDownItems, "Open scripts &folder", _openScriptsFolderAction);
+    }
+
+    public void ShowActions(IReadOnlyList<ActionMenuItemModel> actions)
+    {
+        ClearAndDispose(_actionsMenu.DropDownItems);
+        _actionsMenu.DropDown.ShowItemToolTips = true;
+
+        foreach (ActionMenuItemModel action in actions)
+        {
+            // Its hotkey on the right, as menus show shortcuts; hotkeys.cfg's name in the tooltip, to bind it there
+            _actionsMenu.DropDownItems.Add(new ToolStripMenuItem(
+                action.Title,
+                null,
+                async (_, _) => await action.RunAsync())
+            {
+                ShortcutKeyDisplayString = action.Shortcut,
+                ToolTipText = action.Shortcut is null
+                    ? $"{action.Name}: no hotkey. Add one in hotkeys.cfg."
+                    : $"{action.Name} = {action.Shortcut}",
+            });
+        }
+
+        _actionsMenu.Visible = actions.Count > 0;
     }
 
     public void ShowHotkeyProblems(IReadOnlyList<string> problems)
@@ -242,6 +297,130 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
     public void ShowNotification(string title, string text, bool isWarning)
     {
         ShowBalloon(title, text, isWarning ? ToolTipIcon.Warning : ToolTipIcon.Info);
+    }
+
+    /// <summary>
+    ///     Fix folder for standard: the fix itself, then every fixer, ticked when it runs. Ticking one keeps the menu
+    ///     open, to choose several; the choice is saved at once.
+    /// </summary>
+    internal static ToolStripMenuItem CreateFixMenu(FixFolderAction fixFolderAction, FixerSelection selection)
+    {
+        var menu = new ToolStripMenuItem("&Fix folder for standard");
+        menu.DropDown.ShowItemToolTips = true;
+        var fix = AddAction(menu.DropDownItems, "&Fix a folder...", fixFolderAction);
+        fix.Font = new Font(fix.Font, FontStyle.Bold);
+        menu.DropDownItems.Add(new ToolStripSeparator());
+        menu.DropDownItems.Add(CreateChoiceMenu(
+            "&Line endings",
+            [LineEndingEnum.None, LineEndingEnum.CRLF, LineEndingEnum.LF, LineEndingEnum.CR],
+            () => selection.LineEnding,
+            selection.SetLineEnding,
+            FixerSelection.TitleOf));
+        menu.DropDownItems.Add(CreateChoiceMenu(
+            "&Encoding",
+            [FileEncodingEnum.Keep, FileEncodingEnum.Utf8, FileEncodingEnum.Utf8Bom],
+            () => selection.Encoding,
+            selection.SetEncoding,
+            FixerSelection.TitleOf));
+        menu.DropDownItems.Add(new ToolStripSeparator());
+
+        List<ToolStripMenuItem> fixerItems = [];
+
+        void ShowChoices()
+        {
+            Dictionary<string, bool> isOn =
+                selection.Choices.ToDictionary(choice => choice.Name, choice => choice.IsOn);
+
+            foreach (ToolStripMenuItem item in fixerItems)
+            {
+                item.Checked = isOn[(string)item.Tag!];
+            }
+        }
+
+        var allOn = AddItem(menu.DropDownItems, "Turn &all on", () =>
+        {
+            selection.SetAll(true);
+            ShowChoices();
+        });
+        var allOff = AddItem(menu.DropDownItems, "Turn all &off", () =>
+        {
+            selection.SetAll(false);
+            ShowChoices();
+        });
+        allOn.Tag = allOff.Tag = KeepOpen;
+        menu.DropDownItems.Add(new ToolStripSeparator());
+
+        foreach (FixerChoiceModel choice in selection.Choices)
+        {
+            var item = new ToolStripMenuItem(choice.Title.Replace("&", "&&", StringComparison.Ordinal))
+            {
+                Tag = choice.Name,
+                Checked = choice.IsOn,
+                ToolTipText = choice.Description.Length > 0
+                    ? $"{choice.Description}{Environment.NewLine}{choice.Languages}"
+                    : choice.Languages,
+            };
+            item.Click += (_, _) =>
+            {
+                selection.Set(choice.Name, !item.Checked);
+                item.Checked = !item.Checked;
+            };
+            menu.DropDownItems.Add(item);
+            fixerItems.Add(item);
+        }
+
+        // A tick, or all on or off, doesn't close the menu: the fix and the rest of the tray menu do
+        bool isKeptOpen = false;
+        menu.DropDown.ItemClicked += (_, e) => isKeptOpen = e.ClickedItem?.Tag is not null;
+        menu.DropDown.Closing += (_, e) =>
+        {
+            if (e.CloseReason == ToolStripDropDownCloseReason.ItemClicked && isKeptOpen)
+            {
+                e.Cancel = true;
+            }
+
+            isKeptOpen = false;
+        };
+
+        return menu;
+    }
+
+    /// <summary>A submenu to choose one of several values, with the one chosen ticked and in its own text.</summary>
+    private static ToolStripMenuItem CreateChoiceMenu<T>(
+        string title,
+        IReadOnlyList<T> values,
+        Func<T> current,
+        Action<T> choose,
+        Func<T, string> titleOf)
+        where T : struct, Enum
+    {
+        var menu = new ToolStripMenuItem();
+
+        void ShowCurrent()
+        {
+            T chosen = current();
+            menu.Text = $"{title}: {titleOf(chosen)}";
+
+            foreach (ToolStripMenuItem item in menu.DropDownItems.OfType<ToolStripMenuItem>())
+            {
+                item.Checked = item.Tag is T value && value.Equals(chosen);
+            }
+        }
+
+        foreach (T value in values)
+        {
+            var item = new ToolStripMenuItem(titleOf(value)) { Tag = value };
+            item.Click += (_, _) =>
+            {
+                choose(value);
+                ShowCurrent();
+            };
+            menu.DropDownItems.Add(item);
+        }
+
+        ShowCurrent();
+
+        return menu;
     }
 
     private static ToolStripMenuItem AddItem(ToolStripItemCollection items, string text, Action onClick)
@@ -281,6 +460,7 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
 
         // It replaces the one before, so clicking it opens nothing unless whoever shows it says otherwise
         _notificationPageUrl = null;
+        _notificationClicked = null;
         _notifyIcon.ShowBalloonTip(milliseconds, title, text, icon);
     }
 
@@ -291,11 +471,17 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
             _notificationPageUrl = null;
             OpenPage(url);
         }
+        else if (_notificationClicked is { } clicked)
+        {
+            _notificationClicked = null;
+            clicked();
+        }
     }
 
     private void Notification_Requested(object? sender, TrayNotificationModel notification)
     {
         ShowBalloon(notification.Title, notification.Text, notification.Icon);
+        _notificationClicked = notification.Clicked;
     }
 
     private void ShowMainForm()
@@ -309,6 +495,7 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
     {
         _notifyIcon.Icon = _appIconService.Current;
         _mainForm.Icon = _appIconService.Current;
+        _notifyIcon.Text = _appIconService.ToolTipText;
     }
 
     private void Exit()

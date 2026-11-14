@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Diagramming.Models;
+﻿namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 
 /// <summary>
 ///     Which color of a style the user is choosing.
@@ -9,4 +9,7 @@ public enum DiagramColorTarget
     Line,
     Text,
     TextOutline,
+
+    /// <summary>A container's title band.</summary>
+    TitleFill,
 }

@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Drawing;
 using CincoVertice.MyTools.Ui.Diagramming.Models;
 
@@ -21,6 +21,9 @@ public interface IDiagramEditorView
 
     /// <summary>Raised when the user double-clicks on the canvas, after the press.</summary>
     event EventHandler<DiagramPointerModel>? PointerDoubleClicked;
+
+    /// <summary>Raised when the user right-clicks the canvas, with where, in canvas pixels.</summary>
+    event EventHandler<Point>? PointerRightClicked;
 
     /// <summary>Raised when the mouse leaves the canvas.</summary>
     event EventHandler? PointerLeft;
@@ -51,15 +54,30 @@ public interface IDiagramEditorView
     /// <summary>Raised with how wide the edge around the text's letters should be, in pixels; 0 for none.</summary>
     event EventHandler<int>? TextOutlineWidthSelected;
 
+    /// <summary>Raised with where the lines of the text should go.</summary>
+    event EventHandler<DiagramTextAlignment>? TextAlignmentSelected;
+
     event EventHandler<DiagramRouting>? RoutingSelected;
 
     event EventHandler<DiagramArrowHeads>? ArrowHeadsSelected;
 
+    /// <summary>Raised when the user chooses which way the selected lines on their own may point.</summary>
+    event EventHandler<DiagramLineDirection>? LineDirectionSelected;
+
+    /// <summary>Raised when files are dropped on the canvas.</summary>
+    event EventHandler<DiagramFilesDropModel>? FilesDropped;
+
     /// <summary>Raised when the user types where the selected shapes should be, all of them together.</summary>
     event EventHandler<Rectangle>? BoundsEdited;
 
+    /// <summary>Raised when the user locks or frees the X, Y, width or height of the selected shapes.</summary>
+    event EventHandler<DiagramLockChoiceModel>? LockToggled;
+
     /// <summary>Raised with how round the corners of the selected shapes should be, in pixels.</summary>
     event EventHandler<int>? CornerRadiusEdited;
+
+    /// <summary>Raised with how round the bottom corners of the selected shapes should be, in pixels.</summary>
+    event EventHandler<int>? BottomCornerRadiusEdited;
 
     /// <summary>Raised with the text of the selected shape, or the label of the selected connector.</summary>
     event EventHandler<string>? TextEdited;
@@ -69,6 +87,24 @@ public interface IDiagramEditorView
 
     /// <summary>Raised with true when the user shows the properties panel, and false when they hide it.</summary>
     event EventHandler<bool>? PropertiesPanelToggled;
+
+    /// <summary>Raised with true when the user shows the images panel, and false when they hide it.</summary>
+    event EventHandler<bool>? ImagesPanelToggled;
+
+    /// <summary>Raised with what the images panel should show only the images of; empty for all.</summary>
+    event EventHandler<string>? ImageSearchChanged;
+
+    /// <summary>Raised with the path of the image of the catalog to insert where the mouse was last.</summary>
+    event EventHandler<string>? CatalogImageChosen;
+
+    /// <summary>Raised when an image of the catalog is dragged onto the canvas.</summary>
+    event EventHandler<DiagramCatalogDropModel>? CatalogImageDropped;
+
+    /// <summary>Raised when the user wants to open the catalog's folder.</summary>
+    event EventHandler? ImagesFolderRequested;
+
+    /// <summary>Raised when the window gets the focus, e.g. back from copying images into the catalog.</summary>
+    event EventHandler? WindowActivated;
 
     /// <summary>Raised with the window's size as it closes, once closing wasn't cancelled.</summary>
     event EventHandler<DiagramWindowSizeModel>? WindowClosed;
@@ -93,6 +129,19 @@ public interface IDiagramEditorView
     /// <summary>Shows or hides the properties panel, as it was saved. Called once, before the window shows.</summary>
     void ShowPropertiesPanel(bool isVisible);
 
+    /// <summary>Shows or hides the images panel.</summary>
+    void ShowImagesPanel(bool isVisible);
+
+    /// <summary>
+    ///     Shows the images of the catalog, in their groups, in order; a group shows where its first one is.
+    /// </summary>
+    /// <param name="images">What to show; the same image can be in two groups, e.g. Recent and its own.</param>
+    /// <param name="emptyText">What to show when there are none.</param>
+    void ShowCatalog(IReadOnlyList<DiagramCatalogImageModel> images, string emptyText);
+
+    /// <summary>Opens a folder, e.g. in File Explorer.</summary>
+    void OpenFolder(string folder);
+
     /// <summary>Makes the window this large, as it was saved. Called once at most, before the window shows.</summary>
     void ShowWindowSize(DiagramWindowSizeModel size);
 
@@ -100,6 +149,11 @@ public interface IDiagramEditorView
     void ShowProperties(DiagramPropertiesModel properties);
 
     void ShowUndoRedo(bool canUndo, bool canRedo);
+
+    /// <summary>Shows the menu over what's selected, whose items ask for their <see cref="DiagramCommand"/>.</summary>
+    /// <param name="location">Where, in canvas pixels.</param>
+    /// <param name="menu">Which of its items can be used.</param>
+    void ShowContextMenu(Point location, DiagramContextMenuModel menu);
 
     /// <summary>Shows the name of the diagram.</summary>
     /// <param name="name">The file's name, or a default.</param>
@@ -126,8 +180,17 @@ public interface IDiagramEditorView
     /// <returns>The file to save to; null when the user cancels.</returns>
     string? AskSavePath(string suggestedFileName);
 
+    /// <returns>The PDF file to export to; null when the user cancels.</returns>
+    string? AskExportPdfPath(string suggestedFileName);
+
+    /// <returns>The PNG file to export to, and how large; null when the user cancels.</returns>
+    DiagramPngExportModel? AskExportPng(string suggestedFileName);
+
     /// <returns>The file to open; null when the user cancels.</returns>
     string? AskOpenPath();
+
+    /// <returns>The SVG images to insert; none when the user cancels.</returns>
+    IReadOnlyList<string> AskImagePaths();
 
     /// <summary>Asks what to do with the unsaved changes.</summary>
     /// <param name="name">The name of the diagram.</param>

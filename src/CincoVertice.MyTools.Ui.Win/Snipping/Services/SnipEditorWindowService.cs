@@ -1,7 +1,9 @@
-using CincoVertice.Common.WinApi.Helpers;
+﻿using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.Common.WinApi.Libs;
+using CincoVertice.MyTools.Ui.Help.Services;
 using CincoVertice.MyTools.Ui.Snipping.Interfaces;
 using CincoVertice.MyTools.Ui.Snipping.Presenters;
+using CincoVertice.MyTools.Ui.Win.Help.Services;
 
 namespace CincoVertice.MyTools.Ui.Win.Snipping.Services;
 
@@ -12,12 +14,19 @@ namespace CincoVertice.MyTools.Ui.Win.Snipping.Services;
 public sealed class SnipEditorWindowService
 {
     private readonly ISnipEditorSettingsStore _settingsStore;
+    private readonly ITextRecognizer _textRecognizer;
+    private readonly HelpWindowService _help;
 
     private SnipEditorForm? _form;
 
-    public SnipEditorWindowService(ISnipEditorSettingsStore settingsStore)
+    public SnipEditorWindowService(
+        ISnipEditorSettingsStore settingsStore,
+        ITextRecognizer textRecognizer,
+        HelpWindowService help)
     {
         _settingsStore = settingsStore;
+        _textRecognizer = textRecognizer;
+        _help = help;
     }
 
     /// <param name="snip">The image to edit; the window owns it from here and disposes it.</param>
@@ -27,7 +36,8 @@ public sealed class SnipEditorWindowService
         {
             _form = new SnipEditorForm(snip);
             _form.FormClosed += Form_FormClosed;
-            new SnipEditorPresenter(_form, TimeProvider.System, _settingsStore).Start();
+            _help.OpenOnF1(_form, () => HelpTopics.Snipping);
+            new SnipEditorPresenter(_form, TimeProvider.System, _settingsStore, _textRecognizer).Start();
             _form.Show();
 
             return;

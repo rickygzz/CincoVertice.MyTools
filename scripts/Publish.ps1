@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     Changes <Version> in the Ui.Win csproj, then runs dotnet publish into artifacts\MyTools-<version>. If the publish
-    fails, the csproj goes back to the old version. The exe and its licenses then go in
+    fails, the csproj goes back to the old version. The exe, its licenses and the user guide (docs\user-guide) then go in
     artifacts\MyTools-<version>-win-x64.zip, and the zip's SHA-256 hash is shown, for the release notes. The script
     commits nothing.
 
@@ -91,11 +91,24 @@ finally {
 
 Write-Host "Published $version to $outputFolder" -ForegroundColor Green
 
-# The exe and the licenses, which Roboto's requires to go along with the font inside it. Not the whole folder: it can
-# also have a config folder from trying the app there
+# The user guide goes next to the exe as docs\user-guide, the path new scripts' comments give, where the help window
+# reads it. The publish copies it there too, but adds to what's there: copied fresh here, so a page removed from the
+# guide isn't left over from an earlier publish
+$guideFolder = Join-Path $outputFolder 'docs\user-guide'
+
+if (Test-Path $guideFolder) {
+    Remove-Item $guideFolder -Recurse -Force
+}
+
+New-Item -ItemType Directory -Path $guideFolder -Force | Out-Null
+Copy-Item (Join-Path $repoRoot 'docs\user-guide\*') $guideFolder -Recurse
+
+# The exe, the licenses, which Roboto's requires to go along with the font inside it, and the guide. Not the whole
+# folder: it can also have a config folder from trying the app there
 $zip = Join-Path $repoRoot "artifacts\MyTools-$version-win-x64.zip"
 
-Compress-Archive -Path (Join-Path $outputFolder '*.exe'), (Join-Path $outputFolder 'licenses') -DestinationPath $zip -Force
+Compress-Archive -Path (Join-Path $outputFolder '*.exe'), (Join-Path $outputFolder 'licenses'), (Join-Path $outputFolder 'docs') `
+    -DestinationPath $zip -Force
 
 Write-Host "Zipped to $zip" -ForegroundColor Green
 Write-Host "SHA-256: $((Get-FileHash $zip -Algorithm SHA256).Hash)" -ForegroundColor Green

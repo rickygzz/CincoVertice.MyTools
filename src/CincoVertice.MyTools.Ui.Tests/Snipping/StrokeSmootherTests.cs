@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using CincoVertice.MyTools.Ui.Snipping.Services;
 using Xunit;
 

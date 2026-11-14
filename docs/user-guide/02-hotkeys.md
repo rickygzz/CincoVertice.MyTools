@@ -6,15 +6,24 @@
 |---|---|---|
 | `ShowCalculator` | Ctrl+Alt+C | Shows the calculator |
 | `ToggleActivity` | Ctrl+Alt+M | Starts or stops the mouse mover |
+| `ToggleKeepAwake` | Ctrl+Alt+K | Starts or stops keeping the computer awake, whether the mouse mover is on or not |
 | `SnipAndEdit` | Ctrl+Alt+S | Takes a snip, then opens the snip editor |
 | `SnipRegion` | Ctrl+Alt+Shift+S | Takes a snip to the clipboard |
+| `SnipText` | Ctrl+Alt+T | Takes a snip and copies the text in it, as text |
+| `RecordScreen` | Ctrl+Alt+R | Records a video of an area of the screen; again to stop |
+| `PickColor` | Ctrl+Alt+P | Copies the color of a pixel you click on the screen, as HEX (Ctrl+click: RGB), and shows it in the Color window |
 | `DiagramEditor` | Ctrl+Alt+D | Opens a new diagram editor window |
 | `CheckFolder` | none | Pick a folder, check the C# standard |
-| `FixFolder` | none | Pick a folder, fix it in place |
+| `FixFolder` | none | Pick a folder, fix it in place, with the fixers ticked in the tray menu |
 | `EditHotkeys` | none | Opens `hotkeys.cfg` in the config editor |
 | `EditActivitySettings` | none | Opens `activity.cfg` in the config editor |
 | `EditScripts` | none | Opens the first script in the config editor |
 | `OpenScriptsFolder` | none | Opens `config\scripts` in Explorer |
+| `MoveToZone` | none | Moves the active window to a zone, given after the shortcut: `MoveToZone = Ctrl+Alt+1, 1`. See [Window Zones](13-window-zones.md). |
+| `MoveToNextZone` | none | Moves the active window to the next zone |
+| `MoveToPreviousZone` | none | Moves the active window to the zone before |
+| `EditZones` | none | Opens the window zones editor |
+| `ShowHelp` | none | Opens this user guide in the help window |
 | each script | none | Runs the script |
 
 Hotkeys work in the same way whichever window is active, including My Tools' own windows. Holding a hotkey down does not repeat it.
@@ -39,13 +48,22 @@ DiagramEditor = Ctrl+Alt+D
 # EditActivitySettings = Ctrl+Alt+
 # EditHotkeys = Ctrl+Alt+
 # EditScripts = Ctrl+Alt+
+# EditZones = Ctrl+Alt+
 # FixFolder = Ctrl+Alt+
 # GoogleSearch = Ctrl+Alt+
+# MoveToNextZone = Ctrl+Alt+
+# MoveToPreviousZone = Ctrl+Alt+
+# MoveToZone = Ctrl+Alt+
 # OpenScriptsFolder = Ctrl+Alt+
+PickColor = Ctrl+Alt+P
+RecordScreen = Ctrl+Alt+R
 ShowCalculator = Ctrl+Alt+C
+# ShowHelp = Ctrl+Alt+
 SnipAndEdit = Ctrl+Alt+S
 SnipRegion = Ctrl+Alt+Shift+S
+SnipText = Ctrl+Alt+T
 ToggleActivity = Ctrl+Alt+M
+ToggleKeepAwake = Ctrl+Alt+K
 ```
 
 The file is created only if it does not exist.

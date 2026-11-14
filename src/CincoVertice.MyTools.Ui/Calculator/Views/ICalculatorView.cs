@@ -10,8 +10,28 @@ public interface ICalculatorView
     /// <summary>Raised when the user asks to show or hide the history (e.g. Ctrl+H).</summary>
     event EventHandler? ToggleHistoryRequested;
 
+    /// <summary>Raised when the expression's text changes, by typing or by <see cref="SetExpression"/>.</summary>
+    event EventHandler? ExpressionChanged;
+
+    /// <summary>Raised with -1 for the line entered before the one shown (Up), or 1 for the next (Down).</summary>
+    event EventHandler<int>? RecallRequested;
+
+    /// <summary>Raised with the index of the suggestion the user chose, in the list last shown.</summary>
+    event EventHandler<int>? SuggestionChosen;
+
     /// <summary>The expression typed by the user.</summary>
     string Expression { get; }
+
+    /// <summary>Where the caret is in the expression.</summary>
+    int Caret { get; }
+
+    /// <summary>Writes the expression, with the caret at the position.</summary>
+    void SetExpression(string expression, int caret);
+
+    /// <summary>Shows a list of what can be written next, under the expression, nothing chosen yet.</summary>
+    void ShowSuggestions(IReadOnlyList<string> items);
+
+    void HideSuggestions();
 
     /// <summary>Shows the view and gives it the focus.</summary>
     void ShowAndActivate();

@@ -71,4 +71,19 @@ public static class FormExtensions
             }
         };
     }
+
+    /// <summary>
+    ///     Makes F1 in the form open the user guide at its page. F1 goes to the control with the focus first, then up
+    ///     to the form, so no control has to know about it.
+    /// </summary>
+    /// <param name="topic">The page, as a link, e.g. "04-snipping.md#recordingcfg"; asked each time.</param>
+    /// <param name="openHelp">Opens the guide at a link.</param>
+    public static void OpenHelpOnF1(this Form form, Func<string> topic, Action<string> openHelp)
+    {
+        form.HelpRequested += (_, e) =>
+        {
+            e.Handled = true;
+            openHelp(topic());
+        };
+    }
 }

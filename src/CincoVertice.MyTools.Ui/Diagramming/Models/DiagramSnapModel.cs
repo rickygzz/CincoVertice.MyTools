@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Diagramming.Models;
+﻿namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 
 /// <summary>
 ///     How far to shift something so it lines up, and the alignment lines to show.

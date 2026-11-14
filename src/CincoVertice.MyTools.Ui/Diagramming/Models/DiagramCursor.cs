@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Diagramming.Models;
+﻿namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 
 /// <summary>
 ///     The mouse cursor over the canvas.

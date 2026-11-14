@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Drawing;
 using CincoVertice.MyTools.Ui.Diagramming.Interfaces;
 using CincoVertice.MyTools.Ui.Diagramming.Models;
@@ -36,6 +36,13 @@ public sealed class DiagramEditorPresenter
     private const int MaxFontSize = 400;
     private const int PasteOffset = 20;
 
+    // The images panel's group of the images used last, and how many it shows
+    private const string RecentGroup = "Recent";
+    private const int RecentImages = 12;
+
+    // What SVG text pasted is called in the catalog
+    private const string PastedImageName = "pasted.svg";
+
     // All in canvas pixels, so they feel the same at any zoom
     private const float SnapDistance = 6;
     private const float GrabDistance = 6;
@@ -45,10 +52,16 @@ public sealed class DiagramEditorPresenter
     private const float AnchorOffset = 14;
     private const float AnchorGrabDistance = 8;
 
+    // The edge's width when picking its color turns it on
+    private const int TurnedOnTextOutlineWidth = 2;
+
     private static readonly Size _defaultShapeSize = new(120, 60);
 
     private readonly IDiagramEditorView _view;
     private readonly IDiagramFileStore _fileStore;
+    private readonly IDiagramPdfExporter _pdfExporter;
+    private readonly IDiagramPngExporter _pngExporter;
+    private readonly IDiagramImageCatalog _imageCatalog;
     private readonly IDiagramEditorSettingsStore _settingsStore;
     private readonly Stack<DiagramModel> _undo = new();
     private readonly Stack<DiagramModel> _redo = new();
@@ -71,9 +84,21 @@ public sealed class DiagramEditorPresenter
         Color.FromArgb(0, 0, 0),
         14);
 
+    // Kept by Copy style, only in this window. A connector's style has no fill to give
+    private DiagramStyleModel? _copiedStyle;
+    private bool _copiedStyleHasFill;
+
     private DiagramRouting _routing = DiagramRouting.Elbow;
     private DiagramArrowHeads _heads = DiagramArrowHeads.End;
     private bool _isPropertiesPanelVisible = true;
+    private bool _isImagesPanelVisible = true;
+
+    // What the images panel shows, and what it shows only the images of
+    private IReadOnlyList<DiagramCatalogImageModel> _shownCatalog = [];
+
+    // Null until the panel has been told what to show
+    private string? _shownCatalogEmptyText;
+    private string _imageSearch = string.Empty;
     private DiagramWindowSizeModel? _windowSize;
 
     // The drag in progress and what it shows
@@ -104,14 +129,23 @@ public sealed class DiagramEditorPresenter
     ///     Where the last used style and the window's layout are kept: the editor starts with the ones saved last, and
     ///     saves them on every change.
     /// </param>
+    /// <param name="pdfExporter">Writes the diagram as a PDF file.</param>
+    /// <param name="pngExporter">Writes the diagram as a PNG picture.</param>
+    /// <param name="imageCatalog">Keeps the images inserted, and those the user adds, to insert again.</param>
     public DiagramEditorPresenter(
         IDiagramEditorView view,
         IDiagramFileStore fileStore,
-        IDiagramEditorSettingsStore settingsStore)
+        IDiagramEditorSettingsStore settingsStore,
+        IDiagramPdfExporter pdfExporter,
+        IDiagramPngExporter pngExporter,
+        IDiagramImageCatalog imageCatalog)
     {
+        _imageCatalog = imageCatalog;
         _view = view;
         _fileStore = fileStore;
         _settingsStore = settingsStore;
+        _pdfExporter = pdfExporter;
+        _pngExporter = pngExporter;
 
         Apply(settingsStore.Load());
 
@@ -119,6 +153,7 @@ public sealed class DiagramEditorPresenter
         _view.PointerMoved += OnPointerMoved;
         _view.PointerReleased += OnPointerReleased;
         _view.PointerDoubleClicked += OnPointerDoubleClicked;
+        _view.PointerRightClicked += OnPointerRightClicked;
         _view.PointerLeft += OnPointerLeft;
         _view.WheelTurned += OnWheelTurned;
         _view.ToolSelected += OnToolSelected;
@@ -131,14 +166,25 @@ public sealed class DiagramEditorPresenter
         _view.FontSizeSelected += OnFontSizeSelected;
         _view.FontFamilySelected += OnFontFamilySelected;
         _view.TextOutlineWidthSelected += OnTextOutlineWidthSelected;
+        _view.TextAlignmentSelected += OnTextAlignmentSelected;
         _view.RoutingSelected += OnRoutingSelected;
         _view.ArrowHeadsSelected += OnArrowHeadsSelected;
+        _view.LineDirectionSelected += OnLineDirectionSelected;
+        _view.FilesDropped += OnFilesDropped;
         _view.BoundsEdited += OnBoundsEdited;
         _view.CornerRadiusEdited += OnCornerRadiusEdited;
+        _view.BottomCornerRadiusEdited += OnBottomCornerRadiusEdited;
+        _view.LockToggled += OnLockToggled;
         _view.TextEdited += OnTextEdited;
         _view.TextCommitted += OnTextCommitted;
         _view.Closing += OnClosing;
         _view.PropertiesPanelToggled += OnPropertiesPanelToggled;
+        _view.ImagesPanelToggled += OnImagesPanelToggled;
+        _view.ImageSearchChanged += OnImageSearchChanged;
+        _view.CatalogImageChosen += OnCatalogImageChosen;
+        _view.CatalogImageDropped += OnCatalogImageDropped;
+        _view.ImagesFolderRequested += OnImagesFolderRequested;
+        _view.WindowActivated += OnWindowActivated;
         _view.WindowClosed += OnWindowClosed;
     }
 
@@ -161,6 +207,8 @@ public sealed class DiagramEditorPresenter
         _view.ShowPalette(SnipEditorPresenter.Palette);
         _view.ShowSizes(LineWidths, FontSizes, SnipEditorPresenter.TextOutlineWidths);
         _view.ShowPropertiesPanel(_isPropertiesPanelVisible);
+        _view.ShowImagesPanel(_isImagesPanelVisible);
+        ShowCatalog();
 
         if (_windowSize is not null)
         {
@@ -185,6 +233,7 @@ public sealed class DiagramEditorPresenter
 
         _style = saved.Style;
         _isPropertiesPanelVisible = saved.IsPropertiesPanelVisible;
+        _isImagesPanelVisible = saved.IsImagesPanelVisible;
 
         if (Enum.IsDefined(saved.Routing))
         {
@@ -209,13 +258,111 @@ public sealed class DiagramEditorPresenter
             _routing,
             _heads,
             _isPropertiesPanelVisible,
-            _windowSize));
+            _windowSize,
+            _isImagesPanelVisible));
     }
 
     private void OnPropertiesPanelToggled(object? sender, bool isVisible)
     {
         _isPropertiesPanelVisible = isVisible;
         SaveSettings();
+    }
+
+    private void OnImagesPanelToggled(object? sender, bool isVisible)
+    {
+        _isImagesPanelVisible = isVisible;
+        SaveSettings();
+        ShowCatalog();
+    }
+
+    private void OnImageSearchChanged(object? sender, string search)
+    {
+        _imageSearch = search.Trim();
+        ShowCatalog();
+    }
+
+    /// <summary>Images copied into the catalog's folder show when the user comes back to the window.</summary>
+    private void OnWindowActivated(object? sender, EventArgs e) => ShowCatalog();
+
+    private void OnImagesFolderRequested(object? sender, EventArgs e)
+    {
+        try
+        {
+            _imageCatalog.CreateFolder();
+            _view.OpenFolder(_imageCatalog.Folder);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _view.ShowError($"Could not open {_imageCatalog.Folder}: {ex.Message}");
+        }
+    }
+
+    private void OnCatalogImageChosen(object? sender, string path) =>
+        InsertFromCatalog(path, _viewport.ToDiagram(_lastPointer));
+
+    private void OnCatalogImageDropped(object? sender, DiagramCatalogDropModel drop) =>
+        InsertFromCatalog(drop.Path, _viewport.ToDiagram(drop.Location));
+
+    private void InsertFromCatalog(string path, Point at)
+    {
+        if (_drag is not null || _shownCatalog.FirstOrDefault(image => image.Path == path) is not { } image)
+        {
+            return;
+        }
+
+        InsertImageShapes([image.Markup], at);
+        _imageCatalog.MarkUsed(path);
+        ShowCatalog();
+    }
+
+    /// <summary>
+    ///     What the images panel shows: the ones used last, then all in their groups; or, while searching, those
+    ///     whose name or group has the text. Shown again only when it changed, so the panel keeps its place.
+    /// </summary>
+    private void ShowCatalog()
+    {
+        if (!_isImagesPanelVisible)
+        {
+            return;
+        }
+
+        IReadOnlyList<DiagramCatalogImageModel> all = _imageCatalog.Images();
+        List<DiagramCatalogImageModel> shown;
+
+        if (_imageSearch.Length == 0)
+        {
+            Dictionary<string, DiagramCatalogImageModel> byPath = all.ToDictionary(
+                image => image.Path,
+                StringComparer.OrdinalIgnoreCase);
+
+            shown =
+            [
+                .. _imageCatalog.Recent()
+                    .Where(byPath.ContainsKey)
+                    .Take(RecentImages)
+                    .Select(path => byPath[path] with { Group = RecentGroup }),
+                .. all,
+            ];
+        }
+        else
+        {
+            shown =
+            [
+                .. all.Where(image => image.Name.Contains(_imageSearch, StringComparison.OrdinalIgnoreCase)
+                    || image.Group.Contains(_imageSearch, StringComparison.OrdinalIgnoreCase)),
+            ];
+        }
+
+        string emptyText = _imageSearch.Length > 0
+            ? $"No image has \"{_imageSearch}\"."
+            : "Images you insert show here, to insert again. You can also copy SVG files into the folder.";
+
+        if (_shownCatalogEmptyText != emptyText || !shown.SequenceEqual(_shownCatalog))
+        {
+            _shownCatalog = shown;
+            _shownCatalogEmptyText = emptyText;
+            _view.ShowCatalog(shown, emptyText);
+        }
     }
 
     private void OnWindowClosed(object? sender, DiagramWindowSizeModel size)
@@ -333,7 +480,10 @@ public sealed class DiagramEditorPresenter
         // Before the circles: the end of a selected connector is on a shape, right next to them
         if (endConnector is not null && connectorEnd is DiagramConnectorEnd end)
         {
-            _drag = new ReconnectDrag(point, endConnector.Id, end);
+            // A line's end goes anywhere; a connector's goes to another shape
+            _drag = endConnector.IsLine
+                ? new LineEndDrag(point, endConnector.Id, end)
+                : new ReconnectDrag(point, endConnector.Id, end);
             Refresh();
 
             return;
@@ -365,6 +515,9 @@ public sealed class DiagramEditorPresenter
             case DiagramTool.Connector:
                 PressWithConnector(point);
                 break;
+            case DiagramTool.Line:
+                _drag = new LineDrag(pointer.Alt ? point : Snap(point));
+                break;
             case DiagramTool.Text:
                 SelectTool(DiagramTool.Select);
                 BeginNewText(point);
@@ -387,7 +540,15 @@ public sealed class DiagramEditorPresenter
         if (_selectedShapes.Count > 0
             && DiagramHitTester.HandleAt(SelectedBox(), point, GrabDistance / _viewport.Zoom) is DiagramHandle handle)
         {
-            _drag = new ScaleDrag(point, handle, SelectedBounds(), SelectedBox());
+            _drag = new ScaleDrag(point, handle, SelectedBounds(), SelectedBox(), SelectedLines());
+
+            return;
+        }
+
+        // Lines are drawn over the shapes, so the one under the mouse is on top
+        if (DiagramHitTester.LineAt(_diagram, point, GrabDistance / _viewport.Zoom) is { } line)
+        {
+            PressOnLine(line, point, isAdding);
 
             return;
         }
@@ -449,12 +610,39 @@ public sealed class DiagramEditorPresenter
             SelectionChanged();
         }
 
-        _drag = new MoveDrag(point, SelectedBounds(), SelectedBox());
+        _drag = new MoveDrag(point, MovingBounds(), MoveBox(), MovingLines());
+    }
+
+    /// <summary>Selects a line as a shape is, and drags it with the rest of the selection.</summary>
+    private void PressOnLine(DiagramConnectorModel line, Point point, bool isAdding)
+    {
+        bool isSelected = _selectedConnectors.Contains(line.Id);
+
+        if (isAdding && isSelected)
+        {
+            _selectedConnectors.Remove(line.Id);
+            SelectionChanged();
+
+            return;
+        }
+
+        if (!isSelected)
+        {
+            if (!isAdding)
+            {
+                ClearSelection();
+            }
+
+            _selectedConnectors.Add(line.Id);
+            SelectionChanged();
+        }
+
+        _drag = new MoveDrag(point, MovingBounds(), MoveBox(), MovingLines());
     }
 
     private void PressWithConnector(Point point)
     {
-        if (DiagramHitTester.ShapeAt(_diagram, point) is { } shape)
+        if (DiagramHitTester.ShapeUnder(_diagram, point) is { } shape)
         {
             _drag = new ConnectDrag(shape.Id, null);
             _draftConnector = (CenterOf(shape.Bounds), point);
@@ -496,6 +684,12 @@ public sealed class DiagramEditorPresenter
                 break;
             case ReconnectDrag reconnect:
                 DragReconnect(reconnect, point);
+                break;
+            case LineDrag line:
+                DragLine(line, point, pointer);
+                break;
+            case LineEndDrag lineEnd:
+                DragLineEnd(lineEnd, point, pointer);
                 break;
             case SegmentDrag segment:
                 DragSegment(segment, point, pointer.Alt);
@@ -544,7 +738,7 @@ public sealed class DiagramEditorPresenter
 
         DiagramConnectorModel connector = _diagram.Connectors.First(c => c.Id == reconnect.ConnectorId);
         bool isStart = reconnect.End == DiagramConnectorEnd.Start;
-        int otherShapeId = isStart ? connector.ToShapeId : connector.FromShapeId;
+        int? otherShapeId = isStart ? connector.ToShapeId : connector.FromShapeId;
         DiagramShapeModel? target = ShapeNear(point);
 
         if (target?.Id == otherShapeId)
@@ -575,6 +769,74 @@ public sealed class DiagramEditorPresenter
         {
             Connectors = [.. _diagram.Connectors.Select(c => c.Id == connector.Id ? moved : c)],
         };
+    }
+
+    /// <summary>Shows the new line, with the style and heads it gets, from where the drag started to here.</summary>
+    private void DragLine(LineDrag line, Point point, DiagramPointerModel pointer)
+    {
+        Point end = LineEnd(line.Start, point, pointer);
+
+        DiagramConnectorModel drawn = DiagramConnectorModel.Line(_diagram.NextId, line.Start, end, _heads, _style);
+
+        _preview = end == line.Start ? null : _diagram with { Connectors = [.. _diagram.Connectors, drawn] };
+    }
+
+    /// <summary>Shows the line with its end here; not on its other end, where it would have no direction.</summary>
+    private void DragLineEnd(LineEndDrag drag, Point point, DiagramPointerModel pointer)
+    {
+        if (IsStillAClick(drag.Start, point))
+        {
+            return;
+        }
+
+        DiagramConnectorModel line = _diagram.Connectors.First(c => c.Id == drag.ConnectorId);
+        bool isStart = drag.End == DiagramConnectorEnd.Start;
+        Point other = (isStart ? line.ToPoint : line.FromPoint)!.Value;
+        Point end = Kept(line.Direction, other, LineEnd(other, point, pointer));
+
+        if (end == other)
+        {
+            return;
+        }
+
+        DiagramConnectorModel moved = isStart ? line with { FromPoint = end } : line with { ToPoint = end };
+
+        _preview = _diagram with { Connectors = [.. _diagram.Connectors.Select(c => c.Id == line.Id ? moved : c)] };
+    }
+
+    /// <summary>
+    ///     Where a line from the point to the mouse ends: on the edges and middles of the shapes nearby, or with Shift
+    ///     along the nearest of level, upright and the diagonals. Alt turns snapping off.
+    /// </summary>
+    private Point LineEnd(Point from, Point point, DiagramPointerModel pointer)
+    {
+        if (pointer.Shift)
+        {
+            return AlongNearestAngle(from, point);
+        }
+
+        return pointer.Alt ? point : Snap(point);
+    }
+
+    /// <summary>The end of a line from the point moved, if need be, so the line points the way it must.</summary>
+    private static Point Kept(DiagramLineDirection direction, Point from, Point end) => direction switch
+    {
+        DiagramLineDirection.Horizontal => end with { Y = from.Y },
+        DiagramLineDirection.Vertical => end with { X = from.X },
+        _ => end,
+    };
+
+    /// <summary>The point moved onto the nearest of the eight directions from the start, as far from it.</summary>
+    private static Point AlongNearestAngle(Point from, Point point)
+    {
+        int dx = point.X - from.X;
+        int dy = point.Y - from.Y;
+        double angle = Math.Round(Math.Atan2(dy, dx) / (Math.PI / 4)) * (Math.PI / 4);
+        double length = Math.Sqrt((double)dx * dx + (double)dy * dy);
+
+        return new Point(
+            from.X + (int)Math.Round(Math.Cos(angle) * length),
+            from.Y + (int)Math.Round(Math.Sin(angle) * length));
     }
 
     /// <summary>A drag of the piece of line at the point, of a selected elbow connector.</summary>
@@ -662,7 +924,7 @@ public sealed class DiagramEditorPresenter
     /// <summary>The shape at the point, or the one whose circles reach it, just outside its edges.</summary>
     private DiagramShapeModel? ShapeNear(Point point)
     {
-        if (DiagramHitTester.ShapeAt(_diagram, point) is { } shape)
+        if (DiagramHitTester.ShapeUnder(_diagram, point) is { } shape)
         {
             return shape;
         }
@@ -737,7 +999,12 @@ public sealed class DiagramEditorPresenter
 
         delta += new Size(snap.DeltaX, snap.DeltaY);
         _guides = snap.Guides;
-        _preview = WithBounds(_diagram, move.Originals, bounds => Moved(bounds, delta), bend => bend + delta);
+        _preview = WithBounds(
+            _diagram,
+            move.Originals,
+            bounds => Moved(bounds, delta),
+            bend => bend + delta,
+            move.Lines);
     }
 
     /// <summary>A click that moves a little isn't a drag, or snapping would shift what was only clicked.</summary>
@@ -776,7 +1043,8 @@ public sealed class DiagramEditorPresenter
             _diagram,
             scale.Originals,
             bounds => ScaleInside(bounds, scale.Box, box),
-            bend => ScaleInside(new Rectangle(bend, Size.Empty), scale.Box, box).Location);
+            bend => ScaleInside(new Rectangle(bend, Size.Empty), scale.Box, box).Location,
+            scale.Lines);
     }
 
     private void DragCreate(CreateDrag create, Point point, bool isSnapOff)
@@ -819,11 +1087,14 @@ public sealed class DiagramEditorPresenter
         switch (drag)
         {
             // Dragged and brought back to where it was is nothing to undo
-            case MoveDrag or ScaleDrag when preview is not null && !preview.Shapes.SequenceEqual(_diagram.Shapes):
+            case MoveDrag or ScaleDrag or LineEndDrag when preview is not null && IsMoved(preview):
                 Commit(preview);
                 break;
             case CreateDrag create:
                 ReleaseCreate(create, preview);
+                break;
+            case LineDrag when preview is not null:
+                ReleaseLine(preview);
                 break;
             case ConnectDrag connect when target is int toShapeId:
                 ReleaseConnect(connect, toShapeId, targetSide);
@@ -842,6 +1113,11 @@ public sealed class DiagramEditorPresenter
                 _selectedShapes.UnionWith(_diagram.Shapes
                     .Where(shape => box.Contains(shape.Bounds))
                     .SelectMany(WithGroup));
+                _selectedConnectors.UnionWith(_diagram.Connectors
+                    .Where(c => c is { FromPoint: Point from, ToPoint: Point to }
+                        && box.Contains(from)
+                        && box.Contains(to))
+                    .Select(c => c.Id));
                 SelectionChanged();
                 break;
         }
@@ -850,6 +1126,14 @@ public sealed class DiagramEditorPresenter
         UpdateHover(point);
         Refresh();
     }
+
+    /// <summary>
+    ///     Whether a shape or a line is somewhere else. Bends go along with the shapes, in new lists that never compare
+    ///     equal, so they don't count.
+    /// </summary>
+    private bool IsMoved(DiagramModel preview) =>
+        !preview.Shapes.SequenceEqual(_diagram.Shapes)
+        || !preview.Connectors.Where(c => c.IsLine).SequenceEqual(_diagram.Connectors.Where(c => c.IsLine));
 
     /// <summary>Dragged and brought back to where it was is nothing to undo.</summary>
     private static bool RouteChanged(SegmentDrag drag, DiagramModel preview)
@@ -875,9 +1159,31 @@ public sealed class DiagramEditorPresenter
 
         var shape = new DiagramShapeModel(_diagram.NextId, create.Kind, bounds, string.Empty, _style);
 
-        Commit(_diagram with { Shapes = [.. _diagram.Shapes, shape] });
+        // A container goes under the first shape it's drawn around, so it doesn't hide what's in it
+        int under = create.Kind == DiagramShapeKind.Container
+            ? _diagram.Shapes.ToList().FindIndex(other => bounds.Contains(other.Bounds))
+            : -1;
+
+        Commit(_diagram with
+        {
+            Shapes = under < 0
+                ? [.. _diagram.Shapes, shape]
+                : [.. _diagram.Shapes.Take(under), shape, .. _diagram.Shapes.Skip(under)],
+        });
         ClearSelection();
         _selectedShapes.Add(shape.Id);
+        SelectTool(DiagramTool.Select);
+        SelectionChanged();
+    }
+
+    /// <summary>Adds the line drawn, and selects it to change it at once, as a new shape is.</summary>
+    private void ReleaseLine(DiagramModel preview)
+    {
+        DiagramConnectorModel line = preview.Connectors[^1];
+
+        Commit(preview);
+        ClearSelection();
+        _selectedConnectors.Add(line.Id);
         SelectTool(DiagramTool.Select);
         SelectionChanged();
     }
@@ -896,6 +1202,50 @@ public sealed class DiagramEditorPresenter
             toSide);
 
         Commit(_diagram with { Connectors = [.. _diagram.Connectors, connector] });
+    }
+
+    /// <summary>
+    ///     On a shape or a connector, shows the menu; a right-click on something not selected selects only it (with
+    ///     its group) first, and one on what's selected keeps the whole selection. Nothing on an empty spot.
+    /// </summary>
+    private void OnPointerRightClicked(object? sender, Point location)
+    {
+        if (_drag is not null)
+        {
+            return;
+        }
+
+        Point point = _viewport.ToDiagram(location);
+
+        if (DiagramHitTester.ShapeAt(_diagram, point) is { } shape)
+        {
+            if (!_selectedShapes.Contains(shape.Id))
+            {
+                ClearSelection();
+                _selectedShapes.UnionWith(WithGroup(shape));
+            }
+        }
+        else if (DiagramHitTester.ConnectorAt(_diagram, point, GrabDistance / _viewport.Zoom) is { } connector)
+        {
+            if (!_selectedConnectors.Contains(connector.Id))
+            {
+                ClearSelection();
+                _selectedConnectors.Add(connector.Id);
+            }
+        }
+        else
+        {
+            return;
+        }
+
+        SelectionChanged();
+        Refresh();
+        _view.ShowContextMenu(location, new DiagramContextMenuModel(
+                _copiedStyle is not null,
+                CanGroup(),
+                CanUngroup(),
+                SelectedUnits().Count >= 2,
+                SelectedUnits().Count >= 3));
     }
 
     private void OnPointerDoubleClicked(object? sender, DiagramPointerModel pointer)
@@ -934,6 +1284,32 @@ public sealed class DiagramEditorPresenter
         }
     }
 
+    /// <summary>
+    ///     The selected images go back to the size they were inserted at, from where their top left is; what's locked
+    ///     of their place and size stays, but not their proportions, which are the image's own again.
+    /// </summary>
+    private void ResetSize()
+    {
+        Commit(
+            _diagram with
+            {
+                Shapes =
+                [
+                    .. _diagram.Shapes.Select(shape => shape is { Kind: DiagramShapeKind.Image, Image: string image }
+                        && _selectedShapes.Contains(shape.Id)
+                            ? shape with
+                            {
+                                Bounds = Locked(
+                                    shape.Bounds,
+                                    new Rectangle(shape.Bounds.Location, DiagramSvgImage.InsertSize(image)),
+                                    shape.Locks & DiagramLock.Bounds),
+                            }
+                            : shape),
+                ],
+            },
+            onlyIfChanged: true);
+    }
+
     private void BeginShapeText(DiagramShapeModel shape)
     {
         _commitText = text => Commit(_diagram with
@@ -941,8 +1317,14 @@ public sealed class DiagramEditorPresenter
             Shapes = [.. _diagram.Shapes.Select(s => s.Id == shape.Id ? s with { Text = text } : s)],
         });
 
-        Point topLeft = _viewport.ToCanvas(shape.Bounds.Location);
-        Point bottomRight = _viewport.ToCanvas(new Point(shape.Bounds.Right, shape.Bounds.Bottom));
+        Rectangle area = shape.Kind switch
+        {
+            DiagramShapeKind.Image => TextAreaUnder(shape),
+            DiagramShapeKind.Container => Rectangle.Round(DiagramFigures.ContainerTitle(shape)),
+            _ => shape.Bounds,
+        };
+        Point topLeft = _viewport.ToCanvas(area.Location);
+        Point bottomRight = _viewport.ToCanvas(new Point(area.Right, area.Bottom));
 
         _view.BeginTextEdit(
             Rectangle.FromLTRB(topLeft.X, topLeft.Y, bottomRight.X, bottomRight.Y),
@@ -950,6 +1332,17 @@ public sealed class DiagramEditorPresenter
             CanvasFontSize(shape.Style.FontSize),
             shape.Style.FontFamily,
             shape.Style.TextColor);
+    }
+
+    /// <summary>Where an image's text is typed: under it, as wide as its text can be, two lines high or more.</summary>
+    private static Rectangle TextAreaUnder(DiagramShapeModel shape)
+    {
+        string typed = shape.Text.Length > 0 ? shape.Text : " ";
+        RectangleF text = DiagramTextLayout.OfShape(shape with { Text = typed }).Bounds;
+        int width = Math.Max(shape.Bounds.Width, DiagramTextLayout.ImageTextWidth);
+        int height = Math.Max((int)Math.Ceiling(text.Height), shape.Style.FontSize * 2);
+
+        return new Rectangle(shape.Bounds.Left + (shape.Bounds.Width - width) / 2, shape.Bounds.Bottom, width, height);
     }
 
     private void BeginLabel(DiagramConnectorModel connector)
@@ -1081,6 +1474,12 @@ public sealed class DiagramEditorPresenter
             case DiagramCommand.SaveAs:
                 SaveAs();
                 break;
+            case DiagramCommand.ExportPdf:
+                ExportPdf();
+                break;
+            case DiagramCommand.ExportPng:
+                ExportPng();
+                break;
             case DiagramCommand.Undo:
                 Undo();
                 break;
@@ -1097,8 +1496,17 @@ public sealed class DiagramEditorPresenter
             case DiagramCommand.Paste:
                 Paste();
                 break;
+            case DiagramCommand.InsertImage:
+                InsertImages(_view.AskImagePaths(), _viewport.ToDiagram(_lastPointer));
+                break;
             case DiagramCommand.Duplicate:
                 Insert(SelectedFragment(), PasteOffset);
+                break;
+            case DiagramCommand.CopyStyle:
+                CopyStyle();
+                break;
+            case DiagramCommand.PasteStyle:
+                PasteStyle();
                 break;
             case DiagramCommand.Delete:
                 Delete();
@@ -1118,8 +1526,16 @@ public sealed class DiagramEditorPresenter
             case DiagramCommand.SendToBack:
                 Reorder(selectedFirst: true);
                 break;
+            case DiagramCommand.AlignLeft or DiagramCommand.AlignCenter or DiagramCommand.AlignRight
+                or DiagramCommand.AlignTop or DiagramCommand.AlignMiddle or DiagramCommand.AlignBottom
+                or DiagramCommand.DistributeHorizontally or DiagramCommand.DistributeVertically:
+                Arrange(command);
+                break;
             case DiagramCommand.ResetRoute:
                 ResetRoute();
+                break;
+            case DiagramCommand.ResetSize:
+                ResetSize();
                 break;
             case DiagramCommand.ZoomIn:
                 ZoomAround(_lastPointer, CommandZoomFactor);
@@ -1241,6 +1657,45 @@ public sealed class DiagramEditorPresenter
         return true;
     }
 
+    /// <summary>Writes a copy to share or print; the diagram stays saved, or not, where it was.</summary>
+    private void ExportPdf()
+    {
+        string suggested = Path.ChangeExtension(_path is null ? "Diagram" : Path.GetFileName(_path), ".pdf");
+
+        if (_view.AskExportPdfPath(suggested) is not string path)
+        {
+            return;
+        }
+
+        try
+        {
+            _pdfExporter.Export(path, _diagram);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _view.ShowError($"Could not export {Path.GetFileName(path)}: {ex.Message}");
+        }
+    }
+
+    private void ExportPng()
+    {
+        string suggested = Path.ChangeExtension(_path is null ? "Diagram" : Path.GetFileName(_path), ".png");
+
+        if (_view.AskExportPng(suggested) is not { } export)
+        {
+            return;
+        }
+
+        try
+        {
+            _pngExporter.Export(export.Path, _diagram, Math.Clamp(export.Scale, 1, 2));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _view.ShowError($"Could not export {Path.GetFileName(export.Path)}: {ex.Message}");
+        }
+    }
+
     /// <returns>True when the diagram can be left: nothing is lost, or the user said so.</returns>
     private bool ConfirmLeave()
     {
@@ -1292,7 +1747,7 @@ public sealed class DiagramEditorPresenter
 
     private void Copy()
     {
-        if (_selectedShapes.Count > 0)
+        if (_selectedShapes.Count > 0 || SelectedLines().Count > 0)
         {
             _view.SetClipboardText(DiagramJson.Write(SelectedFragment()));
             _pasteCount = 0;
@@ -1316,22 +1771,133 @@ public sealed class DiagramEditorPresenter
         }
         catch (InvalidDataException)
         {
-            // Something else is on the clipboard
+            PasteImage(text);
         }
     }
 
-    /// <summary>The selected shapes, and the connectors between them.</summary>
-    private DiagramModel SelectedFragment() => new(
-        [.. _diagram.Shapes.Where(shape => _selectedShapes.Contains(shape.Id))],
-        [
-            .. _diagram.Connectors.Where(connector => _selectedShapes.Contains(connector.FromShapeId)
-                && _selectedShapes.Contains(connector.ToShapeId)),
-        ]);
+    /// <summary>SVG markup, copied from a web page or an editor, goes in as an image where the mouse was.</summary>
+    private void PasteImage(string text)
+    {
+        if (!text.TrimStart().StartsWith('<'))
+        {
+            return;
+        }
+
+        try
+        {
+            InsertImageShapes([DiagramSvgImage.Prepare(text)], _viewport.ToDiagram(_lastPointer));
+        }
+        catch (InvalidDataException)
+        {
+            // Other markup, such as HTML
+            return;
+        }
+
+        _imageCatalog.Add(text, PastedImageName);
+        ShowCatalog();
+    }
+
+    private void OnFilesDropped(object? sender, DiagramFilesDropModel drop)
+    {
+        if (_drag is null)
+        {
+            InsertImages(drop.Paths, _viewport.ToDiagram(drop.Location));
+        }
+    }
+
+    /// <summary>
+    ///     Adds the SVG images in a row from the point, selected; tells which files couldn't be, and why, without
+    ///     leaving out the others.
+    /// </summary>
+    private void InsertImages(IReadOnlyList<string> paths, Point at)
+    {
+        List<string> images = [];
+        List<(string Text, string Name)> read = [];
+        List<string> problems = [];
+
+        foreach (string path in paths)
+        {
+            try
+            {
+                string text = _fileStore.ReadImage(path);
+
+                images.Add(DiagramSvgImage.Prepare(text));
+                read.Add((text, Path.GetFileName(path)));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+            {
+                problems.Add($"{Path.GetFileName(path)}: {ex.Message}");
+            }
+        }
+
+        InsertImageShapes(images, at);
+
+        // In the catalog, to insert again from the images panel
+        foreach ((string text, string name) in read)
+        {
+            _imageCatalog.Add(text, name);
+        }
+
+        ShowCatalog();
+
+        if (problems.Count > 0)
+        {
+            _view.ShowError($"Could not insert {string.Join(Environment.NewLine, problems)}");
+        }
+    }
+
+    private void InsertImageShapes(IReadOnlyList<string> images, Point at)
+    {
+        // On the grid, as a shape drawn there would be
+        int x = (int)Math.Round(at.X / (double)DiagramSnapper.GridSize) * DiagramSnapper.GridSize;
+        int y = (int)Math.Round(at.Y / (double)DiagramSnapper.GridSize) * DiagramSnapper.GridSize;
+        List<DiagramShapeModel> shapes = [];
+
+        foreach (string image in images)
+        {
+            Size size = DiagramSvgImage.InsertSize(image);
+
+            shapes.Add(new DiagramShapeModel(
+                shapes.Count + 1,
+                DiagramShapeKind.Image,
+                new Rectangle(new Point(x, y), size),
+                string.Empty,
+                _style,
+                Locks: DiagramLock.AspectRatio,
+                Image: image));
+            x += size.Width + PasteOffset;
+        }
+
+        if (shapes.Count > 0)
+        {
+            Insert(new DiagramModel(shapes, []), 0);
+            SelectTool(DiagramTool.Select);
+        }
+    }
+
+    /// <summary>The selected shapes, the connectors between them, and the selected lines.</summary>
+    private DiagramModel SelectedFragment()
+    {
+        HashSet<int> shapes = [.. MovingBounds().Keys];
+        HashSet<int> lines = MovingLines();
+
+        bool IsCopied(int? shapeId) => shapeId is int id && shapes.Contains(id);
+
+        return new DiagramModel(
+            [.. _diagram.Shapes.Where(shape => shapes.Contains(shape.Id))],
+            [
+                .. _diagram.Connectors.Where(connector => connector.IsLine
+                    ? lines.Contains(connector.Id)
+                    : IsCopied(connector.FromShapeId) && IsCopied(connector.ToShapeId)),
+            ]);
+    }
+
+    private bool IsSelectedShape(int? shapeId) => shapeId is int id && _selectedShapes.Contains(id);
 
     /// <summary>Adds copies of the parts, with new ids and groups, and selects them.</summary>
     private void Insert(DiagramModel fragment, int offset)
     {
-        if (fragment.Shapes.Count == 0)
+        if (fragment.Shapes.Count == 0 && !fragment.Connectors.Any(connector => connector.IsLine))
         {
             return;
         }
@@ -1361,20 +1927,32 @@ public sealed class DiagramEditorPresenter
 
         List<DiagramConnectorModel> connectors = [];
 
+        var shift = new Size(offset, offset);
+
         foreach (DiagramConnectorModel connector in fragment.Connectors)
         {
-            connectors.Add(connector with
+            if (connector is { FromPoint: Point from, ToPoint: Point to })
             {
-                Id = nextId++,
-                FromShapeId = shapeIds[connector.FromShapeId],
-                ToShapeId = shapeIds[connector.ToShapeId],
-                Bends = connector.Bends?.Select(bend => bend + new Size(offset, offset)).ToList(),
-            });
+                connectors.Add(connector with { Id = nextId++, FromPoint = from + shift, ToPoint = to + shift });
+            }
+            else if (connector is { FromShapeId: int fromId, ToShapeId: int toId }
+                && shapeIds.TryGetValue(fromId, out int newFromId)
+                && shapeIds.TryGetValue(toId, out int newToId))
+            {
+                connectors.Add(connector with
+                {
+                    Id = nextId++,
+                    FromShapeId = newFromId,
+                    ToShapeId = newToId,
+                    Bends = connector.Bends?.Select(bend => bend + shift).ToList(),
+                });
+            }
         }
 
         Commit(new DiagramModel([.. _diagram.Shapes, .. shapes], [.. _diagram.Connectors, .. connectors]));
         ClearSelection();
         _selectedShapes.UnionWith(shapes.Select(shape => shape.Id));
+        _selectedConnectors.UnionWith(connectors.Where(connector => connector.IsLine).Select(line => line.Id));
         SelectionChanged();
         Refresh();
     }
@@ -1391,8 +1969,8 @@ public sealed class DiagramEditorPresenter
             [.. _diagram.Shapes.Where(shape => !_selectedShapes.Contains(shape.Id))],
             [
                 .. _diagram.Connectors.Where(connector => !_selectedConnectors.Contains(connector.Id)
-                    && !_selectedShapes.Contains(connector.FromShapeId)
-                    && !_selectedShapes.Contains(connector.ToShapeId)),
+                    && !IsSelectedShape(connector.FromShapeId)
+                    && !IsSelectedShape(connector.ToShapeId)),
             ]));
         ClearSelection();
         SelectionChanged();
@@ -1407,9 +1985,28 @@ public sealed class DiagramEditorPresenter
         Refresh();
     }
 
-    private void Group()
+    /// <summary>Two or more shapes, not all in one group already, which grouping again would leave as they are.</summary>
+    private bool CanGroup()
     {
         if (_selectedShapes.Count < 2)
+        {
+            return false;
+        }
+
+        List<int?> groups = [.. _diagram.Shapes
+            .Where(shape => _selectedShapes.Contains(shape.Id))
+            .Select(shape => shape.GroupId)
+            .Distinct()];
+
+        return groups.Count > 1 || groups[0] is null;
+    }
+
+    private bool CanUngroup() =>
+        _diagram.Shapes.Any(shape => _selectedShapes.Contains(shape.Id) && shape.GroupId is not null);
+
+    private void Group()
+    {
+        if (!CanGroup())
         {
             return;
         }
@@ -1428,7 +2025,7 @@ public sealed class DiagramEditorPresenter
 
     private void Ungroup()
     {
-        if (_diagram.Shapes.Any(shape => _selectedShapes.Contains(shape.Id) && shape.GroupId is not null))
+        if (CanUngroup())
         {
             Commit(_diagram with
             {
@@ -1457,24 +2054,54 @@ public sealed class DiagramEditorPresenter
 
     private void OnNudgeRequested(object? sender, Size delta)
     {
-        if (_drag is null && _selectedShapes.Count > 0)
+        if (_drag is null && (_selectedShapes.Count > 0 || SelectedLines().Count > 0))
         {
-            Commit(WithBounds(_diagram, SelectedBounds(), bounds => Moved(bounds, delta), bend => bend + delta));
+            // Shapes locked where they are don't move, and that's nothing to undo
+            Commit(
+                WithBounds(
+                    _diagram,
+                    MovingBounds(),
+                    bounds => Moved(bounds, delta),
+                    bend => bend + delta,
+                    MovingLines()),
+                onlyIfChanged: true);
         }
     }
 
     private void OnColorSelected(object? sender, DiagramColorChoiceModel choice)
     {
-        // The no fill choice is Color.Empty, which stays empty
-        Color color = choice.Color.IsEmpty ? choice.Color : Color.FromArgb(255, choice.Color);
+        // The no fill choice is Color.Empty, which stays empty, and a title fill of none, transparent, stays so
+        bool isNone = choice.Target == DiagramColorTarget.TitleFill && choice.Color.A == 0;
+        Color color = choice.Color.IsEmpty || isNone
+            ? choice.Color
+            : Color.FromArgb(255, choice.Color);
 
         ChangeStyle(style => choice.Target switch
         {
             DiagramColorTarget.Fill => style with { Fill = color },
             DiagramColorTarget.Line => style with { Line = color },
-            DiagramColorTarget.TextOutline => style with { TextOutlineColor = color },
+            DiagramColorTarget.TitleFill => style with { TitleFill = color },
+            DiagramColorTarget.TextOutline => WithTextOutlineColor(style, color),
             _ => style with { TextColor = color },
         });
+    }
+
+    /// <summary>
+    ///     No color turns the edge off, keeping its color for later; a color turns it on when it's off, or the color
+    ///     would seem to do nothing.
+    /// </summary>
+    private static DiagramStyleModel WithTextOutlineColor(DiagramStyleModel style, Color color)
+    {
+        if (color.IsEmpty)
+        {
+            return style with { TextOutlineWidth = 0 };
+        }
+
+        return style with
+        {
+            TextOutlineColor = color,
+            TextOutlineWidth = style.TextOutlineWidth == 0 ? TurnedOnTextOutlineWidth : style.TextOutlineWidth,
+        };
     }
 
     private void OnMoreColorsRequested(object? sender, DiagramColorTarget target)
@@ -1484,6 +2111,7 @@ public sealed class DiagramEditorPresenter
         {
             DiagramColorTarget.Fill => style.Fill,
             DiagramColorTarget.Line => style.Line,
+            DiagramColorTarget.TitleFill => style.TitleFill,
             DiagramColorTarget.TextOutline => style.TextOutlineColor,
             _ => style.TextColor,
         };
@@ -1512,14 +2140,43 @@ public sealed class DiagramEditorPresenter
 
         if (to != from)
         {
-            Commit(WithBounds(
-                _diagram,
-                SelectedBounds(),
-                bounds => ScaleInside(bounds, from, to),
-                bend => ScaleInside(new Rectangle(bend, Size.Empty), from, to).Location));
+            Commit(
+                WithBounds(
+                    _diagram,
+                    SelectedBounds(),
+                    bounds => ScaleInside(bounds, from, to),
+                    bend => ScaleInside(new Rectangle(bend, Size.Empty), from, to).Location),
+                onlyIfChanged: true);
         }
     }
 
+    /// <summary>A change to the diagram like any other, so it can be undone, and it's saved with the shapes.</summary>
+    private void OnLockToggled(object? sender, DiagramLockChoiceModel choice)
+    {
+        if (_drag is not null || _selectedShapes.Count == 0)
+        {
+            return;
+        }
+
+        DiagramLock locks = choice.Lock & DiagramLock.All;
+
+        Commit(
+            _diagram with
+            {
+                Shapes =
+                [
+                    .. _diagram.Shapes.Select(shape => _selectedShapes.Contains(shape.Id)
+                        ? shape with { Locks = choice.IsLocked ? shape.Locks | locks : shape.Locks & ~locks }
+                        : shape),
+                ],
+            },
+            onlyIfChanged: true);
+    }
+
+    /// <summary>
+    ///     The top corners only: bottom corners that followed them keep how round they are, so the two never change
+    ///     together.
+    /// </summary>
     private void OnCornerRadiusEdited(object? sender, int radius)
     {
         int corner = Math.Max(radius, 0);
@@ -1532,7 +2189,38 @@ public sealed class DiagramEditorPresenter
         {
             Commit(_diagram with
             {
-                Shapes = [.. _diagram.Shapes.Select(shape => IsChanged(shape) ? shape with { CornerRadius = corner } : shape)],
+                Shapes =
+                [
+                    .. _diagram.Shapes.Select(shape => IsChanged(shape)
+                        ? shape with
+                        {
+                            CornerRadius = corner,
+                            BottomCornerRadius = DiagramFigures.BottomCornerRadius(shape),
+                        }
+                        : shape),
+                ],
+            });
+        }
+    }
+
+    /// <summary>The bottom corners only.</summary>
+    private void OnBottomCornerRadiusEdited(object? sender, int radius)
+    {
+        int corner = Math.Max(radius, 0);
+
+        bool IsChanged(DiagramShapeModel shape) => _selectedShapes.Contains(shape.Id)
+            && DiagramFigures.HasCornerRadius(shape.Kind)
+            && shape.BottomCornerRadius != corner;
+
+        if (_drag is null && _diagram.Shapes.Any(IsChanged))
+        {
+            Commit(_diagram with
+            {
+                Shapes =
+                [
+                    .. _diagram.Shapes.Select(shape =>
+                        IsChanged(shape) ? shape with { BottomCornerRadius = corner } : shape),
+                ],
             });
         }
     }
@@ -1575,6 +2263,14 @@ public sealed class DiagramEditorPresenter
         ChangeStyle(style => style with { TextOutlineWidth = Math.Clamp(width, 0, DiagramStyleModel.MaxTextOutlineWidth) });
     }
 
+    private void OnTextAlignmentSelected(object? sender, DiagramTextAlignment alignment)
+    {
+        if (Enum.IsDefined(alignment))
+        {
+            ChangeStyle(style => style with { TextAlignment = alignment });
+        }
+    }
+
     private void OnFontFamilySelected(object? sender, string fontFamily)
     {
         if (!string.IsNullOrWhiteSpace(fontFamily))
@@ -1588,7 +2284,9 @@ public sealed class DiagramEditorPresenter
         _routing = routing;
 
         // Choosing how it should go takes the place of the bends
-        ChangeSelectedConnectors(connector => connector with { Routing = routing, Bends = null });
+        // A line on its own stays straight
+        ChangeSelectedConnectors(connector =>
+            connector.IsLine ? connector : connector with { Routing = routing, Bends = null });
         SaveSettings();
     }
 
@@ -1597,6 +2295,28 @@ public sealed class DiagramEditorPresenter
         _heads = heads;
         ChangeSelectedConnectors(connector => connector with { Heads = heads });
         SaveSettings();
+    }
+
+    /// <summary>A line made level or upright is turned that way around its start, keeping its length.</summary>
+    private void OnLineDirectionSelected(object? sender, DiagramLineDirection direction)
+    {
+        if (_drag is not null || !Enum.IsDefined(direction))
+        {
+            return;
+        }
+
+        Commit(
+            _diagram with
+            {
+                Connectors =
+                [
+                    .. _diagram.Connectors.Select(connector =>
+                        connector.IsLine && _selectedConnectors.Contains(connector.Id)
+                            ? (connector with { Direction = direction }).Aligned()
+                            : connector),
+                ],
+            },
+            onlyIfChanged: true);
     }
 
     private void ChangeSelectedConnectors(Func<DiagramConnectorModel, DiagramConnectorModel> change)
@@ -1637,6 +2357,32 @@ public sealed class DiagramEditorPresenter
         }
 
         ShowSelectedStyle();
+    }
+
+    private void CopyStyle()
+    {
+        if (_selectedShapes.Count > 0 || _selectedConnectors.Count > 0)
+        {
+            _copiedStyle = SelectedStyle();
+            _copiedStyleHasFill = _selectedShapes.Count > 0;
+        }
+    }
+
+    /// <summary>
+    ///     The whole copied style, except that a style copied from a connector, which has no fill, leaves a shape's
+    ///     fill as it is.
+    /// </summary>
+    private void PasteStyle()
+    {
+        if (_copiedStyle is not DiagramStyleModel copied)
+        {
+            return;
+        }
+
+        // A connector's style has no fills to give, so the shape keeps its own
+        ChangeStyle(style => _copiedStyleHasFill
+            ? copied
+            : copied with { Fill = style.Fill, TitleFill = style.TitleFill });
     }
 
     private void SelectionChanged() => ShowSelectedStyle();
@@ -1692,6 +2438,96 @@ public sealed class DiagramEditorPresenter
     }
 
     /// <summary>The shape's id, and those of the rest of its group.</summary>
+    /// <summary>
+    ///     What align and distribute move: each group of the selection as one, and each shape in none; with the box
+    ///     around it.
+    /// </summary>
+    private List<(IReadOnlyDictionary<int, Rectangle> Shapes, Rectangle Box)> SelectedUnits() =>
+    [
+        .. _diagram.Shapes
+            .Where(shape => _selectedShapes.Contains(shape.Id))
+            .GroupBy(shape => (shape.GroupId, Id: shape.GroupId is null ? shape.Id : 0))
+            .Select(unit => (
+                (IReadOnlyDictionary<int, Rectangle>)unit.ToDictionary(shape => shape.Id, shape => shape.Bounds),
+                UnionOf(unit.Select(shape => shape.Bounds)))),
+    ];
+
+    /// <summary>
+    ///     Aligns the selected shapes and groups with the box around them all, or spreads them evenly between the two
+    ///     outermost, which stay. Each moves as a whole, without what it has locked; one step to undo.
+    /// </summary>
+    private void Arrange(DiagramCommand command)
+    {
+        bool isDistribute = command is DiagramCommand.DistributeHorizontally or DiagramCommand.DistributeVertically;
+        List<(IReadOnlyDictionary<int, Rectangle> Shapes, Rectangle Box)> units = SelectedUnits();
+
+        if (units.Count < (isDistribute ? 3 : 2))
+        {
+            return;
+        }
+
+        Rectangle all = UnionOf(units.Select(unit => unit.Box));
+        List<(IReadOnlyDictionary<int, Rectangle> Shapes, Size Delta)> moves = isDistribute
+            ? Distributed(units, command == DiagramCommand.DistributeHorizontally)
+            : [.. units.Select(unit => (unit.Shapes, AlignDelta(command, unit.Box, all)))];
+        DiagramModel arranged = _diagram;
+
+        foreach ((IReadOnlyDictionary<int, Rectangle> shapes, Size delta) in moves)
+        {
+            // A container takes along what's in it
+            (Dictionary<int, Rectangle> inside, HashSet<int> lines) = InsideOf([.. shapes.Keys]);
+            Dictionary<int, Rectangle> moving = new(shapes);
+
+            foreach ((int id, Rectangle bounds) in inside)
+            {
+                moving.TryAdd(id, bounds);
+            }
+
+            arranged = WithBounds(arranged, moving, bounds => Moved(bounds, delta), bend => bend + delta, lines);
+        }
+
+        Commit(arranged, onlyIfChanged: true);
+    }
+
+    private static Size AlignDelta(DiagramCommand command, Rectangle box, Rectangle all) => command switch
+    {
+        DiagramCommand.AlignLeft => new Size(all.Left - box.Left, 0),
+        DiagramCommand.AlignCenter => new Size(CenterOf(all).X - CenterOf(box).X, 0),
+        DiagramCommand.AlignRight => new Size(all.Right - box.Right, 0),
+        DiagramCommand.AlignTop => new Size(0, all.Top - box.Top),
+        DiagramCommand.AlignMiddle => new Size(0, CenterOf(all).Y - CenterOf(box).Y),
+        _ => new Size(0, all.Bottom - box.Bottom),
+    };
+
+    /// <summary>In order of their middles, the space between each two the same; the first and last stay.</summary>
+    private static List<(IReadOnlyDictionary<int, Rectangle> Shapes, Size Delta)> Distributed(
+        List<(IReadOnlyDictionary<int, Rectangle> Shapes, Rectangle Box)> units,
+        bool isHorizontal)
+    {
+        static int Start(Rectangle box, bool isHorizontal) => isHorizontal ? box.Left : box.Top;
+        static int Length(Rectangle box, bool isHorizontal) => isHorizontal ? box.Width : box.Height;
+
+        var ordered = units
+            .OrderBy(unit => (Start(unit.Box, isHorizontal) * 2) + Length(unit.Box, isHorizontal))
+            .ToList();
+        Rectangle first = ordered[0].Box;
+        Rectangle last = ordered[^1].Box;
+        int span = Start(last, isHorizontal) + Length(last, isHorizontal) - Start(first, isHorizontal);
+        double gap = (span - ordered.Sum(unit => Length(unit.Box, isHorizontal))) / (double)(ordered.Count - 1);
+        double next = Start(first, isHorizontal);
+        List<(IReadOnlyDictionary<int, Rectangle> Shapes, Size Delta)> moves = [];
+
+        foreach ((IReadOnlyDictionary<int, Rectangle> shapes, Rectangle box) in ordered)
+        {
+            int move = (int)Math.Round(next) - Start(box, isHorizontal);
+
+            moves.Add((shapes, isHorizontal ? new Size(move, 0) : new Size(0, move)));
+            next += Length(box, isHorizontal) + gap;
+        }
+
+        return moves;
+    }
+
     private IEnumerable<int> WithGroup(DiagramShapeModel shape) => shape.GroupId is null
         ? [shape.Id]
         : _diagram.Shapes.Where(other => other.GroupId == shape.GroupId).Select(other => other.Id);
@@ -1702,32 +2538,164 @@ public sealed class DiagramEditorPresenter
 
     private Rectangle SelectedBox() => UnionOf(SelectedBounds().Values);
 
+    /// <summary>The ids of the selected lines on their own.</summary>
+    private HashSet<int> SelectedLines() =>
+        [.. _diagram.Connectors.Where(c => c.IsLine && _selectedConnectors.Contains(c.Id)).Select(c => c.Id)];
+
+    /// <summary>Around everything a move takes along: what's selected, and what's in the containers.</summary>
+    private Rectangle MoveBox()
+    {
+        HashSet<int> lines = MovingLines();
+
+        return UnionOf(MovingBounds().Values.Concat(_diagram.Connectors
+            .Where(c => lines.Contains(c.Id))
+            .Select(c => FromCorners(c.FromPoint!.Value, c.ToPoint!.Value))));
+    }
+
+    /// <summary>The selected shapes, and those wholly inside the selected containers, which go with them.</summary>
+    private Dictionary<int, Rectangle> MovingBounds()
+    {
+        Dictionary<int, Rectangle> moving = SelectedBounds();
+
+        foreach ((int id, Rectangle bounds) in InsideOf(moving.Keys).Shapes)
+        {
+            moving[id] = bounds;
+        }
+
+        return moving;
+    }
+
+    /// <summary>The selected lines, and the lines wholly inside the selected containers.</summary>
+    private HashSet<int> MovingLines() => [.. SelectedLines(), .. InsideOf(_selectedShapes).Lines];
+
+    /// <summary>
+    ///     What's wholly inside the containers among the shapes, but not those shapes: other shapes, nested
+    ///     containers and what's in them too, and lines on their own.
+    /// </summary>
+    private (Dictionary<int, Rectangle> Shapes, HashSet<int> Lines) InsideOf(IReadOnlyCollection<int> shapeIds)
+    {
+        List<Rectangle> boxes =
+        [
+            .. _diagram.Shapes
+                .Where(shape => shape.Kind == DiagramShapeKind.Container && shapeIds.Contains(shape.Id))
+                .Select(shape => shape.Bounds),
+        ];
+
+        if (boxes.Count == 0)
+        {
+            return ([], []);
+        }
+
+        return (
+            _diagram.Shapes
+                .Where(shape => !shapeIds.Contains(shape.Id) && boxes.Any(box => box.Contains(shape.Bounds)))
+                .ToDictionary(shape => shape.Id, shape => shape.Bounds),
+            [
+                .. _diagram.Connectors
+                    .Where(c => c is { FromPoint: Point from, ToPoint: Point to }
+                        && boxes.Any(box => box.Contains(from) && box.Contains(to)))
+                    .Select(c => c.Id),
+            ]);
+    }
+
     private List<Rectangle> BoundsOfOthers(IReadOnlyDictionary<int, Rectangle> moving) =>
         [.. _diagram.Shapes.Where(shape => !moving.ContainsKey(shape.Id)).Select(shape => shape.Bounds)];
 
     /// <summary>
-    ///     Changes where some shapes are. The bends of a connector go along when both of its shapes do, so a part of a
-    ///     diagram keeps its look when it's moved or scaled as a whole.
+    ///     Changes where some shapes are, except what they have locked, and moves the lines given with them. The bends
+    ///     of a connector go along when both of its shapes do, without locks, so a part of a diagram keeps its look
+    ///     when it's moved or scaled as a whole.
     /// </summary>
+    /// <param name="lines">The ids of the lines on their own whose ends go as the bends do.</param>
     private static DiagramModel WithBounds(
         DiagramModel diagram,
         IReadOnlyDictionary<int, Rectangle> originals,
         Func<Rectangle, Rectangle> change,
-        Func<Point, Point> changeBend)
+        Func<Point, Point> changeBend,
+        IReadOnlySet<int>? lines = null)
     {
+        HashSet<int> free =
+        [
+            .. diagram.Shapes
+                .Where(shape => originals.ContainsKey(shape.Id)
+                    && (shape.Locks & DiagramLock.Bounds) == DiagramLock.None)
+                .Select(shape => shape.Id),
+        ];
+
         return new DiagramModel(
             [
                 .. diagram.Shapes.Select(shape => originals.TryGetValue(shape.Id, out Rectangle bounds)
-                    ? shape with { Bounds = change(bounds) }
+                    ? shape with { Bounds = Locked(bounds, change(bounds), shape.Locks) }
                     : shape),
             ],
             [
-                .. diagram.Connectors.Select(connector => connector.Bends is { } bends
-                    && originals.ContainsKey(connector.FromShapeId)
-                    && originals.ContainsKey(connector.ToShapeId)
-                        ? connector with { Bends = [.. bends.Select(changeBend)] }
-                        : connector),
+                .. diagram.Connectors.Select(connector => connector switch
+                {
+                    { FromPoint: Point from, ToPoint: Point to } when lines?.Contains(connector.Id) == true =>
+                        MovedLine(connector, changeBend(from), changeBend(to)),
+                    { Bends: { } bends, FromShapeId: int fromId, ToShapeId: int toId }
+                        when free.Contains(fromId) && free.Contains(toId) =>
+                        connector with { Bends = [.. bends.Select(changeBend)] },
+                    _ => connector,
+                }),
             ]);
+    }
+
+    /// <summary>A line with its ends here; as it was if they'd meet, since then it would have no direction.</summary>
+    private static DiagramConnectorModel MovedLine(DiagramConnectorModel line, Point from, Point to) =>
+        from == to ? line : (line with { FromPoint = from, ToPoint = to }).Aligned();
+
+    /// <summary>
+    ///     The changed bounds with the locked parts as they were. A size kept as it was, or made to keep the
+    ///     proportions, keeps the edge that didn't move where it was: scaling a shape of locked width by its left edge
+    ///     leaves it, rather than sliding it.
+    /// </summary>
+    private static Rectangle Locked(Rectangle original, Rectangle changed, DiagramLock locks)
+    {
+        if (locks == DiagramLock.None)
+        {
+            return changed;
+        }
+
+        bool isWidthLocked = locks.HasFlag(DiagramLock.Width);
+        bool isHeightLocked = locks.HasFlag(DiagramLock.Height);
+        int width = isWidthLocked ? original.Width : changed.Width;
+        int height = isHeightLocked ? original.Height : changed.Height;
+
+        if (locks.HasFlag(DiagramLock.AspectRatio))
+        {
+            (width, height) = Proportional(original.Size, width, height, isWidthLocked || isHeightLocked);
+        }
+
+        // Only the left or top edge moved, so the other stays put
+        bool keepsRight = changed.Right == original.Right && changed.Left != original.Left;
+        bool keepsBottom = changed.Bottom == original.Bottom && changed.Top != original.Top;
+        int x = locks.HasFlag(DiagramLock.X) ? original.X : keepsRight ? original.Right - width : changed.X;
+        int y = locks.HasFlag(DiagramLock.Y) ? original.Y : keepsBottom ? original.Bottom - height : changed.Y;
+
+        return new Rectangle(x, y, width, height);
+    }
+
+    /// <summary>
+    ///     A size with the original's proportions: scaled as the side that changed was, or the one that changed most;
+    ///     the original's if one side can't change.
+    /// </summary>
+    private static (int Width, int Height) Proportional(Size original, int width, int height, bool isFixed)
+    {
+        if (isFixed || original.Width <= 0 || original.Height <= 0)
+        {
+            return (original.Width, original.Height);
+        }
+
+        double scaleX = width / (double)original.Width;
+        double scaleY = height / (double)original.Height;
+        double scale = width == original.Width ? scaleY
+            : height == original.Height ? scaleX
+            : Math.Max(scaleX, scaleY);
+
+        return (
+            Math.Max(1, (int)Math.Round(original.Width * scale)),
+            Math.Max(1, (int)Math.Round(original.Height * scale)));
     }
 
     private Point Snap(Point point)
@@ -1768,7 +2736,10 @@ public sealed class DiagramEditorPresenter
             return CursorOf(handle);
         }
 
-        return DiagramHitTester.ShapeAt(_diagram, point) is null ? DiagramCursor.Default : DiagramCursor.Move;
+        bool canMove = DiagramHitTester.LineAt(_diagram, point, GrabDistance / _viewport.Zoom) is not null
+            || DiagramHitTester.ShapeAt(_diagram, point) is not null;
+
+        return canMove ? DiagramCursor.Move : DiagramCursor.Default;
     }
 
     private void ShowCursor(DiagramCursor cursor)
@@ -1838,13 +2809,15 @@ public sealed class DiagramEditorPresenter
         }
 
         DiagramStyleModel style = shapes.FirstOrDefault()?.Style ?? connectors[0].Style;
-        List<DiagramShapeModel> outlined = [.. shapes.Where(shape => shape.Kind != DiagramShapeKind.Text)];
+
+        // A text and an image have no outline, so no fill or border either
+        List<DiagramShapeModel> outlined =
+            [.. shapes.Where(shape => shape.Kind is not (DiagramShapeKind.Text or DiagramShapeKind.Image))];
         bool hasLine = outlined.Count > 0 || connectors.Count > 0;
         bool hasCorners = connectors.Count == 0 && shapes.All(shape => DiagramFigures.HasCornerRadius(shape.Kind));
 
-        int? corner = hasCorners
-            ? shapes[0].CornerRadius ?? DiagramFigures.DefaultCornerRadius(shapes[0].Kind)
-            : null;
+        int? corner = hasCorners ? DiagramFigures.TopCornerRadius(shapes[0]) : null;
+        int? bottomCorner = hasCorners ? DiagramFigures.BottomCornerRadius(shapes[0]) : null;
 
         string? text = null;
 
@@ -1864,11 +2837,19 @@ public sealed class DiagramEditorPresenter
             style.TextColor,
             style.FontSize,
             text,
-            connectors.Count > 0 ? connectors[0].Routing : null,
+
+            // A line on its own is always straight
+            connectors.FirstOrDefault(connector => !connector.IsLine)?.Routing,
             connectors.Count > 0 ? connectors[0].Heads : null,
             style.FontFamily,
             style.TextOutlineWidth,
-            style.TextOutlineColor);
+            style.TextOutlineColor,
+            shapes.Count > 0 ? shapes.Aggregate(DiagramLock.All, (locks, shape) => locks & shape.Locks) : null,
+            connectors.FirstOrDefault(connector => connector.IsLine)?.Direction,
+            shapes.Any(shape => shape.Kind == DiagramShapeKind.Image),
+            style.TextAlignment,
+            shapes.FirstOrDefault(shape => shape.Kind == DiagramShapeKind.Container)?.Style.TitleFill,
+            bottomCorner);
     }
 
     private static string TitleOf(List<DiagramShapeModel> shapes, List<DiagramConnectorModel> connectors)
@@ -1880,7 +2861,12 @@ public sealed class DiagramEditorPresenter
             return connectors.Count == 0 ? $"{count} shapes" : $"{count} objects";
         }
 
-        return connectors.Count == 1 ? "Connector" : shapes[0].Kind switch
+        if (connectors.Count == 1)
+        {
+            return connectors[0].IsLine ? "Line" : "Connector";
+        }
+
+        return shapes[0].Kind switch
         {
             DiagramShapeKind.RoundedRectangle => "Rounded rectangle",
             DiagramShapeKind kind => kind.ToString(),
@@ -1925,14 +2911,30 @@ public sealed class DiagramEditorPresenter
 
     private sealed record PanDrag(Point Last) : Drag;
 
-    private sealed record MoveDrag(Point Start, IReadOnlyDictionary<int, Rectangle> Originals, Rectangle Box) : Drag;
+    /// <param name="Lines">The ids of the selected lines on their own, which go along.</param>
+    private sealed record MoveDrag(
+        Point Start,
+        IReadOnlyDictionary<int, Rectangle> Originals,
+        Rectangle Box,
+        IReadOnlySet<int> Lines)
+        : Drag;
 
+    /// <param name="Lines">The ids of the selected lines on their own, which go along.</param>
     private sealed record ScaleDrag(
         Point Start,
         DiagramHandle Handle,
         IReadOnlyDictionary<int, Rectangle> Originals,
-        Rectangle Box)
+        Rectangle Box,
+        IReadOnlySet<int> Lines)
         : Drag;
+
+    /// <param name="Start">Where the line starts.</param>
+    private sealed record LineDrag(Point Start) : Drag;
+
+    /// <param name="Start">Where the drag started.</param>
+    /// <param name="ConnectorId">The line being changed.</param>
+    /// <param name="End">The end being dragged.</param>
+    private sealed record LineEndDrag(Point Start, int ConnectorId, DiagramConnectorEnd End) : Drag;
 
     private sealed record CreateDrag(DiagramShapeKind Kind, Point Start) : Drag;
 

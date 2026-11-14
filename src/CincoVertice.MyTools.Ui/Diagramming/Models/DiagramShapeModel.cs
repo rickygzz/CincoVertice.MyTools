@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 
 namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 
@@ -12,6 +12,14 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 /// <param name="Style">How it looks.</param>
 /// <param name="GroupId">The shapes with the same value are selected and moved together; null for no group.</param>
 /// <param name="CornerRadius">How round a rectangle's corners are, in pixels; null for its kind's usual ones.</param>
+/// <param name="Locks">What of <paramref name="Bounds"/> stays as it is when the shape is moved or scaled.</param>
+/// <param name="BottomCornerRadius">
+///     How round a rectangle's or a container's bottom corners are; null, in a diagram from before they had their
+///     own, for as round as its top ones, <paramref name="CornerRadius"/>. Editing either sets both.
+/// </param>
+/// <param name="Image">
+///     The SVG markup an image shows, as <see cref="Services.DiagramSvgImage.Prepare"/> gives it; null for other kinds.
+/// </param>
 public sealed record DiagramShapeModel(
     int Id,
     DiagramShapeKind Kind,
@@ -19,4 +27,7 @@ public sealed record DiagramShapeModel(
     string Text,
     DiagramStyleModel Style,
     int? GroupId = null,
-    int? CornerRadius = null);
+    int? CornerRadius = null,
+    DiagramLock Locks = DiagramLock.None,
+    string? Image = null,
+    int? BottomCornerRadius = null);

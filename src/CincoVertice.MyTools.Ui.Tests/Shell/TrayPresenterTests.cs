@@ -1,4 +1,4 @@
-using CincoVertice.MyTools.Ui.Shell.Interfaces;
+﻿using CincoVertice.MyTools.Ui.Shell.Interfaces;
 using CincoVertice.MyTools.Ui.Shell.Models;
 using CincoVertice.MyTools.Ui.Shell.Presenters;
 using CincoVertice.MyTools.Ui.Shell.Views;
@@ -67,6 +67,37 @@ public class TrayPresenterTests
     }
 
     [Fact]
+    public void Start_ShowsEveryAction_ByItsTitle_WithItsHotkey()
+    {
+        // Arrange
+        _hotkeys.Actions =
+        [
+            new ActionMenuItemModel("ToggleActivity", "Ctrl+Alt+M", () => Task.CompletedTask),
+            new ActionMenuItemModel("EditZones", null, () => Task.CompletedTask),
+            new ActionMenuItemModel("SnipAndEdit", "Ctrl+Alt+S", () => Task.CompletedTask),
+        ];
+
+        // Act
+        _presenter.Start();
+
+        // Assert: in the order of their titles, so they're easy to find
+        Assert.Equal(
+            [("Edit zones", null), ("Snip and edit", "Ctrl+Alt+S"), ("Toggle activity", "Ctrl+Alt+M")],
+            _view.Actions.Select(action => (action.Title, action.Shortcut)));
+    }
+
+    [Theory]
+    [InlineData("SnipAndEdit", "Snip and edit")]
+    [InlineData("MoveToNextZone", "Move to next zone")]
+    [InlineData("ShowCalculator", "Show calculator")]
+    [InlineData("EditZones", "Edit zones")]
+    [InlineData("A", "A")]
+    public void ActionTitles_AreTheirNamesInWords(string name, string title)
+    {
+        Assert.Equal(title, ActionMenuItemModel.TitleOf(name));
+    }
+
+    [Fact]
     public void Start_RegistersQuietlyShowsScriptsAndWatchesFiles()
     {
         // Arrange
@@ -80,6 +111,30 @@ public class TrayPresenterTests
         Assert.True(_hotkeys.IsWatching);
         Assert.Equal(["GoogleSearch"], _view.Scripts.Select(s => s.Name));
         Assert.Empty(_view.Problems);
+        Assert.Empty(_view.Notifications);
+    }
+
+    [Fact]
+    public void Start_UpdatesTheStartWithWindowsCommand()
+    {
+        // Act
+        _presenter.Start();
+
+        // Assert
+        Assert.Equal(1, _startWithWindows.UpdateCount);
+    }
+
+    [Fact]
+    public void Start_WhenTheStartWithWindowsCommandCantBeUpdated_SaysNothing()
+    {
+        // Arrange
+        _startWithWindows.Error = new UnauthorizedAccessException("Denied");
+
+        // Act
+        _presenter.Start();
+
+        // Assert: it still starts the app, only without the startup actions
+        Assert.Equal(1, _startWithWindows.UpdateCount);
         Assert.Empty(_view.Notifications);
     }
 
@@ -164,6 +219,18 @@ public class TrayPresenterTests
 
             IsEnabled = enabled;
         }
+
+        public int UpdateCount { get; private set; }
+
+        public void UpdateCommand()
+        {
+            UpdateCount++;
+
+            if (Error is not null)
+            {
+                throw Error;
+            }
+        }
     }
 
     private sealed class FakeTrayView : ITrayView
@@ -190,6 +257,10 @@ public class TrayPresenterTests
 
         public void ShowScripts(IReadOnlyList<ScriptMenuItemModel> scripts) => Scripts = scripts;
 
+        public IReadOnlyList<ActionMenuItemModel> Actions { get; private set; } = [];
+
+        public void ShowActions(IReadOnlyList<ActionMenuItemModel> actions) => Actions = actions;
+
         public void ShowHotkeyProblems(IReadOnlyList<string> problems) => Problems = problems;
 
         public void ShowNotification(string title, string text, bool isWarning) =>
@@ -206,6 +277,8 @@ public class TrayPresenterTests
 
         public IReadOnlyList<ScriptMenuItemModel> Scripts { get; set; } = [];
 
+        public IReadOnlyList<ActionMenuItemModel> Actions { get; set; } = [];
+
         public int RegisterCount { get; private set; }
 
         public bool IsWatching { get; private set; }
@@ -214,7 +287,7 @@ public class TrayPresenterTests
         {
             RegisterCount++;
 
-            return new HotkeyRegistrationModel(Problems, Scripts);
+            return new HotkeyRegistrationModel(Problems, Scripts, Actions);
         }
 
         public void WatchFiles() => IsWatching = true;

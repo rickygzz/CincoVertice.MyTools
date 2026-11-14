@@ -1,4 +1,5 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
+using System.Diagnostics;
 using CincoVertice.MyTools.Ui.Diagramming.Models;
 using CincoVertice.MyTools.Ui.Diagramming.Views;
 using CincoVertice.MyTools.Ui.Win.Behaviors;
@@ -18,8 +19,17 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     // How many pixels the arrow keys move the selection; with Shift, one
     private const int NudgeStep = 10;
 
+    // The pictures in the images panel, in logical pixels
+    private const int ThumbnailSize = 48;
+
+    // What an image dragged from the images panel carries: its path in the catalog
+    private const string CatalogImageFormat = "CincoVertice.MyTools.DiagramCatalogImage";
+
     private readonly int _iconSize;
     private readonly List<Image> _images = [];
+
+    // Sizes the images panel's items, whose pictures are drawn by the form: it holds no image
+    private readonly ImageList _thumbnails = new() { ColorDepth = ColorDepth.Depth32Bit };
 
     // The color buttons' images: the current colors, replaced when they change
     private readonly Dictionary<ToolStripDropDownButton, Image> _swatches = [];
@@ -67,11 +77,24 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         ArrowHeadsComboBox.Items.AddRange(arrows);
         RoutingPropertyBox.Items.AddRange(routings);
         ArrowsPropertyBox.Items.AddRange(arrows);
+        DirectionPropertyBox.Items.AddRange(["Free", "Horizontal", "Vertical"]);
+        TextAlignPropertyBox.Items.AddRange(["Left", "Center", "Right"]);
         FontFamilyBox.Items.AddRange([.. DiagramFonts.Names()]);
 
+        // Windows takes drops only on a single-threaded apartment, as the app's UI thread is; elsewhere, such as a
+        // test, it would show an error when the canvas is created
+        Canvas.AllowDrop = Thread.CurrentThread.GetApartmentState() == ApartmentState.STA;
+
         FormExtensions.CenterOnCursorScreen(this);
+        _thumbnails.ImageSize = new Size(LogicalToDeviceUnits(ThumbnailSize), LogicalToDeviceUnits(ThumbnailSize));
+        ImagesListView.LargeImageList = _thumbnails;
+        components?.Add(_thumbnails);
+
         FormExtensions.ActivateWhenShown(this);
     }
+
+    /// <summary>Whether the focus is in the properties or the images panel, whose keys are their own.</summary>
+    private bool IsInAPanel => PropertiesPanel.ContainsFocus || ImagesPanel.ContainsFocus;
 
     public event EventHandler<DiagramPointerModel>? PointerPressed;
 
@@ -80,6 +103,8 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     public event EventHandler<DiagramPointerModel>? PointerReleased;
 
     public event EventHandler<DiagramPointerModel>? PointerDoubleClicked;
+
+    public event EventHandler<Point>? PointerRightClicked;
 
     public event EventHandler? PointerLeft;
 
@@ -109,15 +134,37 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
 
     public event EventHandler<DiagramArrowHeads>? ArrowHeadsSelected;
 
+    public event EventHandler<DiagramLineDirection>? LineDirectionSelected;
+
+    public event EventHandler<DiagramTextAlignment>? TextAlignmentSelected;
+
+    public event EventHandler<DiagramFilesDropModel>? FilesDropped;
+
     public event EventHandler<Rectangle>? BoundsEdited;
 
+    public event EventHandler<DiagramLockChoiceModel>? LockToggled;
+
     public event EventHandler<int>? CornerRadiusEdited;
+
+    public event EventHandler<int>? BottomCornerRadiusEdited;
 
     public event EventHandler<string>? TextEdited;
 
     public event EventHandler<string>? TextCommitted;
 
     public event EventHandler<bool>? PropertiesPanelToggled;
+
+    public event EventHandler<bool>? ImagesPanelToggled;
+
+    public event EventHandler<string>? ImageSearchChanged;
+
+    public event EventHandler<string>? CatalogImageChosen;
+
+    public event EventHandler<DiagramCatalogDropModel>? CatalogImageDropped;
+
+    public event EventHandler? ImagesFolderRequested;
+
+    public event EventHandler? WindowActivated;
 
     public event EventHandler<DiagramWindowSizeModel>? WindowClosed;
 
@@ -146,6 +193,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     public void ShowPalette(IReadOnlyList<Color> colors)
     {
         FillPalette.Colors = colors;
+        TitleFillPalette.Colors = colors;
         LinePalette.Colors = colors;
         TextPalette.Colors = colors;
         TextOutlinePalette.Colors = colors;
@@ -169,13 +217,16 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         _isShowingChoices = true;
 
         FillPalette.SelectedColor = style.Fill;
+        TitleFillPalette.SelectedColor = style.TitleFill.A == 0 ? Color.Empty : style.TitleFill;
         LinePalette.SelectedColor = style.Line;
         TextPalette.SelectedColor = style.TextColor;
-        TextOutlinePalette.SelectedColor = style.TextOutlineColor;
+        // With no edge, its swatch shows no color, as no fill does; the color is kept for when it's turned on
+        Color textOutline = style.TextOutlineWidth == 0 ? Color.Empty : style.TextOutlineColor;
+        TextOutlinePalette.SelectedColor = textOutline;
         ShowSwatch(FillDropDownButton, style.Fill);
         ShowSwatch(LineDropDownButton, style.Line);
         ShowSwatch(TextColorDropDownButton, style.TextColor);
-        ShowSwatch(TextOutlineDropDownButton, style.TextOutlineColor);
+        ShowSwatch(TextOutlineDropDownButton, textOutline);
 
         LineWidthComboBox.SelectedIndex = _lineWidths.ToList().IndexOf(style.LineWidth);
         FontSizeComboBox.SelectedIndex = _fontSizes.ToList().IndexOf(style.FontSize);
@@ -191,6 +242,55 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     {
         PropertiesPanel.Visible = isVisible;
         PropertiesButton.Checked = isVisible;
+    }
+
+    public void ShowImagesPanel(bool isVisible)
+    {
+        ImagesPanel.Visible = isVisible;
+        ImagesButton.Checked = isVisible;
+    }
+
+    public void ShowCatalog(IReadOnlyList<DiagramCatalogImageModel> images, string emptyText)
+    {
+        Dictionary<string, ListViewGroup> groups = [];
+
+        ImagesListView.BeginUpdate();
+        ImagesListView.Items.Clear();
+        ImagesListView.Groups.Clear();
+
+        foreach (DiagramCatalogImageModel image in images)
+        {
+            if (!groups.TryGetValue(image.Group, out ListViewGroup? group))
+            {
+                group = new ListViewGroup(image.Group, image.Group);
+                groups[image.Group] = group;
+                ImagesListView.Groups.Add(group);
+            }
+
+            // The whole name, which can be cut under the picture, and where the file is
+            ImagesListView.Items.Add(new ListViewItem(image.Name, group)
+            {
+                Tag = image,
+                ToolTipText = $"{image.Name}\n{image.Path}",
+            });
+        }
+
+        ImagesListView.EndUpdate();
+        ImagesEmptyLabel.Text = emptyText;
+        ImagesEmptyLabel.Visible = images.Count == 0;
+        ImagesListView.Visible = images.Count > 0;
+    }
+
+    public void OpenFolder(string folder)
+    {
+        try
+        {
+            using var _ = Process.Start(new ProcessStartInfo(folder) { UseShellExecute = true });
+        }
+        catch (Win32Exception ex)
+        {
+            ShowError($"Could not open {folder}: {ex.Message}");
+        }
     }
 
     public void ShowWindowSize(DiagramWindowSizeModel size)
@@ -217,15 +317,34 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         ShowNumber(YLabel, YBox, hasBounds ? bounds.Y : null);
         ShowNumber(WidthLabel, WidthBox, hasBounds ? bounds.Width : null);
         ShowNumber(HeightLabel, HeightBox, hasBounds ? bounds.Height : null);
+        ShowLock(XLockCheckBox, XBox, properties.Locks, DiagramLock.X);
+        ShowLock(YLockCheckBox, YBox, properties.Locks, DiagramLock.Y);
+        ShowLock(WidthLockCheckBox, WidthBox, properties.Locks, DiagramLock.Width);
+        ShowLock(HeightLockCheckBox, HeightBox, properties.Locks, DiagramLock.Height);
+        ProportionsCheckBox.Visible = properties.Locks is not null;
+        ProportionsCheckBox.Checked = properties.Locks is DiagramLock locks && locks.HasFlag(DiagramLock.AspectRatio);
+        ResetSizeButton.Visible = properties.HasImages;
         ShowNumber(CornerRadiusLabel, CornerRadiusBox, properties.CornerRadius);
+        ShowNumber(BottomCornerRadiusLabel, BottomCornerRadiusBox, properties.BottomCornerRadius);
         ShowNumber(LineWidthLabel, LineWidthBox, properties.LineWidth);
         ShowNumber(FontSizeLabel, FontSizeBox, properties.FontSize);
+        TextAlignLabel.Visible = properties.TextAlignment is not null;
+        TextAlignPropertyBox.Visible = properties.TextAlignment is not null;
+        TextAlignPropertyBox.SelectedIndex = (int)(properties.TextAlignment ?? DiagramTextAlignment.Center);
         ShowNumber(TextOutlineWidthLabel, TextOutlineWidthBox, properties.TextOutlineWidth);
 
         ShowColor(FillLabel, FillColorButton, properties.Fill);
+        ShowColor(
+            TitleFillLabel,
+            TitleFillColorButton,
+            properties.TitleFill is { IsEmpty: false, A: 0 } ? Color.Empty : properties.TitleFill);
+        ShowTitleFillAsFill(properties);
         ShowColor(LineLabel, LineColorButton, properties.Line);
         ShowColor(TextColorLabel, TextColorButton, properties.TextColor);
-        ShowColor(TextOutlineLabel, TextOutlineColorButton, properties.TextOutlineColor);
+        ShowColor(
+            TextOutlineLabel,
+            TextOutlineColorButton,
+            properties.TextOutlineWidth == 0 ? Color.Empty : properties.TextOutlineColor);
 
         // A connector has a line where a shape has a border
         LineLabel.Text = hasBounds ? "Border" : "Line";
@@ -262,14 +381,29 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         ArrowsPropertyBox.Visible = properties.Heads is not null;
         ArrowsPropertyBox.SelectedIndex = (int)(properties.Heads ?? DiagramArrowHeads.End);
 
+        DirectionLabel.Visible = properties.LineDirection is not null;
+        DirectionPropertyBox.Visible = properties.LineDirection is not null;
+        DirectionPropertyBox.SelectedIndex = (int)(properties.LineDirection ?? DiagramLineDirection.Free);
+
         PropertiesTable.ResumeLayout();
         _isShowingChoices = false;
     }
 
+    public void ShowContextMenu(Point location, DiagramContextMenuModel menu)
+    {
+        PasteStyleContextMenuItem.Enabled = menu.CanPasteStyle;
+        GroupContextMenuItem.Enabled = menu.CanGroup;
+        UngroupContextMenuItem.Enabled = menu.CanUngroup;
+        AlignContextMenuItem.Enabled = menu.CanAlign;
+        DistributeHorizontallyContextMenuItem.Enabled = menu.CanDistribute;
+        DistributeVerticallyContextMenuItem.Enabled = menu.CanDistribute;
+        SelectionMenu.Show(Canvas, location);
+    }
+
     public void ShowUndoRedo(bool canUndo, bool canRedo)
     {
-        UndoButton.Enabled = canUndo;
-        RedoButton.Enabled = canRedo;
+        UndoMenuItem.Enabled = canUndo;
+        RedoMenuItem.Enabled = canRedo;
     }
 
     public void ShowDocument(string name, bool hasChanges)
@@ -340,6 +474,35 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         return dialog.ShowDialog(this) == DialogResult.OK ? dialog.FileName : null;
     }
 
+    /// <summary>The size is the type chosen in the dialog: the same picture, at twice the pixels or not.</summary>
+    public DiagramPngExportModel? AskExportPng(string suggestedFileName)
+    {
+        using var dialog = new SaveFileDialog
+        {
+            DefaultExt = "png",
+            FileName = suggestedFileName,
+            Filter = "PNG picture, twice as large, sharper (*.png)|*.png|PNG picture, actual size (*.png)|*.png",
+            Title = "Export as PNG",
+        };
+
+        return dialog.ShowDialog(this) == DialogResult.OK
+            ? new DiagramPngExportModel(dialog.FileName, dialog.FilterIndex == 2 ? 1 : 2)
+            : null;
+    }
+
+    public string? AskExportPdfPath(string suggestedFileName)
+    {
+        using var dialog = new SaveFileDialog
+        {
+            DefaultExt = "pdf",
+            FileName = suggestedFileName,
+            Filter = "PDF document (*.pdf)|*.pdf",
+            Title = "Export as PDF",
+        };
+
+        return dialog.ShowDialog(this) == DialogResult.OK ? dialog.FileName : null;
+    }
+
     public string? AskOpenPath()
     {
         using var dialog = new OpenFileDialog
@@ -349,6 +512,18 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         };
 
         return dialog.ShowDialog(this) == DialogResult.OK ? dialog.FileName : null;
+    }
+
+    public IReadOnlyList<string> AskImagePaths()
+    {
+        using var dialog = new OpenFileDialog
+        {
+            Filter = "SVG image (*.svg)|*.svg",
+            Multiselect = true,
+            Title = "Insert image",
+        };
+
+        return dialog.ShowDialog(this) == DialogResult.OK ? dialog.FileNames : [];
     }
 
     public bool AskOverwrite(string name)
@@ -403,6 +578,8 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
             || ArrowHeadsComboBox.DroppedDown
             || RoutingPropertyBox.DroppedDown
             || ArrowsPropertyBox.DroppedDown
+            || DirectionPropertyBox.DroppedDown
+            || TextAlignPropertyBox.DroppedDown
             || FontFamilyBox.DroppedDown)
         {
             return base.ProcessCmdKey(ref msg, keyData);
@@ -413,7 +590,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         {
             CancelText();
         }
-        else if (PropertiesPanel.ContainsFocus)
+        else if (IsInAPanel)
         {
             // Back to the canvas, which also takes what was typed in the field
             Canvas.Focus();
@@ -460,6 +637,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     [
         SelectButton,
         ConnectorButton,
+        LineButton,
         RectangleButton,
         RoundedRectangleButton,
         EllipseButton,
@@ -468,6 +646,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         HexagonButton,
         CylinderButton,
         DocumentButton,
+        ContainerButton,
         TextButton,
     ];
 
@@ -511,7 +690,42 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         }
     }
 
+    /// <summary>
+    ///     A lock beside its field, which can't be typed in while it's locked; null, with no shape selected, hides it.
+    /// </summary>
+    private static void ShowLock(CheckBox lockBox, NumericUpDown box, DiagramLock? locks, DiagramLock which)
+    {
+        bool isLocked = locks is DiagramLock shown && shown.HasFlag(which);
+
+        lockBox.Visible = locks is not null;
+        lockBox.Checked = isLocked;
+        lockBox.Text = LockGlyph(isLocked);
+        box.Enabled = !isLocked;
+    }
+
+    private static string LockGlyph(bool isLocked) => isLocked ? "\U0001F512" : "\U0001F513";
+
     /// <summary>A color on the button; null hides the field, and an empty color reads as none.</summary>
+    /// <summary>
+    ///     A container without a title fill shows its fill in the band, so its button shows that color too, saying so,
+    ///     rather than "None", which wouldn't be what the band looks like.
+    /// </summary>
+    private void ShowTitleFillAsFill(DiagramPropertiesModel properties)
+    {
+        bool isSameAsFill = properties is { TitleFill.IsEmpty: true, Fill: { IsEmpty: false } };
+
+        TitleFillColorButton.ForeColor = SystemColors.ControlText;
+
+        if (isSameAsFill)
+        {
+            Color fill = properties.Fill!.Value;
+
+            TitleFillColorButton.BackColor = fill;
+            TitleFillColorButton.ForeColor = fill.GetBrightness() < 0.5f ? Color.White : Color.Black;
+            TitleFillColorButton.Text = "Same as fill";
+        }
+    }
+
     private static void ShowColor(Label label, Button button, Color? color)
     {
         label.Visible = color is not null;
@@ -559,6 +773,81 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         PropertiesPanelToggled?.Invoke(this, PropertiesPanel.Visible);
     }
 
+    private void ImagesButton_Click(object? sender, EventArgs e)
+    {
+        ShowImagesPanel(!ImagesPanel.Visible);
+        ImagesPanelToggled?.Invoke(this, ImagesPanel.Visible);
+    }
+
+    private void ImageSearchBox_TextChanged(object? sender, EventArgs e) =>
+        ImageSearchChanged?.Invoke(this, ImageSearchBox.Text);
+
+    private void ImagesFolderButton_Click(object? sender, EventArgs e) =>
+        ImagesFolderRequested?.Invoke(this, EventArgs.Empty);
+
+    private void DiagramEditorForm_Activated(object? sender, EventArgs e) =>
+        WindowActivated?.Invoke(this, EventArgs.Empty);
+
+    private void ImagesListView_ItemActivate(object? sender, EventArgs e) => ChooseFocusedImage();
+
+    /// <summary>A double-click or Enter on an image: inserted where the mouse was last on the canvas.</summary>
+    internal void ChooseFocusedImage()
+    {
+        if (ImagesListView.FocusedItem?.Tag is DiagramCatalogImageModel image)
+        {
+            CatalogImageChosen?.Invoke(this, image.Path);
+        }
+    }
+
+    // Onto the canvas, where it's dropped
+    private void ImagesListView_ItemDrag(object? sender, ItemDragEventArgs e)
+    {
+        if (e.Item is ListViewItem { Tag: DiagramCatalogImageModel image })
+        {
+            ImagesListView.DoDragDrop(new DataObject(CatalogImageFormat, image.Path), DragDropEffects.Copy);
+        }
+    }
+
+    /// <summary>The image as it is, so it keeps its proportions, with its name under it, two lines at most.</summary>
+    private void ImagesListView_DrawItem(object? sender, DrawListViewItemEventArgs e)
+    {
+        if (e.Item.Tag is not DiagramCatalogImageModel image)
+        {
+            return;
+        }
+
+        Rectangle bounds = e.Bounds;
+        bool isSelected = e.Item.Selected;
+
+        using (var back = new SolidBrush(isSelected ? SystemColors.Highlight : ImagesListView.BackColor))
+        {
+            e.Graphics.FillRectangle(back, bounds);
+        }
+
+        int size = _thumbnails.ImageSize.Width;
+        int margin = LogicalToDeviceUnits(4);
+        var picture = new Rectangle(bounds.Left + ((bounds.Width - size) / 2), bounds.Top + margin, size, size);
+
+        e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        SvgImageRenderer.Draw(e.Graphics, image.Markup, picture);
+
+        var text = Rectangle.FromLTRB(bounds.Left + 2, picture.Bottom + margin, bounds.Right - 2, bounds.Bottom);
+
+        TextRenderer.DrawText(
+            e.Graphics,
+            e.Item.Text,
+            ImagesListView.Font,
+            text,
+            isSelected ? SystemColors.HighlightText : ImagesListView.ForeColor,
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.WordBreak | TextFormatFlags.EndEllipsis
+            | TextFormatFlags.NoPrefix);
+
+        if (e.Item.Focused && ImagesListView.Focused)
+        {
+            ControlPaint.DrawFocusRectangle(e.Graphics, bounds);
+        }
+    }
+
     private void BoundsBox_ValueChanged(object? sender, EventArgs e)
     {
         if (!_isShowingChoices)
@@ -566,6 +855,44 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
             BoundsEdited?.Invoke(
                 this,
                 new Rectangle((int)XBox.Value, (int)YBox.Value, (int)WidthBox.Value, (int)HeightBox.Value));
+        }
+    }
+
+    private void LockCheckBox_CheckedChanged(object? sender, EventArgs e)
+    {
+        var lockBox = (CheckBox)sender!;
+
+        lockBox.Text = LockGlyph(lockBox.Checked);
+
+        if (!_isShowingChoices)
+        {
+            LockToggled?.Invoke(
+                this,
+                new DiagramLockChoiceModel(Enum.Parse<DiagramLock>((string)lockBox.Tag!), lockBox.Checked));
+        }
+    }
+
+    private void ProportionsCheckBox_CheckedChanged(object? sender, EventArgs e)
+    {
+        if (!_isShowingChoices)
+        {
+            LockToggled?.Invoke(
+                this,
+                new DiagramLockChoiceModel(DiagramLock.AspectRatio, ProportionsCheckBox.Checked));
+        }
+    }
+
+    private void ResetSizeButton_Click(object? sender, EventArgs e)
+    {
+        Canvas.Focus();
+        CommandRequested?.Invoke(this, DiagramCommand.ResetSize);
+    }
+
+    private void BottomCornerRadiusBox_ValueChanged(object? sender, EventArgs e)
+    {
+        if (!_isShowingChoices)
+        {
+            BottomCornerRadiusEdited?.Invoke(this, (int)BottomCornerRadiusBox.Value);
         }
     }
 
@@ -582,6 +909,14 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         if (!_isShowingChoices)
         {
             LineWidthSelected?.Invoke(this, (int)LineWidthBox.Value);
+        }
+    }
+
+    private void TextAlignPropertyBox_SelectedIndexChanged(object? sender, EventArgs e)
+    {
+        if (!_isShowingChoices && TextAlignPropertyBox.SelectedIndex >= 0)
+        {
+            TextAlignmentSelected?.Invoke(this, (DiagramTextAlignment)TextAlignPropertyBox.SelectedIndex);
         }
     }
 
@@ -633,6 +968,43 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         {
             ArrowHeadsSelected?.Invoke(this, (DiagramArrowHeads)ArrowsPropertyBox.SelectedIndex);
         }
+    }
+
+    private void DirectionPropertyBox_SelectedIndexChanged(object? sender, EventArgs e)
+    {
+        if (!_isShowingChoices && DirectionPropertyBox.SelectedIndex >= 0)
+        {
+            LineDirectionSelected?.Invoke(this, (DiagramLineDirection)DirectionPropertyBox.SelectedIndex);
+        }
+    }
+
+    private void TitleFillColorButton_Click(object? sender, EventArgs e)
+    {
+        ShowColorMenu(TitleFillDropDownButton, TitleFillColorButton);
+    }
+
+    private void TitleFillPalette_ColorPicked(object? sender, Color color)
+    {
+        TitleFillDropDownButton.DropDown.Close();
+        Canvas.Focus();
+        ColorSelected?.Invoke(this, new DiagramColorChoiceModel(DiagramColorTarget.TitleFill, color));
+    }
+
+    private void NoTitleFillMenuItem_Click(object? sender, EventArgs e)
+    {
+        ColorSelected?.Invoke(
+            this,
+            new DiagramColorChoiceModel(DiagramColorTarget.TitleFill, DiagramStyleModel.NoTitleFill));
+    }
+
+    private void SameAsFillMenuItem_Click(object? sender, EventArgs e)
+    {
+        ColorSelected?.Invoke(this, new DiagramColorChoiceModel(DiagramColorTarget.TitleFill, Color.Empty));
+    }
+
+    private void MoreTitleFillColorsMenuItem_Click(object? sender, EventArgs e)
+    {
+        MoreColorsRequested?.Invoke(this, DiagramColorTarget.TitleFill);
     }
 
     private void FillColorButton_Click(object? sender, EventArgs e)
@@ -712,6 +1084,9 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         CommandRequested?.Invoke(this, CommandOf(sender));
     }
 
+    // Closing asks about unsaved changes, as the window's X does
+    private void ExitMenuItem_Click(object? sender, EventArgs e) => Close();
+
     private void ZoomLabel_Click(object? sender, EventArgs e)
     {
         CommitText();
@@ -751,6 +1126,11 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     private void NoFillMenuItem_Click(object? sender, EventArgs e)
     {
         ColorSelected?.Invoke(this, new DiagramColorChoiceModel(DiagramColorTarget.Fill, Color.Empty));
+    }
+
+    private void NoTextOutlineMenuItem_Click(object? sender, EventArgs e)
+    {
+        ColorSelected?.Invoke(this, new DiagramColorChoiceModel(DiagramColorTarget.TextOutline, Color.Empty));
     }
 
     private void MoreFillColorsMenuItem_Click(object? sender, EventArgs e)
@@ -857,6 +1237,10 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         {
             PointerReleased?.Invoke(this, PointerOf(e));
         }
+        else if (e.Button == MouseButtons.Right)
+        {
+            PointerRightClicked?.Invoke(this, e.Location);
+        }
     }
 
     private void Canvas_MouseDoubleClick(object? sender, MouseEventArgs e)
@@ -864,6 +1248,34 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         if (e.Button == MouseButtons.Left)
         {
             PointerDoubleClicked?.Invoke(this, PointerOf(e));
+        }
+    }
+
+    /// <summary>Files can be dropped; what they are is up to the presenter.</summary>
+    private void Canvas_DragEnter(object? sender, DragEventArgs e)
+    {
+        bool canDrop = e.Data?.GetDataPresent(DataFormats.FileDrop) == true
+            || e.Data?.GetDataPresent(CatalogImageFormat) == true;
+
+        e.Effect = canDrop ? DragDropEffects.Copy : DragDropEffects.None;
+    }
+
+    private void Canvas_DragDrop(object? sender, DragEventArgs e)
+    {
+        if (e.Data?.GetData(CatalogImageFormat) is string catalogPath)
+        {
+            Point at = Canvas.PointToClient(new Point(e.X, e.Y));
+
+            BeginInvoke(() => CatalogImageDropped?.Invoke(this, new DiagramCatalogDropModel(catalogPath, at)));
+            Canvas.Focus();
+        }
+        else if (e.Data?.GetData(DataFormats.FileDrop) is string[] { Length: > 0 } paths)
+        {
+            // From another program, which keeps waiting while a message box is shown
+            Point location = Canvas.PointToClient(new Point(e.X, e.Y));
+
+            BeginInvoke(() => FilesDropped?.Invoke(this, new DiagramFilesDropModel(paths, location)));
+            Activate();
         }
     }
 
@@ -938,8 +1350,8 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
             return;
         }
 
-        // While typing a text or in the panel's fields, keys are theirs
-        if (_isEditingText || PropertiesPanel.ContainsFocus)
+        // While typing a text or in a panel, keys are theirs
+        if (_isEditingText || IsInAPanel)
         {
             return;
         }
@@ -984,12 +1396,17 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
             (Keys.Control, Keys.O) => DiagramCommand.Open,
             (Keys.Control, Keys.S) => DiagramCommand.Save,
             (Keys.Control | Keys.Shift, Keys.S) => DiagramCommand.SaveAs,
+            (Keys.Control, Keys.E) => DiagramCommand.ExportPdf,
+            (Keys.Control | Keys.Shift, Keys.E) => DiagramCommand.ExportPng,
             (Keys.Control, Keys.Z) => DiagramCommand.Undo,
             (Keys.Control, Keys.Y) or (Keys.Control | Keys.Shift, Keys.Z) => DiagramCommand.Redo,
             (Keys.Control, Keys.X) => DiagramCommand.Cut,
             (Keys.Control, Keys.C) => DiagramCommand.Copy,
             (Keys.Control, Keys.V) => DiagramCommand.Paste,
             (Keys.Control, Keys.D) => DiagramCommand.Duplicate,
+            (Keys.Control, Keys.I) => DiagramCommand.InsertImage,
+            (Keys.Control | Keys.Shift, Keys.C) => DiagramCommand.CopyStyle,
+            (Keys.Control | Keys.Shift, Keys.V) => DiagramCommand.PasteStyle,
             (Keys.Control, Keys.A) => DiagramCommand.SelectAll,
             (Keys.Control, Keys.G) => DiagramCommand.Group,
             (Keys.Control | Keys.Shift, Keys.G) => DiagramCommand.Ungroup,
@@ -1011,6 +1428,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         {
             (Keys.None, Keys.V) => DiagramTool.Select,
             (Keys.None, Keys.C) => DiagramTool.Connector,
+            (Keys.None, Keys.L) => DiagramTool.Line,
             (Keys.None, Keys.R) => DiagramTool.Rectangle,
             (Keys.None, Keys.U) => DiagramTool.RoundedRectangle,
             (Keys.None, Keys.O) => DiagramTool.Ellipse,
@@ -1019,6 +1437,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
             (Keys.None, Keys.H) => DiagramTool.Hexagon,
             (Keys.None, Keys.Y) => DiagramTool.Cylinder,
             (Keys.None, Keys.M) => DiagramTool.Document,
+            (Keys.None, Keys.B) => DiagramTool.Container,
             (Keys.None, Keys.T) => DiagramTool.Text,
             _ => null,
         };

@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Drawing;
 using CincoVertice.MyTools.Ui.Diagramming.Interfaces;
 using CincoVertice.MyTools.Ui.Diagramming.Models;
@@ -14,11 +14,14 @@ public class DiagramEditorPresenterTests
     private readonly FakeView _view = new();
     private readonly FakeStore _store = new();
     private readonly FakeSettingsStore _settings = new();
+    private readonly FakeExporter _exporter = new();
+    private readonly FakePngExporter _pngExporter = new();
+    private readonly FakeImageCatalog _catalog = new();
     private readonly DiagramEditorPresenter _presenter;
 
     public DiagramEditorPresenterTests()
     {
-        _presenter = new DiagramEditorPresenter(_view, _store, _settings);
+        _presenter = new DiagramEditorPresenter(_view, _store, _settings, _exporter, _pngExporter, _catalog);
         _presenter.Start();
     }
 
@@ -362,6 +365,460 @@ public class DiagramEditorPresenterTests
 
         // Assert
         Assert.Equal(Box(100, 100, toX - 100, toY - 100), Diagram.Shapes[0].Bounds);
+    }
+
+    [Fact]
+    public void Lock_X_ThenDrag_OnlyMovesItUpAndDown()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.ToggleLock(DiagramLock.X, isLocked: true);
+
+        // Act
+        _view.Drag(150, 125, 250, 225, alt: true);
+
+        // Assert
+        Assert.Equal(Box(100, 200, 100, 50), Diagram.Shapes[0].Bounds);
+    }
+
+    [Fact]
+    public void Lock_Width_ThenScaleByTheLeftEdge_LeavesIt()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.ToggleLock(DiagramLock.Width, isLocked: true);
+        DiagramModel before = Diagram;
+
+        // Act
+        _view.Drag(100, 125, 50, 125, alt: true);
+
+        // Assert: not slid to the left either
+        Assert.Same(before, Diagram);
+    }
+
+    [Fact]
+    public void Lock_Width_ThenScaleByACorner_OnlyChangesTheHeight()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.ToggleLock(DiagramLock.Width, isLocked: true);
+
+        // Act
+        _view.Drag(200, 150, 300, 200, alt: true);
+
+        // Assert
+        Assert.Equal(Box(100, 100, 100, 100), Diagram.Shapes[0].Bounds);
+    }
+
+    [Fact]
+    public void Lock_Height_ThenTypeTheBounds_KeepsTheHeight()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.ToggleLock(DiagramLock.Height, isLocked: true);
+
+        // Act
+        _view.EditBounds(10, 20, 300, 400);
+
+        // Assert
+        Assert.Equal(Box(10, 20, 300, 50), Diagram.Shapes[0].Bounds);
+    }
+
+    [Fact]
+    public void Lock_XAndY_ThenNudge_IsNothingToUndo()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.ToggleLock(DiagramLock.X, isLocked: true);
+        _view.ToggleLock(DiagramLock.Y, isLocked: true);
+        DiagramModel before = Diagram;
+
+        // Act
+        _view.Nudge(10, 10);
+
+        // Assert
+        Assert.Same(before, Diagram);
+        _view.Command(DiagramCommand.Undo);
+        Assert.Equal(DiagramLock.X, Diagram.Shapes[0].Locks);
+    }
+
+    [Fact]
+    public void Lock_IsAChangeToTheDiagram_ThatCanBeUndone_AndShowsInTheProperties()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.PathToSave = @"C:\Diagrams\flow.svg";
+        _view.Command(DiagramCommand.Save);
+
+        // Act
+        _view.ToggleLock(DiagramLock.Width, isLocked: true);
+
+        // Assert
+        Assert.Equal(DiagramLock.Width, Diagram.Shapes[0].Locks);
+        Assert.Equal(DiagramLock.Width, _view.Properties!.Locks);
+        Assert.True(_view.HasChanges);
+
+        _view.Command(DiagramCommand.Undo);
+        Assert.Equal(DiagramLock.None, Diagram.Shapes[0].Locks);
+        Assert.Equal(DiagramLock.None, _view.Properties!.Locks);
+    }
+
+    [Fact]
+    public void Lock_OfSeveralShapes_ShowsTheLocksAllOfThemHave_AndGoesToEachOfThem()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.ToggleLock(DiagramLock.X, isLocked: true);
+        _view.ToggleLock(DiagramLock.Width, isLocked: true);
+        AddShape(300, 100);
+        _view.ToggleLock(DiagramLock.X, isLocked: true);
+        _view.Command(DiagramCommand.SelectAll);
+        Assert.Equal(DiagramLock.X, _view.Properties!.Locks);
+
+        // Act
+        _view.ToggleLock(DiagramLock.X, isLocked: false);
+        _view.ToggleLock(DiagramLock.Y, isLocked: true);
+
+        // Assert
+        Assert.Equal(DiagramLock.Width | DiagramLock.Y, Diagram.Shapes[0].Locks);
+        Assert.Equal(DiagramLock.Y, Diagram.Shapes[1].Locks);
+        Assert.Equal(DiagramLock.Y, _view.Properties!.Locks);
+    }
+
+    [Fact]
+    public void Lock_OnlyLocksSomeShapes_WhenSeveralMoveTogether()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.ToggleLock(DiagramLock.Y, isLocked: true);
+        AddShape(300, 100);
+        _view.Command(DiagramCommand.SelectAll);
+
+        // Act
+        _view.Nudge(0, 10);
+
+        // Assert
+        Assert.Equal(Box(100, 100, 100, 50), Diagram.Shapes[0].Bounds);
+        Assert.Equal(Box(300, 110, 100, 50), Diagram.Shapes[1].Bounds);
+    }
+
+    [Fact]
+    public void Properties_WithNothingSelected_HaveNoLocks()
+    {
+        // Assert
+        Assert.Null(_view.Properties!.Locks);
+    }
+
+    /// <summary>Draws a line, from 100, 100 to 300, 200 unless told; it ends with the line selected.</summary>
+    private DiagramConnectorModel DrawLine(int fromX = 100, int fromY = 100, int toX = 300, int toY = 200)
+    {
+        _view.Tool(DiagramTool.Line);
+        _view.Drag(fromX, fromY, toX, toY, alt: true);
+
+        return Diagram.Connectors[^1];
+    }
+
+    [Fact]
+    public void Line_Drag_DrawsALineOnItsOwn_WithTheArrowsChosen_AndSelectsIt()
+    {
+        // Arrange
+        _view.SelectHeads(DiagramArrowHeads.Both);
+
+        // Act
+        DiagramConnectorModel line = DrawLine();
+
+        // Assert
+        Assert.True(line.IsLine);
+        Assert.Null(line.FromShapeId);
+        Assert.Equal(new Point(100, 100), line.FromPoint);
+        Assert.Equal(new Point(300, 200), line.ToPoint);
+        Assert.Equal(DiagramArrowHeads.Both, line.Heads);
+        Assert.Equal(DiagramRouting.Straight, line.Routing);
+        Assert.Equal("Line", _view.Properties!.Title);
+        Assert.Null(_view.Properties.Routing);
+        Assert.Equal(DiagramArrowHeads.Both, _view.Properties.Heads);
+        Assert.Equal(DiagramTool.Select, _view.ShownTool);
+    }
+
+    [Fact]
+    public void Line_AClick_DrawsNothing()
+    {
+        // Arrange
+        _view.Tool(DiagramTool.Line);
+
+        // Act
+        _view.Click(100, 100);
+
+        // Assert
+        Assert.Empty(Diagram.Connectors);
+        Assert.False(_view.CanUndo);
+    }
+
+    [Theory]
+    [InlineData(300, 110, 300, 100)]
+    [InlineData(110, 300, 100, 300)]
+    [InlineData(290, 310, 300, 300)]
+    public void Line_WithShift_IsLevelUprightOrDiagonal(int toX, int toY, int expectedX, int expectedY)
+    {
+        // Arrange
+        _view.Tool(DiagramTool.Line);
+
+        // Act
+        _view.Drag(100, 100, toX, toY, shift: true);
+
+        // Assert: as long as it was dragged
+        Point end = Diagram.Connectors[0].ToPoint!.Value;
+        Assert.InRange(end.X, expectedX - 2, expectedX + 2);
+        Assert.InRange(end.Y, expectedY - 2, expectedY + 2);
+        Assert.True(end.X == 100 || end.Y == 100 || Math.Abs(end.X - 100) == Math.Abs(end.Y - 100));
+    }
+
+    [Fact]
+    public void Line_OverShapes_IsntAttachedToThem()
+    {
+        // Arrange
+        AddShape(100, 100);
+        AddShape(400, 100);
+
+        // Act
+        DiagramConnectorModel line = DrawLine(150, 125, 450, 125);
+        _view.Click(500, 500);
+        _view.Drag(150, 145, 150, 300, alt: true);
+
+        // Assert: the shape moved, and the line stayed
+        Assert.Equal(Box(100, 255, 100, 50), Diagram.Shapes[0].Bounds);
+        Assert.Null(line.FromShapeId);
+        Assert.Null(line.ToShapeId);
+        Assert.Equal(line, Diagram.Connectors[0]);
+    }
+
+    [Fact]
+    public void Line_DragItsMiddle_MovesIt()
+    {
+        // Arrange
+        DrawLine();
+
+        // Act
+        _view.Drag(200, 150, 250, 150, alt: true);
+
+        // Assert
+        Assert.Equal(new Point(150, 100), Diagram.Connectors[0].FromPoint);
+        Assert.Equal(new Point(350, 200), Diagram.Connectors[0].ToPoint);
+    }
+
+    [Fact]
+    public void Line_OnAShape_IsPickedBeforeTheShape()
+    {
+        // Arrange
+        AddShape(100, 100);
+        DrawLine(50, 125, 250, 125);
+        _view.Click(500, 500);
+
+        // Act
+        _view.Click(150, 125);
+
+        // Assert
+        Assert.Equal("Line", _view.Properties!.Title);
+    }
+
+    [Fact]
+    public void Line_DragAnEnd_MovesOnlyThatEnd()
+    {
+        // Arrange
+        DrawLine();
+
+        // Act
+        _view.Drag(300, 200, 400, 250, alt: true);
+
+        // Assert
+        Assert.Equal(new Point(100, 100), Diagram.Connectors[0].FromPoint);
+        Assert.Equal(new Point(400, 250), Diagram.Connectors[0].ToPoint);
+    }
+
+    [Fact]
+    public void Line_DragAnEndOntoTheOther_LeavesIt()
+    {
+        // Arrange
+        DiagramConnectorModel line = DrawLine();
+
+        // Act
+        _view.Drag(300, 200, 100, 100, alt: true);
+
+        // Assert: a line of no length has no direction
+        Assert.Equal(line, Diagram.Connectors[0]);
+    }
+
+    [Fact]
+    public void Line_NudgeDeleteAndUndo()
+    {
+        // Arrange
+        DrawLine();
+
+        // Act / Assert
+        _view.Nudge(10, 0);
+        Assert.Equal(new Point(110, 100), Diagram.Connectors[0].FromPoint);
+
+        _view.Command(DiagramCommand.Delete);
+        Assert.Empty(Diagram.Connectors);
+
+        _view.Command(DiagramCommand.Undo);
+        Assert.Equal(new Point(110, 100), Diagram.Connectors[0].FromPoint);
+    }
+
+    [Fact]
+    public void Line_CopyAndPaste_AddsAMovedCopy_Selected()
+    {
+        // Arrange
+        DiagramConnectorModel line = DrawLine();
+
+        // Act
+        _view.Command(DiagramCommand.Copy);
+        _view.Command(DiagramCommand.Paste);
+
+        // Assert
+        Assert.Equal(2, Diagram.Connectors.Count);
+        DiagramConnectorModel copy = Diagram.Connectors[1];
+        Assert.NotEqual(line.Id, copy.Id);
+        Assert.Equal(new Point(120, 120), copy.FromPoint);
+        Assert.Equal(new Point(320, 220), copy.ToPoint);
+        Assert.Equal("Line", _view.Properties!.Title);
+    }
+
+    [Fact]
+    public void Line_SelectedWithShapes_MovesAndScalesWithThem()
+    {
+        // Arrange
+        AddShape(100, 100);
+        DrawLine(100, 200, 200, 200);
+        _view.Command(DiagramCommand.SelectAll);
+
+        // Act
+        _view.Nudge(0, 10);
+
+        // Assert
+        Assert.Equal(Box(100, 110, 100, 50), Diagram.Shapes[0].Bounds);
+        Assert.Equal(new Point(100, 210), Diagram.Connectors[0].FromPoint);
+    }
+
+    [Fact]
+    public void Line_InsideTheSelectionBand_IsSelected()
+    {
+        // Arrange
+        DrawLine();
+        _view.Click(500, 500);
+
+        // Act
+        _view.Drag(50, 50, 350, 250);
+
+        // Assert
+        Assert.Equal("Line", _view.Properties!.Title);
+    }
+
+    [Theory]
+    [InlineData(DiagramLineDirection.Horizontal, 300, 100)]
+    [InlineData(DiagramLineDirection.Vertical, 100, 300)]
+    public void LineDirection_TurnsTheLineFromItsStart_AsLongAsItWas(
+        DiagramLineDirection direction,
+        int toX,
+        int toY)
+    {
+        // Arrange: a line 200 long, going right and down
+        DrawLine(100, 100, 220, 260);
+
+        // Act
+        _view.SelectLineDirection(direction);
+
+        // Assert
+        DiagramConnectorModel line = Diagram.Connectors[0];
+        Assert.Equal(direction, line.Direction);
+        Assert.Equal(new Point(100, 100), line.FromPoint);
+        Assert.Equal(new Point(toX, toY), line.ToPoint);
+        Assert.Equal(direction, _view.Properties!.LineDirection);
+    }
+
+    [Fact]
+    public void LineDirection_ALineGoingBack_KeepsGoingBack()
+    {
+        // Arrange
+        DrawLine(300, 200, 100, 190);
+
+        // Act
+        _view.SelectLineDirection(DiagramLineDirection.Horizontal);
+
+        // Assert
+        Assert.Equal(new Point(100, 200), Diagram.Connectors[0].ToPoint);
+    }
+
+    [Fact]
+    public void LineDirection_Horizontal_DraggingAnEnd_KeepsItLevel()
+    {
+        // Arrange
+        DrawLine(100, 100, 300, 100);
+        _view.SelectLineDirection(DiagramLineDirection.Horizontal);
+
+        // Act
+        _view.Drag(300, 100, 400, 250, alt: true);
+
+        // Assert
+        Assert.Equal(new Point(100, 100), Diagram.Connectors[0].FromPoint);
+        Assert.Equal(new Point(400, 100), Diagram.Connectors[0].ToPoint);
+    }
+
+    [Fact]
+    public void LineDirection_Vertical_DraggingAnEndOntoTheOthersLevel_LeavesIt()
+    {
+        // Arrange
+        DrawLine(100, 100, 100, 300);
+        _view.SelectLineDirection(DiagramLineDirection.Vertical);
+        DiagramConnectorModel line = Diagram.Connectors[0];
+
+        // Act: upright, that end would be on the other one
+        _view.Drag(100, 300, 250, 100, alt: true);
+
+        // Assert
+        Assert.Equal(line, Diagram.Connectors[0]);
+    }
+
+    [Fact]
+    public void LineDirection_ChoosingIt_CanBeUndone_AndFreeLeavesTheLineWhereItIs()
+    {
+        // Arrange
+        DiagramConnectorModel drawn = DrawLine();
+        _view.SelectLineDirection(DiagramLineDirection.Vertical);
+        DiagramConnectorModel upright = Diagram.Connectors[0];
+
+        // Act / Assert
+        _view.SelectLineDirection(DiagramLineDirection.Free);
+        Assert.Equal(upright with { Direction = DiagramLineDirection.Free }, Diagram.Connectors[0]);
+
+        _view.Command(DiagramCommand.Undo);
+        _view.Command(DiagramCommand.Undo);
+        Assert.Equal(drawn, Diagram.Connectors[0]);
+    }
+
+    [Fact]
+    public void LineDirection_OnlyForLines()
+    {
+        // Arrange
+        AddShape(100, 100);
+
+        // Act / Assert
+        Assert.Null(_view.Properties!.LineDirection);
+        DrawLine(300, 300, 400, 400);
+        Assert.Equal(DiagramLineDirection.Free, _view.Properties!.LineDirection);
+    }
+
+    [Fact]
+    public void Line_ChoosingARoute_LeavesItStraight()
+    {
+        // Arrange
+        DrawLine();
+
+        // Act
+        _view.SelectRouting(DiagramRouting.Elbow);
+
+        // Assert
+        Assert.Equal(DiagramRouting.Straight, Diagram.Connectors[0].Routing);
     }
 
     [Fact]
@@ -1720,7 +2177,8 @@ public class DiagramEditorPresenterTests
     private (FakeView View, DiagramEditorPresenter Presenter) NewEditor(DiagramEditorSettingsModel? saved)
     {
         var view = new FakeView();
-        var presenter = new DiagramEditorPresenter(view, _store, new FakeSettingsStore(saved));
+        var presenter =
+            new DiagramEditorPresenter(view, _store, new FakeSettingsStore(saved), _exporter, _pngExporter, _catalog);
 
         presenter.Start();
 
@@ -1874,7 +2332,7 @@ public class DiagramEditorPresenterTests
             Window: window));
         var view = new FakeView();
 
-        new DiagramEditorPresenter(view, _store, store).Start();
+        new DiagramEditorPresenter(view, _store, store, _exporter, _pngExporter, _catalog).Start();
 
         // Act
         view.SelectLineWidth(5);
@@ -2231,6 +2689,675 @@ public class DiagramEditorPresenterTests
     }
 
     [Fact]
+    public void PasteStyle_GivesEverySelectedShapeTheCopiedStyle_AsOneStepToUndo()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.SelectColor(DiagramColorTarget.Fill, Color.Red);
+        _view.SelectLineWidth(5);
+        _view.SelectDashed(true);
+        _view.SelectFontSize(24);
+        DiagramStyleModel copied = Diagram.Shapes[0].Style;
+        _view.Command(DiagramCommand.CopyStyle);
+        AddShape(400, 100);
+        _view.SelectLineWidth(1);
+        AddShape(700, 100);
+        ClickEmpty();
+        _view.Click(420, 120);
+        _view.Click(720, 120, shift: true);
+        DiagramModel before = Diagram;
+
+        // Act
+        _view.Command(DiagramCommand.PasteStyle);
+
+        // Assert
+        Assert.All(Diagram.Shapes, shape => Assert.Equal(copied, shape.Style));
+        Assert.Equal(copied, _view.ShownStyle);
+        _view.Command(DiagramCommand.Undo);
+        Assert.Equal(before, Diagram);
+    }
+
+    [Fact]
+    public void PasteStyle_IsWhatComesNext()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.SelectLineWidth(7);
+        _view.Command(DiagramCommand.CopyStyle);
+        AddShape(400, 100);
+        _view.SelectLineWidth(1);
+
+        // Act
+        _view.Command(DiagramCommand.PasteStyle);
+
+        // Assert
+        Assert.Equal(7, AddShape(700, 100).Style.LineWidth);
+    }
+
+    [Fact]
+    public void PasteStyle_FromAConnector_LeavesTheShapesFill()
+    {
+        // Arrange
+        DiagramShapeModel from = AddShape(100, 100);
+        _view.SelectColor(DiagramColorTarget.Fill, Color.Red);
+        DiagramShapeModel to = AddShape(400, 100);
+        Connect(from, to);
+        ClickEmpty();
+        _view.Click(300, 125);
+        _view.SelectColor(DiagramColorTarget.Fill, Color.Blue);
+        _view.SelectColor(DiagramColorTarget.Line, Color.Green);
+        _view.Command(DiagramCommand.CopyStyle);
+        _view.Click(120, 120);
+
+        // Act
+        _view.Command(DiagramCommand.PasteStyle);
+
+        // Assert
+        Assert.Equal(Color.FromArgb(255, Color.Red), Diagram.Shapes[0].Style.Fill);
+        Assert.Equal(Color.FromArgb(255, Color.Green), Diagram.Shapes[0].Style.Line);
+    }
+
+    [Fact]
+    public void PasteStyle_WithNothingCopied_ChangesNothing()
+    {
+        // Arrange
+        AddShape(100, 100);
+        DiagramModel before = Diagram;
+
+        // Act
+        _view.Command(DiagramCommand.PasteStyle);
+
+        // Assert
+        Assert.Equal(before, Diagram);
+    }
+
+    [Fact]
+    public void CopyStyle_WithNothingSelected_KeepsWhatWasCopied()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.SelectLineWidth(7);
+        _view.Command(DiagramCommand.CopyStyle);
+        ClickEmpty();
+        _view.Command(DiagramCommand.CopyStyle);
+        AddShape(400, 100);
+        _view.SelectLineWidth(1);
+
+        // Act
+        _view.Command(DiagramCommand.PasteStyle);
+
+        // Assert
+        Assert.Equal(7, Diagram.Shapes[1].Style.LineWidth);
+    }
+
+    [Fact]
+    public void TextOutline_NoColor_TurnsTheEdgeOff_KeepingItsColor()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.SelectColor(DiagramColorTarget.TextOutline, Color.Blue);
+        _view.SelectTextOutlineWidth(4);
+
+        // Act
+        _view.SelectColor(DiagramColorTarget.TextOutline, Color.Empty);
+
+        // Assert
+        Assert.Equal(0, Diagram.Shapes[0].Style.TextOutlineWidth);
+        Assert.Equal(Color.FromArgb(255, Color.Blue), Diagram.Shapes[0].Style.TextOutlineColor);
+    }
+
+    [Fact]
+    public void TextOutline_AColor_WithTheEdgeOff_TurnsItOn()
+    {
+        // Arrange
+        AddShape(100, 100);
+
+        // Act
+        _view.SelectColor(DiagramColorTarget.TextOutline, Color.Blue);
+
+        // Assert
+        Assert.Equal(2, Diagram.Shapes[0].Style.TextOutlineWidth);
+        Assert.Equal(Color.FromArgb(255, Color.Blue), Diagram.Shapes[0].Style.TextOutlineColor);
+    }
+
+    [Fact]
+    public void TextOutline_AColor_KeepsTheWidthOfAnEdgeThatsOn()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.SelectTextOutlineWidth(6);
+
+        // Act
+        _view.SelectColor(DiagramColorTarget.TextOutline, Color.Blue);
+
+        // Assert
+        Assert.Equal(6, Diagram.Shapes[0].Style.TextOutlineWidth);
+    }
+
+    [Fact]
+    public void RightClick_OnAShapeNotSelected_SelectsOnlyIt_AndShowsTheMenu()
+    {
+        // Arrange
+        AddShape(100, 100);
+        AddShape(400, 100);
+
+        // Act
+        _view.RightClick(120, 120);
+
+        // Assert
+        Assert.Equal((new Point(120, 120), new DiagramContextMenuModel(false, false, false)), _view.ContextMenu);
+        _view.Command(DiagramCommand.Delete);
+        Assert.Equal(400, Assert.Single(Diagram.Shapes).Bounds.X);
+    }
+
+    [Fact]
+    public void RightClick_OnTheSelection_KeepsItAll_AndSaysWhetherItCanBeAligned()
+    {
+        // Arrange
+        AddShape(100, 100);
+        AddShape(400, 100);
+        _view.Command(DiagramCommand.SelectAll);
+
+        // Act
+        _view.RightClick(120, 120);
+
+        // Assert: two can be aligned, but it takes three to distribute
+        Assert.True(_view.ContextMenu!.Value.Menu.CanAlign);
+        Assert.False(_view.ContextMenu.Value.Menu.CanDistribute);
+        _view.Command(DiagramCommand.Delete);
+        Assert.Empty(Diagram.Shapes);
+    }
+
+    // Three shapes of 100 by 50, at (100, 100), (300, 200) and (500, 300)
+    private void ThreeShapesSelected()
+    {
+        AddShape(100, 100);
+        AddShape(300, 200);
+        AddShape(500, 300);
+        _view.Command(DiagramCommand.SelectAll);
+    }
+
+    [Theory]
+    [InlineData(DiagramCommand.AlignLeft, "100,200 100,300 100,400")]
+    [InlineData(DiagramCommand.AlignCenter, "300,200 300,300 300,400")]
+    [InlineData(DiagramCommand.AlignRight, "500,200 500,300 500,400")]
+    [InlineData(DiagramCommand.AlignTop, "100,100 300,100 500,100")]
+    [InlineData(DiagramCommand.AlignMiddle, "100,200 300,200 500,200")]
+    [InlineData(DiagramCommand.AlignBottom, "100,300 300,300 500,300")]
+    public void Align_LinesUpTheShapes_WithTheBoxAroundThemAll_InOneStep(DiagramCommand command, string expected)
+    {
+        // Arrange
+        ThreeShapesSelected();
+        DiagramModel before = Diagram;
+
+        // Act
+        _view.Command(command);
+
+        // Assert: the top left corners, for the left, center and right; else their left and top
+        string corners = string.Join(' ', Diagram.Shapes.Select(shape => command is DiagramCommand.AlignTop
+            or DiagramCommand.AlignMiddle or DiagramCommand.AlignBottom
+                ? $"{shape.Bounds.X},{shape.Bounds.Y}"
+                : $"{shape.Bounds.X},{shape.Bounds.Y + 100}"));
+        Assert.Equal(expected, corners);
+
+        _view.Command(DiagramCommand.Undo);
+        Assert.Same(before, Diagram);
+    }
+
+    [Fact]
+    public void Distribute_SpacesTheShapesEvenly_InTheOrderOfTheirMiddles_TheOuterTwoStaying()
+    {
+        // Arrange: 100, 100 and 150 wide, from 100 to 500
+        AddShape(100, 100);
+        AddShape(400, 200);
+        AddShape(150, 300, width: 150);
+        _view.Command(DiagramCommand.SelectAll);
+
+        // Act
+        _view.Command(DiagramCommand.DistributeHorizontally);
+
+        // Assert: 400 - 350 = 50 between them, so 25 each; the middle one by its middle is the widest
+        Assert.Equal([100, 400, 225], Diagram.Shapes.Select(shape => shape.Bounds.X));
+        Assert.Equal([100, 200, 300], Diagram.Shapes.Select(shape => shape.Bounds.Y));
+    }
+
+    [Fact]
+    public void Distribute_Vertically_SpacesThemOneAboveTheOther()
+    {
+        // Arrange
+        AddShape(100, 100);
+        AddShape(300, 170);
+        AddShape(500, 400);
+        _view.Command(DiagramCommand.SelectAll);
+
+        // Act
+        _view.Command(DiagramCommand.DistributeVertically);
+
+        // Assert
+        Assert.Equal([100, 250, 400], Diagram.Shapes.Select(shape => shape.Bounds.Y));
+    }
+
+    [Fact]
+    public void Align_AGroup_MovesAsOne()
+    {
+        // Arrange
+        AddShape(300, 100);
+        AddShape(400, 200);
+        _view.Command(DiagramCommand.SelectAll);
+        _view.Command(DiagramCommand.Group);
+        AddShape(100, 400);
+        _view.Command(DiagramCommand.SelectAll);
+
+        // Act
+        _view.Command(DiagramCommand.AlignLeft);
+
+        // Assert: the group's left edge, not each of its shapes'
+        Assert.Equal([100, 200, 100], Diagram.Shapes.Select(shape => shape.Bounds.X));
+    }
+
+    [Fact]
+    public void Align_AShapeWithItsXLocked_StaysWhereItIs()
+    {
+        // Arrange
+        AddShape(300, 100);
+        _view.ToggleLock(DiagramLock.X, isLocked: true);
+        AddShape(100, 300);
+        _view.Command(DiagramCommand.SelectAll);
+
+        // Act
+        _view.Command(DiagramCommand.AlignRight);
+
+        // Assert
+        Assert.Equal([300, 300], Diagram.Shapes.Select(shape => shape.Bounds.X));
+    }
+
+    // A shape at (200, 200), one outside at (600, 200), and a container at (150, 150), 300 by 250, around the first
+    private (DiagramShapeModel Inside, DiagramShapeModel Outside, DiagramShapeModel Container) ContainerAroundAShape()
+    {
+        DiagramShapeModel inside = AddShape(200, 200);
+        DiagramShapeModel outside = AddShape(600, 200);
+
+        _view.Tool(DiagramTool.Container);
+        _view.Drag(150, 150, 450, 400, alt: true);
+
+        return (inside, outside, Diagram.Shapes.Single(shape => shape.Kind == DiagramShapeKind.Container));
+    }
+
+    private DiagramShapeModel ShapeOf(DiagramShapeModel shape) => Diagram.Shapes.Single(s => s.Id == shape.Id);
+
+    [Fact]
+    public void Container_DrawnAroundAShape_GoesUnderIt_AndIsSelected()
+    {
+        // Act
+        (DiagramShapeModel inside, _, DiagramShapeModel container) = ContainerAroundAShape();
+
+        // Assert: under the first shape it's around, so it doesn't hide it
+        Assert.Equal([container.Id, inside.Id], Diagram.Shapes.Take(2).Select(shape => shape.Id));
+        Assert.Equal(Box(150, 150, 300, 250), container.Bounds);
+        Assert.Equal([container.Id], _presenter.SelectedShapeIds);
+        Assert.Equal("Container", _view.Properties!.Title);
+    }
+
+    [Fact]
+    public void Container_DraggedByItsTitle_TakesWhatsInIt_NotWhatsOutside()
+    {
+        // Arrange
+        (DiagramShapeModel inside, DiagramShapeModel outside, DiagramShapeModel container) = ContainerAroundAShape();
+        _view.Click(800, 800);
+
+        // Act
+        _view.Drag(160, 160, 260, 180, alt: true);
+
+        // Assert
+        Assert.Equal(Box(250, 170, 300, 250), ShapeOf(container).Bounds);
+        Assert.Equal(Box(300, 220, 100, 50), ShapeOf(inside).Bounds);
+        Assert.Equal(outside.Bounds, ShapeOf(outside).Bounds);
+    }
+
+    [Fact]
+    public void Container_APressInsideIt_StartsASelectionBox_OverWhatsInIt()
+    {
+        // Arrange
+        (DiagramShapeModel inside, _, _) = ContainerAroundAShape();
+        _view.Click(800, 800);
+        DiagramModel before = Diagram;
+
+        // Act
+        _view.Drag(180, 190, 330, 270);
+
+        // Assert
+        Assert.Same(before, Diagram);
+        Assert.Equal([inside.Id], _presenter.SelectedShapeIds);
+    }
+
+    [Fact]
+    public void Container_Nudged_TakesWhatsInIt_ButScaled_LeavesIt()
+    {
+        // Arrange
+        (DiagramShapeModel inside, _, DiagramShapeModel container) = ContainerAroundAShape();
+
+        // Act / Assert
+        _view.Nudge(10, 0);
+        Assert.Equal(210, ShapeOf(inside).Bounds.X);
+
+        _view.Drag(460, 275, 560, 275, alt: true);
+        Assert.Equal(Box(160, 150, 400, 250), ShapeOf(container).Bounds);
+        Assert.Equal(210, ShapeOf(inside).Bounds.X);
+    }
+
+    [Fact]
+    public void Container_Copied_TakesWhatsInIt()
+    {
+        // Arrange
+        ContainerAroundAShape();
+
+        // Act
+        _view.Command(DiagramCommand.Copy);
+        _view.Command(DiagramCommand.Paste);
+
+        // Assert: the copy of the container under the copy of what's in it
+        Assert.Equal(5, Diagram.Shapes.Count);
+        Assert.Equal(
+            [DiagramShapeKind.Container, DiagramShapeKind.Rectangle],
+            Diagram.Shapes.Skip(3).Select(shape => shape.Kind));
+        Assert.Equal(Box(220, 220, 100, 50), Diagram.Shapes[^1].Bounds);
+    }
+
+    [Fact]
+    public void TextAlignment_GoesToTheSelection_AndToWhatComesNext_AsOneStep()
+    {
+        // Arrange
+        AddShape(100, 100);
+        Assert.Equal(DiagramTextAlignment.Center, _view.Properties!.TextAlignment);
+
+        // Act
+        _view.SelectTextAlignment(DiagramTextAlignment.Left);
+        AddShape(400, 100);
+
+        // Assert
+        Assert.All(Diagram.Shapes, shape => Assert.Equal(DiagramTextAlignment.Left, shape.Style.TextAlignment));
+        Assert.Equal(DiagramTextAlignment.Left, _view.Properties!.TextAlignment);
+        _view.Command(DiagramCommand.Undo);
+        _view.Command(DiagramCommand.Undo);
+        Assert.Equal(DiagramTextAlignment.Center, Assert.Single(Diagram.Shapes).Style.TextAlignment);
+    }
+
+    [Fact]
+    public void Container_TitleFill_IsItsOwn_AndShowsOnlyForContainers()
+    {
+        // Arrange
+        (DiagramShapeModel inside, _, DiagramShapeModel container) = ContainerAroundAShape();
+        Color blue = Color.FromArgb(0, 120, 212);
+        Assert.Equal(Color.Empty, _view.Properties!.TitleFill);
+
+        // Act
+        _view.SelectColor(DiagramColorTarget.TitleFill, blue);
+        _view.RequestMoreColors(DiagramColorTarget.TitleFill);
+
+        // Assert: the fill of its inside stays as it was
+        Assert.Equal(blue, ShapeOf(container).Style.TitleFill);
+        Assert.Equal(container.Style.Fill, ShapeOf(container).Style.Fill);
+        Assert.Equal(blue, _view.Properties!.TitleFill);
+        Assert.Equal(blue, _view.AskedColorFrom);
+
+        _view.Click(inside.Bounds.X + 5, inside.Bounds.Y + 5);
+        Assert.Null(_view.Properties!.TitleFill);
+    }
+
+    [Fact]
+    public void Container_TitleFillOfNone_IsKept_AndShowsAsSuch()
+    {
+        // Arrange
+        (_, _, DiagramShapeModel container) = ContainerAroundAShape();
+
+        // Act
+        _view.SelectColor(DiagramColorTarget.TitleFill, DiagramStyleModel.NoTitleFill);
+
+        // Assert: not made opaque, as a color picked is
+        Assert.Equal(DiagramStyleModel.NoTitleFill, ShapeOf(container).Style.TitleFill);
+        Assert.Equal(DiagramStyleModel.NoTitleFill, _view.Properties!.TitleFill);
+    }
+
+    [Fact]
+    public void Corners_TheTopAndTheBottomOnes_ChangeApart()
+    {
+        // Arrange
+        (_, _, DiagramShapeModel container) = ContainerAroundAShape();
+        Assert.Equal((0, 0), (_view.Properties!.CornerRadius, _view.Properties.BottomCornerRadius));
+
+        // Act / Assert
+        _view.EditCornerRadius(12);
+        Assert.Equal((12, 0), (_view.Properties!.CornerRadius, _view.Properties.BottomCornerRadius));
+
+        _view.EditBottomCornerRadius(30);
+        _view.EditCornerRadius(20);
+        Assert.Equal((20, 30), (_view.Properties!.CornerRadius, _view.Properties.BottomCornerRadius));
+        Assert.Equal((20, 30), (ShapeOf(container).CornerRadius, ShapeOf(container).BottomCornerRadius));
+
+        _view.Command(DiagramCommand.Undo);
+        _view.Command(DiagramCommand.Undo);
+        Assert.Equal((12, 0), (ShapeOf(container).CornerRadius, ShapeOf(container).BottomCornerRadius));
+    }
+
+    [Fact]
+    public void Corners_ARoundedRectangleFromBefore_KeepsItsBottomCorners_WhenItsTopOnesChange()
+    {
+        // Arrange: no radius of its own, so 12 all around
+        _view.Tool(DiagramTool.RoundedRectangle);
+        _view.Drag(100, 100, 300, 200);
+
+        // Act
+        _view.EditCornerRadius(0);
+
+        // Assert
+        Assert.Equal((0, 12), (Diagram.Shapes[0].CornerRadius, Diagram.Shapes[0].BottomCornerRadius));
+    }
+
+    [Fact]
+    public void Container_WithABiggerTitle_TypesItInItsTallerBand()
+    {
+        // Arrange
+        ContainerAroundAShape();
+        _view.SelectFontSize(32);
+
+        // Act: below a band of 32, in one of 52
+        _view.DoubleClick(300, 190);
+
+        // Assert
+        Assert.Equal(Box(150, 150, 300, 52), _view.TextBounds);
+    }
+
+    [Fact]
+    public void Container_DoubleClickOnItsTitle_TypesItInItsBand()
+    {
+        // Arrange
+        ContainerAroundAShape();
+
+        // Act
+        _view.DoubleClick(300, 160);
+
+        // Assert
+        Assert.Equal(Box(150, 150, 300, 32), _view.TextBounds);
+    }
+
+    [Fact]
+    public void Container_AConnector_CanEndAnywhereOnIt()
+    {
+        // Arrange
+        (_, DiagramShapeModel outside, DiagramShapeModel container) = ContainerAroundAShape();
+
+        // Act
+        _view.Tool(DiagramTool.Connector);
+        _view.Drag(650, 225, 420, 350);
+
+        // Assert
+        DiagramConnectorModel connector = Assert.Single(Diagram.Connectors);
+        Assert.Equal((outside.Id, container.Id), (connector.FromShapeId, connector.ToShapeId));
+    }
+
+    [Fact]
+    public void Container_Aligned_TakesWhatsInIt()
+    {
+        // Arrange
+        (DiagramShapeModel inside, DiagramShapeModel outside, _) = ContainerAroundAShape();
+        _view.Click(800, 800);
+        _view.Click(300, 160);
+        _view.Click(650, 225, shift: true);
+
+        // Act
+        _view.Command(DiagramCommand.AlignRight);
+
+        // Assert: the container's right edge goes to the other shape's, 250 further
+        Assert.Equal(450, ShapeOf(inside).Bounds.X);
+        Assert.Equal(600, ShapeOf(outside).Bounds.X);
+    }
+
+    [Theory]
+    [InlineData(DiagramCommand.AlignLeft, 1)]
+    [InlineData(DiagramCommand.DistributeHorizontally, 2)]
+    public void Arrange_WithTooFewSelected_DoesNothing(DiagramCommand command, int count)
+    {
+        // Arrange
+        for (int i = 0; i < count; i++)
+        {
+            AddShape(100 + i * 200, 100 + i * 100);
+        }
+
+        _view.Command(DiagramCommand.SelectAll);
+        DiagramModel before = Diagram;
+
+        // Act
+        _view.Command(command);
+
+        // Assert
+        Assert.Same(before, Diagram);
+    }
+
+    [Fact]
+    public void RightClick_OnAConnector_SelectsIt()
+    {
+        // Arrange
+        DiagramShapeModel from = AddShape(100, 100);
+        DiagramShapeModel to = AddShape(400, 100);
+        Connect(from, to);
+        ClickEmpty();
+
+        // Act
+        _view.RightClick(300, 125);
+
+        // Assert
+        Assert.NotNull(_view.ContextMenu);
+        _view.Command(DiagramCommand.Delete);
+        Assert.Empty(Diagram.Connectors);
+        Assert.Equal(2, Diagram.Shapes.Count);
+    }
+
+    [Fact]
+    public void RightClick_OnAnEmptySpot_ShowsNoMenu_AndKeepsTheSelection()
+    {
+        // Arrange
+        AddShape(100, 100);
+
+        // Act
+        _view.RightClick(5000, 5000);
+
+        // Assert
+        Assert.Null(_view.ContextMenu);
+        _view.Command(DiagramCommand.Delete);
+        Assert.Empty(Diagram.Shapes);
+    }
+
+    [Fact]
+    public void RightClick_OnSeveralShapes_CanGroupThem_ButNotUngroup()
+    {
+        // Arrange
+        AddShape(100, 100);
+        AddShape(400, 100);
+        _view.Command(DiagramCommand.SelectAll);
+
+        // Act
+        _view.RightClick(120, 120);
+
+        // Assert
+        DiagramContextMenuModel menu = _view.ContextMenu!.Value.Menu;
+        Assert.True(menu.CanGroup);
+        Assert.False(menu.CanUngroup);
+    }
+
+    [Fact]
+    public void RightClick_OnAGroup_CanUngroupIt_ButNotGroupItAgain()
+    {
+        // Arrange
+        AddShape(100, 100);
+        AddShape(400, 100);
+        _view.Command(DiagramCommand.SelectAll);
+        _view.Command(DiagramCommand.Group);
+        ClickEmpty();
+
+        // Act: one shape of the group selects it all
+        _view.RightClick(120, 120);
+
+        // Assert
+        DiagramContextMenuModel menu = _view.ContextMenu!.Value.Menu;
+        Assert.False(menu.CanGroup);
+        Assert.True(menu.CanUngroup);
+    }
+
+    [Fact]
+    public void RightClick_OnAGroupAndAnotherShape_CanGroupThemAll_AndUngroup()
+    {
+        // Arrange
+        AddShape(100, 100);
+        AddShape(400, 100);
+        _view.Command(DiagramCommand.SelectAll);
+        _view.Command(DiagramCommand.Group);
+        AddShape(700, 100);
+        _view.Command(DiagramCommand.SelectAll);
+
+        // Act
+        _view.RightClick(720, 120);
+
+        // Assert
+        DiagramContextMenuModel menu = _view.ContextMenu!.Value.Menu;
+        Assert.True(menu.CanGroup);
+        Assert.True(menu.CanUngroup);
+    }
+
+    [Fact]
+    public void Group_OfWhatsOneGroupAlready_ChangesNothingToUndo()
+    {
+        // Arrange
+        AddShape(100, 100);
+        AddShape(400, 100);
+        _view.Command(DiagramCommand.SelectAll);
+        _view.Command(DiagramCommand.Group);
+        DiagramModel grouped = Diagram;
+
+        // Act
+        _view.Command(DiagramCommand.Group);
+
+        // Assert: one undo goes back to before the first group
+        Assert.Same(grouped, Diagram);
+        _view.Command(DiagramCommand.Undo);
+        Assert.All(Diagram.Shapes, shape => Assert.Null(shape.GroupId));
+    }
+
+    [Fact]
+    public void RightClick_AfterCopyingAStyle_CanPasteIt()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.Command(DiagramCommand.CopyStyle);
+        AddShape(400, 100);
+
+        // Act
+        _view.RightClick(120, 120);
+
+        // Assert
+        Assert.True(_view.ContextMenu!.Value.Menu.CanPasteStyle);
+    }
+
+    [Fact]
     public void MoreColors_UsesWhatThePickerGives_AndCancelKeepsIt()
     {
         // Arrange
@@ -2329,6 +3456,399 @@ public class DiagramEditorPresenterTests
 
         // Assert
         Assert.Equal(Moved(a.Bounds, 40), Diagram.Shapes[2].Bounds);
+    }
+
+    private const string Icon =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"><rect width="18" height="18"/></svg>""";
+
+    private const string Banner = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100"/>""";
+
+    [Fact]
+    public void InsertImage_AddsEachInARow_OnTheGridWhereTheMouseWas_SelectedAndUndoneAtOnce()
+    {
+        // Arrange
+        _store.Images[@"C:\icons\vm.svg"] = Icon;
+        _store.Images[@"C:\icons\banner.svg"] = Banner;
+        _view.ImagesToInsert = [@"C:\icons\vm.svg", @"C:\icons\banner.svg"];
+        _view.Hover(203, 97);
+
+        // Act
+        _view.Command(DiagramCommand.InsertImage);
+
+        // Assert: a small icon is made larger, keeping its proportions
+        Assert.All(Diagram.Shapes, shape => Assert.Equal(DiagramShapeKind.Image, shape.Kind));
+        Assert.Equal(Box(200, 100, 64, 64), Diagram.Shapes[0].Bounds);
+        Assert.Equal(Box(284, 100, 200, 100), Diagram.Shapes[1].Bounds);
+        Assert.Equal(DiagramSvgImage.Prepare(Icon), Diagram.Shapes[0].Image);
+        Assert.Equal("2 shapes", _view.Properties!.Title);
+
+        _view.Command(DiagramCommand.Undo);
+        Assert.Empty(Diagram.Shapes);
+    }
+
+    [Fact]
+    public void InsertImage_AFileThatIsntAnImage_IsReported_AndTheOthersAreInserted()
+    {
+        // Arrange
+        _store.Images[@"C:\icons\notes.svg"] = "not markup";
+        _store.Images[@"C:\icons\vm.svg"] = Icon;
+        _view.ImagesToInsert = [@"C:\icons\notes.svg", @"C:\icons\gone.svg", @"C:\icons\vm.svg"];
+
+        // Act
+        _view.Command(DiagramCommand.InsertImage);
+
+        // Assert
+        Assert.Single(Diagram.Shapes);
+        Assert.Contains("notes.svg: This isn't an SVG image.", _view.Error);
+        Assert.Contains("gone.svg: It isn't there.", _view.Error);
+    }
+
+    [Fact]
+    public void InsertImage_Cancelled_AddsNothing()
+    {
+        // Act
+        _view.Command(DiagramCommand.InsertImage);
+
+        // Assert
+        Assert.Empty(Diagram.Shapes);
+        Assert.False(_view.CanUndo);
+        Assert.Null(_view.Error);
+    }
+
+    [Fact]
+    public void Drop_InsertsTheImagesWhereTheyWereDropped()
+    {
+        // Arrange
+        _store.Images[@"C:\icons\vm.svg"] = Icon;
+
+        // Act
+        _view.Drop(398, 51, @"C:\icons\vm.svg");
+
+        // Assert
+        Assert.Equal(Box(400, 50, 64, 64), Assert.Single(Diagram.Shapes).Bounds);
+    }
+
+    [Fact]
+    public void Paste_SvgMarkup_InsertsItAsAnImage()
+    {
+        // Arrange
+        _view.Clipboard = "\n  " + Banner;
+        _view.Hover(100, 100);
+
+        // Act
+        _view.Command(DiagramCommand.Paste);
+
+        // Assert
+        DiagramShapeModel image = Assert.Single(Diagram.Shapes);
+        Assert.Equal(DiagramShapeKind.Image, image.Kind);
+        Assert.Equal(Box(100, 100, 200, 100), image.Bounds);
+    }
+
+    [Fact]
+    public void Paste_OtherMarkup_DoesNothing()
+    {
+        // Arrange
+        _view.Clipboard = "<p>Hello</p>";
+
+        // Act
+        _view.Command(DiagramCommand.Paste);
+
+        // Assert
+        Assert.Empty(Diagram.Shapes);
+        Assert.Null(_view.Error);
+    }
+
+    [Fact]
+    public void Image_HasNoFillBorderOrCorners_AndCopiesKeepItsImage()
+    {
+        // Arrange
+        _store.Images["a.svg"] = Icon;
+        _view.ImagesToInsert = ["a.svg"];
+        _view.Command(DiagramCommand.InsertImage);
+
+        // Act
+        _view.Command(DiagramCommand.Copy);
+        _view.Command(DiagramCommand.Paste);
+
+        // Assert
+        Assert.Equal("Image", _view.Properties!.Title);
+        Assert.Null(_view.Properties.Fill);
+        Assert.Null(_view.Properties.Line);
+        Assert.Null(_view.Properties.CornerRadius);
+        Assert.Equal(Diagram.Shapes[0].Image, Diagram.Shapes[1].Image);
+    }
+
+    [Fact]
+    public void Image_DoubleClick_TypesItsTextUnderIt()
+    {
+        // Arrange
+        _store.Images["a.svg"] = Icon;
+        _view.ImagesToInsert = ["a.svg"];
+        _view.Command(DiagramCommand.InsertImage);
+
+        // Act
+        _view.DoubleClick(30, 30);
+
+        // Assert: as wide as a name under an icon can be
+        Assert.Equal(64, _view.TextBounds!.Value.Top);
+        Assert.Equal(160, _view.TextBounds.Value.Width);
+        Assert.Equal(32 - 80, _view.TextBounds.Value.Left);
+    }
+
+    [Theory]
+    [InlineData(200, 150, 300, 175, 100, 100, 200, 100)]
+    [InlineData(200, 125, 300, 125, 100, 100, 200, 100)]
+    [InlineData(100, 125, 0, 125, 0, 100, 200, 100)]
+    [InlineData(150, 150, 150, 200, 100, 100, 200, 100)]
+    public void LockProportions_ThenScale_ByACornerOrASide_KeepsThem(
+        int fromX,
+        int fromY,
+        int toX,
+        int toY,
+        int x,
+        int y,
+        int width,
+        int height)
+    {
+        // Arrange: 100 by 50
+        AddShape(100, 100);
+        _view.ToggleLock(DiagramLock.AspectRatio, isLocked: true);
+
+        // Act
+        _view.Drag(fromX, fromY, toX, toY, alt: true);
+
+        // Assert: a side grows the other side too; a left edge leaves the right one where it was
+        Assert.Equal(Box(x, y, width, height), Diagram.Shapes[0].Bounds);
+    }
+
+    [Fact]
+    public void LockProportions_ThenTypeTheWidth_ChangesTheHeightToo()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.ToggleLock(DiagramLock.AspectRatio, isLocked: true);
+
+        // Act
+        _view.EditBounds(100, 100, 50, 50);
+
+        // Assert
+        Assert.Equal(Box(100, 100, 50, 25), Diagram.Shapes[0].Bounds);
+        Assert.Equal(DiagramLock.AspectRatio, _view.Properties!.Locks);
+    }
+
+    [Fact]
+    public void LockProportions_AndTheWidth_LeavesTheSizeAsItIs()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.ToggleLock(DiagramLock.AspectRatio, isLocked: true);
+        _view.ToggleLock(DiagramLock.Width, isLocked: true);
+        DiagramModel before = Diagram;
+
+        // Act
+        _view.Drag(150, 150, 150, 200, alt: true);
+
+        // Assert
+        Assert.Same(before, Diagram);
+    }
+
+    [Fact]
+    public void Image_IsInsertedWithItsProportionsLocked_AndCanBeReset()
+    {
+        // Arrange
+        _store.Images["a.svg"] = Icon;
+        _view.ImagesToInsert = ["a.svg"];
+        _view.Command(DiagramCommand.InsertImage);
+        Assert.Equal(DiagramLock.AspectRatio, Diagram.Shapes[0].Locks);
+        Assert.True(_view.Properties!.HasImages);
+        _view.ToggleLock(DiagramLock.AspectRatio, isLocked: false);
+        _view.Drag(64, 64, 164, 94, alt: true);
+        Assert.Equal(Box(0, 0, 164, 94), Diagram.Shapes[0].Bounds);
+
+        // Act
+        _view.Command(DiagramCommand.ResetSize);
+
+        // Assert
+        Assert.Equal(Box(0, 0, 64, 64), Diagram.Shapes[0].Bounds);
+        _view.Command(DiagramCommand.Undo);
+        Assert.Equal(Box(0, 0, 164, 94), Diagram.Shapes[0].Bounds);
+    }
+
+    [Fact]
+    public void ResetSize_OfAShapeThatIsntAnImage_DoesNothing()
+    {
+        // Arrange
+        AddShape(100, 100);
+        DiagramModel before = Diagram;
+
+        // Act
+        _view.Command(DiagramCommand.ResetSize);
+
+        // Assert
+        Assert.Same(before, Diagram);
+        Assert.False(_view.Properties!.HasImages);
+    }
+
+    private void AddToCatalog(string path, string name, string group) =>
+        _catalog.Items.Add(new DiagramCatalogImageModel(path, name, group, DiagramSvgImage.Prepare(Icon)));
+
+    [Fact]
+    public void Catalog_AnImageInserted_GoesIntoIt_AndShowsFirst_AsUsedLast()
+    {
+        // Arrange
+        _store.Images[@"C:\icons\vm.svg"] = Icon;
+        _view.ImagesToInsert = [@"C:\icons\vm.svg"];
+
+        // Act
+        _view.Command(DiagramCommand.InsertImage);
+
+        // Assert: as read, not as made ready for the diagram
+        Assert.Equal([(Icon, "vm.svg")], _catalog.Added);
+        Assert.Equal(["Recent", "Inserted"], _view.Catalog!.Select(image => image.Group));
+        Assert.All(_view.Catalog!, image => Assert.Equal("vm.svg", image.Path));
+    }
+
+    [Fact]
+    public void Catalog_SvgTextPasted_GoesIntoIt()
+    {
+        // Arrange
+        _view.Clipboard = Banner;
+
+        // Act
+        _view.Command(DiagramCommand.Paste);
+
+        // Assert
+        Assert.Equal([(Banner, "pasted.svg")], _catalog.Added);
+    }
+
+    [Fact]
+    public void Catalog_AFileThatIsntAnImage_DoesntGoIntoIt()
+    {
+        // Arrange
+        _store.Images["notes.svg"] = "not markup";
+        _view.ImagesToInsert = ["notes.svg"];
+
+        // Act
+        _view.Command(DiagramCommand.InsertImage);
+
+        // Assert
+        Assert.Empty(_catalog.Added);
+    }
+
+    [Fact]
+    public void Catalog_ImagesCopiedIn_ShowWhenTheWindowIsBack_InTheirGroups()
+    {
+        // Arrange
+        AddToCatalog("Azure/Compute/vm.svg", "Virtual Machine", "Azure/Compute");
+        AddToCatalog("Azure/Web/app.svg", "App Service", "Azure/Web");
+        Assert.Empty(_view.Catalog!);
+        Assert.StartsWith("Images you insert show here", _view.CatalogEmptyText);
+
+        // Act
+        _view.ActivateWindow();
+        int shows = _view.CatalogShows;
+        _view.ActivateWindow();
+
+        // Assert: not again when nothing changed, so the panel keeps its place
+        Assert.Equal(["Azure/Compute", "Azure/Web"], _view.Catalog!.Select(image => image.Group));
+        Assert.Equal(shows, _view.CatalogShows);
+    }
+
+    [Fact]
+    public void Catalog_Choosing_InsertsItWhereTheMouseWas_WithItsProportionsLocked_AndMakesItRecent()
+    {
+        // Arrange
+        AddToCatalog("Azure/vm.svg", "Virtual Machine", "Azure");
+        _view.ActivateWindow();
+        _view.Hover(100, 100);
+
+        // Act
+        _view.ChooseCatalogImage("Azure/vm.svg");
+
+        // Assert
+        DiagramShapeModel image = Assert.Single(Diagram.Shapes);
+        Assert.Equal(Box(100, 100, 64, 64), image.Bounds);
+        Assert.Equal(DiagramLock.AspectRatio, image.Locks);
+        Assert.Equal(["Azure/vm.svg"], _catalog.RecentPaths);
+        Assert.Equal(("Recent", "Azure/vm.svg"), (_view.Catalog![0].Group, _view.Catalog[0].Path));
+    }
+
+    [Fact]
+    public void Catalog_Dropped_IsInsertedWhereItWasDropped()
+    {
+        // Arrange
+        AddToCatalog("vm.svg", "vm", "Inserted");
+        _view.ActivateWindow();
+
+        // Act
+        _view.DropCatalogImage(302, 199, "vm.svg");
+
+        // Assert
+        Assert.Equal(Box(300, 200, 64, 64), Assert.Single(Diagram.Shapes).Bounds);
+    }
+
+    [Fact]
+    public void Catalog_AnImageNotShown_IsntInserted()
+    {
+        // Arrange
+        AddToCatalog("vm.svg", "vm", "Inserted");
+
+        // Act: the panel hasn't shown it yet
+        _view.ChooseCatalogImage("vm.svg");
+
+        // Assert
+        Assert.Empty(Diagram.Shapes);
+    }
+
+    [Fact]
+    public void Catalog_Search_ShowsTheImagesWhoseNameOrGroupHasTheText_WithoutRecent()
+    {
+        // Arrange
+        AddToCatalog("Azure/Compute/vm.svg", "Virtual Machine", "Azure/Compute");
+        AddToCatalog("Azure/Web/app.svg", "App Service", "Azure/Web");
+        AddToCatalog("logo.svg", "logo", "Inserted");
+        _catalog.MarkUsed("logo.svg");
+
+        // Act / Assert
+        _view.SearchImages(" MACHINE ");
+        Assert.Equal(["Azure/Compute/vm.svg"], _view.Catalog!.Select(image => image.Path));
+
+        _view.SearchImages("azure");
+        Assert.Equal(2, _view.Catalog!.Count);
+
+        _view.SearchImages("nothing");
+        Assert.Empty(_view.Catalog!);
+        Assert.Equal("No image has \"nothing\".", _view.CatalogEmptyText);
+
+        _view.SearchImages(string.Empty);
+        Assert.Equal("Recent", _view.Catalog![0].Group);
+    }
+
+    [Fact]
+    public void Catalog_PanelHidden_IsRemembered_AndShowsNothingUntilShownAgain()
+    {
+        // Arrange
+        AddToCatalog("vm.svg", "vm", "Inserted");
+
+        // Act / Assert
+        _view.ToggleImagesPanel(false);
+        Assert.False(_settings.Saved[^1].IsImagesPanelVisible);
+
+        _view.ActivateWindow();
+        Assert.Empty(_view.Catalog!);
+
+        _view.ToggleImagesPanel(true);
+        Assert.Single(_view.Catalog!);
+    }
+
+    [Fact]
+    public void Catalog_Folder_IsOpened()
+    {
+        // Act
+        _view.RequestImagesFolder();
+
+        // Assert
+        Assert.Equal(_catalog.Folder, _view.OpenedFolder);
     }
 
     [Fact]
@@ -2619,6 +4139,95 @@ public class DiagramEditorPresenterTests
     }
 
     [Fact]
+    public void ExportPng_AsksWhereAndHowLarge_ThenExportsTheDiagram()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.PngToExport = new DiagramPngExportModel(@"C:\out\flow.png", 2);
+
+        // Act
+        _view.Command(DiagramCommand.ExportPng);
+
+        // Assert
+        Assert.Equal("Diagram.png", _view.SuggestedPngName);
+        Assert.Equal((@"C:\out\flow.png", Diagram, 2), _pngExporter.Exported);
+        Assert.True(_view.HasChanges);
+    }
+
+    [Fact]
+    public void ExportPng_ThatFails_SaysWhy()
+    {
+        // Arrange
+        _view.PngToExport = new DiagramPngExportModel(@"C:\out\flow.png", 1);
+        _pngExporter.Error = new IOException("The disk is full.");
+
+        // Act
+        _view.Command(DiagramCommand.ExportPng);
+
+        // Assert
+        Assert.Equal("Could not export flow.png: The disk is full.", _view.Error);
+    }
+
+    [Fact]
+    public void ExportPdf_AsksWhere_ThenExportsTheDiagram_WhichStaysUnsaved()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.PathToExport = @"C:\Diagrams\flow.pdf";
+
+        // Act
+        _view.Command(DiagramCommand.ExportPdf);
+
+        // Assert
+        Assert.Equal("Diagram.pdf", _view.SuggestedPdfName);
+        Assert.Equal(@"C:\Diagrams\flow.pdf", _exporter.ExportedPath);
+        Assert.Same(Diagram, _exporter.Exported);
+        Assert.Null(_store.SavedPath);
+        Assert.True(_view.HasChanges);
+        Assert.Equal(DiagramEditorPresenter.UntitledName, _view.DocumentName);
+    }
+
+    [Fact]
+    public void ExportPdf_OfASavedDiagram_SuggestsItsName()
+    {
+        // Arrange
+        _view.PathToSave = @"C:\Diagrams\flow.svg";
+        _view.Command(DiagramCommand.Save);
+
+        // Act
+        _view.Command(DiagramCommand.ExportPdf);
+
+        // Assert
+        Assert.Equal("flow.pdf", _view.SuggestedPdfName);
+        Assert.Equal("flow.svg", _view.DocumentName);
+    }
+
+    [Fact]
+    public void ExportPdf_WhenTheUserCancels_ExportsNothing()
+    {
+        // Act
+        _view.Command(DiagramCommand.ExportPdf);
+
+        // Assert
+        Assert.Null(_exporter.ExportedPath);
+        Assert.Null(_view.Error);
+    }
+
+    [Fact]
+    public void ExportPdf_WhenItFails_ShowsWhy()
+    {
+        // Arrange
+        _view.PathToExport = @"C:\Diagrams\flow.pdf";
+        _exporter.Error = new UnauthorizedAccessException("Access denied.");
+
+        // Act
+        _view.Command(DiagramCommand.ExportPdf);
+
+        // Assert
+        Assert.Equal("Could not export flow.pdf: Access denied.", _view.Error);
+    }
+
+    [Fact]
     public void Save_Again_DoesntAsk()
     {
         // Arrange
@@ -2903,6 +4512,89 @@ public class DiagramEditorPresenterTests
         public string? Version { get; set; } = "1";
 
         public string? VersionOf(string path) => Version;
+
+        public Dictionary<string, string> Images { get; } = [];
+
+        public string ReadImage(string path) =>
+            Images.TryGetValue(path, out string? image) ? image : throw new FileNotFoundException("It isn't there.");
+    }
+
+    /// <summary>A catalog in memory: what's added goes in at its top, as used last.</summary>
+    private sealed class FakeImageCatalog : IDiagramImageCatalog
+    {
+        public List<DiagramCatalogImageModel> Items { get; } = [];
+
+        public List<string> RecentPaths { get; } = [];
+
+        public List<(string Markup, string FileName)> Added { get; } = [];
+
+        public string Folder => @"C:\MyTools\config\images";
+
+        public void CreateFolder()
+        {
+        }
+
+        public IReadOnlyList<DiagramCatalogImageModel> Images() => [.. Items];
+
+        public IReadOnlyList<string> Recent() => [.. RecentPaths];
+
+        public void Add(string markup, string fileName)
+        {
+            Added.Add((markup, fileName));
+
+            if (Items.All(item => item.Path != fileName))
+            {
+                Items.Add(new DiagramCatalogImageModel(
+                    fileName,
+                    Path.GetFileNameWithoutExtension(fileName),
+                    FolderDiagramImageCatalog.InsertedGroup,
+                    DiagramSvgImage.Prepare(markup)));
+            }
+
+            MarkUsed(fileName);
+        }
+
+        public void MarkUsed(string path)
+        {
+            RecentPaths.Remove(path);
+            RecentPaths.Insert(0, path);
+        }
+    }
+
+    private sealed class FakePngExporter : IDiagramPngExporter
+    {
+        public (string Path, DiagramModel Diagram, int Scale)? Exported { get; private set; }
+
+        public Exception? Error { get; set; }
+
+        public void Export(string path, DiagramModel diagram, int scale)
+        {
+            if (Error is not null)
+            {
+                throw Error;
+            }
+
+            Exported = (path, diagram, scale);
+        }
+    }
+
+    private sealed class FakeExporter : IDiagramPdfExporter
+    {
+        public string? ExportedPath { get; private set; }
+
+        public DiagramModel? Exported { get; private set; }
+
+        public Exception? Error { get; set; }
+
+        public void Export(string path, DiagramModel diagram)
+        {
+            if (Error is not null)
+            {
+                throw Error;
+            }
+
+            (ExportedPath, Exported) = (path, diagram);
+        }
     }
 
     private sealed class FakeView : IDiagramEditorView
@@ -2914,6 +4606,8 @@ public class DiagramEditorPresenterTests
         public event EventHandler<DiagramPointerModel>? PointerReleased;
 
         public event EventHandler<DiagramPointerModel>? PointerDoubleClicked;
+
+        public event EventHandler<Point>? PointerRightClicked;
 
         public event EventHandler? PointerLeft;
 
@@ -2943,9 +4637,22 @@ public class DiagramEditorPresenterTests
 
         public event EventHandler<DiagramArrowHeads>? ArrowHeadsSelected;
 
+        public event EventHandler<DiagramLineDirection>? LineDirectionSelected;
+
+        public event EventHandler<DiagramTextAlignment>? TextAlignmentSelected;
+
+        public void SelectTextAlignment(DiagramTextAlignment alignment) =>
+            TextAlignmentSelected?.Invoke(this, alignment);
+
+        public event EventHandler<DiagramFilesDropModel>? FilesDropped;
+
         public event EventHandler<Rectangle>? BoundsEdited;
 
         public event EventHandler<int>? CornerRadiusEdited;
+
+        public event EventHandler<int>? BottomCornerRadiusEdited;
+
+        public event EventHandler<DiagramLockChoiceModel>? LockToggled;
 
         public event EventHandler<string>? TextEdited;
 
@@ -2954,6 +4661,51 @@ public class DiagramEditorPresenterTests
         public event EventHandler<CancelEventArgs>? Closing;
 
         public event EventHandler<bool>? PropertiesPanelToggled;
+
+        public event EventHandler<bool>? ImagesPanelToggled;
+
+        public event EventHandler<string>? ImageSearchChanged;
+
+        public event EventHandler<string>? CatalogImageChosen;
+
+        public event EventHandler<DiagramCatalogDropModel>? CatalogImageDropped;
+
+        public event EventHandler? ImagesFolderRequested;
+
+        public event EventHandler? WindowActivated;
+
+        public bool? ImagesPanelShown { get; private set; }
+
+        public IReadOnlyList<DiagramCatalogImageModel>? Catalog { get; private set; }
+
+        public string? CatalogEmptyText { get; private set; }
+
+        public int CatalogShows { get; private set; }
+
+        public string? OpenedFolder { get; private set; }
+
+        public void ShowImagesPanel(bool isVisible) => ImagesPanelShown = isVisible;
+
+        public void ShowCatalog(IReadOnlyList<DiagramCatalogImageModel> images, string emptyText)
+        {
+            (Catalog, CatalogEmptyText) = (images, emptyText);
+            CatalogShows++;
+        }
+
+        public void OpenFolder(string folder) => OpenedFolder = folder;
+
+        public void ToggleImagesPanel(bool isVisible) => ImagesPanelToggled?.Invoke(this, isVisible);
+
+        public void SearchImages(string text) => ImageSearchChanged?.Invoke(this, text);
+
+        public void ChooseCatalogImage(string path) => CatalogImageChosen?.Invoke(this, path);
+
+        public void DropCatalogImage(int x, int y, string path) =>
+            CatalogImageDropped?.Invoke(this, new DiagramCatalogDropModel(path, new Point(x, y)));
+
+        public void RequestImagesFolder() => ImagesFolderRequested?.Invoke(this, EventArgs.Empty);
+
+        public void ActivateWindow() => WindowActivated?.Invoke(this, EventArgs.Empty);
 
         public event EventHandler<DiagramWindowSizeModel>? WindowClosed;
 
@@ -2987,6 +4739,9 @@ public class DiagramEditorPresenterTests
         public DiagramArrowHeads ShownHeads { get; private set; }
 
         public bool CanUndo { get; private set; }
+
+        /// <summary>Where the last menu was shown, and what it could do.</summary>
+        public (Point Location, DiagramContextMenuModel Menu)? ContextMenu { get; private set; }
 
         public bool CanRedo { get; private set; }
 
@@ -3052,6 +4807,8 @@ public class DiagramEditorPresenterTests
             Release(x, y);
         }
 
+        public void RightClick(int x, int y) => PointerRightClicked?.Invoke(this, new Point(x, y));
+
         public void Wheel(int x, int y, float steps, bool control = false, bool shift = false) =>
             WheelTurned?.Invoke(this, new DiagramWheelModel(new Point(x, y), steps, control, shift));
 
@@ -3080,12 +4837,20 @@ public class DiagramEditorPresenterTests
 
         public void SelectHeads(DiagramArrowHeads heads) => ArrowHeadsSelected?.Invoke(this, heads);
 
+        public void SelectLineDirection(DiagramLineDirection direction) =>
+            LineDirectionSelected?.Invoke(this, direction);
+
         public void CommitText(string text) => TextCommitted?.Invoke(this, text);
 
         public void EditBounds(int x, int y, int width, int height) =>
             BoundsEdited?.Invoke(this, new Rectangle(x, y, width, height));
 
         public void EditCornerRadius(int radius) => CornerRadiusEdited?.Invoke(this, radius);
+
+        public void EditBottomCornerRadius(int radius) => BottomCornerRadiusEdited?.Invoke(this, radius);
+
+        public void ToggleLock(DiagramLock which, bool isLocked) =>
+            LockToggled?.Invoke(this, new DiagramLockChoiceModel(which, isLocked));
 
         public void EditText(string text) => TextEdited?.Invoke(this, text);
 
@@ -3120,6 +4885,8 @@ public class DiagramEditorPresenterTests
 
         public void ShowUndoRedo(bool canUndo, bool canRedo) => (CanUndo, CanRedo) = (canUndo, canRedo);
 
+        public void ShowContextMenu(Point location, DiagramContextMenuModel menu) => ContextMenu = (location, menu);
+
         public void ShowDocument(string name, bool hasChanges) => (DocumentName, HasChanges) = (name, hasChanges);
 
         public void ShowZoom(int percent) => ZoomPercent = percent;
@@ -3145,7 +4912,36 @@ public class DiagramEditorPresenterTests
             return PathToSave;
         }
 
+        public string? PathToExport { get; set; }
+
+        public string? SuggestedPdfName { get; private set; }
+
+        public DiagramPngExportModel? PngToExport { get; set; }
+
+        public string? SuggestedPngName { get; private set; }
+
+        public DiagramPngExportModel? AskExportPng(string suggestedFileName)
+        {
+            SuggestedPngName = suggestedFileName;
+
+            return PngToExport;
+        }
+
+        public string? AskExportPdfPath(string suggestedFileName)
+        {
+            SuggestedPdfName = suggestedFileName;
+
+            return PathToExport;
+        }
+
         public string? AskOpenPath() => PathToOpen;
+
+        public IReadOnlyList<string> ImagesToInsert { get; set; } = [];
+
+        public IReadOnlyList<string> AskImagePaths() => ImagesToInsert;
+
+        public void Drop(int x, int y, params string[] paths) =>
+            FilesDropped?.Invoke(this, new DiagramFilesDropModel(paths, new Point(x, y)));
 
         public DiagramSaveChoice AskSaveChanges(string name) => SaveChoice;
 

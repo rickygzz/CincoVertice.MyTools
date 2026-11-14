@@ -4,11 +4,16 @@ using CincoVertice.Common.Application.Scripting.Services;
 using CincoVertice.Common.Application.Setup;
 using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.MyTools.Ui.Calculator.Views;
+using CincoVertice.Common.Application.CodeStandard.Models;
+using CincoVertice.MyTools.Ui.CodeReview.Interfaces;
+using CincoVertice.MyTools.Ui.CodeReview.Services;
 using CincoVertice.MyTools.Ui.CodeReview.Views;
 using CincoVertice.MyTools.Ui.ConfigEditor.Interfaces;
 using CincoVertice.MyTools.Ui.ConfigEditor.Services;
 using CincoVertice.MyTools.Ui.Diagramming.Interfaces;
 using CincoVertice.MyTools.Ui.Diagramming.Services;
+using CincoVertice.MyTools.Ui.Help.Interfaces;
+using CincoVertice.MyTools.Ui.Help.Services;
 using CincoVertice.MyTools.Ui.Setup;
 using CincoVertice.MyTools.Ui.Shell.Interfaces;
 using CincoVertice.MyTools.Ui.Shell.Presenters;
@@ -18,12 +23,16 @@ using CincoVertice.MyTools.Ui.Snipping.Interfaces;
 using CincoVertice.MyTools.Ui.Snipping.Services;
 using CincoVertice.MyTools.Ui.Win.Calculator;
 using CincoVertice.MyTools.Ui.Win.Calculator.Actions;
+using CincoVertice.MyTools.Ui.Win.ColorPicker.Actions;
+using CincoVertice.MyTools.Ui.Win.ColorPicker.Services;
 using CincoVertice.MyTools.Ui.Win.CodeReview;
 using CincoVertice.MyTools.Ui.Win.CodeReview.Actions;
 using CincoVertice.MyTools.Ui.Win.CodeReview.Services;
 using CincoVertice.MyTools.Ui.Win.ConfigEditor.Services;
 using CincoVertice.MyTools.Ui.Win.Diagramming.Actions;
 using CincoVertice.MyTools.Ui.Win.Diagramming.Services;
+using CincoVertice.MyTools.Ui.Win.Help.Actions;
+using CincoVertice.MyTools.Ui.Win.Help.Services;
 using CincoVertice.MyTools.Ui.Win.Scripting.Actions;
 using CincoVertice.MyTools.Ui.Win.Scripting.Services;
 using CincoVertice.MyTools.Ui.Win.Shell;
@@ -32,6 +41,13 @@ using CincoVertice.MyTools.Ui.Win.Shell.Services;
 using CincoVertice.MyTools.Ui.Win.Shell.Services.Config;
 using CincoVertice.MyTools.Ui.Win.Snipping.Actions;
 using CincoVertice.MyTools.Ui.Win.Snipping.Services;
+using CincoVertice.MyTools.Ui.Win.Zones;
+using CincoVertice.MyTools.Ui.Win.Zones.Actions;
+using CincoVertice.MyTools.Ui.Win.Zones.Services;
+using CincoVertice.MyTools.Ui.Zones.Interfaces;
+using CincoVertice.MyTools.Ui.Zones.Presenters;
+using CincoVertice.MyTools.Ui.Zones.Services;
+using CincoVertice.MyTools.Ui.Zones.Views;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -59,7 +75,13 @@ public static class UiWinSetupExtensions
         services.AddSingleton<ITrayView>(sp => sp.GetRequiredService<TrayApplicationContext>());
 
         services.AddSingleton<MainForm>();
-        services.AddSingleton<CalculatorForm>();
+        services.AddSingleton(sp =>
+        {
+            var calculator = new CalculatorForm();
+            sp.GetRequiredService<HelpWindowService>().OpenOnF1(calculator, () => HelpTopics.Calculator);
+
+            return calculator;
+        });
         services.AddSingleton<ICalculatorView>(sp => sp.GetRequiredService<CalculatorForm>());
 
         services.AddSingleton<GlobalHotkeyService>();
@@ -81,11 +103,20 @@ public static class UiWinSetupExtensions
             UpdateCheckStartDelay));
         services.AddSingleton<AppIconService>();
         services.AddSingleton<MouseMoveSimulator>();
+        services.AddSingleton<AwakeKeeper>();
         services.AddSingleton<CodeReviewWindowService>();
         services.AddSingleton<CheckFolderAction>();
         services.AddSingleton<FixFolderAction>();
+
+        // Which fixers Fix folder runs, chosen in the tray menu
+        services.AddSingleton<IFixerSelectionStore>(_ => new JsonFileFixerSelectionStore(
+            Path.Combine(AppContext.BaseDirectory, "config", "fixers.json")));
+        services.AddSingleton(sp => new FixerSelection(
+            sp.GetRequiredService<IFixerSelectionStore>(),
+            CodeLanguageModel.All));
         services.AddSingleton<ShowCalculatorAction>();
         services.AddSingleton<ToggleActivityAction>();
+        services.AddSingleton<ToggleKeepAwakeAction>();
         services.AddSingleton<EditHotkeysAction>();
         services.AddSingleton<EditActivitySettingsAction>();
         services.AddSingleton<OpenScriptsFolderAction>();
@@ -96,26 +127,69 @@ public static class UiWinSetupExtensions
         services.AddSingleton<IEditableFileCatalog>(sp => new EditableFileCatalog(
             sp.GetRequiredService<HotkeyConfigService>(),
             sp.GetRequiredService<ActivitySettingsService>(),
+            sp.GetRequiredService<StartupConfigService>(),
+            sp.GetRequiredService<ZonesConfigService>(),
+            sp.GetRequiredService<RecordingSettingsService>(),
             () => sp.GetRequiredService<AppActionCatalog>().GetActions().ToList(),
             ScriptCatalog.FolderPath));
         services.AddSingleton<IEditableFileLanguage>(sp => new EditableFileLanguage(
             () => sp.GetRequiredService<AppActionCatalog>().GetActions().Select(action => action.Name).ToList()));
         services.AddSingleton<ConfigEditorWindowService>();
         services.AddSingleton<ScreenSnipper>();
+        services.AddSingleton<ITextRecognizer, WindowsTextRecognizer>();
         services.AddSingleton<ISnipEditorSettingsStore>(_ =>
             new JsonFileSnipEditorSettingsStore(SnipAndEditAction.SettingsFilePath));
         services.AddSingleton<SnipEditorWindowService>();
         services.AddSingleton<SnipRegionAction>();
         services.AddSingleton<SnipAndEditAction>();
+        services.AddSingleton<SnipTextAction>();
+        services.AddSingleton(_ => new RecordingSettingsService(RecordingSettingsService.DefaultFilePath));
+        services.AddSingleton<RecordScreenAction>();
+        services.AddSingleton<ScreenColorPicker>();
+        services.AddSingleton<ColorWindowService>();
+        services.AddSingleton<PickColorAction>();
         services.AddSingleton<IDiagramFileStore, SvgDiagramFileStore>();
+        services.AddSingleton<IDiagramTextOutliner, GdiTextOutliner>();
+        services.AddSingleton<IDiagramImageRasterizer, Direct2DImageRasterizer>();
+        services.AddSingleton<IDiagramImageCatalog>(_ =>
+            new FolderDiagramImageCatalog(OpenDiagramEditorAction.ImagesFolder));
+        services.AddSingleton<IDiagramPdfExporter, PdfDiagramExporter>();
+        services.AddSingleton<IDiagramPngExporter, PngDiagramExporter>();
         services.AddSingleton<IDiagramEditorSettingsStore>(_ =>
             new JsonFileDiagramEditorSettingsStore(OpenDiagramEditorAction.SettingsFilePath));
         services.AddSingleton(_ => RobotoFontInstaller.ForCurrentUser());
         services.AddSingleton<OpenDiagramEditorAction>();
 
+        // Window zones: the drag watcher is started on the UI thread by Program
+        services.AddSingleton(sp => new ZonesConfigService(
+            ZonesConfigService.DefaultFilePath,
+            sp.GetRequiredService<TrayNotificationService>()));
+        services.AddSingleton<IZoneLayoutSource>(sp => sp.GetRequiredService<ZonesConfigService>());
+        services.AddSingleton<IZoneLayoutStore>(sp => sp.GetRequiredService<ZonesConfigService>());
+        services.AddSingleton<ZoneEditorWindowService>();
+        services.AddSingleton<IZoneDesktop, DesktopZones>();
+        services.AddSingleton<WindowDragWatcher>();
+        services.AddSingleton<IWindowDragSource>(sp => sp.GetRequiredService<WindowDragWatcher>());
+        services.AddSingleton<ZoneOverlayForm>();
+        services.AddSingleton<IZoneOverlayView>(sp => sp.GetRequiredService<ZoneOverlayForm>());
+        services.AddSingleton<ZoneDragPresenter>();
+        services.AddSingleton<ZoneMover>();
+        services.AddSingleton<MoveToZoneAction>();
+        services.AddSingleton<MoveToNextZoneAction>();
+        services.AddSingleton<MoveToPreviousZoneAction>();
+        services.AddSingleton<EditZonesAction>();
+
+        // The user guide, docs\user-guide next to the exe
+        services.AddSingleton<IHelpPageStore>(_ => new HelpPageStore(HelpPageStore.DefaultFolder));
+        services.AddSingleton<IHelpSettingsStore>(_ =>
+            new JsonFileHelpSettingsStore(HelpWindowService.SettingsFilePath));
+        services.AddSingleton<HelpWindowService>();
+        services.AddSingleton<ShowHelpAction>();
+
         // Every action can be bound to a shortcut in hotkeys.cfg; same instances as above
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ShowCalculatorAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ToggleActivityAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ToggleKeepAwakeAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<CheckFolderAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<FixFolderAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<EditHotkeysAction>());
@@ -124,7 +198,15 @@ public static class UiWinSetupExtensions
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<EditScriptsAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<SnipRegionAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<SnipAndEditAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<SnipTextAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<RecordScreenAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<PickColorAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<MoveToZoneAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<MoveToNextZoneAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<MoveToPreviousZoneAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<EditZonesAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<OpenDiagramEditorAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ShowHelpAction>());
 
         // The built-in actions above, plus one per script in config\scripts, read again on every hotkey reload
         services.AddSingleton(_ => new ScriptEngine(
@@ -134,10 +216,16 @@ public static class UiWinSetupExtensions
             sp.GetServices<IAppAction>(),
             sp.GetRequiredService<ScriptEngine>(),
             sp.GetRequiredService<TrayNotificationService>(),
+            sp.GetRequiredService<ZoneMover>(),
             ScriptCatalog.FolderPath));
 
         services.AddSingleton(_ => new HotkeyConfigService(HotkeyConfigService.DefaultFilePath));
         services.AddSingleton(_ => new ActivitySettingsService(ActivitySettingsService.DefaultFilePath));
+        services.AddSingleton(_ => new StartupConfigService(StartupConfigService.DefaultFilePath));
+        services.AddSingleton(sp => new StartupActionsService(
+            sp.GetRequiredService<StartupConfigService>(),
+            () => sp.GetRequiredService<AppActionCatalog>().GetActions().ToList(),
+            sp.GetRequiredService<TrayNotificationService>()));
         services.AddSingleton(_ => new HotkeyFilesWatcher(
             HotkeyConfigService.DefaultFilePath,
             ScriptCatalog.FolderPath));

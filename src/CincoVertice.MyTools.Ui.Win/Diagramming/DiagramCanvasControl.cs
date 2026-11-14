@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Win.Diagramming;
+﻿namespace CincoVertice.MyTools.Ui.Win.Diagramming;
 
 /// <summary>
 ///     The surface a diagram is drawn on: double buffered so it doesn't flicker, and taking the arrow keys, which would

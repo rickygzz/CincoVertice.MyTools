@@ -1,8 +1,9 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Drawing;
 using CincoVertice.MyTools.Ui.Snipping.Interfaces;
 using CincoVertice.MyTools.Ui.Snipping.Models;
 using CincoVertice.MyTools.Ui.Snipping.Presenters;
+using CincoVertice.MyTools.Ui.Snipping.Services;
 using CincoVertice.MyTools.Ui.Snipping.Views;
 using Xunit;
 
@@ -15,11 +16,12 @@ public class SnipEditorPresenterTests
 
     private readonly FakeSnipEditorView _view = new();
     private readonly FakeSettingsStore _store = new();
+    private readonly FakeTextRecognizer _recognizer = new();
     private readonly SnipEditorPresenter _presenter;
 
     public SnipEditorPresenterTests()
     {
-        _presenter = new SnipEditorPresenter(_view, _time, _store);
+        _presenter = new SnipEditorPresenter(_view, _time, _store, _recognizer);
         _presenter.Start();
     }
 
@@ -166,7 +168,7 @@ public class SnipEditorPresenterTests
         var view = new FakeSnipEditorView();
 
         // Act
-        new SnipEditorPresenter(view, _time, store).Start();
+        new SnipEditorPresenter(view, _time, store, _recognizer).Start();
 
         // Assert
         Assert.Equal([Color.FromArgb(255, 1, 2, 3), Color.FromArgb(255, 4, 5, 6)], view.CustomColors);
@@ -206,7 +208,7 @@ public class SnipEditorPresenterTests
         var view = new FakeSnipEditorView();
 
         // Act
-        new SnipEditorPresenter(view, _time, store).Start();
+        new SnipEditorPresenter(view, _time, store, _recognizer).Start();
 
         // Assert
         Assert.Equal((SnipTool.Highlighter, 24, 50), (view.Tool, view.Size, view.Transparency));
@@ -227,7 +229,7 @@ public class SnipEditorPresenterTests
             },
             []));
         var view = new FakeSnipEditorView();
-        var presenter = new SnipEditorPresenter(view, _time, store);
+        var presenter = new SnipEditorPresenter(view, _time, store, _recognizer);
         presenter.Start();
 
         // Assert: the pen at its default size and color
@@ -402,7 +404,7 @@ public class SnipEditorPresenterTests
         // Act
         _view.SelectArrowHeads(SnipArrowHeads.Both);
         var view = new FakeSnipEditorView();
-        new SnipEditorPresenter(view, _time, new FakeSettingsStore(_store.Saved[^1])).Start();
+        new SnipEditorPresenter(view, _time, new FakeSettingsStore(_store.Saved[^1]), _recognizer).Start();
 
         // Assert
         Assert.Equal(SnipArrowHeads.Both, view.ArrowHeads);
@@ -420,7 +422,7 @@ public class SnipEditorPresenterTests
         var view = new FakeSnipEditorView();
 
         // Act
-        new SnipEditorPresenter(view, _time, store).Start();
+        new SnipEditorPresenter(view, _time, store, _recognizer).Start();
 
         // Assert
         Assert.Equal(SnipArrowHeads.End, view.ArrowHeads);
@@ -589,6 +591,69 @@ public class SnipEditorPresenterTests
 
         // Assert
         Assert.Equal(2, _view.CopyCount);
+    }
+
+    [Fact]
+    public void CopyText_CopiesTheLinesReadFromTheImageShown_AsOneText_AndSaysHowMany()
+    {
+        // Arrange
+        _recognizer.Lines = Task.FromResult(Read("Hello", "world"));
+
+        // Act
+        _view.CopyText();
+
+        // Assert
+        Assert.Same(_view.RenderedImage, Assert.Single(_recognizer.Images));
+        Assert.Equal("Hello" + Environment.NewLine + "world", _view.CopiedText);
+        Assert.Equal("Copied 2 lines of text.", _view.Notice);
+        Assert.Equal(1, _view.CopyCount);
+    }
+
+    [Fact]
+    public void CopyText_WithNoTextInTheSnip_SaysSo_AndCopiesNothing()
+    {
+        // Act
+        _view.CopyText();
+
+        // Assert
+        Assert.Null(_view.CopiedText);
+        Assert.Equal(RecognizedText.NoneFoundMessage, _view.Notice);
+    }
+
+    [Fact]
+    public void CopyText_WhenNoTextCanBeRead_SaysWhy()
+    {
+        // Arrange
+        _recognizer.Lines = Task.FromException<IReadOnlyList<RecognizedLineModel>>(new TextRecognitionException("No language."));
+
+        // Act
+        _view.CopyText();
+
+        // Assert
+        Assert.Null(_view.CopiedText);
+        Assert.Equal("No language.", _view.Notice);
+    }
+
+    [Fact]
+    public void CopyText_AgainWhileReading_ReadsOnce()
+    {
+        // Arrange
+        var reading = new TaskCompletionSource<IReadOnlyList<RecognizedLineModel>>();
+        _recognizer.Lines = reading.Task;
+        _view.CopyText();
+
+        // Act
+        _view.CopyText();
+        reading.SetResult(Read("One"));
+
+        // Assert
+        Assert.Single(_recognizer.Images);
+        Assert.Equal("One", _view.CopiedText);
+        Assert.Equal("Copied 1 line of text.", _view.Notice);
+
+        // And once read, it can be asked again
+        _view.CopyText();
+        Assert.Equal(2, _recognizer.Images.Count);
     }
 
     [Theory]
@@ -1219,7 +1284,7 @@ public class SnipEditorPresenterTests
             CornerRadius: saved);
 
         // Act
-        new SnipEditorPresenter(view, _time, new FakeSettingsStore(settings)).Start();
+        new SnipEditorPresenter(view, _time, new FakeSettingsStore(settings), _recognizer).Start();
 
         // Assert
         Assert.Equal(expected, view.CornerRadius);
@@ -3001,6 +3066,128 @@ public class SnipEditorPresenterTests
         }
     }
 
+    private List<EmojiAnnotationModel> Emojis => [.. _presenter.Annotations.OfType<EmojiAnnotationModel>()];
+
+    [Fact]
+    public void PickingAnEmoji_TurnsToTheEmojiTool_WithItsSizes_AndNoColor()
+    {
+        // Act
+        _view.SelectEmoji("👍");
+
+        // Assert
+        Assert.Equal(SnipTool.Emoji, _view.Tool);
+        Assert.Equal("👍", _view.Emoji);
+        Assert.False(_view.ColorChoiceVisible);
+        Assert.Equal(SnipEditorPresenter.EmojiSizes, _view.Sizes);
+
+        // And another tool hides the emoji and shows the color again
+        _view.SelectTool(SnipTool.Pen);
+        Assert.Null(_view.Emoji);
+        Assert.True(_view.ColorChoiceVisible);
+    }
+
+    [Fact]
+    public void AClickWithTheEmojiTool_DropsTheEmojiChosen_ThereAtTheToolsSize()
+    {
+        // Arrange
+        _view.SelectEmoji("🔥");
+        _view.SelectSize(64);
+
+        // Act
+        Click(120, 80);
+
+        // Assert
+        EmojiAnnotationModel emoji = Assert.Single(Emojis);
+        Assert.Equal(new Point(120, 80), emoji.Center);
+        Assert.Equal("🔥", emoji.Emoji);
+        Assert.Equal(64, emoji.Size);
+    }
+
+    [Fact]
+    public void TheRecentEmojis_AreTheTenDroppedLast_MostRecentFirst_EachOnce()
+    {
+        // Arrange: twelve different emojis, then the first again
+        string[] used = ["😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "🙂", "😉", "😊", "😇", "😀"];
+
+        // Act
+        foreach (string emoji in used)
+        {
+            _view.SelectEmoji(emoji);
+            Click(100, 100);
+        }
+
+        // Assert
+        Assert.Equal(["😀", "😇", "😊", "😉", "🙂", "🤣", "😂", "😅", "😆", "😁"], _view.RecentEmojis);
+    }
+
+    [Fact]
+    public void PickingAnEmoji_WithoutDroppingIt_DoesntMakeItRecent()
+    {
+        // Act
+        _view.SelectEmoji("👀");
+
+        // Assert
+        Assert.Empty(_view.RecentEmojis);
+    }
+
+    [Fact]
+    public void TheEmojiChosen_AndTheRecentOnes_AreSaved_ForTheNextEditor()
+    {
+        // Arrange
+        _view.SelectEmoji("✅");
+        Click(100, 100);
+        _view.SelectEmoji("❌");
+
+        // Act
+        SnipEditorSettingsModel saved = _store.Saved[^1];
+        var view = new FakeSnipEditorView();
+        new SnipEditorPresenter(view, _time, new FakeSettingsStore(saved), _recognizer).Start();
+
+        // Assert
+        Assert.Equal("❌", saved.Emoji);
+        Assert.Equal(["✅"], saved.RecentEmojis);
+        Assert.Equal(["✅"], view.RecentEmojis);
+        Assert.Equal("❌", view.Emoji);
+    }
+
+    [Fact]
+    public void PickingAnEmoji_WithAnEmojiSelected_ChangesIt()
+    {
+        // Arrange
+        _view.SelectEmoji("👍");
+        Click(100, 100);
+        _view.SelectTool(SnipTool.Select);
+        Click(100, 100);
+
+        // Act
+        _view.SelectEmoji("👎");
+
+        // Assert
+        Assert.Equal("👎", Assert.Single(Emojis).Emoji);
+        Assert.Equal(SnipTool.Select, _view.Tool);
+        Assert.Equal("👎", _view.Emoji);
+        Assert.False(_view.ColorChoiceVisible);
+    }
+
+    [Fact]
+    public void AnEmojiSelected_IsScaledSquare_AroundItsMiddle()
+    {
+        // Arrange
+        _view.SelectEmoji("👍");
+        _view.SelectSize(48);
+        Click(100, 100);
+        _view.SelectTool(SnipTool.Select);
+        Click(100, 100);
+
+        // Act
+        _view.SelectSize(96);
+
+        // Assert
+        EmojiAnnotationModel emoji = Assert.Single(Emojis);
+        Assert.Equal(96, emoji.Size);
+        Assert.Equal(new Point(100, 100), emoji.Center);
+    }
+
     [Fact]
     public void Step_EachClickAddsTheNextNumber_WhereItWasClicked()
     {
@@ -3340,7 +3527,7 @@ public class SnipEditorPresenterTests
             HideWhileSnipping: false);
 
         // Act
-        new SnipEditorPresenter(view, _time, new FakeSettingsStore(settings)).Start();
+        new SnipEditorPresenter(view, _time, new FakeSettingsStore(settings), _recognizer).Start();
 
         // Assert
         Assert.False(view.HidesWhileSnipping);
@@ -3834,7 +4021,7 @@ public class SnipEditorPresenterTests
             TextOutline: new SnipTextOutlineModel(saved, Color.Empty));
 
         // Act
-        new SnipEditorPresenter(view, _time, new FakeSettingsStore(settings)).Start();
+        new SnipEditorPresenter(view, _time, new FakeSettingsStore(settings), _recognizer).Start();
 
         // Assert: an unknown color keeps the default too
         Assert.Equal(new SnipTextOutlineModel(expected, Solid(Color.White)), view.TextOutline);
@@ -3853,6 +4040,25 @@ public class SnipEditorPresenterTests
         public SnipEditorSettingsModel? Load() => loaded;
 
         public void Save(SnipEditorSettingsModel settings) => Saved.Add(settings);
+    }
+
+    /// <summary>Lines of one word each, all as far left.</summary>
+    private static IReadOnlyList<RecognizedLineModel> Read(params string[] lines) =>
+        [.. lines.Select(line => new RecognizedLineModel([new RecognizedWordModel(line, 0, line.Length * 8)]))];
+
+    private sealed class FakeTextRecognizer : ITextRecognizer
+    {
+        public Task<IReadOnlyList<RecognizedLineModel>> Lines { get; set; } =
+            Task.FromResult<IReadOnlyList<RecognizedLineModel>>([]);
+
+        public List<byte[]> Images { get; } = [];
+
+        public Task<IReadOnlyList<RecognizedLineModel>> ReadLinesAsync(byte[] image)
+        {
+            Images.Add(image);
+
+            return Lines;
+        }
     }
 
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
@@ -3883,6 +4089,8 @@ public class SnipEditorPresenterTests
         public event EventHandler<SnipTool>? ToolSelected;
 
         public event EventHandler<Color>? ColorSelected;
+
+        public event EventHandler<string>? EmojiSelected;
 
         public event EventHandler? MoreColorsRequested;
 
@@ -3993,6 +4201,8 @@ public class SnipEditorPresenterTests
 
         public event EventHandler? CopyRequested;
 
+        public event EventHandler? CopyTextRequested;
+
         public event EventHandler? SaveRequested;
 
         public SnipTool Tool { get; private set; }
@@ -4038,6 +4248,12 @@ public class SnipEditorPresenterTests
 
         public int CopyCount { get; private set; }
 
+        public byte[] RenderedImage { get; } = [1, 2, 3];
+
+        public string? CopiedText { get; private set; }
+
+        public string? Notice { get; private set; }
+
         /// <summary>What AskSavePath returns; null as if the user cancelled.</summary>
         public string? SavePath { get; set; }
 
@@ -4054,6 +4270,8 @@ public class SnipEditorPresenterTests
         public void SelectTool(SnipTool tool) => ToolSelected?.Invoke(this, tool);
 
         public void SelectColor(Color color) => ColorSelected?.Invoke(this, color);
+
+        public void SelectEmoji(string emoji) => EmojiSelected?.Invoke(this, emoji);
 
         public void RequestMoreColors() => MoreColorsRequested?.Invoke(this, EventArgs.Empty);
 
@@ -4077,6 +4295,8 @@ public class SnipEditorPresenterTests
         public void Redo() => RedoRequested?.Invoke(this, EventArgs.Empty);
 
         public void Copy() => CopyRequested?.Invoke(this, EventArgs.Empty);
+
+        public void CopyText() => CopyTextRequested?.Invoke(this, EventArgs.Empty);
 
         public void Save() => SaveRequested?.Invoke(this, EventArgs.Empty);
 
@@ -4117,6 +4337,20 @@ public class SnipEditorPresenterTests
         public bool DrawingChoicesVisible { get; private set; }
 
         public void ShowDrawingChoices(bool isVisible) => DrawingChoicesVisible = isVisible;
+
+        public bool ColorChoiceVisible { get; private set; } = true;
+
+        public IReadOnlyList<string> RecentEmojis { get; private set; } = [];
+
+        public string? Emoji { get; private set; }
+
+        public void ShowColorChoice(bool isVisible) => ColorChoiceVisible = isVisible;
+
+        public void ShowEmojis(IReadOnlyList<string> recent, string? current)
+        {
+            RecentEmojis = recent;
+            Emoji = current;
+        }
 
         public void ShowTextOutline(IReadOnlyList<int> widths, SnipTextOutlineModel? outline) =>
             (TextOutlineWidths, TextOutline) = (widths, outline);
@@ -4210,6 +4444,12 @@ public class SnipEditorPresenterTests
         }
 
         public void CopyImageToClipboard() => CopyCount++;
+
+        public byte[] RenderImagePng() => RenderedImage;
+
+        public void CopyTextToClipboard(string text) => CopiedText = text;
+
+        public void ShowNotice(string message) => Notice = message;
 
         public string? AskSavePath(string suggestedFileName)
         {

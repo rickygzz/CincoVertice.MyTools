@@ -6,8 +6,9 @@ using CincoVertice.MyTools.Ui.Win.Shell.Services.Config;
 namespace CincoVertice.MyTools.Ui.Win.Shell.Actions;
 
 /// <summary>
-///     Turns activity on or off, e.g. from the global hotkey: starts or stops the mouse move timer, and shows the
-///     red icon while it runs.
+///     Turns the mouse mover on or off, e.g. from the global hotkey, and shows the red icon while it's on: it moves the
+///     mouse while the user is away, as activity.cfg says. Keeping the computer awake is separate
+///     (<see cref="ToggleKeepAwakeAction"/>).
 /// </summary>
 public sealed class ToggleActivityAction : IAppAction
 {
@@ -32,35 +33,38 @@ public sealed class ToggleActivityAction : IAppAction
 
     public string? DefaultShortcut => "Ctrl+Alt+M";
 
+    /// <summary>Whether the mouse mover is on.</summary>
+    public bool IsOn => _mouseMoveSimulator.IsRunning;
+
     public Task ExecuteAsync()
     {
-        if (_mouseMoveSimulator.IsRunning)
+        if (IsOn)
         {
             _mouseMoveSimulator.Stop();
         }
         else
         {
-            ApplySettings();
-            _mouseMoveSimulator.Start();
+            TurnOn();
         }
 
-        _appIconService.ShowActive(_mouseMoveSimulator.IsRunning);
+        _appIconService.ShowActive(IsOn);
 
         return Task.CompletedTask;
     }
 
     /// <summary>
-    ///     Reads activity.cfg on every start, so edits apply the next time activity is turned on.
+    ///     Reads activity.cfg on every start, so edits apply the next time the mouse mover is turned on.
     /// </summary>
-    private void ApplySettings()
+    private void TurnOn()
     {
         ActivitySettingsResultModel result = _settingsService.Load();
-
-        _mouseMoveSimulator.Settings = result.Settings;
 
         if (result.Problems.Count > 0)
         {
             _notifications.Show("activity.cfg", string.Join(Environment.NewLine, result.Problems), ToolTipIcon.Warning);
         }
+
+        _mouseMoveSimulator.Settings = result.Settings;
+        _mouseMoveSimulator.Start();
     }
 }

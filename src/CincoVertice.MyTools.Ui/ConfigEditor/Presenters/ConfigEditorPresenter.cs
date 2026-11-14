@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using CincoVertice.MyTools.Ui.ConfigEditor.Interfaces;
 using CincoVertice.MyTools.Ui.ConfigEditor.Models;
 using CincoVertice.MyTools.Ui.ConfigEditor.Views;
@@ -43,6 +43,9 @@ public sealed class ConfigEditorPresenter
         _view.ViewActivated += View_ViewActivated;
         _view.CloseRequested += View_CloseRequested;
     }
+
+    /// <summary>The file shown; null before one is.</summary>
+    public string? FilePath => _file?.Path;
 
     private bool IsModified => _saved is not null && _view.CodeText != _saved.Text;
 

@@ -233,11 +233,192 @@ public class CalculatorPresenterTests
         _view.RequestEvaluate();
     }
 
+    [Fact]
+    public void Suggestions_ATimeThenPlaces_WriteTheConversion_WhichCalculates()
+    {
+        // Arrange: in winter, so Mexico City is UTC-6
+        var view = new FakeCalculatorView();
+        var winter = new DateTime(2026, 1, 15, 12, 0, 0);
+        var presenter = new CalculatorPresenter(view, new ExpressionCalculator(), () => winter);
+
+        // Act / Assert: the first place writes "to", so the second follows
+        view.Type("10:30 ");
+        Assert.Equal("Mexico City (UTC-6)", view.Suggestions![0]);
+
+        view.Choose(0);
+        Assert.Equal(("10:30 Mexico City to ", 21), (view.Expression, view.Caret));
+        Assert.Contains("India (UTC+5:30)", view.Suggestions!);
+
+        view.Type("10:30 Mexico City to ind");
+        Assert.Equal(["India (UTC+5:30)"], view.Suggestions);
+
+        view.Choose(0);
+        Assert.Equal("10:30 Mexico City to India", view.Expression);
+
+        presenter.Evaluate();
+        Assert.Null(view.Suggestions);
+        Assert.Null(view.Error);
+    }
+
+    [Fact]
+    public void Suggestions_ANumberThenUnits_WriteTheConversion_WithUnitsOfTheSameKind()
+    {
+        // Act / Assert
+        _view.Type("10 ");
+        Assert.Contains("km (kilometer, length)", _view.Suggestions!);
+        Assert.Contains("kg (kilogram, mass)", _view.Suggestions!);
+
+        _view.Choose(_view.Suggestions!.ToList().IndexOf("km (kilometer, length)"));
+        Assert.Equal("10 km to ", _view.Expression);
+        Assert.All(_view.Suggestions!, item => Assert.EndsWith("length)", item));
+        Assert.DoesNotContain("km (kilometer, length)", _view.Suggestions!);
+
+        _view.Type("10 km to mi");
+        _view.Choose(0);
+        Assert.Equal("10 km to mi", _view.Expression);
+    }
+
+    [Fact]
+    public void Suggestions_AChoiceWhenNoneAreShown_DoesNothing()
+    {
+        // Arrange
+        _view.Type("2+2");
+
+        // Act
+        _view.Choose(0);
+
+        // Assert
+        Assert.Null(_view.Suggestions);
+        Assert.Equal("2+2", _view.Expression);
+    }
+
+    private void Enter(string expression)
+    {
+        _view.Type(expression);
+        _view.RequestEvaluate();
+    }
+
+    [Fact]
+    public void Recall_UpGoesBackThroughTheLinesEntered_AndDownPastTheNewestBringsBackWhatWasTyped()
+    {
+        // Arrange: a line that failed comes back too, to be fixed; the same line twice is there once
+        Enter("1+1");
+        Enter("2+");
+        Enter("2+");
+        _view.Type("3");
+
+        // Act / Assert
+        _view.Recall(-1);
+        Assert.Equal(("2+", 2), (_view.Expression, _view.Caret));
+        _view.Recall(-1);
+        Assert.Equal("1+1", _view.Expression);
+        _view.Recall(-1);
+        Assert.Equal("1+1", _view.Expression);
+        _view.Recall(1);
+        Assert.Equal("2+", _view.Expression);
+        _view.Recall(1);
+        Assert.Equal("3", _view.Expression);
+        _view.Recall(1);
+        Assert.Equal("3", _view.Expression);
+    }
+
+    [Fact]
+    public void Recall_ALineBroughtBack_OffersNoSuggestions_AndTypingStartsOver()
+    {
+        // Arrange
+        Enter("10 km to mi");
+        Enter("2+2");
+
+        // Act / Assert: else Up would go through the suggestions
+        _view.Recall(-1);
+        _view.Recall(-1);
+        Assert.Equal("10 km to mi", _view.Expression);
+        Assert.Null(_view.Suggestions);
+
+        _view.Type("5");
+        _view.Recall(-1);
+        Assert.Equal("2+2", _view.Expression);
+    }
+
+    [Fact]
+    public void Recall_WithNothingEntered_DoesNothing()
+    {
+        // Arrange
+        _view.Type("7");
+
+        // Act
+        _view.Recall(-1);
+        _view.Recall(1);
+
+        // Assert
+        Assert.Equal("7", _view.Expression);
+    }
+
+    [Fact]
+    public void Names_TheLastAnswerAndNamesGiven_AreKeptForTheNextLines()
+    {
+        // Act / Assert
+        Enter("2+3");
+        Enter("ans * 2");
+        Assert.Equal("10", _view.Result);
+
+        Enter("x = 4");
+        Assert.Equal("4", _view.Result);
+
+        Enter("x * ans");
+        Assert.Equal("16", _view.Result);
+
+        // A time in another place has no value, so the last answer stays
+        Enter("10:00 to UTC");
+        Enter("ans");
+        Assert.Equal("16", _view.Result);
+    }
+
+    [Fact]
+    public void Names_ALineThatFails_LeavesThemAsTheyWere()
+    {
+        // Arrange
+        Enter("x = 4");
+
+        // Act
+        Enter("x = 1/0");
+        Enter("x");
+
+        // Assert
+        Assert.Equal("4", _view.Result);
+    }
+
     private sealed class FakeCalculatorView : ICalculatorView
     {
         public event EventHandler? EvaluateRequested;
 
         public event EventHandler? ToggleHistoryRequested;
+
+        public event EventHandler? ExpressionChanged;
+
+        public event EventHandler<int>? SuggestionChosen;
+
+        public event EventHandler<int>? RecallRequested;
+
+        public void Recall(int direction) => RecallRequested?.Invoke(this, direction);
+
+        public int Caret { get; set; }
+
+        public IReadOnlyList<string>? Suggestions { get; private set; }
+
+        public void Type(string expression) => SetExpression(expression, expression.Length);
+
+        public void Choose(int index) => SuggestionChosen?.Invoke(this, index);
+
+        public void SetExpression(string expression, int caret)
+        {
+            (Expression, Caret) = (expression, caret);
+            ExpressionChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        public void ShowSuggestions(IReadOnlyList<string> items) => Suggestions = items;
+
+        public void HideSuggestions() => Suggestions = null;
 
         public List<string> Calls { get; } = [];
 

@@ -4,10 +4,11 @@
 
 ### What you get
 
-The release zip contains two things:
+The release zip contains three things:
 
 - `CincoVertice.MyTools.Ui.Win.exe`, the application. It is self-contained, so you do not need to install any .NET runtime.
-- A `licenses` folder with `Roboto-OFL.txt`, the license for the Roboto font that is built into the program. Keep it next to the exe.
+- A `licenses` folder with `Roboto-OFL.txt`, the license for the Roboto font that is built into the program, and `Vortice-MIT.txt`, the license for the libraries that draw emoji in color. Keep it next to the exe.
+- A `docs\user-guide` folder with this guide, as Markdown files. Start with `README.md`. They open in any text editor, and read best in one that shows Markdown, such as Visual Studio Code.
 
 ### First run
 
@@ -48,7 +49,7 @@ Only one copy runs at a time. If you start the exe while it is already running, 
 
 ## The Tray Icon and Menu
 
-**Tray icon.** The tooltip is "My Tools". Double-click it to open the main window (see below). The icon turns **red** while the mouse mover is on.
+**Tray icon.** The tooltip is "My Tools", followed by "Mouse mover on" and "Keeping awake" while those are on. Double-click it to open the main window (see below). The icon turns **red** while the mouse mover is on.
 
 **Right-click menu**, in order:
 
@@ -57,22 +58,25 @@ Only one copy runs at a time. If you start the exe while it is already running, 
 | **Open** (bold) | Shows the main window |
 | **Diagram editor** | Opens a new diagram editor window |
 | **Check folder for standard...** | Checks a folder of C# and JavaScript files |
-| **Fix folder for standard...** | Rewrites a folder of C# and JavaScript files to match the standard |
+| **Fix folder for standard** | Submenu: **Fix a folder...** rewrites a folder of C# and JavaScript files to match the standard, with the fixers ticked below it. Click a fixer to turn it on or off. **Line endings** and **Encoding** convert every file to CRLF, LF or CR, and to UTF-8 with or without a BOM. See [Choosing the fixers](09-code-review.md#choosing-the-fixers). |
 | (separator) | |
-| **Scripts** | Submenu: one item per script (click to run it), then **Edit scripts...** and **Open scripts folder**. A separator appears between the scripts and these two items only when at least one script exists. |
+| **Actions** | Submenu: every action My Tools has, by name, such as "Snip and edit" or "Move to next zone", with its hotkey on the right when it has one. Click one to run it, whether or not it has a hotkey. Hover over one to see its name in `hotkeys.cfg`, to give it a hotkey there. It is refreshed when the hotkeys reload. |
+| **Scripts** | Submenu: one item per script (click to run it), with its hotkey when it has one, then **Edit scripts...** and **Open scripts folder**. A separator appears between the scripts and these two items only when at least one script exists. |
 | **Hotkey problems (N)...** | Appears only while some hotkeys are off. Shows all the problems. |
 | **Edit hotkeys...** | Opens `hotkeys.cfg` in the config editor |
 | **Reload hotkeys** | Re-reads `hotkeys.cfg` and the scripts folder |
 | **Edit activity settings...** | Opens `activity.cfg` in the config editor |
+| **Edit window zones...** | Opens the window zones editor. See [Window Zones](13-window-zones.md#the-window-zones-editor). |
 | (separator) | |
 | **Start with Windows** | A checkable item. See below. |
 | **Check for updates at start** | A checkable item, off at first. When checked, the app looks for a newer version a minute after it starts. See [Updating](10-files-and-updates.md#updating). |
 | (separator) | |
 | **Check for updates...** | Asks GitHub for the latest release now, and offers to open its page if it is newer |
+| **Help...** | Opens this user guide in a window, where it was last time, at the page you read last. The pages are listed on the left, and links go between them. Tab and Shift+Tab move from link to link, and Enter opens the selected one. **Back** and **Forward** return to each page scrolled where you left it; they also work with Alt+Left and Alt+Right, or the mouse's side buttons. **Outline** lists the page's headings to jump to. **Search the guide** (Ctrl+E), above the pages, lists the pages that have what you type, the most first, with the text around it; choosing one opens it at that text. **Find** searches the page: press Ctrl+F, then Enter or F3 for the next match. Esc clears Find or the search first; pressed again, it closes the window. The window is dark when Windows' apps are set to dark. The **Dark** or **Light** button at the right of the toolbar (Alt+D or Alt+L) switches it, keeping your place in the page; the window opens that way from then on, whatever Windows uses. Pressing F1 in any My Tools window opens the guide at the page about that window; in the config editor, it opens the page about the file being edited. The guide is read from the `docs\user-guide` folder next to the exe. |
 | **About My Tools...** | Shows which version you have, and the address of the releases page |
 | **Exit** | Hides the icon and ends the app |
 
-**Main window.** Its title is "My Tools" and it has only a **File > Code review** menu. That item opens an empty Code Review window and starts nothing. Use the tray items **Check folder for standard...** and **Fix folder for standard...** instead. Minimizing or closing the main window hides it in the tray.
+**Main window.** Its title is "My Tools" and it has only a **File > Code review** menu. That item opens an empty Code Review window and starts nothing. Use the tray items **Check folder for standard...** and **Fix folder for standard > Fix a folder...** instead. Minimizing or closing the main window hides it in the tray.
 
 **Notifications.** The app shows balloons from the tray icon. Informational ones stay about 5 seconds, warnings about 10 seconds. Examples:
 
@@ -93,6 +97,23 @@ Right-click the tray icon and click **Start with Windows** to make My Tools star
 - Turning it on or off also clears any switch-off you made in the Windows startup settings for My Tools.
 - If you move the exe after enabling the option, the entry still points to the old location and the menu item shows unchecked. Click it once to point it at the new location.
 - **Exit** does not remove the startup entry. Turn **Start with Windows** off first if you want to remove it (see [Updating and Uninstalling](10-files-and-updates.md#updating-and-uninstalling)).
+- The entry starts the exe with `--startup`, which tells My Tools that Windows started it, so it runs the [startup actions](#startup-actions). An entry made by an older version has no `--startup`: it still counts as on, and My Tools adds `--startup` to it the next time it starts.
+
+### Startup actions
+
+`config\startup.cfg` lists actions to run when Windows starts My Tools at sign-in. Starting My Tools yourself does not run them, so restarting it, for example after an update, doesn't start your programs again. Open the file in the config editor (tray menu, **Edit hotkeys...**, then `startup.cfg` in the list). It is created the first time My Tools starts with Windows, or the config editor opens, with only comments, so nothing runs until you add a line:
+
+```
+# Each line: Run = Action, or Run = Action, value
+Run = StartLater, C:\Program Files\Slack\slack.exe
+Run = ShowCalculator
+```
+
+- An action is any action you can bind in hotkeys.cfg: a built-in one or a script. The value after the comma is what the script gets from `script.argument()`.
+- They run in order, each after the one before ends. A script that waits holds back the lines after it, while the tray and the hotkeys keep working.
+- Changes apply at the next sign-in. A line that can't be used is skipped and shown in a notification titled "My Tools: some startup actions are off", and squiggled in the config editor. So is an action that fails, and the next one still runs.
+
+To keep a program from slowing down your sign-in, start it from a script that first waits until the computer is quiet with `system.waitidle`: see [Start a program once the computer is quiet](08c-script-examples.md#start-a-program-once-the-computer-is-quiet).
 
 ---
 

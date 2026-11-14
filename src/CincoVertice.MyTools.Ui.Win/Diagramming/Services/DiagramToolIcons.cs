@@ -1,4 +1,4 @@
-using System.Drawing.Drawing2D;
+﻿using System.Drawing.Drawing2D;
 using System.Drawing.Text;
 using CincoVertice.MyTools.Ui.Diagramming.Models;
 using CincoVertice.MyTools.Ui.Diagramming.Services;
@@ -34,6 +34,9 @@ public static class DiagramToolIcons
                 break;
             case DiagramTool.Connector:
                 DrawConnector(graphics, pen);
+                break;
+            case DiagramTool.Line:
+                DrawLine(graphics, pen);
                 break;
             case DiagramTool.Text:
                 DrawText(graphics);
@@ -71,6 +74,15 @@ public static class DiagramToolIcons
         graphics.DrawLines(pen, [new PointF(2, 13), new PointF(8, 13), new PointF(8, 4), new PointF(13, 4)]);
     }
 
+    /// <summary>A diagonal with a head, unlike the connector's elbow.</summary>
+    private static void DrawLine(Graphics graphics, Pen pen)
+    {
+        using var head = new AdjustableArrowCap(3.2f, 3.2f, isFilled: true);
+
+        pen.CustomEndCap = head;
+        graphics.DrawLine(pen, new PointF(2.5f, 13.5f), new PointF(13, 3));
+    }
+
     private static void DrawText(Graphics graphics)
     {
         using var font = new Font("Segoe UI", 13, FontStyle.Bold, GraphicsUnit.Pixel);
@@ -93,7 +105,10 @@ public static class DiagramToolIcons
         graphics.ScaleTransform(1f / scale, 1f / scale);
         pen.Width *= scale;
 
-        foreach (DiagramFigureModel figure in DiagramFigures.Of(kind, new Rectangle(20, 30, 120, 100)))
+        // Only the lines: an area only filled, as a container's title band, has its border in another figure
+        foreach (DiagramFigureModel figure in DiagramFigures
+                     .Of(kind, new Rectangle(20, 30, 120, 100))
+                     .Where(outline => outline.Stroked))
         {
             using GraphicsPath path = DiagramRenderer.ToPath(figure);
 

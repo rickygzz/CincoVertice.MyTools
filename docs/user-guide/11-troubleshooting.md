@@ -11,15 +11,20 @@
 | **Only some hotkeys work** | A bad line is skipped; the rest still work. Open **Edit hotkeys...** and read the problem list at the bottom. |
 | **Everything after one line in hotkeys.cfg is ignored** | A value starting with `["` was never closed with `"]`. Fix or remove that line. |
 | **Settings do not save, or "Could not use <path>..." appears** | The `config` folder is not writable. Move the app to a folder you can write to. |
-| **The mouse mover seems not to react to my moves** | It notices only moves that change both the horizontal and vertical position between checks. See [Mouse Mover](06-mouse-mover.md#mouse-mover-activity). |
+| **The mouse mover seems not to react to my moves** | It notices only moves that change both the horizontal and vertical position between checks. See [Mouse Mover](06-mouse-mover.md#mouse-mover-and-keep-awake). |
 | **I changed activity.cfg but nothing changed** | Edits apply the next time you turn the mover on. Turn it off and on with Ctrl+Alt+M. |
-| **Did I leave the mouse mover on?** | The tray icon is red while it is on. |
+| **My startup actions did not run** | They run only when Windows starts My Tools at sign-in, with **Start with Windows** on; starting it yourself does not run them. A line that could not be used was shown in a notification titled "My Tools: some startup actions are off", and is squiggled in `startup.cfg` in the config editor. |
+| **Did I leave the mouse mover on?** | The tray icon is red while it is on. The tray icon's tooltip, and the ticks in the tray menu, also say whether the computer is kept awake. |
 | **My clipboard content disappeared after a snip** | `SnipAndEdit` and `SnipRegion` replace the clipboard with the snip. The snip editor does so again after every change. |
+| **Copy text or Ctrl+Alt+T says Windows can't read text in my languages** | Add a language with its **Optical character recognition** feature in **Settings > Time & language > Language & region**. See [Copying the text in a snip](04-snipping.md#copying-the-text-in-a-snip). |
+| **The copied text has mistakes** | Small text is hard to read. Zoom in on it before you snip it. |
+| **Shift+drag shows no zones** | Hold Shift after you start dragging by the title bar. A window being resized shows none. For a program run as administrator, My Tools must run as administrator too. |
+| **A window sticks out of its zone** | The program has a minimum size larger than the zone. Use fewer, larger zones in `zones.cfg`. |
 | **The snip editor ignores my keys** | While you are typing a text, keys belong to the text. Press Esc or Enter to end it. |
 | **A script does nothing or shows an error** | The error box is titled `My Tools: <Action>` and gives file, line and column. Scripts are only checked when they run, so open the script in the config editor to see its first syntax error. |
 | **A script is stuck waiting** | There is no cancel command. Press Cancel in its dialog, or choose **Exit** from the tray menu. |
 | **A diagram will not open** | Only SVG files saved by the diagram editor can be opened. |
-| **The Code Review window is empty and titled "CodeReviewForm"** | That is **File > Code review** in the main window, which starts nothing. Use **Check folder for standard...** or **Fix folder for standard...** from the tray menu. |
+| **The Code Review window is empty and titled "CodeReviewForm"** | That is **File > Code review** in the main window, which starts nothing. Use **Check folder for standard...** or **Fix folder for standard > Fix a folder...** from the tray menu. |
 | **A folder fix changed files I did not want changed** | Fix has no undo. Restore your files from your commit or backup. |
 | **The app shows "Application error"** | An unexpected error occurred. The box shows the error text, or "Unknown error." Note the text if you need to ask for help. |
 

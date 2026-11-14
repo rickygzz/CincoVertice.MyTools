@@ -52,9 +52,12 @@ public sealed class ActivitySettingsService
         MouseMoveSettings defaults = MouseMoveSettings.Default;
         var sb = new StringBuilder();
 
-        sb.AppendLine("# MyTools activity, which moves the mouse while you are away (the ToggleActivity hotkey).");
+        sb.AppendLine("# MyTools mouse mover (the ToggleActivity hotkey, Ctrl+Alt+M): moves the mouse while you are");
+        sb.AppendLine("# away, so you look present: no screen saver, no lock after the time without input, no Away in");
+        sb.AppendLine("# chat programs. Keeping the computer awake is separate: ToggleKeepAwake, Ctrl+Alt+K.");
         sb.AppendLine("# Changes apply the next time you turn it on.");
         sb.AppendLine("#");
+        sb.AppendLine("# How the mouse is moved:");
         sb.AppendLine("# Interval: milliseconds between checks of the mouse (100 to 3600000).");
         sb.AppendLine("# IdleTicksBeforeMove: checks to wait after you move the mouse before it moves again.");
         sb.AppendLine("#   The wait is about Interval x IdleTicksBeforeMove: 5000 x 20 is 100 seconds.");

@@ -8,6 +8,15 @@
     <Compile Update="CodeReview\CodeReviewForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="ColorPicker\ColorForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="ColorPicker\ColorPickerOverlayForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="ColorPicker\ColorSwatchControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Update="ConfigEditor\ConfigEditorForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -17,16 +26,37 @@
     <Compile Update="Diagramming\DiagramEditorForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="Help\HelpForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Shell\MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Update="Snipping\ColorPaletteControl.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Update="Snipping\EmojiPaletteControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Snipping\RecordingBarForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Snipping\RecordingFrameForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Snipping\SnipEditorForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Update="Snipping\SnipOverlayForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Zones\ZoneCanvasControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Zones\ZoneEditorForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Zones\ZoneOverlayForm.cs">
       <SubType>Form</SubType>
     </Compile>
   </ItemGroup>

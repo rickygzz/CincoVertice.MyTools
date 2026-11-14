@@ -1,4 +1,4 @@
-namespace CincoVertice.MyTools.Ui.Diagramming.Models;
+﻿namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 
 /// <summary>
 ///     What dragging on the canvas does. Each shape tool has the name of its <see cref="DiagramShapeKind"/>.
@@ -7,6 +7,9 @@ public enum DiagramTool
 {
     Select,
     Connector,
+
+    /// <summary>Draws a line on its own, from where the drag starts to where it ends, attached to nothing.</summary>
+    Line,
     Rectangle,
     RoundedRectangle,
     Ellipse,
@@ -15,5 +18,6 @@ public enum DiagramTool
     Hexagon,
     Cylinder,
     Document,
+    Container,
     Text,
 }

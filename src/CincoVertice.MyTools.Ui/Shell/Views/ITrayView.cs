@@ -1,4 +1,4 @@
-using CincoVertice.MyTools.Ui.Shell.Models;
+﻿using CincoVertice.MyTools.Ui.Shell.Models;
 
 namespace CincoVertice.MyTools.Ui.Shell.Views;
 
@@ -20,6 +20,9 @@ public interface ITrayView
 
     /// <summary>Fills the Scripts menu with one item per script, in order.</summary>
     void ShowScripts(IReadOnlyList<ScriptMenuItemModel> scripts);
+
+    /// <summary>Fills the Actions menu with one item per action, in order, with its hotkey when it has one.</summary>
+    void ShowActions(IReadOnlyList<ActionMenuItemModel> actions);
 
     /// <summary>
     ///     Shows a Hotkey problems menu item that lists all of them; with no problems, there is no such item.

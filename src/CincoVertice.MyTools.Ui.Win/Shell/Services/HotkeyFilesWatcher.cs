@@ -1,4 +1,4 @@
-using CincoVertice.MyTools.Ui.Win.Scripting.Services;
+﻿using CincoVertice.MyTools.Ui.Win.Scripting.Services;
 
 namespace CincoVertice.MyTools.Ui.Win.Shell.Services;
 

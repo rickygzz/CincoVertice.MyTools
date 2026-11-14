@@ -1,4 +1,5 @@
-using System.Drawing;
+﻿using System.Drawing;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using CincoVertice.MyTools.Ui.Diagramming.Models;
 using CincoVertice.MyTools.Ui.Diagramming.Services;
@@ -463,6 +464,278 @@ public sealed class DiagramSvgTests : IDisposable
         Assert.Equal(100, shape.Style.LineWidth);
         Assert.Equal(6, shape.Style.FontSize);
         Assert.Equal(string.Empty, shape.Text);
+    }
+
+    [Fact]
+    public void Json_Locks_AreKeptByName_AndOnlyWhenThereAreSome()
+    {
+        // Arrange
+        DiagramModel diagram = Sample() with
+        {
+            Shapes = [Sample().Shapes[0] with { Locks = DiagramLock.X | DiagramLock.Height }, Sample().Shapes[1]],
+            Connectors = [],
+        };
+
+        // Act
+        string json = DiagramJson.Write(diagram);
+        DiagramModel read = DiagramJson.Read(json);
+
+        // Assert
+        Assert.Contains("\"locks\":\"X, Height\"", json);
+        Assert.Single(Regex.Matches(json, "\"locks\""));
+        Assert.Equal(DiagramLock.X | DiagramLock.Height, read.Shapes[0].Locks);
+        Assert.Equal(DiagramLock.None, read.Shapes[1].Locks);
+    }
+
+    [Fact]
+    public void Json_LocksNoShapeCanHave_AreLeftOut()
+    {
+        // Arrange
+        const string json = """
+            { "format": "mytools-diagram", "shapes": [
+                { "id": 1, "kind": "Ellipse", "x": 0, "y": 0, "width": 9, "height": 9, "locks": 255 } ] }
+            """;
+
+        // Act / Assert
+        Assert.Equal(DiagramLock.All, DiagramJson.Read(json).Shapes[0].Locks);
+    }
+
+    [Fact]
+    public void Json_ALine_IsKeptWithItsPoints_AndWithoutShapes()
+    {
+        // Arrange
+        DiagramConnectorModel line = DiagramConnectorModel.Line(
+            9,
+            new Point(10, 20),
+            new Point(300, 40),
+            DiagramArrowHeads.Both,
+            _style) with { Label = "over" };
+        DiagramModel diagram = Sample() with { Connectors = [line] };
+
+        // Act
+        string json = DiagramJson.Write(diagram);
+        DiagramModel read = DiagramJson.Read(json);
+
+        // Assert
+        Assert.Equal(line, Assert.Single(read.Connectors));
+        Assert.DoesNotContain("fromShapeId", json);
+    }
+
+    [Theory]
+    [InlineData(DiagramTextAlignment.Left, "start")]
+    [InlineData(DiagramTextAlignment.Center, "middle")]
+    [InlineData(DiagramTextAlignment.Right, "end")]
+    public void Write_TheTextsAlignment_IsItsAnchor_AndIsKept(DiagramTextAlignment alignment, string anchor)
+    {
+        // Arrange
+        DiagramModel diagram = new(
+            [
+                new DiagramShapeModel(
+                    1,
+                    DiagramShapeKind.Container,
+                    new Rectangle(0, 0, 300, 200),
+                    "Resource group",
+                    _style with { TextAlignment = alignment }),
+            ],
+            []);
+
+        // Act
+        string svg = DiagramSvg.Write(diagram);
+
+        // Assert: centered, as all text was before, isn't written in the diagram
+        XElement text = XDocument.Parse(svg).Descendants(_svg + "text").Single();
+        Assert.Equal(anchor, (string?)text.Attribute("text-anchor"));
+        Assert.Equal(diagram.Shapes, DiagramSvg.Read(svg).Shapes);
+        Assert.Equal(alignment != DiagramTextAlignment.Center, svg.Contains("textAlignment", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Write_AContainer_FillsItsTitleBandWithItsTitleFill_UnderItsBorder()
+    {
+        // Arrange
+        DiagramShapeModel container = new(
+            1,
+            DiagramShapeKind.Container,
+            new Rectangle(0, 0, 300, 200),
+            "Resource group",
+            _style with { Fill = Color.FromArgb(240, 247, 255), TitleFill = Color.FromArgb(0, 120, 212) });
+        DiagramModel diagram = new([container], []);
+
+        // Act
+        string svg = DiagramSvg.Write(diagram);
+
+        // Assert: the inside, the band, then the border and the line under the band, not filled
+        List<XElement> paths = [.. XDocument.Parse(svg).Descendants(_svg + "path")];
+        Assert.Equal(
+            ["#F0F7FF", "#0078D4", "none", "none"],
+            paths.Select(path => (string?)path.Attribute("fill")));
+        Assert.Equal(
+            ["none", "none"],
+            paths.Take(2).Select(path => (string?)path.Attribute("stroke")));
+        Assert.Equal(diagram.Shapes, DiagramSvg.Read(svg).Shapes);
+    }
+
+    [Fact]
+    public void Json_ATitleFillOfNone_AndBottomCorners_AreKept()
+    {
+        // Arrange
+        DiagramModel diagram = new(
+            [
+                new DiagramShapeModel(
+                    1,
+                    DiagramShapeKind.Container,
+                    new Rectangle(0, 0, 300, 200),
+                    "VNet",
+                    _style with { TitleFill = DiagramStyleModel.NoTitleFill },
+                    CornerRadius: 16,
+                    BottomCornerRadius: 0),
+            ],
+            []);
+
+        // Act
+        string json = DiagramJson.Write(diagram);
+
+        // Assert
+        Assert.Matches("""
+            "titleFill":\s*"none"
+            """, json);
+        Assert.Equal(diagram.Shapes, DiagramJson.Read(json).Shapes);
+    }
+
+    [Fact]
+    public void Json_ATextAlignmentNoneHas_IsCentered()
+    {
+        // Arrange
+        const string json = """
+            { "format": "mytools-diagram", "shapes": [
+                { "id": 1, "kind": "Rectangle", "x": 0, "y": 0, "width": 9, "height": 9,
+                  "style": { "lineWidth": 1, "fontSize": 14, "textAlignment": 7 } } ],
+              "connectors": [] }
+            """;
+
+        // Act / Assert
+        Assert.Equal(DiagramTextAlignment.Center, DiagramJson.Read(json).Shapes[0].Style.TextAlignment);
+    }
+
+    [Fact]
+    public void Json_ALinesDirection_IsKept_AndFreeIsntWritten()
+    {
+        // Arrange
+        DiagramConnectorModel level = DiagramConnectorModel.Line(
+            1,
+            new Point(10, 20),
+            new Point(300, 20),
+            DiagramArrowHeads.End,
+            _style) with { Direction = DiagramLineDirection.Horizontal };
+        DiagramConnectorModel free = level with { Id = 2, Direction = DiagramLineDirection.Free };
+
+        // Act
+        string json = DiagramJson.Write(new DiagramModel([], [level, free]));
+        DiagramModel read = DiagramJson.Read(json);
+
+        // Assert
+        Assert.Equal([level, free], read.Connectors);
+        Assert.Single(Regex.Matches(json, "\"direction\""));
+    }
+
+    [Fact]
+    public void Json_AnUprightLineThatIsnt_IsMadeUpright()
+    {
+        // Arrange
+        const string json = """
+            { "format": "mytools-diagram", "shapes": [], "connectors": [ { "id": 2, "routing": "Straight",
+                "heads": "End", "fromPoint": { "x": 0, "y": 0 }, "toPoint": { "x": 30, "y": 40 },
+                "direction": "Vertical" } ] }
+            """;
+
+        // Act
+        DiagramConnectorModel line = Assert.Single(DiagramJson.Read(json).Connectors);
+
+        // Assert
+        Assert.Equal(new Point(0, 50), line.ToPoint);
+    }
+
+    [Theory]
+    [InlineData("\"fromPoint\": { \"x\": 5, \"y\": 5 }, \"toPoint\": { \"x\": 5, \"y\": 5 }")]
+    [InlineData("\"fromPoint\": { \"x\": 5, \"y\": 5 }")]
+    [InlineData("\"fromShapeId\": 1, \"fromPoint\": { \"x\": 5, \"y\": 5 }, \"toPoint\": { \"x\": 9, \"y\": 5 }")]
+    public void Json_ALineWithoutLengthOrAnEnd_IsLeftOut(string ends)
+    {
+        // Arrange
+        string json = $$"""
+            { "format": "mytools-diagram", "shapes": [
+                { "id": 1, "kind": "Ellipse", "x": 0, "y": 0, "width": 9, "height": 9 } ],
+              "connectors": [ { "id": 2, "routing": "Straight", "heads": "End", {{ends}} } ] }
+            """;
+
+        // Act / Assert
+        Assert.Empty(DiagramJson.Read(json).Connectors);
+    }
+
+    [Fact]
+    public void Write_AnImage_IsItsOwnSvgInALink_AndTheFileKeepsItsMarkup()
+    {
+        // Arrange
+        string markup = DiagramSvgImage.Prepare(
+            """
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18"><rect id="a" width="9" height="9"/></svg>
+            """);
+        DiagramShapeModel image = new(
+            4,
+            DiagramShapeKind.Image,
+            new Rectangle(10, 20, 64, 64),
+            "VM",
+            _style,
+            Image: markup);
+        DiagramModel diagram = new([image], []);
+
+        // Act
+        string svg = DiagramSvg.Write(diagram);
+
+        // Assert: no path, since an image has no outline
+        XElement element = XDocument.Parse(svg).Descendants(_svg + "image").Single();
+        XNamespace xlink = "http://www.w3.org/1999/xlink";
+        Assert.Equal("64", (string?)element.Attribute("width"));
+        string link = DiagramSvgImage.DataUri(DiagramSvgImage.Filling(markup));
+        Assert.Equal(link, (string?)element.Attribute(xlink + "href"));
+        Assert.Equal("none", (string?)element.Attribute("preserveAspectRatio"));
+        Assert.Empty(XDocument.Parse(svg).Descendants(_svg + "path"));
+        Assert.Equal(diagram.Shapes, DiagramSvg.Read(svg).Shapes);
+    }
+
+    [Fact]
+    public void Json_AnImageWithoutItsMarkup_IsKeptEmpty_AndOtherShapesHaveNone()
+    {
+        // Arrange
+        const string json = """
+            { "format": "mytools-diagram", "shapes": [
+                { "id": 1, "kind": "Image", "x": 0, "y": 0, "width": 9, "height": 9 },
+                { "id": 2, "kind": "Ellipse", "x": 0, "y": 0, "width": 9, "height": 9, "image": "<svg/>" } ],
+              "connectors": [] }
+            """;
+
+        // Act
+        DiagramModel read = DiagramJson.Read(json);
+
+        // Assert
+        Assert.Equal(string.Empty, read.Shapes[0].Image);
+        Assert.Null(read.Shapes[1].Image);
+    }
+
+    [Fact]
+    public void Write_OnlyLines_IsAnImageAroundThem()
+    {
+        // Arrange
+        DiagramModel diagram = new(
+            [],
+            [DiagramConnectorModel.Line(1, new Point(100, 50), new Point(300, 50), DiagramArrowHeads.None, _style)]);
+
+        // Act
+        XElement svg = XDocument.Parse(DiagramSvg.Write(diagram)).Root!;
+
+        // Assert: the margin is around the line, which has no height
+        Assert.Equal("80 30 240 40", (string)svg.Attribute("viewBox")!);
+        Assert.Single(svg.Descendants(_svg + "path"));
     }
 
     [Fact]

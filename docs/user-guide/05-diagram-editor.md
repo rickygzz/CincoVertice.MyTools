@@ -14,6 +14,7 @@ New text uses [Roboto](https://fonts.google.com/specimen/Roboto), which comes wi
 |---|---|---|
 | Select | V | "Select, move and scale (V). Space or the middle button drags the view" |
 | Connector | C | "Connector (C): drag from one shape to another. Double-click it for a label" |
+| Line | L | "Line (L): drag from one point to another. Shift keeps it level, upright or diagonal" |
 | Rectangle | R | "Rectangle, or process (R)" |
 | Rounded rectangle | U | "Rounded rectangle, or start and end (U)" |
 | Ellipse | O | "Ellipse (O)" |
@@ -22,6 +23,7 @@ New text uses [Roboto](https://fonts.google.com/specimen/Roboto), which comes wi
 | Hexagon | H | "Hexagon, or preparation (H)" |
 | Cylinder | Y | "Cylinder, or database (Y)" |
 | Document | M | "Document (M)" |
+| Container | B | "Container (B): a box with a title; what's inside goes along when it's moved" |
 | Text | T | "Text (T): click where it goes, Enter to end, Shift+Enter for a new line" |
 
 ## Working with shapes
@@ -34,21 +36,71 @@ New text uses [Roboto](https://fonts.google.com/specimen/Roboto), which comes wi
   - *Connect:* hover a shape, and circles appear around it; drag from one to another shape. Drop on one of that shape's circles to choose its side too. Or pick the Connector tool (C) and drag from one shape to the other, and the sides are chosen for you. **V** or **Esc** goes back to selecting.
   - *Attach an end somewhere else:* click the connector, then drag one of the dots at its ends to another shape, or to a circle on it to choose the side. Dropped on nothing, the end stays where it was. Dropped on the middle of its own shape, the side is chosen for you again.
   - *Change the path:* click an elbow connector, then drag any piece of its line sideways. The line stays level and upright, with rounded corners. **Reset line** on the toolbar lets it work out its own path again, and so does choosing **Elbow** or **Straight**.
+- **Lines** go from one point to another, attached to nothing, so they stay where they are when shapes move. Use them for arrows that point at something, dividers, or underlines.
+  - *Draw:* pick the Line tool (L), then drag from where the line starts to where it ends. Hold **Shift** to keep it level, upright or at 45°. Hold **Alt** to stop it snapping to shapes and the grid. A click without dragging draws nothing. The new line is selected and the Select tool comes back, as after drawing a shape.
+  - *Arrows:* a new line gets the arrows chosen on the toolbar. To change them, select the line and choose **Arrow at end**, **Arrow at start**, **Arrows at both** or **No arrows**, on the toolbar or in the Properties panel.
+  - *Move:* drag the line, or use the arrow keys. A line drawn over a shape is picked before the shape, since it's on top. To change where one end is, click the line, then drag the dot at that end. An end dropped on the other end stays where it was.
+  - *Style and label:* a line takes the line color, width, dashes and text settings, like a connector. Double-click it for a label in its middle.
+  - *Direction:* in the Properties panel, **Direction** is **Free**, **Horizontal** or **Vertical**. A horizontal line stays level and a vertical one upright: dragging an end moves it only along the line, and an end that would land on the other one stays where it was. Choosing Horizontal or Vertical turns a line that points another way around its start, keeping its length; Free lets its ends go anywhere again. New lines are free.
+  - Lines are always straight, so **Elbow** and **Straight** don't change them. They can be selected with other things, by Shift+click or a selection box around all of a line. They are moved, scaled, copied, pasted, duplicated and deleted with the rest, but not grouped.
+- **Images** are SVG files, such as the Azure architecture icons, placed on the diagram.
+  - *Insert:* choose **Edit > Insert image...** (Ctrl+I) and pick one or more SVG files, or drop them from File Explorer onto the canvas. You can also copy SVG markup, for example from a web page or a text editor, and paste it with Ctrl+V. Several images go in a row, from where the mouse was last, or where you dropped them. They are selected, so you can move them right away. A file that can't be read, or isn't an SVG image, is named in a message, and the others are still inserted.
+  - *Size:* an image goes in at its own size, with its longer side made at least 64 and at most 320 pixels. It goes in with **Keep proportions** on (see [Lock a shape's place or size](#style-and-properties)), so its handles, even those on its sides, and the Width and Height fields keep its width and height in proportion. The image always fills its box: turn Keep proportions off in the Properties panel to stretch or squash it, and **Reset size** to give it its own proportions back.
+  - *Reset size:* **Reset size** in the Properties panel, or **Edit > Reset image size**, gives the selected images the size and proportions they were inserted at, keeping their top left corner. It's a step you can undo.
+  - *Text:* double-click an image to type its name. The text goes under the image, and can be wider than it.
+  - An image works like any other shape: connectors attach to it, and it can be locked, grouped, copied, duplicated and deleted. It has no fill, border or corners. An image Windows can't draw shows as a gray box with a cross.
+  - *The images panel*, on the left (the **Images** button at the top right shows or hides it), keeps every image you insert, to insert again:
+    - Each image inserted, from a file, a drop or pasted text, is copied into the `config\images` folder next to the exe. The same image inserted again isn't copied twice; a different image with the same file name gets a number, as in `vm (2).svg`.
+    - The panel shows **Recent**, the 12 images used last, then **Inserted**, then a group for each folder of your own in `config\images`. Copy SVG files there, such as a whole icon pack in its folders: **Open the images folder**, at the bottom, opens it, and the panel shows what's new when you come back to the editor.
+    - Names are easier to read than the files': dashes and underscores show as spaces, and Azure's `10021-icon-service-` goes away, so `10021-icon-service-Virtual-Machine.svg` is "Virtual Machine". Hover over one for its whole name and file.
+    - **Search images**, at the top, shows only the images whose name or folder has the text.
+    - Double-click an image, or press Enter on it, to insert it where the mouse was last on the canvas; or drag it onto the canvas, where you drop it. It goes first in Recent.
+    - The panel is only a help to insert again: a diagram keeps its own copy of each image, so the folder can be emptied at any time.
+  - Images are drawn by Windows. Style sheets in the file (`<style>`) are applied when it's inserted, but only simple rules, by element name, class or id; scripts are left out. Text inside an SVG image isn't shown.
 - **Text:** double-click a shape to edit its text, double-click a connector to edit its label, or double-click empty canvas for free text. The Text tool also adds free text where you click, and the Properties panel has a Text box. Enter ends editing; Shift+Enter inserts a new line.
-- **Group:** select two or more shapes and press Ctrl+G. Groups are one level only; there is no nesting. Selecting one shape of a group selects the whole group. Ctrl+Shift+G ungroups.
-- **Copy and paste** use the Windows clipboard as text: the selected shapes and the connectors between them. Pasting adds the shapes 20 pixels further each time. Pasting other text does nothing. If you paste into another program, you get that text, not a picture. Because it is the clipboard, you can copy from one editor window and paste into another. **Duplicate** (Ctrl+D) does the same without using the clipboard.
+- **Containers** are boxes with a title band at the top, for what holds other things: a resource group, a virtual network, a subnet, a lane of a process.
+  - *Draw:* pick the Container tool (B) and drag around what it should hold. It goes under the shapes it's drawn around, so it never hides them. Double-click its title band to type its title. The band grows with its title: a larger **Text size**, or a title on two lines, makes it taller. **Text align** in the Properties panel puts the title at the left, in the middle or at the right.
+  - *Pick:* a container is picked by its title band or its border. A click inside it picks what's there, and a drag from an empty place inside it draws a selection box, as on the canvas.
+  - *Move:* moving a container, by dragging its title, with the arrow keys or with **Align**, takes along everything wholly inside it: shapes, images, text, lines, and containers inside it with what they hold. Copy, paste and **Duplicate** take what's inside too. Resizing it or deleting it leaves what's inside where it is.
+  - A connector can start or end anywhere on a container, to show something reaching a whole group. Style it as any shape: a light fill and a dashed border look like Azure's diagrams. Its **Fill** colors its inside, and **Title fill**, in the Properties panel, its title band, a dark title fill and white text make a header bar. Its menu also has **Same as fill**, as at first, for the inside's fill in the band too (the button then shows that color, saying "Same as fill"), and **No title fill**, which leaves the band see-through, showing what's behind the container, while its inside keeps its fill.
+  - *Corners:* **Top corners** and **Bottom corners**, in the Properties panel, round the top corners, the title band's with them, and the bottom ones, each as much as you choose, apart; 0 is square.
+- **Align and distribute:** select two or more shapes, then choose from **Align** on the toolbar, or right-click one of them and choose **Align**.
+  - **Align left**, **Align centers** and **Align right** line up the left edges, the middles or the right edges with those of the box around all of them; **Align tops**, **Align middles** and **Align bottoms** do the same up and down.
+  - **Distribute horizontally** and **Distribute vertically** need three or more: the two at the ends stay, and the ones between move so the space between each two is the same.
+  - A group moves as one, and so does a container with what's inside it. A locked X or Y is kept. Each is one step to undo.
+- **Group:** select two or more shapes and press Ctrl+G, or choose **Edit > Group**, or right-click one of them and choose **Group**. Groups are one level only; there is no nesting. Selecting one shape of a group selects the whole group. Ctrl+Shift+G, **Edit > Ungroup** or **Ungroup** in the right-click menu ungroups. In the right-click menu, Group is grayed out unless two or more shapes are selected that are not already one group, and Ungroup unless a selected shape is in a group.
+- **Copy and paste** use the Windows clipboard as text: the selected shapes and lines, and the connectors between the shapes. Pasting adds them 20 pixels further each time. Pasting other text does nothing. If you paste into another program, you get that text, not a picture. Because it is the clipboard, you can copy from one editor window and paste into another. **Duplicate** (Ctrl+D) does the same without using the clipboard.
 - **Snapping.** While you drag with the mouse, shapes snap in two ways.
   - *To other shapes:* the left edge, middle or right edge of what you move lines up with the left edge, middle or right edge of any other shape (top, middle and bottom likewise) when it is close. A thin guide line is drawn along each alignment.
   - *To a grid:* when no other shape is close in a direction, the position rounds to the nearest 10 pixels: a moved shape's left and top edges land on a multiple of 10 (when resizing, the edge you drag does). The faint grid lines on the canvas are every 50 pixels, not every 10.
-  - It applies when moving selected shapes, resizing with a handle, drawing a new shape, and dragging a connector's bend segment. Dragging a connector from one shape to another does not snap to lines or the grid; the connector attaches to a shape's side instead.
+  - It applies when moving selected shapes, resizing with a handle, drawing a new shape or line, dragging a line's end, and dragging a connector's bend segment. Dragging a connector from one shape to another does not snap to lines or the grid; the connector attaches to a shape's side instead.
   - Arrow-key nudging and the Properties panel never snap.
   - To drag without snapping, hold **Alt**. When resizing, hold **Alt** or **Shift** (Shift also keeps the proportions). There is no other setting to switch snapping off.
 
 ## Style and properties
 
-The toolbar offers Fill (with "No fill"), Line, line width, Dashed, Text color, text size, Edge color and width, routing ("Elbow" or "Straight", tooltip "How connectors go between shapes"), arrows ("Arrow at end", "Arrow at start", "Arrows at both", "No arrows"), "Reset line" (tooltip "Let the selected connectors work out their own path again"), Group, Ungroup, Front, Back and Properties.
+The toolbar offers the **File** menu (see [Saving and opening](#saving-and-opening)), the **Edit** menu, Fill (with "No fill"), Line, line width, Dashed, Text color, text size, Edge color (with "No edge") and width, routing ("Elbow" or "Straight", tooltip "How connectors go between shapes"), arrows ("Arrow at end", "Arrow at start", "Arrows at both", "No arrows"), "Reset line" (tooltip "Let the selected connectors work out their own path again"), Front, Back and Properties.
 
-The Properties panel (show or hide with **F4**) has these fields: Text, X, Y, Width, Height, Corner radius, Fill, Border, Border width, Dashed, Text color, Font, Text size, Text edge, Edge width, Route and Arrows.
+The **Edit** menu has **Undo** (Ctrl+Z), **Redo** (Ctrl+Y), **Copy style** (Ctrl+Shift+C), **Paste style** (Ctrl+Shift+V), **Group** (Ctrl+G) and **Ungroup** (Ctrl+Shift+G). Undo and Redo are grayed out when there is nothing to undo or redo.
+
+A toolbar change goes to everything selected, and to what you draw next.
+
+**Text edge.** An edge is a line drawn around the letters of a text, to make it stand out on any background. It is off at first. Turn it off with **No edge** in the Edge color menu, or with the width "No edge"; its color then shows as none, and is kept for when you turn it on again. Picking an edge color while it is off turns it on at 2 px.
+
+**Copy a style.** Select a shape or connector and choose **Edit > Copy style** (or press **Ctrl+Shift+C**). Then select one or more others and choose **Edit > Paste style** (**Ctrl+Shift+V**). Both are also on the menu you get by right-clicking a shape or connector: a right-click on something not selected selects just it first, and one on the selection keeps it all. Paste style is grayed out there until you copy a style. Pasted objects get the copied fill, border, border width, dashes, text color, font, text size and text edge, as one step to undo. What you draw next gets that style too. A style copied from a connector leaves a shape's fill as it is, since a connector has none. Routing and arrows are not copied. The copied style stays until you copy another, in that window only.
+
+The Properties panel (show or hide with **F4**) has these fields: Text, X, Y, Width, Height, Keep proportions, Reset size (images only), Top corners, Bottom corners (rectangles and containers), Fill, Title fill (containers only), Border, Border width, Dashed, Text color, Font, Text size, Text align, Text edge, Edge width, Route, Arrows and Direction (lines only, see [Lines](#working-with-shapes)).
+
+**Text align** puts the lines of a shape's text at the left, in the middle (as at first) or at the right of the part of the shape the text fits in; for a container, of its title band, and for an image, under it, from its left or right edge. A connector's label lines up its lines the same way. Like the other text settings, it goes to what's selected and to what you draw next, and **Copy style** takes it.
+
+**Corners.** A rectangle, a rounded rectangle or a container has **Top corners** and **Bottom corners**: how round its two top corners and its two bottom ones are, in pixels. Each changes apart from the other: a rectangle with only its top corners round looks like a tab.
+
+**Lock a shape's place or size.** Beside X, Y, Width and Height is a lock button, shown as an open padlock. Click it to lock that value for the selected shapes: the button stays pressed, shows a closed padlock, and the field is grayed out. Click it again to unlock it. Each one is separate, so you can, say, lock only the width.
+
+- A locked value stays as it is when you drag the shape, move it with the arrow keys, scale it by its handles or type in the fields. The rest still changes. For example, with X locked a drag only moves the shape up and down, and with the width locked the side handles do nothing.
+- With several shapes selected, a lock button is pressed only when all of them have that lock, and clicking it locks or unlocks it for all of them. Shapes that are moved or scaled together keep what each one has locked.
+- **Keep proportions**, under Height, locks the shape's proportions: scaling it by any handle, or typing its width or height, changes both, in proportion. Dragging the left or top edge leaves the right or bottom edge where it was. With the width or height also locked, its size can't change at all. Images have it when inserted; other shapes can have it too.
+- Locks are saved with the diagram, and locking or unlocking is a step you can undo. Copies and pastes keep them, but a pasted copy still goes where it's pasted.
 
 ## Keys
 
@@ -56,10 +108,14 @@ The Properties panel (show or hide with **F4**) has these fields: Text, X, Y, Wi
 |---|---|
 | Ctrl+N / Ctrl+O | New / open |
 | Ctrl+S / Ctrl+Shift+S | Save / save as |
+| Ctrl+E | Export as PDF |
+| Ctrl+Shift+E | Export as PNG |
 | Ctrl+Z | Undo |
 | Ctrl+Y or Ctrl+Shift+Z | Redo |
 | Ctrl+X, Ctrl+C, Ctrl+V | Cut, copy, paste |
 | Ctrl+D | Duplicate |
+| Ctrl+I | Insert SVG images |
+| Ctrl+Shift+C / Ctrl+Shift+V | Copy style / paste style |
 | Ctrl+A | Select all |
 | Ctrl+G / Ctrl+Shift+G | Group / ungroup |
 | Ctrl+] / Ctrl+[ | Bring to front / send to back |
@@ -76,18 +132,36 @@ The zoom label shows the percentage; its tooltip reads "Ctrl+wheel to zoom. Clic
 
 ## Saving and opening
 
-- Tooltips: "New diagram (Ctrl+N)", "Open a diagram saved here (Ctrl+O)", "Save as an SVG image that opens here again (Ctrl+S; Ctrl+Shift+S to save as)".
+- The toolbar's **File** menu has **New** (Ctrl+N), **Open...** (Ctrl+O), **Save** (Ctrl+S), **Save as...** (Ctrl+Shift+S), **Export as PDF...** (Ctrl+E), **Export as PNG...** (Ctrl+Shift+E) and **Exit**. Exit closes this window, as its X button does, and asks about unsaved changes; the rest of My Tools keeps running.
 - The dialogs are "Save diagram" and "Open diagram", with the filter "SVG image (*.svg)". The suggested name is `Diagram.svg`.
 - A saved diagram is a normal SVG image that any browser can show. It carries the diagram's data inside, so only My Tools can edit it again. A failed save leaves the old file as it was.
 - **Only diagrams made by this editor can be opened.** Other files give `This isn't an SVG file.` or `This SVG file wasn't made by the diagram editor, so it can't be edited here.`
 - Messages from the editor, in boxes titled "Diagram editor":
   - "Save the changes to <name>?" (Yes, No or Cancel), shown when closing or leaving unsaved work.
   - "<name> was changed elsewhere since it was opened here. Replace it with this diagram?" (Yes or No).
-  - `Could not open <file name>: <message>` and `Could not save <file name>: <message>`.
-- There is no export to PNG and no printing. SVG is the only file format.
+  - `Could not open <file name>: <message>`, `Could not save <file name>: <message>` and `Could not export <file name>: <message>`.
+- There is no export to PNG and no printing from the editor; print the PDF instead.
+
+### Export as PDF
+
+**Export as PDF...** (Ctrl+E) writes a copy of the diagram as a PDF file, to share or print. The dialog is "Export as PDF", with the filter "PDF document (*.pdf)"; the suggested name is the diagram's, such as `flow.pdf`, or `Diagram.pdf` for a diagram never saved.
+
+- The page is as large as the SVG image would be, around everything with a margin, at the size the diagram has at 100% zoom.
+- Shapes, lines and arrows are drawn as lines and curves, so they stay sharp when you zoom in or print.
+- Text keeps the font it has in the editor, even on a computer without that font, because each letter is drawn as its outline. So the text can't be selected, copied or searched in the PDF.
+- Images are drawn as pictures at 4 pixels to each pixel of the diagram, sharp enough for print, though not lines and curves like the rest. The SVG file keeps them as they are.
+- The export doesn't save the diagram: the title keeps its `*` until you save, and the editor can't open the PDF. A failed export leaves the old file as it was.
+
+### Export as PNG
+
+**Export as PNG...** (Ctrl+Shift+E) writes a copy of the diagram as a PNG picture, which chats and emails show at once. In the dialog, the type of file chooses the size: **PNG picture, twice as large, sharper**, which is the first, or **PNG picture, actual size**.
+
+- The picture is the same part of the diagram as the SVG and PDF files, on white, without the grid or the selection.
+- A very large diagram gets fewer pixels, so the picture is at most 8000 pixels wide or high.
+- As with PDF, the export doesn't save the diagram, and the editor can't open the picture.
 
 The editor remembers your last style, routing, arrow heads, whether the Properties panel is shown, and the window size in `config\diagrameditor.json`.
 
 ---
 
-← Previous: [Snipping and the Snip Editor](04-snipping.md) | [Contents](README.md) | Next: [Mouse Mover (Activity)](06-mouse-mover.md) →
+← Previous: [Snipping and the Snip Editor](04-snipping.md) | [Contents](README.md) | Next: [Mouse Mover and Keep Awake](06-mouse-mover.md) →

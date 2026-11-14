@@ -31,6 +31,7 @@ partial class CalculatorForm
         components = new System.ComponentModel.Container();
         CalculatorTextBox = new TextBox();
         ResultOutputControl = new CincoVertice.Common.Ui.Win.Controls.Rtf.ConsoleOutputControl();
+        SuggestionsListBox = new ListBox();
         SuspendLayout();
         // 
         // CalculatorTextBox
@@ -41,6 +42,7 @@ partial class CalculatorForm
         CalculatorTextBox.PlaceholderText = "Enter expression (e.g. 2+2*3)";
         CalculatorTextBox.Size = new Size(790, 32);
         CalculatorTextBox.TabIndex = 0;
+        CalculatorTextBox.TextChanged += CalculatorTextBox_TextChanged;
         // 
         // ResultOutputControl
         // 
@@ -54,6 +56,18 @@ partial class CalculatorForm
         ResultOutputControl.Size = new Size(790, 38);
         ResultOutputControl.TabIndex = 1;
         ResultOutputControl.Text = "";
+        //
+        // SuggestionsListBox
+        //
+        SuggestionsListBox.Font = new Font("Segoe UI", 11F);
+        SuggestionsListBox.IntegralHeight = false;
+        SuggestionsListBox.Location = new Point(5, 40);
+        SuggestionsListBox.Name = "SuggestionsListBox";
+        SuggestionsListBox.Size = new Size(420, 100);
+        SuggestionsListBox.TabIndex = 2;
+        SuggestionsListBox.TabStop = false;
+        SuggestionsListBox.Visible = false;
+        SuggestionsListBox.MouseClick += SuggestionsListBox_MouseClick;
         // 
         // CalculatorForm
         // 
@@ -61,6 +75,7 @@ partial class CalculatorForm
         AutoScaleMode = AutoScaleMode.Font;
         ClientSize = new Size(800, 90);
         ControlBox = false;
+        Controls.Add(SuggestionsListBox);
         Controls.Add(ResultOutputControl);
         Controls.Add(CalculatorTextBox);
         FormBorderStyle = FormBorderStyle.FixedToolWindow;
@@ -80,4 +95,5 @@ partial class CalculatorForm
 
     private TextBox CalculatorTextBox;
     private Common.Ui.Win.Controls.Rtf.ConsoleOutputControl ResultOutputControl;
+    private ListBox SuggestionsListBox;
 }

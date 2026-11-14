@@ -6,9 +6,10 @@ using CincoVertice.MyTools.Ui.Win.Shell.Models;
 namespace CincoVertice.MyTools.Ui.Win.Shell.Services.Config;
 
 /// <summary>
-///     Reads activity.cfg with the config lexer: one "Name = Value" per line, # for comments. Every line that can't
-///     be used is reported as a problem, and a setting without a usable line keeps its default. So the settings it
-///     returns are always safe to give to the mouse move timer, where a bad value would end the app.
+///     Reads activity.cfg with the config lexer: one "Name = Value" per line, # for comments. MoveMouse and KeepAwake,
+///     from when activity also kept awake, are accepted and ignored: keeping awake is its own toggle now. Every line
+///     that can't be used is reported as a problem, and a setting without a usable line keeps its default. So the
+///     settings it returns are always safe to give to the mouse move timer, where a bad value would end the app.
 /// </summary>
 public static class ActivitySettingsReader
 {
@@ -17,6 +18,20 @@ public static class ActivitySettingsReader
     public const string SpeedMinName = "SpeedMin";
     public const string SpeedMaxName = "SpeedMax";
     public const string MoveImmediatelyName = "MoveImmediately";
+
+    /// <summary>
+    ///     Settings of older files, from when activity also kept the computer awake (both true by default): read
+    ///     without a problem and ignored, since the mouse mover only moves the mouse and keeping awake is its own
+    ///     toggle.
+    /// </summary>
+    public static readonly IReadOnlySet<string> ObsoleteNames =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "MoveMouse", "KeepAwake" };
+
+    // The settings that are true or false, with their defaults
+    private static readonly Dictionary<string, bool> _switches = new(StringComparer.OrdinalIgnoreCase)
+    {
+        [MoveImmediatelyName] = MouseMoveSettings.Default.MoveImmediately,
+    };
 
     private static readonly Dictionary<string, (int Min, int Max)> _ranges = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -45,7 +60,7 @@ public static class ActivitySettingsReader
         Dictionary<string, int> values = new(StringComparer.OrdinalIgnoreCase);
         HashSet<string> seen = new(StringComparer.OrdinalIgnoreCase);
         MouseMoveSettings defaults = MouseMoveSettings.Default;
-        bool moveImmediately = defaults.MoveImmediately;
+        Dictionary<string, bool> switches = new(_switches, StringComparer.OrdinalIgnoreCase);
 
         for (int i = 0; i < items.KeysCount; i++)
         {
@@ -58,23 +73,31 @@ public static class ActivitySettingsReader
                 continue;
             }
 
-            string value = WithoutComment(items.GetValue(i));
-            bool isMoveImmediately = name.Equals(MoveImmediatelyName, StringComparison.OrdinalIgnoreCase);
-
-            if (!isMoveImmediately && !_ranges.ContainsKey(name))
+            if (ObsoleteNames.Contains(name))
             {
-                string settings = string.Join(", ", [.. _ranges.Keys, MoveImmediatelyName]);
+                continue;
+            }
+
+            string value = WithoutComment(items.GetValue(i));
+            bool isSwitch = _switches.ContainsKey(name);
+
+            if (!isSwitch && !_ranges.ContainsKey(name))
+            {
+                string settings = string.Join(", ", [.. _ranges.Keys, .. _switches.Keys]);
                 AddProblem(items.GetLine(i), $"{name}: unknown setting. Settings: {settings}.");
             }
             else if (!seen.Add(name))
             {
                 AddProblem(items.GetLine(i), $"{name}: set more than once; the first line is used.");
             }
-            else if (isMoveImmediately)
+            else if (isSwitch)
             {
-                if (!bool.TryParse(value, out moveImmediately))
+                if (bool.TryParse(value, out bool on))
                 {
-                    moveImmediately = defaults.MoveImmediately;
+                    switches[name] = on;
+                }
+                else
+                {
                     AddProblem(items.GetLine(i), $"{name}: must be true or false; the default is used.");
                 }
             }
@@ -113,9 +136,12 @@ public static class ActivitySettingsReader
             values.GetValueOrDefault(IdleTicksName, defaults.IdleTicksBeforeMove),
             speedMin,
             speedMax,
-            moveImmediately);
+            switches[MoveImmediatelyName]);
 
-        return new ActivitySettingsResultModel(result, problems) { LineProblems = lineProblems };
+        return new ActivitySettingsResultModel(result, problems)
+        {
+            LineProblems = lineProblems,
+        };
     }
 
     // A # after the value is a comment; the lexer keeps it in the value

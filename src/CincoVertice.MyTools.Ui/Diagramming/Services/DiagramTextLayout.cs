@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Text.RegularExpressions;
 using CincoVertice.MyTools.Ui.Diagramming.Models;
 
@@ -10,25 +10,92 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Services;
 /// </summary>
 public static class DiagramTextLayout
 {
+    /// <summary>How wide an image's text can be when the image is narrower, in pixels.</summary>
+    public const int ImageTextWidth = 160;
+
     private const float AverageCharacterWidth = 0.55f;
     private const float LineHeightFactor = 1.25f;
+    private const float ImageTextGap = 4;
 
     private static readonly Regex _spacesThenWord = new("( *)([^ ]+)", RegexOptions.CultureInvariant);
 
     /// <summary>An estimate of how wide a line is, in pixels.</summary>
     public static float WidthOf(string line, int fontSize) => line.Length * fontSize * AverageCharacterWidth;
 
-    /// <summary>The lines of a text centered in an area, wrapped to its width.</summary>
-    public static DiagramTextBlockModel Layout(string text, RectangleF area, int fontSize)
+    /// <summary>From the top of a line to the top of the next, in pixels.</summary>
+    public static float LineHeightOf(int fontSize) => fontSize * LineHeightFactor;
+
+    /// <summary>The lines of a text in the middle of an area, top to bottom, wrapped to its width.</summary>
+    /// <param name="text">What to lay out.</param>
+    /// <param name="area">Where.</param>
+    /// <param name="fontSize">In pixels.</param>
+    /// <param name="alignment">Where the lines go across the area.</param>
+    public static DiagramTextBlockModel Layout(
+        string text,
+        RectangleF area,
+        int fontSize,
+        DiagramTextAlignment alignment = DiagramTextAlignment.Center)
     {
         IReadOnlyList<string> lines = Wrap(text, area.Width, fontSize);
+        float x = alignment switch
+        {
+            DiagramTextAlignment.Left => area.Left,
+            DiagramTextAlignment.Right => area.Right,
+            _ => area.Left + area.Width / 2,
+        };
 
-        return Place(lines, area.Left + area.Width / 2, area.Top + area.Height / 2, fontSize);
+        return Place(lines, x, area.Top + area.Height / 2, fontSize, alignment);
     }
 
-    /// <summary>The lines of a text centered on a point, wrapped only at its own line breaks.</summary>
-    public static DiagramTextBlockModel LayoutAt(string text, PointF center, int fontSize) =>
-        Place(text.ReplaceLineEndings("\n").Split('\n'), center.X, center.Y, fontSize);
+    /// <summary>A shape's text: in the middle of the part of it a text fits in, or under an image.</summary>
+    public static DiagramTextBlockModel OfShape(DiagramShapeModel shape)
+    {
+        int fontSize = shape.Style.FontSize;
+
+        DiagramTextAlignment alignment = shape.Style.TextAlignment;
+
+        if (shape.Kind != DiagramShapeKind.Image)
+        {
+            return Layout(shape.Text, DiagramFigures.TextArea(shape), fontSize, alignment);
+        }
+
+        // A name under an icon is often wider than the icon
+        Rectangle bounds = shape.Bounds;
+        IReadOnlyList<string> lines = Wrap(shape.Text, Math.Max(bounds.Width, ImageTextWidth), fontSize);
+        float height = lines.Count * fontSize * LineHeightFactor;
+
+        // At the left or right, from the image's own edge
+        float x = alignment switch
+        {
+            DiagramTextAlignment.Left => bounds.Left,
+            DiagramTextAlignment.Right => bounds.Right,
+            _ => bounds.Left + bounds.Width / 2f,
+        };
+
+        return Place(lines, x, bounds.Bottom + ImageTextGap + height / 2, fontSize, alignment);
+    }
+
+    /// <summary>
+    ///     The lines of a text around a point, wrapped only at its own line breaks; at the left, the right or the
+    ///     middle of the block they make, which is centered on the point.
+    /// </summary>
+    public static DiagramTextBlockModel LayoutAt(
+        string text,
+        PointF center,
+        int fontSize,
+        DiagramTextAlignment alignment = DiagramTextAlignment.Center)
+    {
+        string[] lines = text.ReplaceLineEndings("\n").Split('\n');
+        float half = lines.Max(line => WidthOf(line, fontSize)) / 2;
+        float x = alignment switch
+        {
+            DiagramTextAlignment.Left => center.X - half,
+            DiagramTextAlignment.Right => center.X + half,
+            _ => center.X,
+        };
+
+        return Place(lines, x, center.Y, fontSize, alignment);
+    }
 
     /// <summary>
     ///     Breaks at spaces, which are kept as typed except at a break and at the end of a line, where they'd only move
@@ -96,18 +163,31 @@ public static class DiagramTextLayout
         return maxCharacters > 1 ? maxCharacters - 1 : maxCharacters + 1;
     }
 
-    private static DiagramTextBlockModel Place(IReadOnlyList<string> lines, float centerX, float centerY, int fontSize)
+    private static DiagramTextBlockModel Place(
+        IReadOnlyList<string> lines,
+        float x,
+        float centerY,
+        int fontSize,
+        DiagramTextAlignment alignment)
     {
         float lineHeight = fontSize * LineHeightFactor;
         float height = lines.Count * lineHeight;
         float width = lines.Max(line => WidthOf(line, fontSize));
         float top = centerY - height / 2;
 
+        float left = alignment switch
+        {
+            DiagramTextAlignment.Left => x,
+            DiagramTextAlignment.Right => x - width,
+            _ => x - width / 2,
+        };
+
         return new DiagramTextBlockModel(
             lines,
-            centerX,
+            x,
             top,
             lineHeight,
-            new RectangleF(centerX - width / 2, top, width, height));
+            new RectangleF(left, top, width, height),
+            alignment);
     }
 }

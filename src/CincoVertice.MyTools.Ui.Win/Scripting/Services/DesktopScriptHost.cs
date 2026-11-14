@@ -7,6 +7,7 @@ using CincoVertice.Common.WinApi.Hotkey;
 using CincoVertice.Common.WinApi.Libs;
 using CincoVertice.Common.WinApi.Libs.Enums;
 using CincoVertice.MyTools.Ui.Win.Shell.Services;
+using CincoVertice.MyTools.Ui.Zones.Services;
 
 namespace CincoVertice.MyTools.Ui.Win.Scripting.Services;
 
@@ -35,11 +36,13 @@ public sealed class DesktopScriptHost : IScriptHost
 
     private readonly string _title;
     private readonly TrayNotificationService _notifications;
+    private readonly ZoneMover _zones;
 
-    public DesktopScriptHost(string scriptName, TrayNotificationService notifications)
+    public DesktopScriptHost(string scriptName, TrayNotificationService notifications, ZoneMover zones)
     {
         _title = $"My Tools: {scriptName}";
         _notifications = notifications;
+        _zones = zones;
     }
 
     public Task<string?> AskAsync(string prompt, string defaultText) =>
@@ -152,7 +155,26 @@ public sealed class DesktopScriptHost : IScriptHost
 
     public string GetActiveWindowTitle() => WindowHelper.GetForegroundWindowTitle();
 
+    public void MoveActiveWindowToZone(int zone)
+    {
+        if (_zones.MoveActiveWindowTo(zone) is string problem)
+        {
+            throw new ArgumentException(problem);
+        }
+    }
+
     public Task WaitAsync(int milliseconds) => Task.Delay(milliseconds);
+
+    public async Task<SystemLoadModel> MeasureLoadAsync(int milliseconds)
+    {
+        using var meter = new SystemLoadMeter();
+
+        meter.Start();
+        await Task.Delay(milliseconds);
+        var (cpu, disk) = meter.Read();
+
+        return new SystemLoadModel((decimal)cpu, (decimal)disk);
+    }
 
     public void Notify(string text) => _notifications.Show(_title, text);
 

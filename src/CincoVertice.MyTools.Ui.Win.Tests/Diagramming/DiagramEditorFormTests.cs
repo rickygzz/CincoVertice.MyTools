@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Reflection;
 using System.Windows.Forms;
 using CincoVertice.MyTools.Ui.Diagramming.Interfaces;
@@ -156,7 +156,8 @@ public class DiagramEditorFormTests
     {
         // Arrange
         using var form = new DiagramEditorForm();
-        var presenter = new DiagramEditorPresenter(form, new NoStore(), new NoSettings());
+        var presenter =
+            NewPresenter(form);
         var list = (ToolStripComboBox)typeof(DiagramEditorForm)
             .GetField("TextOutlineWidthComboBox", BindingFlags.NonPublic | BindingFlags.Instance)!
             .GetValue(form)!;
@@ -187,7 +188,8 @@ public class DiagramEditorFormTests
     {
         // Every tool button's tag, the palettes and the lists are read here
         using var form = new DiagramEditorForm();
-        var presenter = new DiagramEditorPresenter(form, new NoStore(), new NoSettings());
+        var presenter =
+            NewPresenter(form);
 
         presenter.Start();
 
@@ -354,7 +356,8 @@ public class DiagramEditorFormTests
     {
         // Arrange
         using var form = new DiagramEditorForm();
-        new DiagramEditorPresenter(form, new NoStore(), new NoSettings()).Start();
+        NewPresenter(form)
+            .Start();
 
         // Act: from a file edited by hand, say; a field's value out of its range would throw
         form.ShowProperties(new DiagramPropertiesModel(
@@ -457,8 +460,8 @@ public class DiagramEditorFormTests
     }
 
     [Theory]
-    [InlineData("SaveButton", "Save")]
-    [InlineData("UndoButton", "Undo")]
+    [InlineData("SaveMenuItem", "Save")]
+    [InlineData("UndoMenuItem", "Undo")]
     public void Toolbar_TakesTheTextBeingTyped_BeforeItsCommand(string button, string command)
     {
         // Arrange
@@ -494,10 +497,50 @@ public class DiagramEditorFormTests
         using DiagramEditorForm form = ShowFormEditingProperties(events, "WidthBox", "250");
 
         // Act
-        ClickToolbarButton(form, "SaveButton");
+        ClickToolbarButton(form, "SaveMenuItem");
 
         // Assert
         Assert.Equal(["width 250", "Save"], events);
+    }
+
+    [Fact]
+    public void FileExit_ClosesLikeTheWindowsX_TakingTheTextBeingTyped()
+    {
+        // Arrange
+        List<string> events = [];
+        using DiagramEditorForm form = ShowFormEditingProperties(events, "TextPropertyBox", "new");
+
+        // Act
+        ClickToolbarButton(form, "ExitMenuItem");
+
+        // Assert
+        Assert.Equal(["text new", "closing"], events);
+    }
+
+    [Theory]
+    [InlineData("NewMenuItem", "New")]
+    [InlineData("OpenMenuItem", "Open")]
+    [InlineData("SaveAsMenuItem", "SaveAs")]
+    [InlineData("CopyStyleMenuItem", "CopyStyle")]
+    [InlineData("PasteStyleMenuItem", "PasteStyle")]
+    [InlineData("RedoMenuItem", "Redo")]
+    [InlineData("GroupMenuItem", "Group")]
+    [InlineData("UngroupMenuItem", "Ungroup")]
+    [InlineData("CopyStyleContextMenuItem", "CopyStyle")]
+    [InlineData("PasteStyleContextMenuItem", "PasteStyle")]
+    [InlineData("GroupContextMenuItem", "Group")]
+    [InlineData("UngroupContextMenuItem", "Ungroup")]
+    public void Toolbar_ItemsAskForTheirCommand(string item, string command)
+    {
+        // Arrange
+        List<string> events = [];
+        using DiagramEditorForm form = ShowFormEditingProperties(events, "TextPropertyBox", "new");
+
+        // Act
+        ClickToolbarButton(form, item);
+
+        // Assert
+        Assert.Equal(["text new", command], events);
     }
 
     [Fact]
@@ -513,6 +556,195 @@ public class DiagramEditorFormTests
         // Assert
         Assert.Equal(["text new", "closing"], events);
     }
+
+    [Fact]
+    public void Properties_ALockedField_CantBeTypedIn_AndItsLockFreesIt()
+    {
+        // Arrange
+        using var form = new DiagramEditorForm();
+        List<DiagramLockChoiceModel> toggled = [];
+        form.LockToggled += (_, choice) => toggled.Add(choice);
+
+        // Act
+        form.ShowProperties(new DiagramPropertiesModel(
+            "Rectangle",
+            new Rectangle(0, 0, 100, 50),
+            Locks: DiagramLock.Width));
+
+        // Assert: showing it isn't the user's choice
+        var widthLock = (CheckBox)form.Controls.Find("WidthLockCheckBox", true).Single();
+        var xLock = (CheckBox)form.Controls.Find("XLockCheckBox", true).Single();
+        Assert.True(widthLock.Checked);
+        Assert.Equal("\U0001F512", widthLock.Text);
+        Assert.False(form.Controls.Find("WidthBox", true).Single().Enabled);
+        Assert.False(xLock.Checked);
+        Assert.True(form.Controls.Find("XBox", true).Single().Enabled);
+        Assert.Empty(toggled);
+
+        widthLock.Checked = false;
+        Assert.Equal([new DiagramLockChoiceModel(DiagramLock.Width, false)], toggled);
+        Assert.Equal("\U0001F513", widthLock.Text);
+    }
+
+    [Fact]
+    public void Properties_ALinesDirection_IsShownOnlyForLines_AndChoosingItIsRaised()
+    {
+        // Arrange
+        using var form = new DiagramEditorForm();
+        List<DiagramLineDirection> chosen = [];
+        form.LineDirectionSelected += (_, direction) => chosen.Add(direction);
+        var directions = (ComboBox)form.Controls.Find("DirectionPropertyBox", true).Single();
+
+        // Act / Assert: showing it isn't the user's choice
+        form.Show();
+        form.ShowProperties(new DiagramPropertiesModel("Rectangle", new Rectangle(0, 0, 100, 50)));
+        Assert.False(directions.Visible);
+
+        form.ShowProperties(new DiagramPropertiesModel("Line", LineDirection: DiagramLineDirection.Vertical));
+        Assert.True(directions.Visible);
+        Assert.Equal("Vertical", directions.SelectedItem);
+        Assert.Empty(chosen);
+
+        directions.SelectedIndex = 1;
+        Assert.Equal([DiagramLineDirection.Horizontal], chosen);
+    }
+
+    [Fact]
+    public void Properties_KeepProportions_ShowsTheLock_AndResetSizeIsOnlyForImages()
+    {
+        // Arrange
+        using var form = new DiagramEditorForm();
+        List<DiagramLockChoiceModel> toggled = [];
+        List<DiagramCommand> commands = [];
+        form.LockToggled += (_, choice) => toggled.Add(choice);
+        form.CommandRequested += (_, command) => commands.Add(command);
+        var proportions = (CheckBox)form.Controls.Find("ProportionsCheckBox", true).Single();
+        var reset = (Button)form.Controls.Find("ResetSizeButton", true).Single();
+        form.Show();
+
+        // Act / Assert: showing it isn't the user's choice
+        form.ShowProperties(
+            new DiagramPropertiesModel("Rectangle", new Rectangle(0, 0, 9, 9), Locks: DiagramLock.None));
+        Assert.True(proportions.Visible);
+        Assert.False(proportions.Checked);
+        Assert.False(reset.Visible);
+
+        form.ShowProperties(new DiagramPropertiesModel(
+            "Image",
+            new Rectangle(0, 0, 9, 9),
+            Locks: DiagramLock.AspectRatio,
+            HasImages: true));
+        Assert.True(proportions.Checked);
+        Assert.True(reset.Visible);
+        Assert.Empty(toggled);
+
+        proportions.Checked = false;
+        reset.PerformClick();
+        Assert.Equal([new DiagramLockChoiceModel(DiagramLock.AspectRatio, false)], toggled);
+        Assert.Equal([DiagramCommand.ResetSize], commands);
+    }
+
+    [Fact]
+    public void ImagesPanel_ShowsTheImagesInTheirGroups_AndChoosingOneAsksToInsertIt()
+    {
+        // Arrange
+        using var form = new DiagramEditorForm();
+        List<string> chosen = [];
+        form.CatalogImageChosen += (_, path) => chosen.Add(path);
+        var list = (ListView)form.Controls.Find("ImagesListView", true).Single();
+        var empty = (Label)form.Controls.Find("ImagesEmptyLabel", true).Single();
+        const string Markup = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 9"/>""";
+        form.Show();
+
+        // Act / Assert
+        form.ShowCatalog([], "Nothing yet");
+        Assert.True(empty.Visible);
+        Assert.Equal("Nothing yet", empty.Text);
+
+        form.ShowCatalog(
+            [
+                new DiagramCatalogImageModel("Azure/vm.svg", "VM", "Recent", Markup),
+                new DiagramCatalogImageModel("Azure/vm.svg", "VM", "Azure", Markup),
+                new DiagramCatalogImageModel("Azure/app.svg", "App", "Azure", Markup),
+            ],
+            "Nothing yet");
+        Assert.False(empty.Visible);
+        Assert.Equal(["Recent", "Azure"], list.Groups.Cast<ListViewGroup>().Select(group => group.Header));
+        Assert.Equal(3, list.Items.Count);
+
+        list.Items[2].Focused = true;
+        form.ChooseFocusedImage();
+        Assert.Equal(["Azure/app.svg"], chosen);
+    }
+
+    [Fact]
+    public void Properties_TextAlign_ShowsTheAlignment_AndChoosingOneIsRaised()
+    {
+        // Arrange
+        using var form = new DiagramEditorForm();
+        List<DiagramTextAlignment> chosen = [];
+        form.TextAlignmentSelected += (_, alignment) => chosen.Add(alignment);
+        var align = (ComboBox)form.Controls.Find("TextAlignPropertyBox", true).Single();
+        form.Show();
+
+        // Act / Assert: showing it isn't the user's choice
+        form.ShowProperties(new DiagramPropertiesModel("Container", TextAlignment: DiagramTextAlignment.Left));
+        Assert.True(align.Visible);
+        Assert.Equal("Left", align.SelectedItem);
+        Assert.Empty(chosen);
+
+        align.SelectedIndex = 2;
+        Assert.Equal([DiagramTextAlignment.Right], chosen);
+
+        form.ShowProperties(new DiagramPropertiesModel("Nothing selected"));
+        Assert.False(align.Visible);
+    }
+
+    [Fact]
+    public void Properties_TitleFill_WithoutItsOwn_ShowsTheFillItHas_AndSaysSo()
+    {
+        // Arrange
+        using var form = new DiagramEditorForm();
+        List<DiagramColorChoiceModel> chosen = [];
+        form.ColorSelected += (_, choice) => chosen.Add(choice);
+        var button = (Button)form.Controls.Find("TitleFillColorButton", true).Single();
+        Color blue = Color.FromArgb(0, 99, 177);
+        Color orange = Color.FromArgb(255, 140, 0);
+        form.Show();
+
+        // Act / Assert: the band is the fill's color, and so is its button
+        form.ShowProperties(new DiagramPropertiesModel("Container", Fill: blue, TitleFill: Color.Empty));
+        Assert.Equal((blue, "Same as fill", Color.White), (button.BackColor, button.Text, button.ForeColor));
+
+        form.ShowProperties(new DiagramPropertiesModel("Container", Fill: blue, TitleFill: orange));
+        Assert.Equal((orange, string.Empty), (button.BackColor, button.Text));
+
+        form.ShowProperties(new DiagramPropertiesModel("Container", Fill: Color.Empty, TitleFill: Color.Empty));
+        Assert.Equal("None", button.Text);
+
+        var sameAsFill = (ToolStripMenuItem)typeof(DiagramEditorForm)
+            .GetField("SameAsFillMenuItem", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(form)!;
+        var noTitleFill = (ToolStripMenuItem)typeof(DiagramEditorForm)
+            .GetField("NoTitleFillMenuItem", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(form)!;
+        sameAsFill.PerformClick();
+        noTitleFill.PerformClick();
+        Assert.Equal(
+            [
+                new DiagramColorChoiceModel(DiagramColorTarget.TitleFill, Color.Empty),
+                new DiagramColorChoiceModel(DiagramColorTarget.TitleFill, DiagramStyleModel.NoTitleFill),
+            ],
+            chosen);
+
+        // A title fill of none is "None": a button can't be see-through
+        form.ShowProperties(
+            new DiagramPropertiesModel("Container", Fill: blue, TitleFill: DiagramStyleModel.NoTitleFill));
+        Assert.Equal("None", button.Text);
+    }
+
+    private static DiagramEditorPresenter NewPresenter(DiagramEditorForm form) =>
+        new(form, new NoStore(), new NoSettings(), new NoExporter(), new PngDiagramExporter(), new NoCatalog());
 
     private sealed class NoSettings : IDiagramEditorSettingsStore
     {
@@ -532,5 +764,35 @@ public class DiagramEditorFormTests
         public DiagramModel Load(string path) => DiagramModel.Empty;
 
         public string? VersionOf(string path) => null;
+
+        public string ReadImage(string path) => string.Empty;
+    }
+
+    private sealed class NoCatalog : IDiagramImageCatalog
+    {
+        public string Folder => string.Empty;
+
+        public void CreateFolder()
+        {
+        }
+
+        public IReadOnlyList<DiagramCatalogImageModel> Images() => [];
+
+        public IReadOnlyList<string> Recent() => [];
+
+        public void Add(string markup, string fileName)
+        {
+        }
+
+        public void MarkUsed(string path)
+        {
+        }
+    }
+
+    private sealed class NoExporter : IDiagramPdfExporter
+    {
+        public void Export(string path, DiagramModel diagram)
+        {
+        }
     }
 }

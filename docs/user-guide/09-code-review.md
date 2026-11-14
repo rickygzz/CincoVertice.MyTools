@@ -1,8 +1,8 @@
 # Code Review: Check and Fix a Folder
 
-This tool checks C# and JavaScript source files against a fixed set of formatting rules and can rewrite the files to follow them. The rules are built in and cannot be configured. It works on files in the folder you choose and all its subfolders: `.cs` files with the C# rules, and `.js`, `.mjs` and `.cjs` files with the [JavaScript rules](#javascript). It skips the folders `bin`, `obj`, `.git`, `.vs` and `node_modules`, and files ending `.Designer.cs`, `.g.cs`, `.g.i.cs` and `.min.js`.
+This tool checks C# and JavaScript source files against a fixed set of formatting rules and can rewrite the files to follow them. The rules are built in; you can choose which fixers a fix runs (see [Choosing the fixers](#choosing-the-fixers)). It works on files in the folder you choose and all its subfolders: `.cs` files with the C# rules, and `.js`, `.mjs` and `.cjs` files with the [JavaScript rules](#javascript). It skips the folders `bin`, `obj`, `.git`, `.vs` and `node_modules`, and files ending `.Designer.cs`, `.g.cs`, `.g.i.cs` and `.min.js`.
 
-Use the tray items **Check folder for standard...** and **Fix folder for standard...**. You can also give them hotkeys with the actions `CheckFolder` and `FixFolder`. Do not use **File > Code review** in the main window; it opens an empty window.
+Use the tray items **Check folder for standard...** and **Fix folder for standard > Fix a folder...**. You can also give them hotkeys with the actions `CheckFolder` and `FixFolder`. Do not use **File > Code review** in the main window; it opens an empty window.
 
 ## Check a folder
 
@@ -17,7 +17,7 @@ The window stays responsive while it works. There is no cancel button and no pro
 
 **Fix rewrites your files in place, and there is no backup, log or undo.** Commit or back up your work first.
 
-1. Choose **Fix folder for standard...**.
+1. In the tray menu, choose **Fix folder for standard > Fix a folder...**.
 2. A folder picker titled "Select the folder to fix for the code standard" opens.
 3. A warning box titled "Fix folder for code standard" asks for confirmation. **No** is the default button. It reads:
 
@@ -31,12 +31,41 @@ Commit or back up your changes first, so you can review the fixes and undo them.
 Fix the folder now?
 ```
 
+When some fixers are off, or a line ending or encoding is chosen, the box also says so, for example:
+
+```
+These fixers are off: Indentation, Trailing whitespace.
+Every line ends in CRLF (Windows).
+Every file is saved as UTF-8 with BOM.
+```
+
 4. If you click **Yes**, a new window titled "Code standard fix - <folder>" opens. It shows "Code standard fix", the folder and "Fixing...". Then it lists one `Fixed  <relative path>` line for each changed file and `Skipped  <relative path>: <reason>` for each skipped file. A summary follows: `Fixed X of Y file(s).`, with ` Skipped N.` added when some files were skipped, or `No C# or JavaScript files found.`
 5. Last, under "Issues left (not fixable automatically)", it lists the issues that remain.
 
-A file is rewritten only if its content changes, and it keeps its own encoding and byte-order mark. A file without a byte-order mark must be valid UTF-8, otherwise it is skipped with `Not valid UTF-8; add a BOM or convert the file to UTF-8.` Text inside string and character literals is protected. Line endings are never converted.
+A file is rewritten only if its content changes, or its line endings or encoding are to change (see [Line endings and encoding](#line-endings-and-encoding)). Unless you choose otherwise, it keeps its own encoding, byte-order mark and line endings. A file without a byte-order mark must be valid UTF-8, otherwise it is skipped with `Not valid UTF-8; add a BOM or convert the file to UTF-8.` Text inside string and character literals is protected from the fixers.
 
 Two things are changed even though they are not listed as rules: typographic punctuation (curly quotes, dashes, the minus sign, the ellipsis) becomes plain ASCII outside string and character literals, and every file ends with exactly one line break.
+
+## Choosing the fixers
+
+The **Fix folder for standard** submenu lists every fixer by name, such as "Indentation", "Braces on their own lines" or "Trailing whitespace". A tick means the fix runs it. Click one to turn it off or on; the menu stays open, so you can change several. **Turn all on** and **Turn all off** change them all at once. Hover over a fixer to see what it does and which languages it fixes: C#, JavaScript or both.
+
+Your choice is saved in `config\fixers.json` and applies to every fix after it, including one started with the `FixFolder` hotkey, until you change it. A fixer added in a later version of My Tools starts on. If every fixer is off, **Fix a folder...** says so and does nothing.
+
+A fixer that is off leaves its issues in place, so they appear under "Issues left" after the fix.
+
+## Line endings and encoding
+
+The same submenu has two more choices, saved in `config\fixers.json` too:
+
+| Submenu | Choices | What a fix does |
+|---|---|---|
+| **Line endings** | **Keep as they are** (the default), **CRLF (Windows)**, **LF (Linux, macOS)**, **CR (classic Mac OS)** | Gives every line of every file the line ending chosen, whatever mix the file had, including the lines inside multi-line strings. |
+| **Encoding** | **Keep as it is** (the default), **UTF-8**, **UTF-8 with BOM** | Saves every file in the encoding chosen: UTF-8 with or without the byte-order mark (EF BB BF) that Visual Studio adds. A UTF-16 file with a byte-order mark becomes UTF-8 too. |
+
+Each submenu shows its choice in its own name, for example **Line endings: CRLF (Windows)**.
+
+To only convert line endings or encodings, choose them, then **Turn all off**: the fix changes nothing else. A file without a byte-order mark that isn't valid UTF-8 (for example one saved as Windows-1252) is still skipped, since its encoding can't be known for sure.
 
 ## The rules
 
@@ -117,4 +146,4 @@ Typical examples: `int a;  ` (trailing spaces) becomes `int a;`; `if(x)` becomes
 
 ---
 
-← Previous: [Scripts](08-scripts.md) | [Contents](README.md) | Next: [Files and Updates](10-files-and-updates.md) →
+← Previous: [Script Errors and Limits](08d-script-errors.md) | [Contents](README.md) | Next: [Files and Updates](10-files-and-updates.md) →

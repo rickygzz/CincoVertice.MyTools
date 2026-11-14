@@ -7,10 +7,20 @@
 | Ctrl+Alt+C | Calculator |
 | Ctrl+Alt+S | Snip, then edit |
 | Ctrl+Alt+Shift+S | Snip to the clipboard |
+| Ctrl+Alt+T | Snip, then copy the text in it |
+| Ctrl+Alt+R | Record a video of an area; again to stop |
+| Ctrl+Alt+P | Pick a color from the screen |
 | Ctrl+Alt+D | New diagram editor window |
 | Ctrl+Alt+M | Turn the mouse mover on or off |
+| Ctrl+Alt+K | Keep the computer awake, or stop |
 
 All other actions have no default hotkey. Add them in `hotkeys.cfg`.
+
+## Window zones
+
+| Key | Effect |
+|---|---|
+| Shift while dragging a window | Shows the zones; drop the window on one to put it there. See [Window Zones](13-window-zones.md). |
 
 ## Calculator
 
@@ -19,15 +29,17 @@ All other actions have no default hotkey. Add them in `hotkeys.cfg`.
 | Enter | Calculate |
 | Esc | Hide |
 | Ctrl+H | Show or hide history |
+| Up / Down | Bring back the lines entered before |
 | Ctrl+Arrow (Shift for larger steps) | Move the window |
 
 ## Snip editor
 
 | Key | Effect |
 |---|---|
-| V, P, H, A, R, T, B | Select, Pen, Highlighter, Arrow, Rectangle, Text, Blur |
+| V, P, H, A, R, T, B, E | Select, Pen, Highlighter, Arrow, Rectangle, Text, Blur, Emoji |
 | Ctrl+Z / Ctrl+Y or Ctrl+Shift+Z | Undo / redo |
 | Ctrl+C / Ctrl+S | Copy / save |
+| Ctrl+Shift+C | Copy the text in the snip |
 | Alt+Left / Alt+Right | Previous / next snip |
 | `-` or `[` / `+` or `]` | Smaller / larger size |
 | Arrows (Shift for 1 px) | Nudge the selection |
@@ -38,13 +50,17 @@ All other actions have no default hotkey. Add them in `hotkeys.cfg`.
 
 | Key | Effect |
 |---|---|
-| V, C, R, U, O, D, P, H, Y, M, T | Select, Connector, Rectangle, Rounded rectangle, Ellipse, Diamond, Parallelogram, Hexagon, Cylinder, Document, Text |
+| V, C, L, R, U, O, D, P, H, Y, M, B, T | Select, Connector, Line, Rectangle, Rounded rectangle, Ellipse, Diamond, Parallelogram, Hexagon, Cylinder, Document, Container, Text |
 | Ctrl+N / Ctrl+O / Ctrl+S / Ctrl+Shift+S | New / open / save / save as |
+| Ctrl+E | Export as PDF |
+| Ctrl+Shift+E | Export as PNG |
 | Ctrl+Z / Ctrl+Y or Ctrl+Shift+Z | Undo / redo |
 | Delete or Backspace | Delete the selection |
 | Space (held) or middle mouse button | Drag the view |
 | Esc | Cancel a text, end a drag, switch to Select, or clear the selection |
 | Ctrl+X / Ctrl+C / Ctrl+V / Ctrl+D | Cut / copy / paste / duplicate |
+| Ctrl+I | Insert SVG images |
+| Ctrl+Shift+C / Ctrl+Shift+V | Copy style / paste style |
 | Ctrl+A | Select all |
 | Ctrl+G / Ctrl+Shift+G | Group / ungroup |
 | Ctrl+] / Ctrl+[ | Bring to front / send to back |
@@ -62,4 +78,4 @@ All other actions have no default hotkey. Add them in `hotkeys.cfg`.
 
 ---
 
-← Previous: [Troubleshooting](11-troubleshooting.md) | [Contents](README.md)
+← Previous: [Troubleshooting](11-troubleshooting.md) | [Contents](README.md) | Next: [Window Zones](13-window-zones.md) →

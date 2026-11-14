@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Globalization;
 using System.Text;
 using System.Xml;
@@ -15,19 +15,24 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Services;
 public static class DiagramSvg
 {
     private const string MetadataId = "mytools-diagram";
-    private const int Margin = 20;
 
     private static readonly XNamespace _svg = "http://www.w3.org/2000/svg";
+    private static readonly XNamespace _xlink = "http://www.w3.org/1999/xlink";
 
     public static string Write(DiagramModel diagram)
     {
-        Rectangle area = AreaOf(diagram);
+        Rectangle area = DiagramArea.Of(diagram);
         var root = new XElement(
             _svg + "svg",
             new XAttribute("viewBox", $"{area.X} {area.Y} {area.Width} {area.Height}"),
             new XAttribute("width", area.Width),
             new XAttribute("height", area.Height),
             new XElement(_svg + "metadata", new XAttribute("id", MetadataId), DiagramJson.Write(diagram)));
+
+        if (diagram.Shapes.Any(shape => shape.Image is not null))
+        {
+            root.Add(new XAttribute(XNamespace.Xmlns + "xlink", _xlink));
+        }
 
         foreach (DiagramShapeModel shape in diagram.Shapes)
         {
@@ -96,92 +101,46 @@ public static class DiagramSvg
 
     private static string Hex(Color color) => $"#{color.R:X2}{color.G:X2}{color.B:X2}";
 
-    /// <summary>Around everything, including text and lines that go past the shapes, with a margin.</summary>
-    private static Rectangle AreaOf(DiagramModel diagram)
-    {
-        if (diagram.Shapes.Count == 0)
-        {
-            return new Rectangle(0, 0, 100, 100);
-        }
-
-        RectangleF area = diagram.Shapes
-            .Select(BoundsWithText)
-            .Aggregate(RectangleF.Union);
-
-        foreach (DiagramConnectorModel connector in diagram.Connectors)
-        {
-            if (DiagramRouter.PathOf(connector, diagram) is not { } path)
-            {
-                continue;
-            }
-
-            IEnumerable<PointF> points = path.Points
-                .Concat(path.StartHead ?? [])
-                .Concat(path.EndHead ?? []);
-
-            foreach (PointF point in points)
-            {
-                area = RectangleF.Union(area, new RectangleF(point, SizeF.Empty));
-            }
-
-            if (connector.Label.Length > 0)
-            {
-                area = RectangleF.Union(
-                    area,
-                    DiagramTextLayout.LayoutAt(connector.Label, path.LabelCenter, connector.Style.FontSize).Bounds);
-            }
-        }
-
-        // Half of a line's width goes outside what it follows
-        int widestLine = diagram.Shapes.Select(shape => shape.Style.LineWidth)
-            .Concat(diagram.Connectors.Select(connector => connector.Style.LineWidth))
-            .Max();
-        int widestTextOutline = diagram.Shapes.Select(shape => shape.Style.TextOutlineWidth)
-            .Concat(diagram.Connectors.Select(connector => connector.Style.TextOutlineWidth))
-            .Max();
-        int margin = Math.Max(Margin, Math.Max(widestLine / 2, widestTextOutline) + 1);
-        var whole = Rectangle.Ceiling(area);
-
-        whole.Inflate(margin, margin);
-
-        return whole;
-    }
-
-    /// <summary>A shape's text isn't cut at its edges, so it can go past them.</summary>
-    private static RectangleF BoundsWithText(DiagramShapeModel shape)
-    {
-        if (shape.Text.Length == 0)
-        {
-            return shape.Bounds;
-        }
-
-        RectangleF textArea = DiagramFigures.TextArea(shape.Kind, shape.Bounds);
-
-        return RectangleF.Union(
-            shape.Bounds,
-            DiagramTextLayout.Layout(shape.Text, textArea, shape.Style.FontSize).Bounds);
-    }
-
     private static XElement ShapeElement(DiagramShapeModel shape)
     {
         var group = new XElement(_svg + "g");
 
-        foreach (DiagramFigureModel figure in DiagramFigures.Of(shape.Kind, shape.Bounds, shape.CornerRadius))
+        // Its own SVG, inside a link of its own, so its ids and styles can't mix with another's
+        if (shape is { Kind: DiagramShapeKind.Image, Image: string markup })
+        {
+            group.Add(new XElement(
+                _svg + "image",
+                new XAttribute("x", shape.Bounds.X),
+                new XAttribute("y", shape.Bounds.Y),
+                new XAttribute("width", shape.Bounds.Width),
+                new XAttribute("height", shape.Bounds.Height),
+                new XAttribute("preserveAspectRatio", "none"),
+                new XAttribute(_xlink + "href", DiagramSvgImage.DataUri(DiagramSvgImage.Filling(markup)))));
+        }
+
+        foreach (DiagramFigureModel figure in DiagramFigures.Of(shape))
         {
             var path = new XElement(
                 _svg + "path",
                 new XAttribute("d", PathData(figure)),
-                new XAttribute("fill", figure.Filled && !shape.Style.Fill.IsEmpty ? Hex(shape.Style.Fill) : "none"));
+                new XAttribute("fill", DiagramFigures.FillOf(figure, shape.Style) is { IsEmpty: false } fill
+                    ? Hex(fill)
+                    : "none"));
 
-            AddLineStyle(path, shape.Style);
+            if (figure.Stroked)
+            {
+                AddLineStyle(path, shape.Style);
+            }
+            else
+            {
+                path.Add(new XAttribute("stroke", "none"));
+            }
             group.Add(path);
         }
 
         if (shape.Text.Length > 0)
         {
-            RectangleF area = DiagramFigures.TextArea(shape.Kind, shape.Bounds);
-
-            AddText(group, DiagramTextLayout.Layout(shape.Text, area, shape.Style.FontSize), shape.Style);
+            AddText(group, DiagramTextLayout.OfShape(shape), shape.Style);
         }
 
         return group;
@@ -214,7 +173,8 @@ public static class DiagramSvg
             DiagramTextBlockModel block = DiagramTextLayout.LayoutAt(
                 connector.Label,
                 path.LabelCenter,
-                connector.Style.FontSize);
+                connector.Style.FontSize,
+                connector.Style.TextAlignment);
 
             // So the line doesn't run through the words
             group.Add(new XElement(
@@ -292,7 +252,12 @@ public static class DiagramSvg
     {
         var text = new XElement(
             _svg + "text",
-            new XAttribute("text-anchor", "middle"),
+            new XAttribute("text-anchor", block.Alignment switch
+            {
+                DiagramTextAlignment.Left => "start",
+                DiagramTextAlignment.Right => "end",
+                _ => "middle",
+            }),
 
             // In quotes for a name with spaces; on a computer without it, any sans serif font shows instead
             new XAttribute("font-family", $"'{style.FontFamily.Replace("'", string.Empty)}', sans-serif"),
@@ -307,7 +272,7 @@ public static class DiagramSvg
 
             text.Add(new XElement(
                 _svg + "tspan",
-                new XAttribute("x", Number(block.CenterX)),
+                new XAttribute("x", Number(block.X)),
                 new XAttribute("y", Number(baseline)),
                 WithoutInvalidCharacters(block.Lines[i])));
         }

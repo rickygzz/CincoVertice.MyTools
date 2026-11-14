@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 
 namespace CincoVertice.MyTools.Ui.Snipping.Models;
 
@@ -13,6 +13,8 @@ namespace CincoVertice.MyTools.Ui.Snipping.Models;
 /// <param name="TextOutline">The edge of the text tool's letters; null keeps the default.</param>
 /// <param name="CornerRadius">How round the rectangle tool's corners are, in pixels; null keeps the default.</param>
 /// <param name="HideWhileSnipping">True to keep the open editor out of the next snips' screenshots.</param>
+/// <param name="Emoji">The emoji the emoji tool drops; null keeps the default.</param>
+/// <param name="RecentEmojis">The emoji dropped last, most recent first.</param>
 public sealed record SnipEditorSettingsModel(
     SnipTool Tool,
     IReadOnlyDictionary<SnipTool, SnipToolSettingsModel> Tools,
@@ -20,4 +22,6 @@ public sealed record SnipEditorSettingsModel(
     SnipArrowHeads ArrowHeads = SnipArrowHeads.End,
     SnipTextOutlineModel? TextOutline = null,
     int? CornerRadius = null,
-    bool HideWhileSnipping = true);
+    bool HideWhileSnipping = true,
+    string? Emoji = null,
+    IReadOnlyList<string>? RecentEmojis = null);
