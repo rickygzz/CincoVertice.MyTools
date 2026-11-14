@@ -82,6 +82,24 @@ public interface IDiagramEditorView
     /// <summary>Raised with true when the user shows the properties panel, and false when they hide it.</summary>
     event EventHandler<bool>? PropertiesPanelToggled;
 
+    /// <summary>Raised with true when the user shows the images panel, and false when they hide it.</summary>
+    event EventHandler<bool>? ImagesPanelToggled;
+
+    /// <summary>Raised with what the images panel should show only the images of; empty for all.</summary>
+    event EventHandler<string>? ImageSearchChanged;
+
+    /// <summary>Raised with the path of the image of the catalog to insert where the mouse was last.</summary>
+    event EventHandler<string>? CatalogImageChosen;
+
+    /// <summary>Raised when an image of the catalog is dragged onto the canvas.</summary>
+    event EventHandler<DiagramCatalogDropModel>? CatalogImageDropped;
+
+    /// <summary>Raised when the user wants to open the catalog's folder.</summary>
+    event EventHandler? ImagesFolderRequested;
+
+    /// <summary>Raised when the window gets the focus, e.g. back from copying images into the catalog.</summary>
+    event EventHandler? WindowActivated;
+
     /// <summary>Raised with the window's size as it closes, once closing wasn't cancelled.</summary>
     event EventHandler<DiagramWindowSizeModel>? WindowClosed;
 
@@ -104,6 +122,19 @@ public interface IDiagramEditorView
 
     /// <summary>Shows or hides the properties panel, as it was saved. Called once, before the window shows.</summary>
     void ShowPropertiesPanel(bool isVisible);
+
+    /// <summary>Shows or hides the images panel.</summary>
+    void ShowImagesPanel(bool isVisible);
+
+    /// <summary>
+    ///     Shows the images of the catalog, in their groups, in order; a group shows where its first one is.
+    /// </summary>
+    /// <param name="images">What to show; the same image can be in two groups, e.g. Recent and its own.</param>
+    /// <param name="emptyText">What to show when there are none.</param>
+    void ShowCatalog(IReadOnlyList<DiagramCatalogImageModel> images, string emptyText);
+
+    /// <summary>Opens a folder, e.g. in File Explorer.</summary>
+    void OpenFolder(string folder);
 
     /// <summary>Makes the window this large, as it was saved. Called once at most, before the window shows.</summary>
     void ShowWindowSize(DiagramWindowSizeModel size);

@@ -15,11 +15,12 @@ public class DiagramEditorPresenterTests
     private readonly FakeStore _store = new();
     private readonly FakeSettingsStore _settings = new();
     private readonly FakeExporter _exporter = new();
+    private readonly FakeImageCatalog _catalog = new();
     private readonly DiagramEditorPresenter _presenter;
 
     public DiagramEditorPresenterTests()
     {
-        _presenter = new DiagramEditorPresenter(_view, _store, _settings, _exporter);
+        _presenter = new DiagramEditorPresenter(_view, _store, _settings, _exporter, _catalog);
         _presenter.Start();
     }
 
@@ -2175,7 +2176,7 @@ public class DiagramEditorPresenterTests
     private (FakeView View, DiagramEditorPresenter Presenter) NewEditor(DiagramEditorSettingsModel? saved)
     {
         var view = new FakeView();
-        var presenter = new DiagramEditorPresenter(view, _store, new FakeSettingsStore(saved), _exporter);
+        var presenter = new DiagramEditorPresenter(view, _store, new FakeSettingsStore(saved), _exporter, _catalog);
 
         presenter.Start();
 
@@ -2329,7 +2330,7 @@ public class DiagramEditorPresenterTests
             Window: window));
         var view = new FakeView();
 
-        new DiagramEditorPresenter(view, _store, store, _exporter).Start();
+        new DiagramEditorPresenter(view, _store, store, _exporter, _catalog).Start();
 
         // Act
         view.SelectLineWidth(5);
@@ -3319,6 +3320,168 @@ public class DiagramEditorPresenterTests
         Assert.False(_view.Properties!.HasImages);
     }
 
+    private void AddToCatalog(string path, string name, string group) =>
+        _catalog.Items.Add(new DiagramCatalogImageModel(path, name, group, DiagramSvgImage.Prepare(Icon)));
+
+    [Fact]
+    public void Catalog_AnImageInserted_GoesIntoIt_AndShowsFirst_AsUsedLast()
+    {
+        // Arrange
+        _store.Images[@"C:\icons\vm.svg"] = Icon;
+        _view.ImagesToInsert = [@"C:\icons\vm.svg"];
+
+        // Act
+        _view.Command(DiagramCommand.InsertImage);
+
+        // Assert: as read, not as made ready for the diagram
+        Assert.Equal([(Icon, "vm.svg")], _catalog.Added);
+        Assert.Equal(["Recent", "Inserted"], _view.Catalog!.Select(image => image.Group));
+        Assert.All(_view.Catalog!, image => Assert.Equal("vm.svg", image.Path));
+    }
+
+    [Fact]
+    public void Catalog_SvgTextPasted_GoesIntoIt()
+    {
+        // Arrange
+        _view.Clipboard = Banner;
+
+        // Act
+        _view.Command(DiagramCommand.Paste);
+
+        // Assert
+        Assert.Equal([(Banner, "pasted.svg")], _catalog.Added);
+    }
+
+    [Fact]
+    public void Catalog_AFileThatIsntAnImage_DoesntGoIntoIt()
+    {
+        // Arrange
+        _store.Images["notes.svg"] = "not markup";
+        _view.ImagesToInsert = ["notes.svg"];
+
+        // Act
+        _view.Command(DiagramCommand.InsertImage);
+
+        // Assert
+        Assert.Empty(_catalog.Added);
+    }
+
+    [Fact]
+    public void Catalog_ImagesCopiedIn_ShowWhenTheWindowIsBack_InTheirGroups()
+    {
+        // Arrange
+        AddToCatalog("Azure/Compute/vm.svg", "Virtual Machine", "Azure/Compute");
+        AddToCatalog("Azure/Web/app.svg", "App Service", "Azure/Web");
+        Assert.Empty(_view.Catalog!);
+        Assert.StartsWith("Images you insert show here", _view.CatalogEmptyText);
+
+        // Act
+        _view.ActivateWindow();
+        int shows = _view.CatalogShows;
+        _view.ActivateWindow();
+
+        // Assert: not again when nothing changed, so the panel keeps its place
+        Assert.Equal(["Azure/Compute", "Azure/Web"], _view.Catalog!.Select(image => image.Group));
+        Assert.Equal(shows, _view.CatalogShows);
+    }
+
+    [Fact]
+    public void Catalog_Choosing_InsertsItWhereTheMouseWas_WithItsProportionsLocked_AndMakesItRecent()
+    {
+        // Arrange
+        AddToCatalog("Azure/vm.svg", "Virtual Machine", "Azure");
+        _view.ActivateWindow();
+        _view.Hover(100, 100);
+
+        // Act
+        _view.ChooseCatalogImage("Azure/vm.svg");
+
+        // Assert
+        DiagramShapeModel image = Assert.Single(Diagram.Shapes);
+        Assert.Equal(Box(100, 100, 64, 64), image.Bounds);
+        Assert.Equal(DiagramLock.AspectRatio, image.Locks);
+        Assert.Equal(["Azure/vm.svg"], _catalog.RecentPaths);
+        Assert.Equal(("Recent", "Azure/vm.svg"), (_view.Catalog![0].Group, _view.Catalog[0].Path));
+    }
+
+    [Fact]
+    public void Catalog_Dropped_IsInsertedWhereItWasDropped()
+    {
+        // Arrange
+        AddToCatalog("vm.svg", "vm", "Inserted");
+        _view.ActivateWindow();
+
+        // Act
+        _view.DropCatalogImage(302, 199, "vm.svg");
+
+        // Assert
+        Assert.Equal(Box(300, 200, 64, 64), Assert.Single(Diagram.Shapes).Bounds);
+    }
+
+    [Fact]
+    public void Catalog_AnImageNotShown_IsntInserted()
+    {
+        // Arrange
+        AddToCatalog("vm.svg", "vm", "Inserted");
+
+        // Act: the panel hasn't shown it yet
+        _view.ChooseCatalogImage("vm.svg");
+
+        // Assert
+        Assert.Empty(Diagram.Shapes);
+    }
+
+    [Fact]
+    public void Catalog_Search_ShowsTheImagesWhoseNameOrGroupHasTheText_WithoutRecent()
+    {
+        // Arrange
+        AddToCatalog("Azure/Compute/vm.svg", "Virtual Machine", "Azure/Compute");
+        AddToCatalog("Azure/Web/app.svg", "App Service", "Azure/Web");
+        AddToCatalog("logo.svg", "logo", "Inserted");
+        _catalog.MarkUsed("logo.svg");
+
+        // Act / Assert
+        _view.SearchImages(" MACHINE ");
+        Assert.Equal(["Azure/Compute/vm.svg"], _view.Catalog!.Select(image => image.Path));
+
+        _view.SearchImages("azure");
+        Assert.Equal(2, _view.Catalog!.Count);
+
+        _view.SearchImages("nothing");
+        Assert.Empty(_view.Catalog!);
+        Assert.Equal("No image has \"nothing\".", _view.CatalogEmptyText);
+
+        _view.SearchImages(string.Empty);
+        Assert.Equal("Recent", _view.Catalog![0].Group);
+    }
+
+    [Fact]
+    public void Catalog_PanelHidden_IsRemembered_AndShowsNothingUntilShownAgain()
+    {
+        // Arrange
+        AddToCatalog("vm.svg", "vm", "Inserted");
+
+        // Act / Assert
+        _view.ToggleImagesPanel(false);
+        Assert.False(_settings.Saved[^1].IsImagesPanelVisible);
+
+        _view.ActivateWindow();
+        Assert.Empty(_view.Catalog!);
+
+        _view.ToggleImagesPanel(true);
+        Assert.Single(_view.Catalog!);
+    }
+
+    [Fact]
+    public void Catalog_Folder_IsOpened()
+    {
+        // Act
+        _view.RequestImagesFolder();
+
+        // Assert
+        Assert.Equal(_catalog.Folder, _view.OpenedFolder);
+    }
+
     [Fact]
     public void Paste_SomethingElseOnTheClipboard_DoesNothing()
     {
@@ -3957,6 +4120,48 @@ public class DiagramEditorPresenterTests
             Images.TryGetValue(path, out string? image) ? image : throw new FileNotFoundException("It isn't there.");
     }
 
+    /// <summary>A catalog in memory: what's added goes in at its top, as used last.</summary>
+    private sealed class FakeImageCatalog : IDiagramImageCatalog
+    {
+        public List<DiagramCatalogImageModel> Items { get; } = [];
+
+        public List<string> RecentPaths { get; } = [];
+
+        public List<(string Markup, string FileName)> Added { get; } = [];
+
+        public string Folder => @"C:\MyTools\config\images";
+
+        public void CreateFolder()
+        {
+        }
+
+        public IReadOnlyList<DiagramCatalogImageModel> Images() => [.. Items];
+
+        public IReadOnlyList<string> Recent() => [.. RecentPaths];
+
+        public void Add(string markup, string fileName)
+        {
+            Added.Add((markup, fileName));
+
+            if (Items.All(item => item.Path != fileName))
+            {
+                Items.Add(new DiagramCatalogImageModel(
+                    fileName,
+                    Path.GetFileNameWithoutExtension(fileName),
+                    FolderDiagramImageCatalog.InsertedGroup,
+                    DiagramSvgImage.Prepare(markup)));
+            }
+
+            MarkUsed(fileName);
+        }
+
+        public void MarkUsed(string path)
+        {
+            RecentPaths.Remove(path);
+            RecentPaths.Insert(0, path);
+        }
+    }
+
     private sealed class FakeExporter : IDiagramPdfExporter
     {
         public string? ExportedPath { get; private set; }
@@ -4033,6 +4238,51 @@ public class DiagramEditorPresenterTests
         public event EventHandler<CancelEventArgs>? Closing;
 
         public event EventHandler<bool>? PropertiesPanelToggled;
+
+        public event EventHandler<bool>? ImagesPanelToggled;
+
+        public event EventHandler<string>? ImageSearchChanged;
+
+        public event EventHandler<string>? CatalogImageChosen;
+
+        public event EventHandler<DiagramCatalogDropModel>? CatalogImageDropped;
+
+        public event EventHandler? ImagesFolderRequested;
+
+        public event EventHandler? WindowActivated;
+
+        public bool? ImagesPanelShown { get; private set; }
+
+        public IReadOnlyList<DiagramCatalogImageModel>? Catalog { get; private set; }
+
+        public string? CatalogEmptyText { get; private set; }
+
+        public int CatalogShows { get; private set; }
+
+        public string? OpenedFolder { get; private set; }
+
+        public void ShowImagesPanel(bool isVisible) => ImagesPanelShown = isVisible;
+
+        public void ShowCatalog(IReadOnlyList<DiagramCatalogImageModel> images, string emptyText)
+        {
+            (Catalog, CatalogEmptyText) = (images, emptyText);
+            CatalogShows++;
+        }
+
+        public void OpenFolder(string folder) => OpenedFolder = folder;
+
+        public void ToggleImagesPanel(bool isVisible) => ImagesPanelToggled?.Invoke(this, isVisible);
+
+        public void SearchImages(string text) => ImageSearchChanged?.Invoke(this, text);
+
+        public void ChooseCatalogImage(string path) => CatalogImageChosen?.Invoke(this, path);
+
+        public void DropCatalogImage(int x, int y, string path) =>
+            CatalogImageDropped?.Invoke(this, new DiagramCatalogDropModel(path, new Point(x, y)));
+
+        public void RequestImagesFolder() => ImagesFolderRequested?.Invoke(this, EventArgs.Empty);
+
+        public void ActivateWindow() => WindowActivated?.Invoke(this, EventArgs.Empty);
 
         public event EventHandler<DiagramWindowSizeModel>? WindowClosed;
 

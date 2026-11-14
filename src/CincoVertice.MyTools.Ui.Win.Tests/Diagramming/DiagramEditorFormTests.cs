@@ -156,7 +156,8 @@ public class DiagramEditorFormTests
     {
         // Arrange
         using var form = new DiagramEditorForm();
-        var presenter = new DiagramEditorPresenter(form, new NoStore(), new NoSettings(), new NoExporter());
+        var presenter =
+            new DiagramEditorPresenter(form, new NoStore(), new NoSettings(), new NoExporter(), new NoCatalog());
         var list = (ToolStripComboBox)typeof(DiagramEditorForm)
             .GetField("TextOutlineWidthComboBox", BindingFlags.NonPublic | BindingFlags.Instance)!
             .GetValue(form)!;
@@ -187,7 +188,8 @@ public class DiagramEditorFormTests
     {
         // Every tool button's tag, the palettes and the lists are read here
         using var form = new DiagramEditorForm();
-        var presenter = new DiagramEditorPresenter(form, new NoStore(), new NoSettings(), new NoExporter());
+        var presenter =
+            new DiagramEditorPresenter(form, new NoStore(), new NoSettings(), new NoExporter(), new NoCatalog());
 
         presenter.Start();
 
@@ -354,7 +356,8 @@ public class DiagramEditorFormTests
     {
         // Arrange
         using var form = new DiagramEditorForm();
-        new DiagramEditorPresenter(form, new NoStore(), new NoSettings(), new NoExporter()).Start();
+        new DiagramEditorPresenter(form, new NoStore(), new NoSettings(), new NoExporter(), new NoCatalog())
+            .Start();
 
         // Act: from a file edited by hand, say; a field's value out of its range would throw
         form.ShowProperties(new DiagramPropertiesModel(
@@ -641,6 +644,39 @@ public class DiagramEditorFormTests
         Assert.Equal([DiagramCommand.ResetSize], commands);
     }
 
+    [Fact]
+    public void ImagesPanel_ShowsTheImagesInTheirGroups_AndChoosingOneAsksToInsertIt()
+    {
+        // Arrange
+        using var form = new DiagramEditorForm();
+        List<string> chosen = [];
+        form.CatalogImageChosen += (_, path) => chosen.Add(path);
+        var list = (ListView)form.Controls.Find("ImagesListView", true).Single();
+        var empty = (Label)form.Controls.Find("ImagesEmptyLabel", true).Single();
+        const string Markup = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 9"/>""";
+        form.Show();
+
+        // Act / Assert
+        form.ShowCatalog([], "Nothing yet");
+        Assert.True(empty.Visible);
+        Assert.Equal("Nothing yet", empty.Text);
+
+        form.ShowCatalog(
+            [
+                new DiagramCatalogImageModel("Azure/vm.svg", "VM", "Recent", Markup),
+                new DiagramCatalogImageModel("Azure/vm.svg", "VM", "Azure", Markup),
+                new DiagramCatalogImageModel("Azure/app.svg", "App", "Azure", Markup),
+            ],
+            "Nothing yet");
+        Assert.False(empty.Visible);
+        Assert.Equal(["Recent", "Azure"], list.Groups.Cast<ListViewGroup>().Select(group => group.Header));
+        Assert.Equal(3, list.Items.Count);
+
+        list.Items[2].Focused = true;
+        form.ChooseFocusedImage();
+        Assert.Equal(["Azure/app.svg"], chosen);
+    }
+
     private sealed class NoSettings : IDiagramEditorSettingsStore
     {
         public DiagramEditorSettingsModel? Load() => null;
@@ -661,6 +697,27 @@ public class DiagramEditorFormTests
         public string? VersionOf(string path) => null;
 
         public string ReadImage(string path) => string.Empty;
+    }
+
+    private sealed class NoCatalog : IDiagramImageCatalog
+    {
+        public string Folder => string.Empty;
+
+        public void CreateFolder()
+        {
+        }
+
+        public IReadOnlyList<DiagramCatalogImageModel> Images() => [];
+
+        public IReadOnlyList<string> Recent() => [];
+
+        public void Add(string markup, string fileName)
+        {
+        }
+
+        public void MarkUsed(string path)
+        {
+        }
     }
 
     private sealed class NoExporter : IDiagramPdfExporter

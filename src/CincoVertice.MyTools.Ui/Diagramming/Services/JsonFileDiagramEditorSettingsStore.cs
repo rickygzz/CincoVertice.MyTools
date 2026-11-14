@@ -53,7 +53,8 @@ public sealed class JsonFileDiagramEditorSettingsStore : IDiagramEditorSettingsS
                 file.PropertiesPanel,
                 file.Window is { } window
                     ? new DiagramWindowSizeModel(new Size(window.Width, window.Height), window.Maximized)
-                    : null);
+                    : null,
+                file.ImagesPanel);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
@@ -69,7 +70,8 @@ public sealed class JsonFileDiagramEditorSettingsStore : IDiagramEditorSettingsS
             settings.Routing,
             settings.Heads,
             settings.IsPropertiesPanelVisible,
-            window is null ? null : new WindowFile(window.Size.Width, window.Size.Height, window.IsMaximized));
+            window is null ? null : new WindowFile(window.Size.Width, window.Size.Height, window.IsMaximized),
+            settings.IsImagesPanelVisible);
 
         try
         {
@@ -88,7 +90,8 @@ public sealed class JsonFileDiagramEditorSettingsStore : IDiagramEditorSettingsS
         DiagramRouting Routing,
         DiagramArrowHeads Heads,
         bool PropertiesPanel = true,
-        WindowFile? Window = null);
+        WindowFile? Window = null,
+        bool ImagesPanel = true);
 
     private sealed record WindowFile(int Width, int Height, bool Maximized);
 }

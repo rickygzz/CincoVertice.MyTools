@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel;
+using System.Diagnostics;
 using CincoVertice.MyTools.Ui.Diagramming.Models;
 using CincoVertice.MyTools.Ui.Diagramming.Views;
 using CincoVertice.MyTools.Ui.Win.Behaviors;
@@ -18,8 +19,17 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     // How many pixels the arrow keys move the selection; with Shift, one
     private const int NudgeStep = 10;
 
+    // The pictures in the images panel, in logical pixels
+    private const int ThumbnailSize = 48;
+
+    // What an image dragged from the images panel carries: its path in the catalog
+    private const string CatalogImageFormat = "CincoVertice.MyTools.DiagramCatalogImage";
+
     private readonly int _iconSize;
     private readonly List<Image> _images = [];
+
+    // Sizes the images panel's items, whose pictures are drawn by the form: it holds no image
+    private readonly ImageList _thumbnails = new() { ColorDepth = ColorDepth.Depth32Bit };
 
     // The color buttons' images: the current colors, replaced when they change
     private readonly Dictionary<ToolStripDropDownButton, Image> _swatches = [];
@@ -75,8 +85,15 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         Canvas.AllowDrop = Thread.CurrentThread.GetApartmentState() == ApartmentState.STA;
 
         FormExtensions.CenterOnCursorScreen(this);
+        _thumbnails.ImageSize = new Size(LogicalToDeviceUnits(ThumbnailSize), LogicalToDeviceUnits(ThumbnailSize));
+        ImagesListView.LargeImageList = _thumbnails;
+        components?.Add(_thumbnails);
+
         FormExtensions.ActivateWhenShown(this);
     }
+
+    /// <summary>Whether the focus is in the properties or the images panel, whose keys are their own.</summary>
+    private bool IsInAPanel => PropertiesPanel.ContainsFocus || ImagesPanel.ContainsFocus;
 
     public event EventHandler<DiagramPointerModel>? PointerPressed;
 
@@ -131,6 +148,18 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     public event EventHandler<string>? TextCommitted;
 
     public event EventHandler<bool>? PropertiesPanelToggled;
+
+    public event EventHandler<bool>? ImagesPanelToggled;
+
+    public event EventHandler<string>? ImageSearchChanged;
+
+    public event EventHandler<string>? CatalogImageChosen;
+
+    public event EventHandler<DiagramCatalogDropModel>? CatalogImageDropped;
+
+    public event EventHandler? ImagesFolderRequested;
+
+    public event EventHandler? WindowActivated;
 
     public event EventHandler<DiagramWindowSizeModel>? WindowClosed;
 
@@ -206,6 +235,55 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     {
         PropertiesPanel.Visible = isVisible;
         PropertiesButton.Checked = isVisible;
+    }
+
+    public void ShowImagesPanel(bool isVisible)
+    {
+        ImagesPanel.Visible = isVisible;
+        ImagesButton.Checked = isVisible;
+    }
+
+    public void ShowCatalog(IReadOnlyList<DiagramCatalogImageModel> images, string emptyText)
+    {
+        Dictionary<string, ListViewGroup> groups = [];
+
+        ImagesListView.BeginUpdate();
+        ImagesListView.Items.Clear();
+        ImagesListView.Groups.Clear();
+
+        foreach (DiagramCatalogImageModel image in images)
+        {
+            if (!groups.TryGetValue(image.Group, out ListViewGroup? group))
+            {
+                group = new ListViewGroup(image.Group, image.Group);
+                groups[image.Group] = group;
+                ImagesListView.Groups.Add(group);
+            }
+
+            // The whole name, which can be cut under the picture, and where the file is
+            ImagesListView.Items.Add(new ListViewItem(image.Name, group)
+            {
+                Tag = image,
+                ToolTipText = $"{image.Name}\n{image.Path}",
+            });
+        }
+
+        ImagesListView.EndUpdate();
+        ImagesEmptyLabel.Text = emptyText;
+        ImagesEmptyLabel.Visible = images.Count == 0;
+        ImagesListView.Visible = images.Count > 0;
+    }
+
+    public void OpenFolder(string folder)
+    {
+        try
+        {
+            using var _ = Process.Start(new ProcessStartInfo(folder) { UseShellExecute = true });
+        }
+        catch (Win32Exception ex)
+        {
+            ShowError($"Could not open {folder}: {ex.Message}");
+        }
     }
 
     public void ShowWindowSize(DiagramWindowSizeModel size)
@@ -476,7 +554,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         {
             CancelText();
         }
-        else if (PropertiesPanel.ContainsFocus)
+        else if (IsInAPanel)
         {
             // Back to the canvas, which also takes what was typed in the field
             Canvas.Focus();
@@ -636,6 +714,81 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     {
         ShowPropertiesPanel(!PropertiesPanel.Visible);
         PropertiesPanelToggled?.Invoke(this, PropertiesPanel.Visible);
+    }
+
+    private void ImagesButton_Click(object? sender, EventArgs e)
+    {
+        ShowImagesPanel(!ImagesPanel.Visible);
+        ImagesPanelToggled?.Invoke(this, ImagesPanel.Visible);
+    }
+
+    private void ImageSearchBox_TextChanged(object? sender, EventArgs e) =>
+        ImageSearchChanged?.Invoke(this, ImageSearchBox.Text);
+
+    private void ImagesFolderButton_Click(object? sender, EventArgs e) =>
+        ImagesFolderRequested?.Invoke(this, EventArgs.Empty);
+
+    private void DiagramEditorForm_Activated(object? sender, EventArgs e) =>
+        WindowActivated?.Invoke(this, EventArgs.Empty);
+
+    private void ImagesListView_ItemActivate(object? sender, EventArgs e) => ChooseFocusedImage();
+
+    /// <summary>A double-click or Enter on an image: inserted where the mouse was last on the canvas.</summary>
+    internal void ChooseFocusedImage()
+    {
+        if (ImagesListView.FocusedItem?.Tag is DiagramCatalogImageModel image)
+        {
+            CatalogImageChosen?.Invoke(this, image.Path);
+        }
+    }
+
+    // Onto the canvas, where it's dropped
+    private void ImagesListView_ItemDrag(object? sender, ItemDragEventArgs e)
+    {
+        if (e.Item is ListViewItem { Tag: DiagramCatalogImageModel image })
+        {
+            ImagesListView.DoDragDrop(new DataObject(CatalogImageFormat, image.Path), DragDropEffects.Copy);
+        }
+    }
+
+    /// <summary>The image as it is, so it keeps its proportions, with its name under it, two lines at most.</summary>
+    private void ImagesListView_DrawItem(object? sender, DrawListViewItemEventArgs e)
+    {
+        if (e.Item.Tag is not DiagramCatalogImageModel image)
+        {
+            return;
+        }
+
+        Rectangle bounds = e.Bounds;
+        bool isSelected = e.Item.Selected;
+
+        using (var back = new SolidBrush(isSelected ? SystemColors.Highlight : ImagesListView.BackColor))
+        {
+            e.Graphics.FillRectangle(back, bounds);
+        }
+
+        int size = _thumbnails.ImageSize.Width;
+        int margin = LogicalToDeviceUnits(4);
+        var picture = new Rectangle(bounds.Left + ((bounds.Width - size) / 2), bounds.Top + margin, size, size);
+
+        e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        SvgImageRenderer.Draw(e.Graphics, image.Markup, picture);
+
+        var text = Rectangle.FromLTRB(bounds.Left + 2, picture.Bottom + margin, bounds.Right - 2, bounds.Bottom);
+
+        TextRenderer.DrawText(
+            e.Graphics,
+            e.Item.Text,
+            ImagesListView.Font,
+            text,
+            isSelected ? SystemColors.HighlightText : ImagesListView.ForeColor,
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.WordBreak | TextFormatFlags.EndEllipsis
+            | TextFormatFlags.NoPrefix);
+
+        if (e.Item.Focused && ImagesListView.Focused)
+        {
+            ControlPaint.DrawFocusRectangle(e.Graphics, bounds);
+        }
     }
 
     private void BoundsBox_ValueChanged(object? sender, EventArgs e)
@@ -999,12 +1152,22 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     /// <summary>Files can be dropped; what they are is up to the presenter.</summary>
     private void Canvas_DragEnter(object? sender, DragEventArgs e)
     {
-        e.Effect = e.Data?.GetDataPresent(DataFormats.FileDrop) == true ? DragDropEffects.Copy : DragDropEffects.None;
+        bool canDrop = e.Data?.GetDataPresent(DataFormats.FileDrop) == true
+            || e.Data?.GetDataPresent(CatalogImageFormat) == true;
+
+        e.Effect = canDrop ? DragDropEffects.Copy : DragDropEffects.None;
     }
 
     private void Canvas_DragDrop(object? sender, DragEventArgs e)
     {
-        if (e.Data?.GetData(DataFormats.FileDrop) is string[] { Length: > 0 } paths)
+        if (e.Data?.GetData(CatalogImageFormat) is string catalogPath)
+        {
+            Point at = Canvas.PointToClient(new Point(e.X, e.Y));
+
+            BeginInvoke(() => CatalogImageDropped?.Invoke(this, new DiagramCatalogDropModel(catalogPath, at)));
+            Canvas.Focus();
+        }
+        else if (e.Data?.GetData(DataFormats.FileDrop) is string[] { Length: > 0 } paths)
         {
             // From another program, which keeps waiting while a message box is shown
             Point location = Canvas.PointToClient(new Point(e.X, e.Y));
@@ -1085,8 +1248,8 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
             return;
         }
 
-        // While typing a text or in the panel's fields, keys are theirs
-        if (_isEditingText || PropertiesPanel.ContainsFocus)
+        // While typing a text or in a panel, keys are theirs
+        if (_isEditingText || IsInAPanel)
         {
             return;
         }

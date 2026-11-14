@@ -107,10 +107,16 @@ partial class DiagramEditorForm
         FrontButton = new ToolStripButton();
         BackButton = new ToolStripButton();
         PropertiesButton = new ToolStripButton();
+        ImagesButton = new ToolStripButton();
         ZoomLabel = new ToolStripLabel();
         Canvas = new DiagramCanvasControl();
         TextInputBox = new TextBox();
         PropertiesPanel = new Panel();
+        ImagesPanel = new Panel();
+        ImagesListView = new ListView();
+        ImagesEmptyLabel = new Label();
+        ImageSearchBox = new TextBox();
+        ImagesFolderButton = new Button();
         PropertiesTable = new TableLayoutPanel();
         PropertiesTitleLabel = new Label();
         TextLabel = new Label();
@@ -160,6 +166,7 @@ partial class DiagramEditorForm
         StyleStrip.SuspendLayout();
         Canvas.SuspendLayout();
         PropertiesPanel.SuspendLayout();
+        ImagesPanel.SuspendLayout();
         PropertiesTable.SuspendLayout();
         ((System.ComponentModel.ISupportInitialize)XBox).BeginInit();
         ((System.ComponentModel.ISupportInitialize)YBox).BeginInit();
@@ -295,7 +302,7 @@ partial class DiagramEditorForm
         // StyleStrip
         //
         StyleStrip.GripStyle = ToolStripGripStyle.Hidden;
-        StyleStrip.Items.AddRange(new ToolStripItem[] { FileDropDownButton, EditDropDownButton, FileSeparator, FillDropDownButton, LineDropDownButton, LineWidthComboBox, DashedButton, TextColorDropDownButton, FontSizeComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, StyleSeparator, RoutingComboBox, ArrowHeadsComboBox, ResetRouteButton, ConnectorsSeparator, FrontButton, BackButton, ZoomLabel, PropertiesButton });
+        StyleStrip.Items.AddRange(new ToolStripItem[] { FileDropDownButton, EditDropDownButton, FileSeparator, FillDropDownButton, LineDropDownButton, LineWidthComboBox, DashedButton, TextColorDropDownButton, FontSizeComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, StyleSeparator, RoutingComboBox, ArrowHeadsComboBox, ResetRouteButton, ConnectorsSeparator, FrontButton, BackButton, ZoomLabel, PropertiesButton, ImagesButton });
         StyleStrip.Name = "StyleStrip";
         StyleStrip.Padding = new Padding(4, 2, 4, 2);
         StyleStrip.TabIndex = 1;
@@ -693,6 +700,69 @@ partial class DiagramEditorForm
         PropertiesButton.Text = "Properties";
         PropertiesButton.ToolTipText = "Show or hide the properties panel (F4)";
         PropertiesButton.Click += PropertiesButton_Click;
+        //
+        // ImagesButton
+        //
+        ImagesButton.Alignment = ToolStripItemAlignment.Right;
+        ImagesButton.Checked = true;
+        ImagesButton.Name = "ImagesButton";
+        ImagesButton.Overflow = ToolStripItemOverflow.Never;
+        ImagesButton.Text = "Images";
+        ImagesButton.ToolTipText = "Show or hide the images to insert again";
+        ImagesButton.Click += ImagesButton_Click;
+        //
+        // ImagesPanel
+        //
+        ImagesPanel.BorderStyle = BorderStyle.FixedSingle;
+        ImagesPanel.Controls.Add(ImagesListView);
+        ImagesPanel.Controls.Add(ImagesEmptyLabel);
+        ImagesPanel.Controls.Add(ImageSearchBox);
+        ImagesPanel.Controls.Add(ImagesFolderButton);
+        ImagesPanel.Dock = DockStyle.Left;
+        ImagesPanel.Name = "ImagesPanel";
+        ImagesPanel.Padding = new Padding(4);
+        ImagesPanel.Size = new Size(230, 700);
+        ImagesPanel.TabIndex = 4;
+        //
+        // ImagesListView
+        //
+        ImagesListView.BorderStyle = BorderStyle.None;
+        ImagesListView.Dock = DockStyle.Fill;
+        ImagesListView.MultiSelect = false;
+        ImagesListView.Name = "ImagesListView";
+        ImagesListView.OwnerDraw = true;
+        ImagesListView.ShowItemToolTips = true;
+        ImagesListView.TabIndex = 1;
+        ImagesListView.View = View.LargeIcon;
+        ImagesListView.DrawItem += ImagesListView_DrawItem;
+        ImagesListView.ItemActivate += ImagesListView_ItemActivate;
+        ImagesListView.ItemDrag += ImagesListView_ItemDrag;
+        //
+        // ImagesEmptyLabel
+        //
+        ImagesEmptyLabel.Dock = DockStyle.Fill;
+        ImagesEmptyLabel.ForeColor = SystemColors.GrayText;
+        ImagesEmptyLabel.Name = "ImagesEmptyLabel";
+        ImagesEmptyLabel.Padding = new Padding(4, 8, 4, 0);
+        ImagesEmptyLabel.Visible = false;
+        //
+        // ImageSearchBox
+        //
+        ImageSearchBox.Dock = DockStyle.Top;
+        ImageSearchBox.Name = "ImageSearchBox";
+        ImageSearchBox.PlaceholderText = "Search images";
+        ImageSearchBox.TabIndex = 0;
+        ImageSearchBox.TextChanged += ImageSearchBox_TextChanged;
+        //
+        // ImagesFolderButton
+        //
+        ImagesFolderButton.AutoSize = true;
+        ImagesFolderButton.Dock = DockStyle.Bottom;
+        ImagesFolderButton.Name = "ImagesFolderButton";
+        ImagesFolderButton.TabIndex = 2;
+        ImagesFolderButton.Text = "Open the images folder";
+        ImagesFolderButton.UseVisualStyleBackColor = true;
+        ImagesFolderButton.Click += ImagesFolderButton_Click;
         //
         // PropertiesPanel
         //
@@ -1190,6 +1260,7 @@ partial class DiagramEditorForm
         AutoScaleMode = AutoScaleMode.Font;
         ClientSize = new Size(1280, 760);
         Controls.Add(Canvas);
+        Controls.Add(ImagesPanel);
         Controls.Add(PropertiesPanel);
         Controls.Add(ToolsStrip);
         Controls.Add(StyleStrip);
@@ -1200,6 +1271,7 @@ partial class DiagramEditorForm
         Text = "Diagram editor";
         FormClosing += DiagramEditorForm_FormClosing;
         KeyDown += DiagramEditorForm_KeyDown;
+        Activated += DiagramEditorForm_Activated;
         KeyUp += DiagramEditorForm_KeyUp;
         ToolsStrip.ResumeLayout(false);
         ToolsStrip.PerformLayout();
@@ -1219,6 +1291,8 @@ partial class DiagramEditorForm
         PropertiesTable.PerformLayout();
         PropertiesPanel.ResumeLayout(false);
         PropertiesPanel.PerformLayout();
+        ImagesPanel.ResumeLayout(false);
+        ImagesPanel.PerformLayout();
         ResumeLayout(false);
         PerformLayout();
     }
@@ -1300,6 +1374,12 @@ partial class DiagramEditorForm
     private DiagramCanvasControl Canvas;
     private TextBox TextInputBox;
     private Panel PropertiesPanel;
+    private ToolStripButton ImagesButton;
+    private Panel ImagesPanel;
+    private ListView ImagesListView;
+    private Label ImagesEmptyLabel;
+    private TextBox ImageSearchBox;
+    private Button ImagesFolderButton;
     private TableLayoutPanel PropertiesTable;
     private Label PropertiesTitleLabel;
     private Label TextLabel;

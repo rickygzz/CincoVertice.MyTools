@@ -36,6 +36,13 @@ public sealed class DiagramEditorPresenter
     private const int MaxFontSize = 400;
     private const int PasteOffset = 20;
 
+    // The images panel's group of the images used last, and how many it shows
+    private const string RecentGroup = "Recent";
+    private const int RecentImages = 12;
+
+    // What SVG text pasted is called in the catalog
+    private const string PastedImageName = "pasted.svg";
+
     // All in canvas pixels, so they feel the same at any zoom
     private const float SnapDistance = 6;
     private const float GrabDistance = 6;
@@ -53,6 +60,7 @@ public sealed class DiagramEditorPresenter
     private readonly IDiagramEditorView _view;
     private readonly IDiagramFileStore _fileStore;
     private readonly IDiagramPdfExporter _pdfExporter;
+    private readonly IDiagramImageCatalog _imageCatalog;
     private readonly IDiagramEditorSettingsStore _settingsStore;
     private readonly Stack<DiagramModel> _undo = new();
     private readonly Stack<DiagramModel> _redo = new();
@@ -82,6 +90,14 @@ public sealed class DiagramEditorPresenter
     private DiagramRouting _routing = DiagramRouting.Elbow;
     private DiagramArrowHeads _heads = DiagramArrowHeads.End;
     private bool _isPropertiesPanelVisible = true;
+    private bool _isImagesPanelVisible = true;
+
+    // What the images panel shows, and what it shows only the images of
+    private IReadOnlyList<DiagramCatalogImageModel> _shownCatalog = [];
+
+    // Null until the panel has been told what to show
+    private string? _shownCatalogEmptyText;
+    private string _imageSearch = string.Empty;
     private DiagramWindowSizeModel? _windowSize;
 
     // The drag in progress and what it shows
@@ -113,12 +129,15 @@ public sealed class DiagramEditorPresenter
     ///     saves them on every change.
     /// </param>
     /// <param name="pdfExporter">Writes the diagram as a PDF file.</param>
+    /// <param name="imageCatalog">Keeps the images inserted, and those the user adds, to insert again.</param>
     public DiagramEditorPresenter(
         IDiagramEditorView view,
         IDiagramFileStore fileStore,
         IDiagramEditorSettingsStore settingsStore,
-        IDiagramPdfExporter pdfExporter)
+        IDiagramPdfExporter pdfExporter,
+        IDiagramImageCatalog imageCatalog)
     {
+        _imageCatalog = imageCatalog;
         _view = view;
         _fileStore = fileStore;
         _settingsStore = settingsStore;
@@ -154,6 +173,12 @@ public sealed class DiagramEditorPresenter
         _view.TextCommitted += OnTextCommitted;
         _view.Closing += OnClosing;
         _view.PropertiesPanelToggled += OnPropertiesPanelToggled;
+        _view.ImagesPanelToggled += OnImagesPanelToggled;
+        _view.ImageSearchChanged += OnImageSearchChanged;
+        _view.CatalogImageChosen += OnCatalogImageChosen;
+        _view.CatalogImageDropped += OnCatalogImageDropped;
+        _view.ImagesFolderRequested += OnImagesFolderRequested;
+        _view.WindowActivated += OnWindowActivated;
         _view.WindowClosed += OnWindowClosed;
     }
 
@@ -176,6 +201,8 @@ public sealed class DiagramEditorPresenter
         _view.ShowPalette(SnipEditorPresenter.Palette);
         _view.ShowSizes(LineWidths, FontSizes, SnipEditorPresenter.TextOutlineWidths);
         _view.ShowPropertiesPanel(_isPropertiesPanelVisible);
+        _view.ShowImagesPanel(_isImagesPanelVisible);
+        ShowCatalog();
 
         if (_windowSize is not null)
         {
@@ -200,6 +227,7 @@ public sealed class DiagramEditorPresenter
 
         _style = saved.Style;
         _isPropertiesPanelVisible = saved.IsPropertiesPanelVisible;
+        _isImagesPanelVisible = saved.IsImagesPanelVisible;
 
         if (Enum.IsDefined(saved.Routing))
         {
@@ -224,13 +252,111 @@ public sealed class DiagramEditorPresenter
             _routing,
             _heads,
             _isPropertiesPanelVisible,
-            _windowSize));
+            _windowSize,
+            _isImagesPanelVisible));
     }
 
     private void OnPropertiesPanelToggled(object? sender, bool isVisible)
     {
         _isPropertiesPanelVisible = isVisible;
         SaveSettings();
+    }
+
+    private void OnImagesPanelToggled(object? sender, bool isVisible)
+    {
+        _isImagesPanelVisible = isVisible;
+        SaveSettings();
+        ShowCatalog();
+    }
+
+    private void OnImageSearchChanged(object? sender, string search)
+    {
+        _imageSearch = search.Trim();
+        ShowCatalog();
+    }
+
+    /// <summary>Images copied into the catalog's folder show when the user comes back to the window.</summary>
+    private void OnWindowActivated(object? sender, EventArgs e) => ShowCatalog();
+
+    private void OnImagesFolderRequested(object? sender, EventArgs e)
+    {
+        try
+        {
+            _imageCatalog.CreateFolder();
+            _view.OpenFolder(_imageCatalog.Folder);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _view.ShowError($"Could not open {_imageCatalog.Folder}: {ex.Message}");
+        }
+    }
+
+    private void OnCatalogImageChosen(object? sender, string path) =>
+        InsertFromCatalog(path, _viewport.ToDiagram(_lastPointer));
+
+    private void OnCatalogImageDropped(object? sender, DiagramCatalogDropModel drop) =>
+        InsertFromCatalog(drop.Path, _viewport.ToDiagram(drop.Location));
+
+    private void InsertFromCatalog(string path, Point at)
+    {
+        if (_drag is not null || _shownCatalog.FirstOrDefault(image => image.Path == path) is not { } image)
+        {
+            return;
+        }
+
+        InsertImageShapes([image.Markup], at);
+        _imageCatalog.MarkUsed(path);
+        ShowCatalog();
+    }
+
+    /// <summary>
+    ///     What the images panel shows: the ones used last, then all in their groups; or, while searching, those
+    ///     whose name or group has the text. Shown again only when it changed, so the panel keeps its place.
+    /// </summary>
+    private void ShowCatalog()
+    {
+        if (!_isImagesPanelVisible)
+        {
+            return;
+        }
+
+        IReadOnlyList<DiagramCatalogImageModel> all = _imageCatalog.Images();
+        List<DiagramCatalogImageModel> shown;
+
+        if (_imageSearch.Length == 0)
+        {
+            Dictionary<string, DiagramCatalogImageModel> byPath = all.ToDictionary(
+                image => image.Path,
+                StringComparer.OrdinalIgnoreCase);
+
+            shown =
+            [
+                .. _imageCatalog.Recent()
+                    .Where(byPath.ContainsKey)
+                    .Take(RecentImages)
+                    .Select(path => byPath[path] with { Group = RecentGroup }),
+                .. all,
+            ];
+        }
+        else
+        {
+            shown =
+            [
+                .. all.Where(image => image.Name.Contains(_imageSearch, StringComparison.OrdinalIgnoreCase)
+                    || image.Group.Contains(_imageSearch, StringComparison.OrdinalIgnoreCase)),
+            ];
+        }
+
+        string emptyText = _imageSearch.Length > 0
+            ? $"No image has \"{_imageSearch}\"."
+            : "Images you insert show here, to insert again. You can also copy SVG files into the folder.";
+
+        if (_shownCatalogEmptyText != emptyText || !shown.SequenceEqual(_shownCatalog))
+        {
+            _shownCatalog = shown;
+            _shownCatalogEmptyText = emptyText;
+            _view.ShowCatalog(shown, emptyText);
+        }
     }
 
     private void OnWindowClosed(object? sender, DiagramWindowSizeModel size)
@@ -1611,7 +1737,11 @@ public sealed class DiagramEditorPresenter
         catch (InvalidDataException)
         {
             // Other markup, such as HTML
+            return;
         }
+
+        _imageCatalog.Add(text, PastedImageName);
+        ShowCatalog();
     }
 
     private void OnFilesDropped(object? sender, DiagramFilesDropModel drop)
@@ -1629,13 +1759,17 @@ public sealed class DiagramEditorPresenter
     private void InsertImages(IReadOnlyList<string> paths, Point at)
     {
         List<string> images = [];
+        List<(string Text, string Name)> read = [];
         List<string> problems = [];
 
         foreach (string path in paths)
         {
             try
             {
-                images.Add(DiagramSvgImage.Prepare(_fileStore.ReadImage(path)));
+                string text = _fileStore.ReadImage(path);
+
+                images.Add(DiagramSvgImage.Prepare(text));
+                read.Add((text, Path.GetFileName(path)));
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
             {
@@ -1644,6 +1778,14 @@ public sealed class DiagramEditorPresenter
         }
 
         InsertImageShapes(images, at);
+
+        // In the catalog, to insert again from the images panel
+        foreach ((string text, string name) in read)
+        {
+            _imageCatalog.Add(text, name);
+        }
+
+        ShowCatalog();
 
         if (problems.Count > 0)
         {

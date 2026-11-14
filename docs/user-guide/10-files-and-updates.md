@@ -14,7 +14,8 @@ Everything below is in the `config` folder next to the exe unless noted.
 | `recording.cfg` | The first time you record the screen, or open the config editor | Screen recording settings (see [recording.cfg](04-snipping.md#recordingcfg)) |
 | `global.vars` | The first time a script uses `global.set` | Values scripts keep between runs |
 | `snipeditor.json` | After the first snip editor setting change | Snip editor tool choices |
-| `diagrameditor.json` | After diagram editor settings are saved | Diagram editor choices and window size |
+| `diagrameditor.json` | After diagram editor settings are saved | Diagram editor choices and window size, and whether its panels are shown |
+| `images\` | When you first insert an image in the diagram editor | The images inserted, to insert again from its images panel, and `recent.json`, which were used last. You can add SVG files and folders of your own (see [Diagram Editor](05-diagram-editor.md#working-with-shapes)) |
 | `help.json` | When the help window closes | Where the help window was, the page it showed last, and dark or light if you chose one with its button |
 | `fixers.json` | When you change a choice under **Fix folder for standard** | The fixers that **Fix a folder...** doesn't run, and the line ending and encoding it gives the files |
 | `updates.json` | The first time you click **Check for updates at start** | Whether to look for a newer version at start |
