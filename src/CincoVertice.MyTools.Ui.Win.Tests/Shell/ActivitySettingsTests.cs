@@ -243,72 +243,103 @@ public sealed class ActivitySettingsTests : IDisposable
     }
 
     [Theory]
-    [InlineData("", true, true)]
-    [InlineData("MoveMouse = false", false, true)]
-    [InlineData("KeepAwake = false", true, false)]
-    [InlineData("movemouse = TRUE # look present\nkeepawake = true", true, true)]
-    public void Read_MoveMouseAndKeepAwake_AreBothOnUnlessSaidOtherwise(string text, bool moveMouse, bool keepAwake)
+    [InlineData("MoveMouse = false")]
+    [InlineData("KeepAwake = false # older file")]
+    [InlineData("movemouse = true\nkeepawake = maybe")]
+    public void Read_OlderFilesSwitches_AreIgnored_WithoutProblems(string text)
     {
-        // Act
+        // Act: from when activity also kept awake; that's its own toggle now
         ActivitySettingsResultModel result = ActivitySettingsReader.Read(text);
 
         // Assert
         Assert.Empty(result.Problems);
-        Assert.Equal(moveMouse, result.MoveMouse);
-        Assert.Equal(keepAwake, result.KeepAwake);
-    }
-
-    [Fact]
-    public void Read_MoveMouseAndKeepAwakeBothFalse_IsAProblem_AndTheMouseIsMoved()
-    {
-        // Act
-        ActivitySettingsResultModel result = ActivitySettingsReader.Read("KeepAwake = false\nMoveMouse = false");
-
-        // Assert: activity must do something when it's turned on
-        Assert.Equal(
-            "MoveMouse and KeepAwake are both false, so activity would do nothing; the mouse is moved.",
-            Assert.Single(result.LineProblems) is { Line: 2 } problem ? problem.Message : null);
-        Assert.True(result.MoveMouse);
-        Assert.False(result.KeepAwake);
-    }
-
-    [Fact]
-    public void Read_KeepAwakeThatIsNotTrueOrFalse_KeepsTheDefault()
-    {
-        // Act
-        ActivitySettingsResultModel result = ActivitySettingsReader.Read("KeepAwake = maybe");
-
-        // Assert
-        Assert.Equal("KeepAwake: must be true or false; the default is used.", Assert.Single(result.Problems));
-        Assert.True(result.KeepAwake);
-    }
-
-    [Fact]
-    public void TheNewFile_MovesTheMouse_AndKeepsAwake_WithoutProblems()
-    {
-        // Act
-        ActivitySettingsResultModel result = ActivitySettingsReader.Read(ActivitySettingsService.CreateDefaultText());
-
-        // Assert
-        Assert.Empty(result.Problems);
-        Assert.True(result.MoveMouse);
-        Assert.True(result.KeepAwake);
         Assert.Equal(MouseMoveSettings.Default, result.Settings);
     }
 
     [Fact]
-    public void Toggle_WithKeepAwakeOnly_KeepsTheComputerAwake_WithoutMovingTheMouse_AndTurnsItOff()
+    public void Read_UnknownSetting_DoesntOfferTheOlderSwitches()
     {
-        // Arrange: the toggle runs on this thread, as on the UI thread
+        // Act
+        ActivitySettingsResultModel result = ActivitySettingsReader.Read("Speed = 3");
+
+        // Assert
+        string problem = Assert.Single(result.Problems);
+        Assert.DoesNotContain("KeepAwake", problem);
+        Assert.DoesNotContain("MoveMouse", problem);
+    }
+
+    [Fact]
+    public void TheNewFile_HasNoProblems_AndTheDefaults()
+    {
+        // Act
+        string text = ActivitySettingsService.CreateDefaultText();
+        ActivitySettingsResultModel result = ActivitySettingsReader.Read(text);
+
+        // Assert
+        Assert.Empty(result.Problems);
+        Assert.Equal(MouseMoveSettings.Default, result.Settings);
+        Assert.Contains("ToggleKeepAwake", text);
+    }
+
+    [Fact]
+    public void KeepAwake_IsSeparateFromTheMouseMover()
+    {
+        // Arrange: the toggles run on this thread, as on the UI thread
         Directory.CreateDirectory(_folder);
         string path = Path.Combine(_folder, "activity.cfg");
-        File.WriteAllText(path, "MoveMouse = false\nKeepAwake = true");
+        File.WriteAllText(path, "MoveImmediately = false");
         using var simulator = new MouseMoveSimulator();
         var keeper = new AwakeKeeper();
         using var icons = new AppIconService();
-        var action = new ToggleActivityAction(
+        var notifications = new TrayNotificationService();
+        var mouseMover = new ToggleActivityAction(
             simulator,
-            keeper,
+            icons,
+            new ActivitySettingsService(path),
+            notifications);
+        var keepAwake = new ToggleKeepAwakeAction(keeper, icons, notifications);
+
+        try
+        {
+            // Act: keep awake on, with the mouse mover off
+            keepAwake.ExecuteAsync();
+
+            // Assert
+            Assert.True(keeper.IsOn);
+            Assert.False(simulator.IsRunning);
+            Assert.Equal("My Tools\nKeeping awake", icons.ToolTipText);
+
+            // And the mouse mover on and off leaves it on
+            mouseMover.ExecuteAsync();
+            Assert.True(simulator.IsRunning);
+            Assert.Equal("My Tools\nMouse mover on\nKeeping awake", icons.ToolTipText);
+            mouseMover.ExecuteAsync();
+            Assert.False(simulator.IsRunning);
+            Assert.True(keeper.IsOn);
+
+            // And keep awake off
+            keepAwake.ExecuteAsync();
+            Assert.False(keeper.IsOn);
+            Assert.Equal("My Tools", icons.ToolTipText);
+        }
+        finally
+        {
+            simulator.Stop();
+            keeper.TurnOff();
+        }
+    }
+
+    [Fact]
+    public void MouseMover_DoesntKeepAwake()
+    {
+        // Arrange
+        Directory.CreateDirectory(_folder);
+        string path = Path.Combine(_folder, "activity.cfg");
+        File.WriteAllText(path, "KeepAwake = true\nMoveImmediately = false");
+        using var simulator = new MouseMoveSimulator();
+        using var icons = new AppIconService();
+        var mouseMover = new ToggleActivityAction(
+            simulator,
             icons,
             new ActivitySettingsService(path),
             new TrayNotificationService());
@@ -316,21 +347,15 @@ public sealed class ActivitySettingsTests : IDisposable
         try
         {
             // Act
-            action.ExecuteAsync();
+            mouseMover.ExecuteAsync();
 
-            // Assert
-            Assert.True(action.IsOn);
-            Assert.True(keeper.IsOn);
-            Assert.False(simulator.IsRunning);
-
-            // And
-            action.ExecuteAsync();
-            Assert.False(action.IsOn);
-            Assert.False(keeper.IsOn);
+            // Assert: the red icon, and nothing about keeping awake
+            Assert.True(mouseMover.IsOn);
+            Assert.Equal("My Tools\nMouse mover on", icons.ToolTipText);
         }
         finally
         {
-            keeper.TurnOff();
+            simulator.Stop();
         }
     }
 }

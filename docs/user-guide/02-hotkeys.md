@@ -6,6 +6,7 @@
 |---|---|---|
 | `ShowCalculator` | Ctrl+Alt+C | Shows the calculator |
 | `ToggleActivity` | Ctrl+Alt+M | Starts or stops the mouse mover |
+| `ToggleKeepAwake` | Ctrl+Alt+K | Starts or stops keeping the computer awake, whether the mouse mover is on or not |
 | `SnipAndEdit` | Ctrl+Alt+S | Takes a snip, then opens the snip editor |
 | `SnipRegion` | Ctrl+Alt+Shift+S | Takes a snip to the clipboard |
 | `SnipText` | Ctrl+Alt+T | Takes a snip and copies the text in it, as text |
@@ -62,6 +63,7 @@ SnipAndEdit = Ctrl+Alt+S
 SnipRegion = Ctrl+Alt+Shift+S
 SnipText = Ctrl+Alt+T
 ToggleActivity = Ctrl+Alt+M
+ToggleKeepAwake = Ctrl+Alt+K
 ```
 
 The file is created only if it does not exist.

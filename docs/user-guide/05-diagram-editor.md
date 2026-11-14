@@ -164,4 +164,4 @@ The editor remembers your last style, routing, arrow heads, whether the Properti
 
 ---
 
-← Previous: [Snipping and the Snip Editor](04-snipping.md) | [Contents](README.md) | Next: [Mouse Mover (Activity)](06-mouse-mover.md) →
+← Previous: [Snipping and the Snip Editor](04-snipping.md) | [Contents](README.md) | Next: [Mouse Mover and Keep Awake](06-mouse-mover.md) →

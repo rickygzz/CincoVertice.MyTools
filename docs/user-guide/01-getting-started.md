@@ -49,7 +49,7 @@ Only one copy runs at a time. If you start the exe while it is already running, 
 
 ## The Tray Icon and Menu
 
-**Tray icon.** The tooltip is "My Tools". Double-click it to open the main window (see below). The icon turns **red** while the mouse mover is on.
+**Tray icon.** The tooltip is "My Tools", followed by "Mouse mover on" and "Keeping awake" while those are on. Double-click it to open the main window (see below). The icon turns **red** while the mouse mover is on.
 
 **Right-click menu**, in order:
 

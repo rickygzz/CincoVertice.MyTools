@@ -116,6 +116,7 @@ public static class UiWinSetupExtensions
             CodeLanguageModel.All));
         services.AddSingleton<ShowCalculatorAction>();
         services.AddSingleton<ToggleActivityAction>();
+        services.AddSingleton<ToggleKeepAwakeAction>();
         services.AddSingleton<EditHotkeysAction>();
         services.AddSingleton<EditActivitySettingsAction>();
         services.AddSingleton<OpenScriptsFolderAction>();
@@ -188,6 +189,7 @@ public static class UiWinSetupExtensions
         // Every action can be bound to a shortcut in hotkeys.cfg; same instances as above
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ShowCalculatorAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ToggleActivityAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ToggleKeepAwakeAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<CheckFolderAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<FixFolderAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<EditHotkeysAction>());

@@ -36,4 +36,4 @@ The new file starts with the comment line `# Bind this script in hotkeys.cfg as 
 
 ---
 
-← Previous: [Mouse Mover (Activity)](06-mouse-mover.md) | [Contents](README.md) | Next: [Scripts](08-scripts.md) →
+← Previous: [Mouse Mover and Keep Awake](06-mouse-mover.md) | [Contents](README.md) | Next: [Scripts](08-scripts.md) →

@@ -61,6 +61,8 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
         CheckFolderAction checkFolderAction,
         FixFolderAction fixFolderAction,
         EditHotkeysAction editHotkeysAction,
+        ToggleActivityAction toggleActivityAction,
+        ToggleKeepAwakeAction toggleKeepAwakeAction,
         EditActivitySettingsAction editActivitySettingsAction,
         EditZonesAction editZonesAction,
         OpenScriptsFolderAction openScriptsFolderAction,
@@ -95,6 +97,10 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
 
         // For when the file watcher misses a change, e.g. on a network drive
         AddItem(menu.Items, "&Reload hotkeys", () => ReloadHotkeysRequested?.Invoke(this, EventArgs.Empty));
+
+        // Ticked while on; separate, so the computer can be kept awake with the mouse mover off
+        ToolStripMenuItem mouseMoverItem = AddAction(menu.Items, "&Mouse mover", toggleActivityAction);
+        ToolStripMenuItem keepAwakeItem = AddAction(menu.Items, "&Keep awake", toggleKeepAwakeAction);
         AddAction(menu.Items, "Edit &activity settings...", editActivitySettingsAction);
         AddAction(menu.Items, "Edit window &zones...", editZonesAction);
         menu.Items.Add(new ToolStripSeparator());
@@ -111,12 +117,17 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
         AddAction(menu.Items, "He&lp...", showHelpAction);
         AddItem(menu.Items, "A&bout My Tools...", () => AboutRequested?.Invoke(this, EventArgs.Empty));
         AddItem(menu.Items, "&Exit", Exit);
-        menu.Opening += (_, _) => MenuOpening?.Invoke(this, EventArgs.Empty);
+        menu.Opening += (_, _) =>
+        {
+            mouseMoverItem.Checked = toggleActivityAction.IsOn;
+            keepAwakeItem.Checked = toggleKeepAwakeAction.IsOn;
+            MenuOpening?.Invoke(this, EventArgs.Empty);
+        };
 
         _notifyIcon = new NotifyIcon
         {
             Icon = _appIconService.Current,
-            Text = TrayPresenter.AppTitle,
+            Text = _appIconService.ToolTipText,
             ContextMenuStrip = menu,
             Visible = true,
         };
@@ -484,6 +495,7 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
     {
         _notifyIcon.Icon = _appIconService.Current;
         _mainForm.Icon = _appIconService.Current;
+        _notifyIcon.Text = _appIconService.ToolTipText;
     }
 
     private void Exit()
