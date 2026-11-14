@@ -21,22 +21,18 @@ public static class ColorText
     /// <summary>hsl(210, 100%, 56%): hue in degrees, saturation and lightness in percent, rounded.</summary>
     public static string Hsl(Color color)
     {
-        // .NET's saturation and brightness are HSL's saturation and lightness
-        int hue = Round(color.GetHue()) % 360;
-        int saturation = Round(color.GetSaturation() * 100);
-        int lightness = Round(color.GetBrightness() * 100);
+        (double hue, double saturation, double lightness) = ColorPalette.ToHsl(color);
 
-        return $"hsl({hue}, {saturation}%, {lightness}%)";
+        return $"hsl({Round(hue) % 360}, {Round(saturation * 100)}%, {Round(lightness * 100)}%)";
     }
 
-    /// <summary>The notification after a pick: what was copied, then the color in the other ways.</summary>
-    public static string CopiedMessage(PickedColorModel picked)
+    /// <summary>hsv(210, 88%, 100%): hue in degrees, saturation and value in percent, rounded.</summary>
+    public static string Hsv(Color color)
     {
-        IEnumerable<string> others = new[] { Hex(picked.Color), Rgb(picked.Color), Hsl(picked.Color) }
-            .Where(text => text != picked.Text);
+        (double hue, double saturation, double value) = ColorPalette.ToHsv(color);
 
-        return $"Copied {picked.Text}\n{string.Join("  ·  ", others)}";
+        return $"hsv({Round(hue) % 360}, {Round(saturation * 100)}%, {Round(value * 100)}%)";
     }
 
-    private static int Round(float value) => (int)Math.Round(value, MidpointRounding.AwayFromZero);
+    private static int Round(double value) => (int)Math.Round(value, MidpointRounding.AwayFromZero);
 }

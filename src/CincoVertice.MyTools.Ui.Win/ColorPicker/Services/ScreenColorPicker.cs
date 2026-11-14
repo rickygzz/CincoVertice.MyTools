@@ -1,4 +1,5 @@
 ﻿using CincoVertice.Common.WinApi.Helpers;
+using CincoVertice.MyTools.Ui.ColorPicker.Interfaces;
 using CincoVertice.MyTools.Ui.ColorPicker.Models;
 using CincoVertice.MyTools.Ui.ColorPicker.Presenters;
 
@@ -8,7 +9,7 @@ namespace CincoVertice.MyTools.Ui.Win.ColorPicker.Services;
 ///     Freezes the screen and lets the user pick the color of a pixel on it with
 ///     <see cref="ColorPickerOverlayForm"/>. One pick at a time.
 /// </summary>
-public sealed class ScreenColorPicker
+public sealed class ScreenColorPicker : IScreenColorPicker
 {
     private bool _isPicking;
 

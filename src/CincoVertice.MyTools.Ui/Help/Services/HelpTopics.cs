@@ -13,11 +13,12 @@ public static class HelpTopics
     public const string Scripts = "08-scripts.md";
     public const string CodeReview = "09-code-review.md";
     public const string WindowZones = "13-window-zones.md";
+    public const string ColorPicker = Snipping + "#picking-a-color-from-the-screen";
 
     /// <summary>Every topic, files' ones included, for the test.</summary>
     public static IReadOnlyList<string> All { get; } =
     [
-        Calculator, Snipping, DiagramEditor, ConfigEditor, Scripts, CodeReview, WindowZones,
+        Calculator, Snipping, DiagramEditor, ConfigEditor, Scripts, CodeReview, WindowZones, ColorPicker,
         ForFile("hotkeys.cfg"), ForFile("activity.cfg"), ForFile("recording.cfg"), ForFile("startup.cfg"),
     ];
 

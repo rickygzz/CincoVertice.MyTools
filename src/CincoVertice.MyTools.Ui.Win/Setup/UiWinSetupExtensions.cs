@@ -145,6 +145,7 @@ public static class UiWinSetupExtensions
         services.AddSingleton(_ => new RecordingSettingsService(RecordingSettingsService.DefaultFilePath));
         services.AddSingleton<RecordScreenAction>();
         services.AddSingleton<ScreenColorPicker>();
+        services.AddSingleton<ColorWindowService>();
         services.AddSingleton<PickColorAction>();
         services.AddSingleton<IDiagramFileStore, SvgDiagramFileStore>();
         services.AddSingleton<IDiagramTextOutliner, GdiTextOutliner>();

@@ -178,7 +178,25 @@ Press **Ctrl+Alt+P** (`PickColor`). The screen freezes, as for a snip, and a mag
 | Mouse wheel, **+** and **-** | Zoom the magnifier in and out, from 2 to 32 times |
 | **Esc**, or a right click | Closes it without copying anything |
 
-A notification says what was copied, followed by the same color written the other ways, HEX, RGB and HSL (`hsl(210, 100%, 56%)`), so you can type the one you need. The color is the pixel's as it was when the screen froze, on any monitor.
+The color is the pixel's as it was when the screen froze, on any monitor.
+
+### The Color window
+
+After a pick, the **Color** window opens (or, if it's open, shows the new color):
+
+- **In the middle**, the chosen color, large, with its values, each with a **Copy** button:
+  - **HEX**: `#1E90FF`
+  - **RGB**: `rgb(30, 144, 255)`, each from 0 to 255
+  - **HSL**: `hsl(210, 100%, 56%)`, hue, saturation and lightness
+  - **HSV**: `hsv(210, 88%, 100%)`, hue, saturation and value
+- **On the left**, its shades: three darker above it and three lighter below it. The color picked is the one in the middle, marked with a dot.
+- **On the right**, under **Goes well with**, a dark and a light color of each hue that goes well with it: **Neutral** (nearly gray, with a hint of its hue, for text and backgrounds), **Complementary** (the opposite hue), **Analogous** (30° either side) and **Triadic** (120° either side).
+
+Click any of those colors to see its values in the middle; the one shown is framed. **Use as base** makes the shades and the colors that go well from the color shown, instead of the one picked. **Back to picked** shows the color you picked again, with its own shades and colors that go well; it's grayed out while that's what is shown.
+
+**Pick another color from the screen** freezes the whole screen again to pick a new color, as **Ctrl+Alt+P** does: the Color window isn't in the frozen screen, so you see what's behind it. The new color is copied as HEX (Ctrl+click: RGB) and replaces the one in the window, and **Back to picked** then goes back to it. **Esc** cancels the pick and leaves the window as it was.
+
+Hover over a color to see its HEX value. **Esc** closes the window, and **F1** opens this page.
 
 The hotkey **Ctrl+Alt+P** is in the `hotkeys.cfg` that a new install creates. If your `hotkeys.cfg` is older, add the line `PickColor = Ctrl+Alt+P` yourself: see [Hotkeys](02-hotkeys.md).
 
