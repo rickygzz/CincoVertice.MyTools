@@ -146,6 +146,7 @@ public sealed class DiagramEditorPresenter
         _view.RoutingSelected += OnRoutingSelected;
         _view.ArrowHeadsSelected += OnArrowHeadsSelected;
         _view.LineDirectionSelected += OnLineDirectionSelected;
+        _view.FilesDropped += OnFilesDropped;
         _view.BoundsEdited += OnBoundsEdited;
         _view.CornerRadiusEdited += OnCornerRadiusEdited;
         _view.LockToggled += OnLockToggled;
@@ -1143,8 +1144,9 @@ public sealed class DiagramEditorPresenter
             Shapes = [.. _diagram.Shapes.Select(s => s.Id == shape.Id ? s with { Text = text } : s)],
         });
 
-        Point topLeft = _viewport.ToCanvas(shape.Bounds.Location);
-        Point bottomRight = _viewport.ToCanvas(new Point(shape.Bounds.Right, shape.Bounds.Bottom));
+        Rectangle area = shape.Kind == DiagramShapeKind.Image ? TextAreaUnder(shape) : shape.Bounds;
+        Point topLeft = _viewport.ToCanvas(area.Location);
+        Point bottomRight = _viewport.ToCanvas(new Point(area.Right, area.Bottom));
 
         _view.BeginTextEdit(
             Rectangle.FromLTRB(topLeft.X, topLeft.Y, bottomRight.X, bottomRight.Y),
@@ -1152,6 +1154,17 @@ public sealed class DiagramEditorPresenter
             CanvasFontSize(shape.Style.FontSize),
             shape.Style.FontFamily,
             shape.Style.TextColor);
+    }
+
+    /// <summary>Where an image's text is typed: under it, as wide as its text can be, two lines high or more.</summary>
+    private static Rectangle TextAreaUnder(DiagramShapeModel shape)
+    {
+        string typed = shape.Text.Length > 0 ? shape.Text : " ";
+        RectangleF text = DiagramTextLayout.OfShape(shape with { Text = typed }).Bounds;
+        int width = Math.Max(shape.Bounds.Width, DiagramTextLayout.ImageTextWidth);
+        int height = Math.Max((int)Math.Ceiling(text.Height), shape.Style.FontSize * 2);
+
+        return new Rectangle(shape.Bounds.Left + (shape.Bounds.Width - width) / 2, shape.Bounds.Bottom, width, height);
     }
 
     private void BeginLabel(DiagramConnectorModel connector)
@@ -1301,6 +1314,9 @@ public sealed class DiagramEditorPresenter
                 break;
             case DiagramCommand.Paste:
                 Paste();
+                break;
+            case DiagramCommand.InsertImage:
+                InsertImages(_view.AskImagePaths(), _viewport.ToDiagram(_lastPointer));
                 break;
             case DiagramCommand.Duplicate:
                 Insert(SelectedFragment(), PasteOffset);
@@ -1547,7 +1563,90 @@ public sealed class DiagramEditorPresenter
         }
         catch (InvalidDataException)
         {
-            // Something else is on the clipboard
+            PasteImage(text);
+        }
+    }
+
+    /// <summary>SVG markup, copied from a web page or an editor, goes in as an image where the mouse was.</summary>
+    private void PasteImage(string text)
+    {
+        if (!text.TrimStart().StartsWith('<'))
+        {
+            return;
+        }
+
+        try
+        {
+            InsertImageShapes([DiagramSvgImage.Prepare(text)], _viewport.ToDiagram(_lastPointer));
+        }
+        catch (InvalidDataException)
+        {
+            // Other markup, such as HTML
+        }
+    }
+
+    private void OnFilesDropped(object? sender, DiagramFilesDropModel drop)
+    {
+        if (_drag is null)
+        {
+            InsertImages(drop.Paths, _viewport.ToDiagram(drop.Location));
+        }
+    }
+
+    /// <summary>
+    ///     Adds the SVG images in a row from the point, selected; tells which files couldn't be, and why, without
+    ///     leaving out the others.
+    /// </summary>
+    private void InsertImages(IReadOnlyList<string> paths, Point at)
+    {
+        List<string> images = [];
+        List<string> problems = [];
+
+        foreach (string path in paths)
+        {
+            try
+            {
+                images.Add(DiagramSvgImage.Prepare(_fileStore.ReadImage(path)));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+            {
+                problems.Add($"{Path.GetFileName(path)}: {ex.Message}");
+            }
+        }
+
+        InsertImageShapes(images, at);
+
+        if (problems.Count > 0)
+        {
+            _view.ShowError($"Could not insert {string.Join(Environment.NewLine, problems)}");
+        }
+    }
+
+    private void InsertImageShapes(IReadOnlyList<string> images, Point at)
+    {
+        // On the grid, as a shape drawn there would be
+        int x = (int)Math.Round(at.X / (double)DiagramSnapper.GridSize) * DiagramSnapper.GridSize;
+        int y = (int)Math.Round(at.Y / (double)DiagramSnapper.GridSize) * DiagramSnapper.GridSize;
+        List<DiagramShapeModel> shapes = [];
+
+        foreach (string image in images)
+        {
+            Size size = DiagramSvgImage.InsertSize(image);
+
+            shapes.Add(new DiagramShapeModel(
+                shapes.Count + 1,
+                DiagramShapeKind.Image,
+                new Rectangle(new Point(x, y), size),
+                string.Empty,
+                _style,
+                Image: image));
+            x += size.Width + PasteOffset;
+        }
+
+        if (shapes.Count > 0)
+        {
+            Insert(new DiagramModel(shapes, []), 0);
+            SelectTool(DiagramTool.Select);
         }
     }
 
@@ -2257,7 +2356,10 @@ public sealed class DiagramEditorPresenter
         }
 
         DiagramStyleModel style = shapes.FirstOrDefault()?.Style ?? connectors[0].Style;
-        List<DiagramShapeModel> outlined = [.. shapes.Where(shape => shape.Kind != DiagramShapeKind.Text)];
+
+        // A text and an image have no outline, so no fill or border either
+        List<DiagramShapeModel> outlined =
+            [.. shapes.Where(shape => shape.Kind is not (DiagramShapeKind.Text or DiagramShapeKind.Image))];
         bool hasLine = outlined.Count > 0 || connectors.Count > 0;
         bool hasCorners = connectors.Count == 0 && shapes.All(shape => DiagramFigures.HasCornerRadius(shape.Kind));
 

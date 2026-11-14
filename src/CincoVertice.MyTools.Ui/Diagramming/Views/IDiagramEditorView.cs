@@ -61,6 +61,9 @@ public interface IDiagramEditorView
     /// <summary>Raised when the user chooses which way the selected lines on their own may point.</summary>
     event EventHandler<DiagramLineDirection>? LineDirectionSelected;
 
+    /// <summary>Raised when files are dropped on the canvas.</summary>
+    event EventHandler<DiagramFilesDropModel>? FilesDropped;
+
     /// <summary>Raised when the user types where the selected shapes should be, all of them together.</summary>
     event EventHandler<Rectangle>? BoundsEdited;
 
@@ -145,6 +148,9 @@ public interface IDiagramEditorView
 
     /// <returns>The file to open; null when the user cancels.</returns>
     string? AskOpenPath();
+
+    /// <returns>The SVG images to insert; none when the user cancels.</returns>
+    IReadOnlyList<string> AskImagePaths();
 
     /// <summary>Asks what to do with the unsaved changes.</summary>
     /// <param name="name">The name of the diagram.</param>

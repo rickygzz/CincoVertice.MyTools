@@ -20,8 +20,19 @@ public static class DiagramPdf
     // Around a connector's label, as on the screen and in the SVG file
     private const float LabelPadding = 2;
 
-    public static byte[] Write(DiagramModel diagram, IDiagramTextOutliner textOutliner)
+    // An image goes as pixels, 4 to a diagram pixel, sharp in print; a large one has fewer, to keep the file small
+    private const int ImagePixelsPerPixel = 4;
+    private const int MaxImageSide = 2048;
+
+    /// <param name="diagram">What to write.</param>
+    /// <param name="textOutliner">Gives the letters' outlines.</param>
+    /// <param name="imageRasterizer">Draws the images as pixels; without it, they're left out.</param>
+    public static byte[] Write(
+        DiagramModel diagram,
+        IDiagramTextOutliner textOutliner,
+        IDiagramImageRasterizer? imageRasterizer = null)
     {
+        List<DiagramRasterModel> images = [];
         Rectangle area = DiagramArea.Of(diagram);
         var content = new StringBuilder();
 
@@ -32,6 +43,14 @@ public static class DiagramPdf
 
         foreach (DiagramShapeModel shape in diagram.Shapes)
         {
+            if (shape is { Kind: DiagramShapeKind.Image, Image: string markup }
+                && imageRasterizer is not null
+                && Rasterize(imageRasterizer, markup, shape.Bounds) is { } image)
+            {
+                images.Add(image);
+                WriteImage(content, shape.Bounds, images.Count);
+            }
+
             WriteShape(content, shape, textOutliner);
         }
 
@@ -46,8 +65,24 @@ public static class DiagramPdf
         return WriteDocument(
             area.Width * PointsPerPixel,
             area.Height * PointsPerPixel,
-            Compress(Encoding.ASCII.GetBytes(content.ToString())));
+            Compress(Encoding.ASCII.GetBytes(content.ToString())),
+            images);
     }
+
+    private static DiagramRasterModel? Rasterize(IDiagramImageRasterizer rasterizer, string markup, Rectangle bounds)
+    {
+        float scale = Math.Min(ImagePixelsPerPixel, (float)MaxImageSide / Math.Max(bounds.Width, bounds.Height));
+
+        return rasterizer.Rasterize(
+            markup,
+            Math.Max((int)Math.Round(bounds.Width * scale), 1),
+            Math.Max((int)Math.Round(bounds.Height * scale), 1));
+    }
+
+    /// <summary>The image numbered so, stretched over the bounds; its first row at their top.</summary>
+    private static void WriteImage(StringBuilder content, Rectangle bounds, int number) =>
+        content.Append(
+            $"q {bounds.Width} 0 0 {-bounds.Height} {bounds.X} {bounds.Bottom} cm /Im{number} Do Q\n");
 
     private static void WriteShape(StringBuilder content, DiagramShapeModel shape, IDiagramTextOutliner textOutliner)
     {
@@ -85,9 +120,7 @@ public static class DiagramPdf
 
         if (shape.Text.Length > 0)
         {
-            RectangleF area = DiagramFigures.TextArea(shape.Kind, shape.Bounds);
-
-            WriteText(content, DiagramTextLayout.Layout(shape.Text, area, style.FontSize), style, textOutliner);
+            WriteText(content, DiagramTextLayout.OfShape(shape), style, textOutliner);
         }
     }
 
@@ -227,7 +260,15 @@ public static class DiagramPdf
     }
 
     /// <summary>The PDF file around the page's drawing: its objects, and the table of where each one starts.</summary>
-    private static byte[] WriteDocument(float width, float height, byte[] pageContent)
+    /// <param name="width">The page's, in points.</param>
+    /// <param name="height">The page's, in points.</param>
+    /// <param name="pageContent">What the page draws, compressed.</param>
+    /// <param name="images">The images it draws, as /Im1, /Im2 and so on.</param>
+    private static byte[] WriteDocument(
+        float width,
+        float height,
+        byte[] pageContent,
+        IReadOnlyList<DiagramRasterModel> images)
     {
         using var file = new MemoryStream();
         var offsets = new List<long>();
@@ -246,14 +287,31 @@ public static class DiagramPdf
 
         WriteObject("<< /Type /Catalog /Pages 2 0 R >>");
         WriteObject("<< /Type /Pages /Kids [3 0 R] /Count 1 >>");
+        void WriteStream(string dictionary, byte[] data)
+        {
+            offsets.Add(file.Position);
+            Write($"{offsets.Count} 0 obj\n<< {dictionary}/Length {data.Length} /Filter /FlateDecode >>\nstream\n");
+            file.Write(data);
+            Write("\nendstream\nendobj\n");
+        }
+
+        // Each image is two objects after the page's content: its colors, then its transparency
+        string xObjects = string.Concat(images.Select((_, i) => $" /Im{i + 1} {5 + (i * 2)} 0 R"));
+
         WriteObject(
             $"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {Number(width)} {Number(height)}] "
-            + "/Resources << >> /Contents 4 0 R >>");
+            + $"/Resources << /XObject <<{xObjects} >> >> /Contents 4 0 R >>");
+        WriteStream(string.Empty, pageContent);
 
-        offsets.Add(file.Position);
-        Write($"{offsets.Count} 0 obj\n<< /Length {pageContent.Length} /Filter /FlateDecode >>\nstream\n");
-        file.Write(pageContent);
-        Write("\nendstream\nendobj\n");
+        foreach (DiagramRasterModel image in images)
+        {
+            string size = $"/Width {image.Width} /Height {image.Height} /BitsPerComponent 8";
+
+            WriteStream(
+                $"/Type /XObject /Subtype /Image {size} /ColorSpace /DeviceRGB /SMask {offsets.Count + 2} 0 R ",
+                Compress(image.Rgb));
+            WriteStream($"/Type /XObject /Subtype /Image {size} /ColorSpace /DeviceGray ", Compress(image.Alpha));
+        }
 
         WriteObject("<< /Producer (My Tools) >>");
 

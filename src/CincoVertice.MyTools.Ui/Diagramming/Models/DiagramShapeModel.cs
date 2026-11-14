@@ -13,6 +13,9 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 /// <param name="GroupId">The shapes with the same value are selected and moved together; null for no group.</param>
 /// <param name="CornerRadius">How round a rectangle's corners are, in pixels; null for its kind's usual ones.</param>
 /// <param name="Locks">What of <paramref name="Bounds"/> stays as it is when the shape is moved or scaled.</param>
+/// <param name="Image">
+///     The SVG markup an image shows, as <see cref="Services.DiagramSvgImage.Prepare"/> gives it; null for other kinds.
+/// </param>
 public sealed record DiagramShapeModel(
     int Id,
     DiagramShapeKind Kind,
@@ -21,4 +24,5 @@ public sealed record DiagramShapeModel(
     DiagramStyleModel Style,
     int? GroupId = null,
     int? CornerRadius = null,
-    DiagramLock Locks = DiagramLock.None);
+    DiagramLock Locks = DiagramLock.None,
+    string? Image = null);

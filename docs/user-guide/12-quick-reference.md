@@ -55,6 +55,7 @@ All other actions have no default hotkey. Add them in `hotkeys.cfg`.
 | Space (held) or middle mouse button | Drag the view |
 | Esc | Cancel a text, end a drag, switch to Select, or clear the selection |
 | Ctrl+X / Ctrl+C / Ctrl+V / Ctrl+D | Cut / copy / paste / duplicate |
+| Ctrl+I | Insert SVG images |
 | Ctrl+Shift+C / Ctrl+Shift+V | Copy style / paste style |
 | Ctrl+A | Select all |
 | Ctrl+G / Ctrl+Shift+G | Group / ungroup |

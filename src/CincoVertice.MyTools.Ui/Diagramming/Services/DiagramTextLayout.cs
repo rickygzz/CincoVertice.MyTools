@@ -10,8 +10,12 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Services;
 /// </summary>
 public static class DiagramTextLayout
 {
+    /// <summary>How wide an image's text can be when the image is narrower, in pixels.</summary>
+    public const int ImageTextWidth = 160;
+
     private const float AverageCharacterWidth = 0.55f;
     private const float LineHeightFactor = 1.25f;
+    private const float ImageTextGap = 4;
 
     private static readonly Regex _spacesThenWord = new("( *)([^ ]+)", RegexOptions.CultureInvariant);
 
@@ -24,6 +28,24 @@ public static class DiagramTextLayout
         IReadOnlyList<string> lines = Wrap(text, area.Width, fontSize);
 
         return Place(lines, area.Left + area.Width / 2, area.Top + area.Height / 2, fontSize);
+    }
+
+    /// <summary>A shape's text: in the middle of the part of it a text fits in, or under an image.</summary>
+    public static DiagramTextBlockModel OfShape(DiagramShapeModel shape)
+    {
+        int fontSize = shape.Style.FontSize;
+
+        if (shape.Kind != DiagramShapeKind.Image)
+        {
+            return Layout(shape.Text, DiagramFigures.TextArea(shape.Kind, shape.Bounds), fontSize);
+        }
+
+        // A name under an icon is often wider than the icon
+        Rectangle bounds = shape.Bounds;
+        IReadOnlyList<string> lines = Wrap(shape.Text, Math.Max(bounds.Width, ImageTextWidth), fontSize);
+        float height = lines.Count * fontSize * LineHeightFactor;
+
+        return Place(lines, bounds.Left + bounds.Width / 2f, bounds.Bottom + ImageTextGap + height / 2, fontSize);
     }
 
     /// <summary>The lines of a text centered on a point, wrapped only at its own line breaks.</summary>

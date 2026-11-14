@@ -68,10 +68,6 @@ public static class DiagramArea
             return shape.Bounds;
         }
 
-        RectangleF textArea = DiagramFigures.TextArea(shape.Kind, shape.Bounds);
-
-        return RectangleF.Union(
-            shape.Bounds,
-            DiagramTextLayout.Layout(shape.Text, textArea, shape.Style.FontSize).Bounds);
+        return RectangleF.Union(shape.Bounds, DiagramTextLayout.OfShape(shape).Bounds);
     }
 }

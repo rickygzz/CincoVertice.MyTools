@@ -17,6 +17,7 @@ public static class DiagramSvg
     private const string MetadataId = "mytools-diagram";
 
     private static readonly XNamespace _svg = "http://www.w3.org/2000/svg";
+    private static readonly XNamespace _xlink = "http://www.w3.org/1999/xlink";
 
     public static string Write(DiagramModel diagram)
     {
@@ -27,6 +28,11 @@ public static class DiagramSvg
             new XAttribute("width", area.Width),
             new XAttribute("height", area.Height),
             new XElement(_svg + "metadata", new XAttribute("id", MetadataId), DiagramJson.Write(diagram)));
+
+        if (diagram.Shapes.Any(shape => shape.Image is not null))
+        {
+            root.Add(new XAttribute(XNamespace.Xmlns + "xlink", _xlink));
+        }
 
         foreach (DiagramShapeModel shape in diagram.Shapes)
         {
@@ -99,6 +105,18 @@ public static class DiagramSvg
     {
         var group = new XElement(_svg + "g");
 
+        // Its own SVG, inside a link of its own, so its ids and styles can't mix with another's
+        if (shape is { Kind: DiagramShapeKind.Image, Image: string markup })
+        {
+            group.Add(new XElement(
+                _svg + "image",
+                new XAttribute("x", shape.Bounds.X),
+                new XAttribute("y", shape.Bounds.Y),
+                new XAttribute("width", shape.Bounds.Width),
+                new XAttribute("height", shape.Bounds.Height),
+                new XAttribute(_xlink + "href", DiagramSvgImage.DataUri(markup))));
+        }
+
         foreach (DiagramFigureModel figure in DiagramFigures.Of(shape.Kind, shape.Bounds, shape.CornerRadius))
         {
             var path = new XElement(
@@ -112,9 +130,7 @@ public static class DiagramSvg
 
         if (shape.Text.Length > 0)
         {
-            RectangleF area = DiagramFigures.TextArea(shape.Kind, shape.Bounds);
-
-            AddText(group, DiagramTextLayout.Layout(shape.Text, area, shape.Style.FontSize), shape.Style);
+            AddText(group, DiagramTextLayout.OfShape(shape), shape.Style);
         }
 
         return group;

@@ -42,6 +42,12 @@ New text uses [Roboto](https://fonts.google.com/specimen/Roboto), which comes wi
   - *Style and label:* a line takes the line color, width, dashes and text settings, like a connector. Double-click it for a label in its middle.
   - *Direction:* in the Properties panel, **Direction** is **Free**, **Horizontal** or **Vertical**. A horizontal line stays level and a vertical one upright: dragging an end moves it only along the line, and an end that would land on the other one stays where it was. Choosing Horizontal or Vertical turns a line that points another way around its start, keeping its length; Free lets its ends go anywhere again. New lines are free.
   - Lines are always straight, so **Elbow** and **Straight** don't change them. They can be selected with other things, by Shift+click or a selection box around all of a line. They are moved, scaled, copied, pasted, duplicated and deleted with the rest, but not grouped.
+- **Images** are SVG files, such as the Azure architecture icons, placed on the diagram.
+  - *Insert:* choose **Edit > Insert image...** (Ctrl+I) and pick one or more SVG files, or drop them from File Explorer onto the canvas. You can also copy SVG markup, for example from a web page or a text editor, and paste it with Ctrl+V. Several images go in a row, from where the mouse was last, or where you dropped them. They are selected, so you can move them right away. A file that can't be read, or isn't an SVG image, is named in a message, and the others are still inserted.
+  - *Size:* an image goes in at its own size, with its longer side made at least 64 and at most 320 pixels. Resize it with its handles, like a shape (hold Shift to keep its proportions). The image always keeps its own proportions inside its box, so a box of another shape leaves space at the sides or above and below.
+  - *Text:* double-click an image to type its name. The text goes under the image, and can be wider than it.
+  - An image works like any other shape: connectors attach to it, and it can be locked, grouped, copied, duplicated and deleted. It has no fill, border or corners. An image Windows can't draw shows as a gray box with a cross.
+  - Images are drawn by Windows. Style sheets in the file (`<style>`) are applied when it's inserted, but only simple rules, by element name, class or id; scripts are left out. Text inside an SVG image isn't shown.
 - **Text:** double-click a shape to edit its text, double-click a connector to edit its label, or double-click empty canvas for free text. The Text tool also adds free text where you click, and the Properties panel has a Text box. Enter ends editing; Shift+Enter inserts a new line.
 - **Group:** select two or more shapes and press Ctrl+G, or choose **Edit > Group**, or right-click one of them and choose **Group**. Groups are one level only; there is no nesting. Selecting one shape of a group selects the whole group. Ctrl+Shift+G, **Edit > Ungroup** or **Ungroup** in the right-click menu ungroups. In the right-click menu, Group is grayed out unless two or more shapes are selected that are not already one group, and Ungroup unless a selected shape is in a group.
 - **Copy and paste** use the Windows clipboard as text: the selected shapes and lines, and the connectors between the shapes. Pasting adds them 20 pixels further each time. Pasting other text does nothing. If you paste into another program, you get that text, not a picture. Because it is the clipboard, you can copy from one editor window and paste into another. **Duplicate** (Ctrl+D) does the same without using the clipboard.
@@ -83,6 +89,7 @@ The Properties panel (show or hide with **F4**) has these fields: Text, X, Y, Wi
 | Ctrl+Y or Ctrl+Shift+Z | Redo |
 | Ctrl+X, Ctrl+C, Ctrl+V | Cut, copy, paste |
 | Ctrl+D | Duplicate |
+| Ctrl+I | Insert SVG images |
 | Ctrl+Shift+C / Ctrl+Shift+V | Copy style / paste style |
 | Ctrl+A | Select all |
 | Ctrl+G / Ctrl+Shift+G | Group / ungroup |
@@ -117,6 +124,7 @@ The zoom label shows the percentage; its tooltip reads "Ctrl+wheel to zoom. Clic
 - The page is as large as the SVG image would be, around everything with a margin, at the size the diagram has at 100% zoom.
 - Shapes, lines and arrows are drawn as lines and curves, so they stay sharp when you zoom in or print.
 - Text keeps the font it has in the editor, even on a computer without that font, because each letter is drawn as its outline. So the text can't be selected, copied or searched in the PDF.
+- Images are drawn as pictures at 4 pixels to each pixel of the diagram, sharp enough for print, though not lines and curves like the rest. The SVG file keeps them as they are.
 - The export doesn't save the diagram: the title keeps its `*` until you save, and the editor can't open the PDF. A failed export leaves the old file as it was.
 
 The editor remembers your last style, routing, arrow heads, whether the Properties panel is shown, and the window size in `config\diagrameditor.json`.

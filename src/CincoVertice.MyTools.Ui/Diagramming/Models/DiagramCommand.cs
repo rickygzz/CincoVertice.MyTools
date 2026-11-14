@@ -19,6 +19,9 @@ public enum DiagramCommand
     Paste,
     Duplicate,
 
+    /// <summary>Asks for SVG images, such as icons, and adds them where the mouse was last.</summary>
+    InsertImage,
+
     /// <summary>Keeps the style of what's selected, for <see cref="PasteStyle"/>.</summary>
     CopyStyle,
 
