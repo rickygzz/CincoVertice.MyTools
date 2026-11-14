@@ -583,6 +583,29 @@ public class DiagramEditorFormTests
         Assert.Equal("\U0001F513", widthLock.Text);
     }
 
+    [Fact]
+    public void Properties_ALinesDirection_IsShownOnlyForLines_AndChoosingItIsRaised()
+    {
+        // Arrange
+        using var form = new DiagramEditorForm();
+        List<DiagramLineDirection> chosen = [];
+        form.LineDirectionSelected += (_, direction) => chosen.Add(direction);
+        var directions = (ComboBox)form.Controls.Find("DirectionPropertyBox", true).Single();
+
+        // Act / Assert: showing it isn't the user's choice
+        form.Show();
+        form.ShowProperties(new DiagramPropertiesModel("Rectangle", new Rectangle(0, 0, 100, 50)));
+        Assert.False(directions.Visible);
+
+        form.ShowProperties(new DiagramPropertiesModel("Line", LineDirection: DiagramLineDirection.Vertical));
+        Assert.True(directions.Visible);
+        Assert.Equal("Vertical", directions.SelectedItem);
+        Assert.Empty(chosen);
+
+        directions.SelectedIndex = 1;
+        Assert.Equal([DiagramLineDirection.Horizontal], chosen);
+    }
+
     private sealed class NoSettings : IDiagramEditorSettingsStore
     {
         public DiagramEditorSettingsModel? Load() => null;

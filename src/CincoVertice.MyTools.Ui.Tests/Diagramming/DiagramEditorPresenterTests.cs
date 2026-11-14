@@ -712,6 +712,100 @@ public class DiagramEditorPresenterTests
         Assert.Equal("Line", _view.Properties!.Title);
     }
 
+    [Theory]
+    [InlineData(DiagramLineDirection.Horizontal, 300, 100)]
+    [InlineData(DiagramLineDirection.Vertical, 100, 300)]
+    public void LineDirection_TurnsTheLineFromItsStart_AsLongAsItWas(
+        DiagramLineDirection direction,
+        int toX,
+        int toY)
+    {
+        // Arrange: a line 200 long, going right and down
+        DrawLine(100, 100, 220, 260);
+
+        // Act
+        _view.SelectLineDirection(direction);
+
+        // Assert
+        DiagramConnectorModel line = Diagram.Connectors[0];
+        Assert.Equal(direction, line.Direction);
+        Assert.Equal(new Point(100, 100), line.FromPoint);
+        Assert.Equal(new Point(toX, toY), line.ToPoint);
+        Assert.Equal(direction, _view.Properties!.LineDirection);
+    }
+
+    [Fact]
+    public void LineDirection_ALineGoingBack_KeepsGoingBack()
+    {
+        // Arrange
+        DrawLine(300, 200, 100, 190);
+
+        // Act
+        _view.SelectLineDirection(DiagramLineDirection.Horizontal);
+
+        // Assert
+        Assert.Equal(new Point(100, 200), Diagram.Connectors[0].ToPoint);
+    }
+
+    [Fact]
+    public void LineDirection_Horizontal_DraggingAnEnd_KeepsItLevel()
+    {
+        // Arrange
+        DrawLine(100, 100, 300, 100);
+        _view.SelectLineDirection(DiagramLineDirection.Horizontal);
+
+        // Act
+        _view.Drag(300, 100, 400, 250, alt: true);
+
+        // Assert
+        Assert.Equal(new Point(100, 100), Diagram.Connectors[0].FromPoint);
+        Assert.Equal(new Point(400, 100), Diagram.Connectors[0].ToPoint);
+    }
+
+    [Fact]
+    public void LineDirection_Vertical_DraggingAnEndOntoTheOthersLevel_LeavesIt()
+    {
+        // Arrange
+        DrawLine(100, 100, 100, 300);
+        _view.SelectLineDirection(DiagramLineDirection.Vertical);
+        DiagramConnectorModel line = Diagram.Connectors[0];
+
+        // Act: upright, that end would be on the other one
+        _view.Drag(100, 300, 250, 100, alt: true);
+
+        // Assert
+        Assert.Equal(line, Diagram.Connectors[0]);
+    }
+
+    [Fact]
+    public void LineDirection_ChoosingIt_CanBeUndone_AndFreeLeavesTheLineWhereItIs()
+    {
+        // Arrange
+        DiagramConnectorModel drawn = DrawLine();
+        _view.SelectLineDirection(DiagramLineDirection.Vertical);
+        DiagramConnectorModel upright = Diagram.Connectors[0];
+
+        // Act / Assert
+        _view.SelectLineDirection(DiagramLineDirection.Free);
+        Assert.Equal(upright with { Direction = DiagramLineDirection.Free }, Diagram.Connectors[0]);
+
+        _view.Command(DiagramCommand.Undo);
+        _view.Command(DiagramCommand.Undo);
+        Assert.Equal(drawn, Diagram.Connectors[0]);
+    }
+
+    [Fact]
+    public void LineDirection_OnlyForLines()
+    {
+        // Arrange
+        AddShape(100, 100);
+
+        // Act / Assert
+        Assert.Null(_view.Properties!.LineDirection);
+        DrawLine(300, 300, 400, 400);
+        Assert.Equal(DiagramLineDirection.Free, _view.Properties!.LineDirection);
+    }
+
     [Fact]
     public void Line_ChoosingARoute_LeavesItStraight()
     {
@@ -3686,6 +3780,8 @@ public class DiagramEditorPresenterTests
 
         public event EventHandler<DiagramArrowHeads>? ArrowHeadsSelected;
 
+        public event EventHandler<DiagramLineDirection>? LineDirectionSelected;
+
         public event EventHandler<Rectangle>? BoundsEdited;
 
         public event EventHandler<int>? CornerRadiusEdited;
@@ -3829,6 +3925,9 @@ public class DiagramEditorPresenterTests
         public void SelectRouting(DiagramRouting routing) => RoutingSelected?.Invoke(this, routing);
 
         public void SelectHeads(DiagramArrowHeads heads) => ArrowHeadsSelected?.Invoke(this, heads);
+
+        public void SelectLineDirection(DiagramLineDirection direction) =>
+            LineDirectionSelected?.Invoke(this, direction);
 
         public void CommitText(string text) => TextCommitted?.Invoke(this, text);
 

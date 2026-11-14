@@ -521,6 +521,44 @@ public sealed class DiagramSvgTests : IDisposable
         Assert.DoesNotContain("fromShapeId", json);
     }
 
+    [Fact]
+    public void Json_ALinesDirection_IsKept_AndFreeIsntWritten()
+    {
+        // Arrange
+        DiagramConnectorModel level = DiagramConnectorModel.Line(
+            1,
+            new Point(10, 20),
+            new Point(300, 20),
+            DiagramArrowHeads.End,
+            _style) with { Direction = DiagramLineDirection.Horizontal };
+        DiagramConnectorModel free = level with { Id = 2, Direction = DiagramLineDirection.Free };
+
+        // Act
+        string json = DiagramJson.Write(new DiagramModel([], [level, free]));
+        DiagramModel read = DiagramJson.Read(json);
+
+        // Assert
+        Assert.Equal([level, free], read.Connectors);
+        Assert.Single(Regex.Matches(json, "\"direction\""));
+    }
+
+    [Fact]
+    public void Json_AnUprightLineThatIsnt_IsMadeUpright()
+    {
+        // Arrange
+        const string json = """
+            { "format": "mytools-diagram", "shapes": [], "connectors": [ { "id": 2, "routing": "Straight",
+                "heads": "End", "fromPoint": { "x": 0, "y": 0 }, "toPoint": { "x": 30, "y": 40 },
+                "direction": "Vertical" } ] }
+            """;
+
+        // Act
+        DiagramConnectorModel line = Assert.Single(DiagramJson.Read(json).Connectors);
+
+        // Assert
+        Assert.Equal(new Point(0, 50), line.ToPoint);
+    }
+
     [Theory]
     [InlineData("\"fromPoint\": { \"x\": 5, \"y\": 5 }, \"toPoint\": { \"x\": 5, \"y\": 5 }")]
     [InlineData("\"fromPoint\": { \"x\": 5, \"y\": 5 }")]

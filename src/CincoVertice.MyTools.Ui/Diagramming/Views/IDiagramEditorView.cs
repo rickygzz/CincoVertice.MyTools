@@ -58,6 +58,9 @@ public interface IDiagramEditorView
 
     event EventHandler<DiagramArrowHeads>? ArrowHeadsSelected;
 
+    /// <summary>Raised when the user chooses which way the selected lines on their own may point.</summary>
+    event EventHandler<DiagramLineDirection>? LineDirectionSelected;
+
     /// <summary>Raised when the user types where the selected shapes should be, all of them together.</summary>
     event EventHandler<Rectangle>? BoundsEdited;
 

@@ -56,7 +56,8 @@ public static class DiagramJson
                 connector.ToSide,
                 connector.Bends?.Select(bend => new PointFile(bend.X, bend.Y)).ToList(),
                 connector.FromPoint is Point from ? new PointFile(from.X, from.Y) : null,
-                connector.ToPoint is Point to ? new PointFile(to.X, to.Y) : null))]);
+                connector.ToPoint is Point to ? new PointFile(to.X, to.Y) : null,
+                connector.Direction == DiagramLineDirection.Free ? null : connector.Direction))]);
 
         return JsonSerializer.Serialize(file, _options);
     }
@@ -102,12 +103,14 @@ public static class DiagramJson
                 // A line of no length has no direction for its heads
                 if (from != to)
                 {
-                    connectors.Add(DiagramConnectorModel.Line(
+                    DiagramConnectorModel line = DiagramConnectorModel.Line(
                         c.Id,
                         new Point(from.X, from.Y),
                         new Point(to.X, to.Y),
                         c.Heads,
-                        ToStyle(c.Style)) with { Label = c.Label ?? string.Empty });
+                        ToStyle(c.Style)) with { Label = c.Label ?? string.Empty, Direction = DirectionOf(c) };
+
+                    connectors.Add(line.Aligned());
                 }
             }
             else if (c is { FromShapeId: int fromId, ToShapeId: int toId }
@@ -144,6 +147,12 @@ public static class DiagramJson
             && (connector.FromSide is not DiagramSide from || Enum.IsDefined(from))
             && (connector.ToSide is not DiagramSide to || Enum.IsDefined(to))
             && (connector.Bends ?? []).All(bend => bend is not null));
+
+    /// <summary>A value no direction has, from a file written by hand, leaves the line free.</summary>
+    private static DiagramLineDirection DirectionOf(ConnectorFile connector) =>
+        connector.Direction is DiagramLineDirection direction && Enum.IsDefined(direction)
+            ? direction
+            : DiagramLineDirection.Free;
 
     private static DiagramShapeModel ToShape(ShapeFile shape) => new(
         shape.Id,
@@ -214,7 +223,8 @@ public static class DiagramJson
         DiagramSide? ToSide,
         List<PointFile>? Bends,
         PointFile? FromPoint = null,
-        PointFile? ToPoint = null);
+        PointFile? ToPoint = null,
+        DiagramLineDirection? Direction = null);
 
     private sealed record PointFile(int X, int Y);
 

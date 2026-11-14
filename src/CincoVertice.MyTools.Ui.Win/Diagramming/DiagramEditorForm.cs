@@ -67,6 +67,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         ArrowHeadsComboBox.Items.AddRange(arrows);
         RoutingPropertyBox.Items.AddRange(routings);
         ArrowsPropertyBox.Items.AddRange(arrows);
+        DirectionPropertyBox.Items.AddRange(["Free", "Horizontal", "Vertical"]);
         FontFamilyBox.Items.AddRange([.. DiagramFonts.Names()]);
 
         FormExtensions.CenterOnCursorScreen(this);
@@ -110,6 +111,8 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     public event EventHandler<DiagramRouting>? RoutingSelected;
 
     public event EventHandler<DiagramArrowHeads>? ArrowHeadsSelected;
+
+    public event EventHandler<DiagramLineDirection>? LineDirectionSelected;
 
     public event EventHandler<Rectangle>? BoundsEdited;
 
@@ -275,6 +278,10 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         ArrowsPropertyBox.Visible = properties.Heads is not null;
         ArrowsPropertyBox.SelectedIndex = (int)(properties.Heads ?? DiagramArrowHeads.End);
 
+        DirectionLabel.Visible = properties.LineDirection is not null;
+        DirectionPropertyBox.Visible = properties.LineDirection is not null;
+        DirectionPropertyBox.SelectedIndex = (int)(properties.LineDirection ?? DiagramLineDirection.Free);
+
         PropertiesTable.ResumeLayout();
         _isShowingChoices = false;
     }
@@ -437,6 +444,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
             || ArrowHeadsComboBox.DroppedDown
             || RoutingPropertyBox.DroppedDown
             || ArrowsPropertyBox.DroppedDown
+            || DirectionPropertyBox.DroppedDown
             || FontFamilyBox.DroppedDown)
         {
             return base.ProcessCmdKey(ref msg, keyData);
@@ -696,6 +704,14 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         if (!_isShowingChoices && ArrowsPropertyBox.SelectedIndex >= 0)
         {
             ArrowHeadsSelected?.Invoke(this, (DiagramArrowHeads)ArrowsPropertyBox.SelectedIndex);
+        }
+    }
+
+    private void DirectionPropertyBox_SelectedIndexChanged(object? sender, EventArgs e)
+    {
+        if (!_isShowingChoices && DirectionPropertyBox.SelectedIndex >= 0)
+        {
+            LineDirectionSelected?.Invoke(this, (DiagramLineDirection)DirectionPropertyBox.SelectedIndex);
         }
     }
 

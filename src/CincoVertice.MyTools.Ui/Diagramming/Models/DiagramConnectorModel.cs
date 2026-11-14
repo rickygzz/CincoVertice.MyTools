@@ -21,6 +21,7 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 /// </param>
 /// <param name="FromPoint">Where a line on its own starts, in diagram pixels; null for a connector.</param>
 /// <param name="ToPoint">Where a line on its own ends, in diagram pixels; null for a connector.</param>
+/// <param name="Direction">Which way a line on its own may point; a connector doesn't use it.</param>
 public sealed record DiagramConnectorModel(
     int Id,
     int? FromShapeId,
@@ -33,7 +34,8 @@ public sealed record DiagramConnectorModel(
     DiagramSide? ToSide = null,
     IReadOnlyList<Point>? Bends = null,
     Point? FromPoint = null,
-    Point? ToPoint = null)
+    Point? ToPoint = null,
+    DiagramLineDirection Direction = DiagramLineDirection.Free)
 {
     /// <summary>True for a line on its own, between two points, rather than between two shapes.</summary>
     public bool IsLine => FromPoint is not null && ToPoint is not null;
@@ -46,4 +48,38 @@ public sealed record DiagramConnectorModel(
         DiagramArrowHeads heads,
         DiagramStyleModel style) =>
         new(id, null, null, DiagramRouting.Straight, heads, string.Empty, style, FromPoint: from, ToPoint: to);
+
+    /// <summary>
+    ///     The line pointing its way: when it's level or upright and doesn't, its end is moved to where it does, as far
+    ///     from the start. Anything else is as it was.
+    /// </summary>
+    public DiagramConnectorModel Aligned()
+    {
+        if (FromPoint is not Point from || ToPoint is not Point to || Direction == DiagramLineDirection.Free)
+        {
+            return this;
+        }
+
+        bool isHorizontal = Direction == DiagramLineDirection.Horizontal;
+
+        if (isHorizontal ? from.Y == to.Y : from.X == to.X)
+        {
+            return this;
+        }
+
+        int dx = to.X - from.X;
+        int dy = to.Y - from.Y;
+
+        // It keeps going the way it went along that direction, or else forwards
+        int along = isHorizontal ? dx : dy;
+        int sign = along < 0 ? -1 : 1;
+        int length = Math.Max((int)Math.Round(Math.Sqrt((double)dx * dx + (double)dy * dy)), 1);
+
+        return this with
+        {
+            ToPoint = isHorizontal
+                ? new Point(from.X + sign * length, from.Y)
+                : new Point(from.X, from.Y + sign * length),
+        };
+    }
 }

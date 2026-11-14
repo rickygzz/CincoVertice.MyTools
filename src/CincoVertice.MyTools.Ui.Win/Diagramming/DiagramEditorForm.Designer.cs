@@ -149,6 +149,8 @@ partial class DiagramEditorForm
         RoutingPropertyBox = new ComboBox();
         ArrowsLabel = new Label();
         ArrowsPropertyBox = new ComboBox();
+        DirectionLabel = new Label();
+        DirectionPropertyBox = new ComboBox();
         ToolsStrip.SuspendLayout();
         StyleStrip.SuspendLayout();
         Canvas.SuspendLayout();
@@ -736,10 +738,13 @@ partial class DiagramEditorForm
         PropertiesTable.Controls.Add(ArrowsLabel, 0, 17);
         PropertiesTable.Controls.Add(ArrowsPropertyBox, 1, 17);
         PropertiesTable.SetColumnSpan(ArrowsPropertyBox, 2);
+        PropertiesTable.Controls.Add(DirectionLabel, 0, 18);
+        PropertiesTable.Controls.Add(DirectionPropertyBox, 1, 18);
+        PropertiesTable.SetColumnSpan(DirectionPropertyBox, 2);
         PropertiesTable.Dock = DockStyle.Top;
         PropertiesTable.Name = "PropertiesTable";
         PropertiesTable.Padding = new Padding(6);
-        PropertiesTable.RowCount = 18;
+        PropertiesTable.RowCount = 19;
         PropertiesTable.TabIndex = 0;
         //
         // PropertiesTitleLabel
@@ -1060,6 +1065,21 @@ partial class DiagramEditorForm
         ArrowsPropertyBox.TabIndex = 13;
         ArrowsPropertyBox.SelectedIndexChanged += ArrowsPropertyBox_SelectedIndexChanged;
         //
+        // DirectionLabel
+        //
+        DirectionLabel.Anchor = AnchorStyles.Left;
+        DirectionLabel.AutoSize = true;
+        DirectionLabel.Name = "DirectionLabel";
+        DirectionLabel.Text = "Direction";
+        //
+        // DirectionPropertyBox
+        //
+        DirectionPropertyBox.Dock = DockStyle.Fill;
+        DirectionPropertyBox.DropDownStyle = ComboBoxStyle.DropDownList;
+        DirectionPropertyBox.Name = "DirectionPropertyBox";
+        DirectionPropertyBox.TabIndex = 17;
+        DirectionPropertyBox.SelectedIndexChanged += DirectionPropertyBox_SelectedIndexChanged;
+        //
         // ZoomLabel
         //
         ZoomLabel.Alignment = ToolStripItemAlignment.Right;
@@ -1251,4 +1271,6 @@ partial class DiagramEditorForm
     private ComboBox RoutingPropertyBox;
     private Label ArrowsLabel;
     private ComboBox ArrowsPropertyBox;
+    private Label DirectionLabel;
+    private ComboBox DirectionPropertyBox;
 }

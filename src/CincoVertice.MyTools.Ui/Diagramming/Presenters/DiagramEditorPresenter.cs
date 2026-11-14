@@ -145,6 +145,7 @@ public sealed class DiagramEditorPresenter
         _view.TextOutlineWidthSelected += OnTextOutlineWidthSelected;
         _view.RoutingSelected += OnRoutingSelected;
         _view.ArrowHeadsSelected += OnArrowHeadsSelected;
+        _view.LineDirectionSelected += OnLineDirectionSelected;
         _view.BoundsEdited += OnBoundsEdited;
         _view.CornerRadiusEdited += OnCornerRadiusEdited;
         _view.LockToggled += OnLockToggled;
@@ -658,7 +659,7 @@ public sealed class DiagramEditorPresenter
         DiagramConnectorModel line = _diagram.Connectors.First(c => c.Id == drag.ConnectorId);
         bool isStart = drag.End == DiagramConnectorEnd.Start;
         Point other = (isStart ? line.ToPoint : line.FromPoint)!.Value;
-        Point end = LineEnd(other, point, pointer);
+        Point end = Kept(line.Direction, other, LineEnd(other, point, pointer));
 
         if (end == other)
         {
@@ -683,6 +684,14 @@ public sealed class DiagramEditorPresenter
 
         return pointer.Alt ? point : Snap(point);
     }
+
+    /// <summary>The end of a line from the point moved, if need be, so the line points the way it must.</summary>
+    private static Point Kept(DiagramLineDirection direction, Point from, Point end) => direction switch
+    {
+        DiagramLineDirection.Horizontal => end with { Y = from.Y },
+        DiagramLineDirection.Vertical => end with { X = from.X },
+        _ => end,
+    };
 
     /// <summary>The point moved onto the nearest of the eight directions from the start, as far from it.</summary>
     private static Point AlongNearestAngle(Point from, Point point)
@@ -1908,6 +1917,28 @@ public sealed class DiagramEditorPresenter
         SaveSettings();
     }
 
+    /// <summary>A line made level or upright is turned that way around its start, keeping its length.</summary>
+    private void OnLineDirectionSelected(object? sender, DiagramLineDirection direction)
+    {
+        if (_drag is not null || !Enum.IsDefined(direction))
+        {
+            return;
+        }
+
+        Commit(
+            _diagram with
+            {
+                Connectors =
+                [
+                    .. _diagram.Connectors.Select(connector =>
+                        connector.IsLine && _selectedConnectors.Contains(connector.Id)
+                            ? (connector with { Direction = direction }).Aligned()
+                            : connector),
+                ],
+            },
+            onlyIfChanged: true);
+    }
+
     private void ChangeSelectedConnectors(Func<DiagramConnectorModel, DiagramConnectorModel> change)
     {
         if (_selectedConnectors.Count > 0)
@@ -2088,7 +2119,7 @@ public sealed class DiagramEditorPresenter
 
     /// <summary>A line with its ends here; as it was if they'd meet, since then it would have no direction.</summary>
     private static DiagramConnectorModel MovedLine(DiagramConnectorModel line, Point from, Point to) =>
-        from == to ? line : line with { FromPoint = from, ToPoint = to };
+        from == to ? line : (line with { FromPoint = from, ToPoint = to }).Aligned();
 
     /// <summary>
     ///     The changed bounds with the locked parts as they were. A locked size keeps the edge that didn't move where
@@ -2259,7 +2290,8 @@ public sealed class DiagramEditorPresenter
             style.FontFamily,
             style.TextOutlineWidth,
             style.TextOutlineColor,
-            shapes.Count > 0 ? shapes.Aggregate(DiagramLock.All, (locks, shape) => locks & shape.Locks) : null);
+            shapes.Count > 0 ? shapes.Aggregate(DiagramLock.All, (locks, shape) => locks & shape.Locks) : null,
+            connectors.FirstOrDefault(connector => connector.IsLine)?.Direction);
     }
 
     private static string TitleOf(List<DiagramShapeModel> shapes, List<DiagramConnectorModel> connectors)
