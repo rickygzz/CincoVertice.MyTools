@@ -23,6 +23,7 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 /// <param name="TextOutlineColor">The color of that edge.</param>
 /// <param name="Locks">The locks every selected shape has, so a locked field can't be typed in.</param>
 /// <param name="LineDirection">Which way the selected lines on their own may point.</param>
+/// <param name="HasImages">True when images are selected, whose size can be reset.</param>
 public sealed record DiagramPropertiesModel(
     string Title,
     Rectangle? Bounds = null,
@@ -40,4 +41,5 @@ public sealed record DiagramPropertiesModel(
     int? TextOutlineWidth = null,
     Color? TextOutlineColor = null,
     DiagramLock? Locks = null,
-    DiagramLineDirection? LineDirection = null);
+    DiagramLineDirection? LineDirection = null,
+    bool HasImages = false);

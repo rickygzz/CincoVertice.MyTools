@@ -114,7 +114,8 @@ public static class DiagramSvg
                 new XAttribute("y", shape.Bounds.Y),
                 new XAttribute("width", shape.Bounds.Width),
                 new XAttribute("height", shape.Bounds.Height),
-                new XAttribute(_xlink + "href", DiagramSvgImage.DataUri(markup))));
+                new XAttribute("preserveAspectRatio", "none"),
+                new XAttribute(_xlink + "href", DiagramSvgImage.DataUri(DiagramSvgImage.Filling(markup)))));
         }
 
         foreach (DiagramFigureModel figure in DiagramFigures.Of(shape.Kind, shape.Bounds, shape.CornerRadius))

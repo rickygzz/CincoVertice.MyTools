@@ -70,6 +70,10 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         DirectionPropertyBox.Items.AddRange(["Free", "Horizontal", "Vertical"]);
         FontFamilyBox.Items.AddRange([.. DiagramFonts.Names()]);
 
+        // Windows takes drops only on a single-threaded apartment, as the app's UI thread is; elsewhere, such as a
+        // test, it would show an error when the canvas is created
+        Canvas.AllowDrop = Thread.CurrentThread.GetApartmentState() == ApartmentState.STA;
+
         FormExtensions.CenterOnCursorScreen(this);
         FormExtensions.ActivateWhenShown(this);
     }
@@ -113,6 +117,8 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     public event EventHandler<DiagramArrowHeads>? ArrowHeadsSelected;
 
     public event EventHandler<DiagramLineDirection>? LineDirectionSelected;
+
+    public event EventHandler<DiagramFilesDropModel>? FilesDropped;
 
     public event EventHandler<Rectangle>? BoundsEdited;
 
@@ -230,6 +236,9 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         ShowLock(YLockCheckBox, YBox, properties.Locks, DiagramLock.Y);
         ShowLock(WidthLockCheckBox, WidthBox, properties.Locks, DiagramLock.Width);
         ShowLock(HeightLockCheckBox, HeightBox, properties.Locks, DiagramLock.Height);
+        ProportionsCheckBox.Visible = properties.Locks is not null;
+        ProportionsCheckBox.Checked = properties.Locks is DiagramLock locks && locks.HasFlag(DiagramLock.AspectRatio);
+        ResetSizeButton.Visible = properties.HasImages;
         ShowNumber(CornerRadiusLabel, CornerRadiusBox, properties.CornerRadius);
         ShowNumber(LineWidthLabel, LineWidthBox, properties.LineWidth);
         ShowNumber(FontSizeLabel, FontSizeBox, properties.FontSize);
@@ -390,6 +399,18 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         };
 
         return dialog.ShowDialog(this) == DialogResult.OK ? dialog.FileName : null;
+    }
+
+    public IReadOnlyList<string> AskImagePaths()
+    {
+        using var dialog = new OpenFileDialog
+        {
+            Filter = "SVG image (*.svg)|*.svg",
+            Multiselect = true,
+            Title = "Insert image",
+        };
+
+        return dialog.ShowDialog(this) == DialogResult.OK ? dialog.FileNames : [];
     }
 
     public bool AskOverwrite(string name)
@@ -639,6 +660,22 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
                 this,
                 new DiagramLockChoiceModel(Enum.Parse<DiagramLock>((string)lockBox.Tag!), lockBox.Checked));
         }
+    }
+
+    private void ProportionsCheckBox_CheckedChanged(object? sender, EventArgs e)
+    {
+        if (!_isShowingChoices)
+        {
+            LockToggled?.Invoke(
+                this,
+                new DiagramLockChoiceModel(DiagramLock.AspectRatio, ProportionsCheckBox.Checked));
+        }
+    }
+
+    private void ResetSizeButton_Click(object? sender, EventArgs e)
+    {
+        Canvas.Focus();
+        CommandRequested?.Invoke(this, DiagramCommand.ResetSize);
     }
 
     private void CornerRadiusBox_ValueChanged(object? sender, EventArgs e)
@@ -959,6 +996,24 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         }
     }
 
+    /// <summary>Files can be dropped; what they are is up to the presenter.</summary>
+    private void Canvas_DragEnter(object? sender, DragEventArgs e)
+    {
+        e.Effect = e.Data?.GetDataPresent(DataFormats.FileDrop) == true ? DragDropEffects.Copy : DragDropEffects.None;
+    }
+
+    private void Canvas_DragDrop(object? sender, DragEventArgs e)
+    {
+        if (e.Data?.GetData(DataFormats.FileDrop) is string[] { Length: > 0 } paths)
+        {
+            // From another program, which keeps waiting while a message box is shown
+            Point location = Canvas.PointToClient(new Point(e.X, e.Y));
+
+            BeginInvoke(() => FilesDropped?.Invoke(this, new DiagramFilesDropModel(paths, location)));
+            Activate();
+        }
+    }
+
     private void Canvas_MouseLeave(object? sender, EventArgs e)
     {
         PointerLeft?.Invoke(this, EventArgs.Empty);
@@ -1083,6 +1138,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
             (Keys.Control, Keys.C) => DiagramCommand.Copy,
             (Keys.Control, Keys.V) => DiagramCommand.Paste,
             (Keys.Control, Keys.D) => DiagramCommand.Duplicate,
+            (Keys.Control, Keys.I) => DiagramCommand.InsertImage,
             (Keys.Control | Keys.Shift, Keys.C) => DiagramCommand.CopyStyle,
             (Keys.Control | Keys.Shift, Keys.V) => DiagramCommand.PasteStyle,
             (Keys.Control, Keys.A) => DiagramCommand.SelectAll,

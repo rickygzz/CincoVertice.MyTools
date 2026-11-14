@@ -1,8 +1,8 @@
 ﻿namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 
 /// <summary>
-///     What of a shape's place and size stays as it is when it's moved or scaled: by dragging, with the arrow keys or
-///     in the properties panel. The rest still changes.
+///     What of a shape's place, size and proportions stays as it is when it's moved or scaled: by dragging, with the
+///     arrow keys or in the properties panel. The rest still changes.
 /// </summary>
 [Flags]
 public enum DiagramLock
@@ -12,5 +12,12 @@ public enum DiagramLock
     Y = 2,
     Width = 4,
     Height = 8,
-    All = X | Y | Width | Height,
+
+    /// <summary>Its width and height change together, keeping its proportions; new images have it.</summary>
+    AspectRatio = 16,
+
+    /// <summary>Where it is and how large.</summary>
+    Bounds = X | Y | Width | Height,
+
+    All = Bounds | AspectRatio,
 }

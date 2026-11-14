@@ -606,6 +606,41 @@ public class DiagramEditorFormTests
         Assert.Equal([DiagramLineDirection.Horizontal], chosen);
     }
 
+    [Fact]
+    public void Properties_KeepProportions_ShowsTheLock_AndResetSizeIsOnlyForImages()
+    {
+        // Arrange
+        using var form = new DiagramEditorForm();
+        List<DiagramLockChoiceModel> toggled = [];
+        List<DiagramCommand> commands = [];
+        form.LockToggled += (_, choice) => toggled.Add(choice);
+        form.CommandRequested += (_, command) => commands.Add(command);
+        var proportions = (CheckBox)form.Controls.Find("ProportionsCheckBox", true).Single();
+        var reset = (Button)form.Controls.Find("ResetSizeButton", true).Single();
+        form.Show();
+
+        // Act / Assert: showing it isn't the user's choice
+        form.ShowProperties(
+            new DiagramPropertiesModel("Rectangle", new Rectangle(0, 0, 9, 9), Locks: DiagramLock.None));
+        Assert.True(proportions.Visible);
+        Assert.False(proportions.Checked);
+        Assert.False(reset.Visible);
+
+        form.ShowProperties(new DiagramPropertiesModel(
+            "Image",
+            new Rectangle(0, 0, 9, 9),
+            Locks: DiagramLock.AspectRatio,
+            HasImages: true));
+        Assert.True(proportions.Checked);
+        Assert.True(reset.Visible);
+        Assert.Empty(toggled);
+
+        proportions.Checked = false;
+        reset.PerformClick();
+        Assert.Equal([new DiagramLockChoiceModel(DiagramLock.AspectRatio, false)], toggled);
+        Assert.Equal([DiagramCommand.ResetSize], commands);
+    }
+
     private sealed class NoSettings : IDiagramEditorSettingsStore
     {
         public DiagramEditorSettingsModel? Load() => null;
@@ -624,6 +659,8 @@ public class DiagramEditorFormTests
         public DiagramModel Load(string path) => DiagramModel.Empty;
 
         public string? VersionOf(string path) => null;
+
+        public string ReadImage(string path) => string.Empty;
     }
 
     private sealed class NoExporter : IDiagramPdfExporter

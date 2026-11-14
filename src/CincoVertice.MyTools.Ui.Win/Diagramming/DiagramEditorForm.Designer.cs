@@ -102,6 +102,8 @@ partial class DiagramEditorForm
         ConnectorsSeparator = new ToolStripSeparator();
         GroupMenuItem = new ToolStripMenuItem();
         UngroupMenuItem = new ToolStripMenuItem();
+        ImageSeparator = new ToolStripSeparator();
+        InsertImageMenuItem = new ToolStripMenuItem();
         FrontButton = new ToolStripButton();
         BackButton = new ToolStripButton();
         PropertiesButton = new ToolStripButton();
@@ -151,6 +153,9 @@ partial class DiagramEditorForm
         ArrowsPropertyBox = new ComboBox();
         DirectionLabel = new Label();
         DirectionPropertyBox = new ComboBox();
+        ProportionsCheckBox = new CheckBox();
+        ResetSizeButton = new Button();
+        ResetSizeMenuItem = new ToolStripMenuItem();
         ToolsStrip.SuspendLayout();
         StyleStrip.SuspendLayout();
         Canvas.SuspendLayout();
@@ -298,7 +303,7 @@ partial class DiagramEditorForm
         // EditDropDownButton
         //
         EditDropDownButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
-        EditDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { UndoMenuItem, RedoMenuItem, HistorySeparator, CopyStyleMenuItem, PasteStyleMenuItem, GroupSeparator, GroupMenuItem, UngroupMenuItem });
+        EditDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { UndoMenuItem, RedoMenuItem, HistorySeparator, CopyStyleMenuItem, PasteStyleMenuItem, GroupSeparator, GroupMenuItem, UngroupMenuItem, ImageSeparator, InsertImageMenuItem, ResetSizeMenuItem });
         EditDropDownButton.Name = "EditDropDownButton";
         EditDropDownButton.Text = "Edit";
         EditDropDownButton.ToolTipText = "Undo, redo, copy and paste a style, group";
@@ -642,6 +647,27 @@ partial class DiagramEditorForm
         UngroupMenuItem.ToolTipText = "Ungroup the selected groups";
         UngroupMenuItem.Click += CommandButton_Click;
         //
+        // ImageSeparator
+        //
+        ImageSeparator.Name = "ImageSeparator";
+        //
+        // InsertImageMenuItem
+        //
+        InsertImageMenuItem.Name = "InsertImageMenuItem";
+        InsertImageMenuItem.Tag = "InsertImage";
+        InsertImageMenuItem.Text = "Insert image...";
+        InsertImageMenuItem.ShortcutKeyDisplayString = "Ctrl+I";
+        InsertImageMenuItem.ToolTipText = "Add SVG images, such as icons; you can also drop them on the canvas";
+        InsertImageMenuItem.Click += CommandButton_Click;
+        //
+        // ResetSizeMenuItem
+        //
+        ResetSizeMenuItem.Name = "ResetSizeMenuItem";
+        ResetSizeMenuItem.Tag = "ResetSize";
+        ResetSizeMenuItem.Text = "Reset image size";
+        ResetSizeMenuItem.ToolTipText = "Give the selected images the size they were inserted at";
+        ResetSizeMenuItem.Click += CommandButton_Click;
+        //
         // FrontButton
         //
         FrontButton.Name = "FrontButton";
@@ -687,64 +713,83 @@ partial class DiagramEditorForm
         PropertiesTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         PropertiesTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 30F));
         PropertiesTable.Controls.Add(PropertiesTitleLabel, 0, 0);
+
         PropertiesTable.SetColumnSpan(PropertiesTitleLabel, 3);
         PropertiesTable.Controls.Add(TextLabel, 0, 1);
+
         PropertiesTable.Controls.Add(TextPropertyBox, 1, 1);
+
         PropertiesTable.SetColumnSpan(TextPropertyBox, 2);
         PropertiesTable.Controls.Add(XLabel, 0, 2);
+
         PropertiesTable.Controls.Add(XBox, 1, 2);
+
         PropertiesTable.Controls.Add(XLockCheckBox, 2, 2);
+
         PropertiesTable.Controls.Add(YLabel, 0, 3);
+
         PropertiesTable.Controls.Add(YBox, 1, 3);
+
         PropertiesTable.Controls.Add(YLockCheckBox, 2, 3);
+
         PropertiesTable.Controls.Add(WidthLabel, 0, 4);
+
         PropertiesTable.Controls.Add(WidthBox, 1, 4);
+
         PropertiesTable.Controls.Add(WidthLockCheckBox, 2, 4);
+
         PropertiesTable.Controls.Add(HeightLabel, 0, 5);
+
         PropertiesTable.Controls.Add(HeightBox, 1, 5);
+
         PropertiesTable.Controls.Add(HeightLockCheckBox, 2, 5);
-        PropertiesTable.Controls.Add(CornerRadiusLabel, 0, 6);
-        PropertiesTable.Controls.Add(CornerRadiusBox, 1, 6);
+        PropertiesTable.Controls.Add(ProportionsCheckBox, 1, 6);
+        PropertiesTable.SetColumnSpan(ProportionsCheckBox, 2);
+        PropertiesTable.Controls.Add(ResetSizeButton, 1, 7);
+        PropertiesTable.SetColumnSpan(ResetSizeButton, 2);
+
+        PropertiesTable.Controls.Add(CornerRadiusLabel, 0, 8);
+        PropertiesTable.Controls.Add(CornerRadiusBox, 1, 8);
         PropertiesTable.SetColumnSpan(CornerRadiusBox, 2);
-        PropertiesTable.Controls.Add(FillLabel, 0, 7);
-        PropertiesTable.Controls.Add(FillColorButton, 1, 7);
+        PropertiesTable.Controls.Add(FillLabel, 0, 9);
+        PropertiesTable.Controls.Add(FillColorButton, 1, 9);
         PropertiesTable.SetColumnSpan(FillColorButton, 2);
-        PropertiesTable.Controls.Add(LineLabel, 0, 8);
-        PropertiesTable.Controls.Add(LineColorButton, 1, 8);
+        PropertiesTable.Controls.Add(LineLabel, 0, 10);
+        PropertiesTable.Controls.Add(LineColorButton, 1, 10);
         PropertiesTable.SetColumnSpan(LineColorButton, 2);
-        PropertiesTable.Controls.Add(LineWidthLabel, 0, 9);
-        PropertiesTable.Controls.Add(LineWidthBox, 1, 9);
+        PropertiesTable.Controls.Add(LineWidthLabel, 0, 11);
+        PropertiesTable.Controls.Add(LineWidthBox, 1, 11);
         PropertiesTable.SetColumnSpan(LineWidthBox, 2);
-        PropertiesTable.Controls.Add(DashedCheckBox, 1, 10);
+        PropertiesTable.Controls.Add(DashedCheckBox, 1, 12);
         PropertiesTable.SetColumnSpan(DashedCheckBox, 2);
-        PropertiesTable.Controls.Add(TextColorLabel, 0, 11);
-        PropertiesTable.Controls.Add(TextColorButton, 1, 11);
+        PropertiesTable.Controls.Add(TextColorLabel, 0, 13);
+        PropertiesTable.Controls.Add(TextColorButton, 1, 13);
         PropertiesTable.SetColumnSpan(TextColorButton, 2);
-        PropertiesTable.Controls.Add(FontFamilyLabel, 0, 12);
-        PropertiesTable.Controls.Add(FontFamilyBox, 1, 12);
+        PropertiesTable.Controls.Add(FontFamilyLabel, 0, 14);
+        PropertiesTable.Controls.Add(FontFamilyBox, 1, 14);
         PropertiesTable.SetColumnSpan(FontFamilyBox, 2);
-        PropertiesTable.Controls.Add(FontSizeLabel, 0, 13);
-        PropertiesTable.Controls.Add(FontSizeBox, 1, 13);
+        PropertiesTable.Controls.Add(FontSizeLabel, 0, 15);
+        PropertiesTable.Controls.Add(FontSizeBox, 1, 15);
         PropertiesTable.SetColumnSpan(FontSizeBox, 2);
-        PropertiesTable.Controls.Add(TextOutlineLabel, 0, 14);
-        PropertiesTable.Controls.Add(TextOutlineColorButton, 1, 14);
+        PropertiesTable.Controls.Add(TextOutlineLabel, 0, 16);
+        PropertiesTable.Controls.Add(TextOutlineColorButton, 1, 16);
         PropertiesTable.SetColumnSpan(TextOutlineColorButton, 2);
-        PropertiesTable.Controls.Add(TextOutlineWidthLabel, 0, 15);
-        PropertiesTable.Controls.Add(TextOutlineWidthBox, 1, 15);
+        PropertiesTable.Controls.Add(TextOutlineWidthLabel, 0, 17);
+        PropertiesTable.Controls.Add(TextOutlineWidthBox, 1, 17);
         PropertiesTable.SetColumnSpan(TextOutlineWidthBox, 2);
-        PropertiesTable.Controls.Add(RoutingLabel, 0, 16);
-        PropertiesTable.Controls.Add(RoutingPropertyBox, 1, 16);
+        PropertiesTable.Controls.Add(RoutingLabel, 0, 18);
+        PropertiesTable.Controls.Add(RoutingPropertyBox, 1, 18);
         PropertiesTable.SetColumnSpan(RoutingPropertyBox, 2);
-        PropertiesTable.Controls.Add(ArrowsLabel, 0, 17);
-        PropertiesTable.Controls.Add(ArrowsPropertyBox, 1, 17);
+        PropertiesTable.Controls.Add(ArrowsLabel, 0, 19);
+        PropertiesTable.Controls.Add(ArrowsPropertyBox, 1, 19);
         PropertiesTable.SetColumnSpan(ArrowsPropertyBox, 2);
-        PropertiesTable.Controls.Add(DirectionLabel, 0, 18);
-        PropertiesTable.Controls.Add(DirectionPropertyBox, 1, 18);
+        PropertiesTable.Controls.Add(DirectionLabel, 0, 20);
+        PropertiesTable.Controls.Add(DirectionPropertyBox, 1, 20);
         PropertiesTable.SetColumnSpan(DirectionPropertyBox, 2);
         PropertiesTable.Dock = DockStyle.Top;
         PropertiesTable.Name = "PropertiesTable";
         PropertiesTable.Padding = new Padding(6);
-        PropertiesTable.RowCount = 19;
+        PropertiesTable.RowCount = 21;
         PropertiesTable.TabIndex = 0;
         //
         // PropertiesTitleLabel
@@ -949,6 +994,26 @@ partial class DiagramEditorForm
         LineWidthBox.TabIndex = 8;
         LineWidthBox.ValueChanged += LineWidthBox_ValueChanged;
         //
+        // ProportionsCheckBox
+        //
+        ProportionsCheckBox.AutoSize = true;
+        ProportionsCheckBox.Name = "ProportionsCheckBox";
+        ProportionsCheckBox.TabIndex = 18;
+        ProportionsCheckBox.Tag = "AspectRatio";
+        ProportionsCheckBox.Text = "Keep proportions";
+        PropertiesToolTip.SetToolTip(ProportionsCheckBox, "Scaling the shape keeps its width and height in proportion");
+        ProportionsCheckBox.CheckedChanged += ProportionsCheckBox_CheckedChanged;
+        //
+        // ResetSizeButton
+        //
+        ResetSizeButton.AutoSize = true;
+        ResetSizeButton.Name = "ResetSizeButton";
+        ResetSizeButton.TabIndex = 19;
+        ResetSizeButton.Text = "Reset size";
+        ResetSizeButton.UseVisualStyleBackColor = true;
+        PropertiesToolTip.SetToolTip(ResetSizeButton, "Give the selected images the size they were inserted at");
+        ResetSizeButton.Click += ResetSizeButton_Click;
+        //
         // DashedCheckBox
         //
         DashedCheckBox.AutoSize = true;
@@ -1104,6 +1169,8 @@ partial class DiagramEditorForm
         Canvas.MouseDoubleClick += Canvas_MouseDoubleClick;
         Canvas.MouseLeave += Canvas_MouseLeave;
         Canvas.MouseWheel += Canvas_MouseWheel;
+        Canvas.DragEnter += Canvas_DragEnter;
+        Canvas.DragDrop += Canvas_DragDrop;
         //
         // TextInputBox
         //
@@ -1224,6 +1291,8 @@ partial class DiagramEditorForm
     private ToolStripSeparator ConnectorsSeparator;
     private ToolStripMenuItem GroupMenuItem;
     private ToolStripMenuItem UngroupMenuItem;
+    private ToolStripSeparator ImageSeparator;
+    private ToolStripMenuItem InsertImageMenuItem;
     private ToolStripButton FrontButton;
     private ToolStripButton BackButton;
     private ToolStripButton PropertiesButton;
@@ -1273,4 +1342,7 @@ partial class DiagramEditorForm
     private ComboBox ArrowsPropertyBox;
     private Label DirectionLabel;
     private ComboBox DirectionPropertyBox;
+    private CheckBox ProportionsCheckBox;
+    private Button ResetSizeButton;
+    private ToolStripMenuItem ResetSizeMenuItem;
 }

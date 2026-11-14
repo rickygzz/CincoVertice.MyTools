@@ -54,6 +54,54 @@ public sealed class DiagramPdfTests : IDisposable
     }
 
     [Fact]
+    public void Write_AnImage_IsItsPixelsWithTheirTransparency_StretchedOverItsBox()
+    {
+        // Arrange
+        DiagramModel diagram = new(
+            [
+                new DiagramShapeModel(
+                    1,
+                    DiagramShapeKind.Image,
+                    new Rectangle(10, 20, 64, 32),
+                    string.Empty,
+                    _style,
+                    Image: "<svg/>"),
+            ],
+            []);
+        var rasterizer = new FakeRasterizer();
+
+        // Act
+        byte[] pdf = DiagramPdf.Write(diagram, _outliner, rasterizer);
+
+        // Assert: 4 pixels to a diagram pixel
+        Assert.Equal((256, 128), rasterizer.Asked);
+        string text = Text(pdf);
+        Assert.Contains("/XObject << /Im1 5 0 R >>", text);
+        Assert.Contains("5 0 obj\n<< /Type /XObject /Subtype /Image /Width 2 /Height 1", text);
+        Assert.Contains("/ColorSpace /DeviceRGB /SMask 6 0 R", text);
+        Assert.Contains("6 0 obj\n<< /Type /XObject /Subtype /Image /Width 2 /Height 1 /BitsPerComponent 8 "
+            + "/ColorSpace /DeviceGray", text);
+        Assert.Contains("q 64 0 0 -32 10 52 cm /Im1 Do Q", ContentOf(pdf));
+        Assert.Contains("/Info 7 0 R", text);
+    }
+
+    [Fact]
+    public void Write_AnImageThatCantBeDrawn_IsLeftOut()
+    {
+        // Arrange
+        DiagramModel diagram = new(
+            [new DiagramShapeModel(1, DiagramShapeKind.Image, new Rectangle(0, 0, 9, 9), "", _style, Image: "x")],
+            []);
+
+        // Act
+        byte[] pdf = DiagramPdf.Write(diagram, _outliner, new FakeRasterizer { CanDraw = false });
+
+        // Assert
+        Assert.Contains("/XObject << >>", Text(pdf));
+        Assert.DoesNotContain("Do", ContentOf(pdf));
+    }
+
+    [Fact]
     public void Write_IsAPdf_WhoseTableSaysWhereEachObjectStarts()
     {
         // Act
@@ -265,7 +313,7 @@ public sealed class DiagramPdfTests : IDisposable
         // Arrange
         Directory.CreateDirectory(_folder);
         string path = Path.Combine(_folder, "flow.pdf");
-        var exporter = new PdfDiagramExporter(_outliner);
+        var exporter = new PdfDiagramExporter(_outliner, new FakeRasterizer());
 
         // Act
         exporter.Export(path, OneShape(_style, "Hi"));
@@ -273,6 +321,20 @@ public sealed class DiagramPdfTests : IDisposable
         // Assert
         Assert.StartsWith("%PDF-", Text(File.ReadAllBytes(path)));
         Assert.Equal([path], Directory.GetFiles(_folder));
+    }
+
+    private sealed class FakeRasterizer : IDiagramImageRasterizer
+    {
+        public (int Width, int Height)? Asked { get; private set; }
+
+        public bool CanDraw { get; init; } = true;
+
+        public DiagramRasterModel? Rasterize(string markup, int width, int height)
+        {
+            Asked = (width, height);
+
+            return CanDraw ? new DiagramRasterModel(2, 1, [255, 0, 0, 0, 0, 255], [255, 128]) : null;
+        }
     }
 
     private sealed class FakeOutliner : IDiagramTextOutliner

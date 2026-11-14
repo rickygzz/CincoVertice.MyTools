@@ -577,6 +577,56 @@ public sealed class DiagramSvgTests : IDisposable
     }
 
     [Fact]
+    public void Write_AnImage_IsItsOwnSvgInALink_AndTheFileKeepsItsMarkup()
+    {
+        // Arrange
+        string markup = DiagramSvgImage.Prepare(
+            """
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18"><rect id="a" width="9" height="9"/></svg>
+            """);
+        DiagramShapeModel image = new(
+            4,
+            DiagramShapeKind.Image,
+            new Rectangle(10, 20, 64, 64),
+            "VM",
+            _style,
+            Image: markup);
+        DiagramModel diagram = new([image], []);
+
+        // Act
+        string svg = DiagramSvg.Write(diagram);
+
+        // Assert: no path, since an image has no outline
+        XElement element = XDocument.Parse(svg).Descendants(_svg + "image").Single();
+        XNamespace xlink = "http://www.w3.org/1999/xlink";
+        Assert.Equal("64", (string?)element.Attribute("width"));
+        string link = DiagramSvgImage.DataUri(DiagramSvgImage.Filling(markup));
+        Assert.Equal(link, (string?)element.Attribute(xlink + "href"));
+        Assert.Equal("none", (string?)element.Attribute("preserveAspectRatio"));
+        Assert.Empty(XDocument.Parse(svg).Descendants(_svg + "path"));
+        Assert.Equal(diagram.Shapes, DiagramSvg.Read(svg).Shapes);
+    }
+
+    [Fact]
+    public void Json_AnImageWithoutItsMarkup_IsKeptEmpty_AndOtherShapesHaveNone()
+    {
+        // Arrange
+        const string json = """
+            { "format": "mytools-diagram", "shapes": [
+                { "id": 1, "kind": "Image", "x": 0, "y": 0, "width": 9, "height": 9 },
+                { "id": 2, "kind": "Ellipse", "x": 0, "y": 0, "width": 9, "height": 9, "image": "<svg/>" } ],
+              "connectors": [] }
+            """;
+
+        // Act
+        DiagramModel read = DiagramJson.Read(json);
+
+        // Assert
+        Assert.Equal(string.Empty, read.Shapes[0].Image);
+        Assert.Null(read.Shapes[1].Image);
+    }
+
+    [Fact]
     public void Write_OnlyLines_IsAnImageAroundThem()
     {
         // Arrange

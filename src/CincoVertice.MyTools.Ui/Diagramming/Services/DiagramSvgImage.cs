@@ -87,6 +87,30 @@ public static partial class DiagramSvgImage
             Math.Max((int)Math.Round(size.Height * scale), 1));
     }
 
+    /// <summary>
+    ///     The markup to draw, stretched to fill whatever box it's drawn in: an image fills its shape, which keeps the
+    ///     image's proportions only when they're locked. Quick enough for every paint: it changes only the root's tag.
+    /// </summary>
+    public static string Filling(string markup)
+    {
+        int end = markup.IndexOf('>');
+
+        if (!markup.StartsWith("<svg", StringComparison.Ordinal) || end < 0)
+        {
+            return markup;
+        }
+
+        string tag = markup[..end];
+        string rest = markup[end..];
+
+        if (FitRegex().IsMatch(tag))
+        {
+            return FitRegex().Replace(tag, "preserveAspectRatio=\"none\"") + rest;
+        }
+
+        return "<svg preserveAspectRatio=\"none\"" + markup[4..];
+    }
+
     /// <summary>The image as a link that holds it, for an SVG file's image element.</summary>
     public static string DataUri(string markup) =>
         "data:image/svg+xml;base64," + Convert.ToBase64String(Encoding.UTF8.GetBytes(markup));
@@ -239,6 +263,9 @@ public static partial class DiagramSvgImage
 
         return -1;
     }
+
+    [GeneratedRegex("""\bpreserveAspectRatio\s*=\s*("[^"]*"|'[^']*')""")]
+    private static partial Regex FitRegex();
 
     [GeneratedRegex(@"/\*.*?\*/", RegexOptions.Singleline)]
     private static partial Regex CommentRegex();

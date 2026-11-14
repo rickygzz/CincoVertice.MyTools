@@ -36,6 +36,9 @@ public enum DiagramCommand
 
     /// <summary>Makes the selected connectors work out their own corners again.</summary>
     ResetRoute,
+
+    /// <summary>Gives the selected images the size they were inserted at, with their own proportions.</summary>
+    ResetSize,
     ZoomIn,
     ZoomOut,
     ZoomReset,

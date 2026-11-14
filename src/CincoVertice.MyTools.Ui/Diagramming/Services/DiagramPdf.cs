@@ -45,7 +45,7 @@ public static class DiagramPdf
         {
             if (shape is { Kind: DiagramShapeKind.Image, Image: string markup }
                 && imageRasterizer is not null
-                && Rasterize(imageRasterizer, markup, shape.Bounds) is { } image)
+                && Rasterize(imageRasterizer, DiagramSvgImage.Filling(markup), shape.Bounds) is { } image)
             {
                 images.Add(image);
                 WriteImage(content, shape.Bounds, images.Count);

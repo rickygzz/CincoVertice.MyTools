@@ -1137,6 +1137,32 @@ public sealed class DiagramEditorPresenter
         }
     }
 
+    /// <summary>
+    ///     The selected images go back to the size they were inserted at, from where their top left is; what's locked
+    ///     of their place and size stays, but not their proportions, which are the image's own again.
+    /// </summary>
+    private void ResetSize()
+    {
+        Commit(
+            _diagram with
+            {
+                Shapes =
+                [
+                    .. _diagram.Shapes.Select(shape => shape is { Kind: DiagramShapeKind.Image, Image: string image }
+                        && _selectedShapes.Contains(shape.Id)
+                            ? shape with
+                            {
+                                Bounds = Locked(
+                                    shape.Bounds,
+                                    new Rectangle(shape.Bounds.Location, DiagramSvgImage.InsertSize(image)),
+                                    shape.Locks & DiagramLock.Bounds),
+                            }
+                            : shape),
+                ],
+            },
+            onlyIfChanged: true);
+    }
+
     private void BeginShapeText(DiagramShapeModel shape)
     {
         _commitText = text => Commit(_diagram with
@@ -1347,6 +1373,9 @@ public sealed class DiagramEditorPresenter
                 break;
             case DiagramCommand.ResetRoute:
                 ResetRoute();
+                break;
+            case DiagramCommand.ResetSize:
+                ResetSize();
                 break;
             case DiagramCommand.ZoomIn:
                 ZoomAround(_lastPointer, CommandZoomFactor);
@@ -1639,6 +1668,7 @@ public sealed class DiagramEditorPresenter
                 new Rectangle(new Point(x, y), size),
                 string.Empty,
                 _style,
+                Locks: DiagramLock.AspectRatio,
                 Image: image));
             x += size.Width + PasteOffset;
         }
@@ -2193,7 +2223,8 @@ public sealed class DiagramEditorPresenter
         HashSet<int> free =
         [
             .. diagram.Shapes
-                .Where(shape => originals.ContainsKey(shape.Id) && shape.Locks == DiagramLock.None)
+                .Where(shape => originals.ContainsKey(shape.Id)
+                    && (shape.Locks & DiagramLock.Bounds) == DiagramLock.None)
                 .Select(shape => shape.Id),
         ];
 
@@ -2221,8 +2252,9 @@ public sealed class DiagramEditorPresenter
         from == to ? line : (line with { FromPoint = from, ToPoint = to }).Aligned();
 
     /// <summary>
-    ///     The changed bounds with the locked parts as they were. A locked size keeps the edge that didn't move where
-    ///     it was: scaling a shape of locked width by its left edge leaves it, rather than sliding it.
+    ///     The changed bounds with the locked parts as they were. A size kept as it was, or made to keep the
+    ///     proportions, keeps the edge that didn't move where it was: scaling a shape of locked width by its left edge
+    ///     leaves it, rather than sliding it.
     /// </summary>
     private static Rectangle Locked(Rectangle original, Rectangle changed, DiagramLock locks)
     {
@@ -2235,14 +2267,41 @@ public sealed class DiagramEditorPresenter
         bool isHeightLocked = locks.HasFlag(DiagramLock.Height);
         int width = isWidthLocked ? original.Width : changed.Width;
         int height = isHeightLocked ? original.Height : changed.Height;
-        int x = locks.HasFlag(DiagramLock.X) || (isWidthLocked && changed.Right == original.Right)
-            ? original.X
-            : changed.X;
-        int y = locks.HasFlag(DiagramLock.Y) || (isHeightLocked && changed.Bottom == original.Bottom)
-            ? original.Y
-            : changed.Y;
+
+        if (locks.HasFlag(DiagramLock.AspectRatio))
+        {
+            (width, height) = Proportional(original.Size, width, height, isWidthLocked || isHeightLocked);
+        }
+
+        // Only the left or top edge moved, so the other stays put
+        bool keepsRight = changed.Right == original.Right && changed.Left != original.Left;
+        bool keepsBottom = changed.Bottom == original.Bottom && changed.Top != original.Top;
+        int x = locks.HasFlag(DiagramLock.X) ? original.X : keepsRight ? original.Right - width : changed.X;
+        int y = locks.HasFlag(DiagramLock.Y) ? original.Y : keepsBottom ? original.Bottom - height : changed.Y;
 
         return new Rectangle(x, y, width, height);
+    }
+
+    /// <summary>
+    ///     A size with the original's proportions: scaled as the side that changed was, or the one that changed most;
+    ///     the original's if one side can't change.
+    /// </summary>
+    private static (int Width, int Height) Proportional(Size original, int width, int height, bool isFixed)
+    {
+        if (isFixed || original.Width <= 0 || original.Height <= 0)
+        {
+            return (original.Width, original.Height);
+        }
+
+        double scaleX = width / (double)original.Width;
+        double scaleY = height / (double)original.Height;
+        double scale = width == original.Width ? scaleY
+            : height == original.Height ? scaleX
+            : Math.Max(scaleX, scaleY);
+
+        return (
+            Math.Max(1, (int)Math.Round(original.Width * scale)),
+            Math.Max(1, (int)Math.Round(original.Height * scale)));
     }
 
     private Point Snap(Point point)
@@ -2393,7 +2452,8 @@ public sealed class DiagramEditorPresenter
             style.TextOutlineWidth,
             style.TextOutlineColor,
             shapes.Count > 0 ? shapes.Aggregate(DiagramLock.All, (locks, shape) => locks & shape.Locks) : null,
-            connectors.FirstOrDefault(connector => connector.IsLine)?.Direction);
+            connectors.FirstOrDefault(connector => connector.IsLine)?.Direction,
+            shapes.Any(shape => shape.Kind == DiagramShapeKind.Image));
     }
 
     private static string TitleOf(List<DiagramShapeModel> shapes, List<DiagramConnectorModel> connectors)

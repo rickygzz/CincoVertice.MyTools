@@ -144,6 +144,7 @@ public static class UiWinSetupExtensions
         services.AddSingleton<RecordScreenAction>();
         services.AddSingleton<IDiagramFileStore, SvgDiagramFileStore>();
         services.AddSingleton<IDiagramTextOutliner, GdiTextOutliner>();
+        services.AddSingleton<IDiagramImageRasterizer, Direct2DImageRasterizer>();
         services.AddSingleton<IDiagramPdfExporter, PdfDiagramExporter>();
         services.AddSingleton<IDiagramEditorSettingsStore>(_ =>
             new JsonFileDiagramEditorSettingsStore(OpenDiagramEditorAction.SettingsFilePath));

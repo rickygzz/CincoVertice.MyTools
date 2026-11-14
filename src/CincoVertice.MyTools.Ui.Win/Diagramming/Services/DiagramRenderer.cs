@@ -117,6 +117,11 @@ public static class DiagramRenderer
 
     private static void DrawShape(Graphics graphics, DiagramShapeModel shape)
     {
+        if (shape is { Kind: DiagramShapeKind.Image, Image: string markup })
+        {
+            SvgImageRenderer.Draw(graphics, DiagramSvgImage.Filling(markup), shape.Bounds);
+        }
+
         using Pen pen = CreateLinePen(shape.Style);
 
         foreach (DiagramFigureModel figure in DiagramFigures.Of(shape.Kind, shape.Bounds, shape.CornerRadius))
@@ -138,9 +143,7 @@ public static class DiagramRenderer
 
         if (shape.Text.Length > 0)
         {
-            RectangleF area = DiagramFigures.TextArea(shape.Kind, shape.Bounds);
-
-            DrawText(graphics, DiagramTextLayout.Layout(shape.Text, area, shape.Style.FontSize), shape.Style);
+            DrawText(graphics, DiagramTextLayout.OfShape(shape), shape.Style);
         }
     }
 

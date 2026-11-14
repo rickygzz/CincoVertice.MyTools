@@ -3088,6 +3088,237 @@ public class DiagramEditorPresenterTests
         Assert.Equal(Moved(a.Bounds, 40), Diagram.Shapes[2].Bounds);
     }
 
+    private const string Icon =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"><rect width="18" height="18"/></svg>""";
+
+    private const string Banner = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100"/>""";
+
+    [Fact]
+    public void InsertImage_AddsEachInARow_OnTheGridWhereTheMouseWas_SelectedAndUndoneAtOnce()
+    {
+        // Arrange
+        _store.Images[@"C:\icons\vm.svg"] = Icon;
+        _store.Images[@"C:\icons\banner.svg"] = Banner;
+        _view.ImagesToInsert = [@"C:\icons\vm.svg", @"C:\icons\banner.svg"];
+        _view.Hover(203, 97);
+
+        // Act
+        _view.Command(DiagramCommand.InsertImage);
+
+        // Assert: a small icon is made larger, keeping its proportions
+        Assert.All(Diagram.Shapes, shape => Assert.Equal(DiagramShapeKind.Image, shape.Kind));
+        Assert.Equal(Box(200, 100, 64, 64), Diagram.Shapes[0].Bounds);
+        Assert.Equal(Box(284, 100, 200, 100), Diagram.Shapes[1].Bounds);
+        Assert.Equal(DiagramSvgImage.Prepare(Icon), Diagram.Shapes[0].Image);
+        Assert.Equal("2 shapes", _view.Properties!.Title);
+
+        _view.Command(DiagramCommand.Undo);
+        Assert.Empty(Diagram.Shapes);
+    }
+
+    [Fact]
+    public void InsertImage_AFileThatIsntAnImage_IsReported_AndTheOthersAreInserted()
+    {
+        // Arrange
+        _store.Images[@"C:\icons\notes.svg"] = "not markup";
+        _store.Images[@"C:\icons\vm.svg"] = Icon;
+        _view.ImagesToInsert = [@"C:\icons\notes.svg", @"C:\icons\gone.svg", @"C:\icons\vm.svg"];
+
+        // Act
+        _view.Command(DiagramCommand.InsertImage);
+
+        // Assert
+        Assert.Single(Diagram.Shapes);
+        Assert.Contains("notes.svg: This isn't an SVG image.", _view.Error);
+        Assert.Contains("gone.svg: It isn't there.", _view.Error);
+    }
+
+    [Fact]
+    public void InsertImage_Cancelled_AddsNothing()
+    {
+        // Act
+        _view.Command(DiagramCommand.InsertImage);
+
+        // Assert
+        Assert.Empty(Diagram.Shapes);
+        Assert.False(_view.CanUndo);
+        Assert.Null(_view.Error);
+    }
+
+    [Fact]
+    public void Drop_InsertsTheImagesWhereTheyWereDropped()
+    {
+        // Arrange
+        _store.Images[@"C:\icons\vm.svg"] = Icon;
+
+        // Act
+        _view.Drop(398, 51, @"C:\icons\vm.svg");
+
+        // Assert
+        Assert.Equal(Box(400, 50, 64, 64), Assert.Single(Diagram.Shapes).Bounds);
+    }
+
+    [Fact]
+    public void Paste_SvgMarkup_InsertsItAsAnImage()
+    {
+        // Arrange
+        _view.Clipboard = "\n  " + Banner;
+        _view.Hover(100, 100);
+
+        // Act
+        _view.Command(DiagramCommand.Paste);
+
+        // Assert
+        DiagramShapeModel image = Assert.Single(Diagram.Shapes);
+        Assert.Equal(DiagramShapeKind.Image, image.Kind);
+        Assert.Equal(Box(100, 100, 200, 100), image.Bounds);
+    }
+
+    [Fact]
+    public void Paste_OtherMarkup_DoesNothing()
+    {
+        // Arrange
+        _view.Clipboard = "<p>Hello</p>";
+
+        // Act
+        _view.Command(DiagramCommand.Paste);
+
+        // Assert
+        Assert.Empty(Diagram.Shapes);
+        Assert.Null(_view.Error);
+    }
+
+    [Fact]
+    public void Image_HasNoFillBorderOrCorners_AndCopiesKeepItsImage()
+    {
+        // Arrange
+        _store.Images["a.svg"] = Icon;
+        _view.ImagesToInsert = ["a.svg"];
+        _view.Command(DiagramCommand.InsertImage);
+
+        // Act
+        _view.Command(DiagramCommand.Copy);
+        _view.Command(DiagramCommand.Paste);
+
+        // Assert
+        Assert.Equal("Image", _view.Properties!.Title);
+        Assert.Null(_view.Properties.Fill);
+        Assert.Null(_view.Properties.Line);
+        Assert.Null(_view.Properties.CornerRadius);
+        Assert.Equal(Diagram.Shapes[0].Image, Diagram.Shapes[1].Image);
+    }
+
+    [Fact]
+    public void Image_DoubleClick_TypesItsTextUnderIt()
+    {
+        // Arrange
+        _store.Images["a.svg"] = Icon;
+        _view.ImagesToInsert = ["a.svg"];
+        _view.Command(DiagramCommand.InsertImage);
+
+        // Act
+        _view.DoubleClick(30, 30);
+
+        // Assert: as wide as a name under an icon can be
+        Assert.Equal(64, _view.TextBounds!.Value.Top);
+        Assert.Equal(160, _view.TextBounds.Value.Width);
+        Assert.Equal(32 - 80, _view.TextBounds.Value.Left);
+    }
+
+    [Theory]
+    [InlineData(200, 150, 300, 175, 100, 100, 200, 100)]
+    [InlineData(200, 125, 300, 125, 100, 100, 200, 100)]
+    [InlineData(100, 125, 0, 125, 0, 100, 200, 100)]
+    [InlineData(150, 150, 150, 200, 100, 100, 200, 100)]
+    public void LockProportions_ThenScale_ByACornerOrASide_KeepsThem(
+        int fromX,
+        int fromY,
+        int toX,
+        int toY,
+        int x,
+        int y,
+        int width,
+        int height)
+    {
+        // Arrange: 100 by 50
+        AddShape(100, 100);
+        _view.ToggleLock(DiagramLock.AspectRatio, isLocked: true);
+
+        // Act
+        _view.Drag(fromX, fromY, toX, toY, alt: true);
+
+        // Assert: a side grows the other side too; a left edge leaves the right one where it was
+        Assert.Equal(Box(x, y, width, height), Diagram.Shapes[0].Bounds);
+    }
+
+    [Fact]
+    public void LockProportions_ThenTypeTheWidth_ChangesTheHeightToo()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.ToggleLock(DiagramLock.AspectRatio, isLocked: true);
+
+        // Act
+        _view.EditBounds(100, 100, 50, 50);
+
+        // Assert
+        Assert.Equal(Box(100, 100, 50, 25), Diagram.Shapes[0].Bounds);
+        Assert.Equal(DiagramLock.AspectRatio, _view.Properties!.Locks);
+    }
+
+    [Fact]
+    public void LockProportions_AndTheWidth_LeavesTheSizeAsItIs()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.ToggleLock(DiagramLock.AspectRatio, isLocked: true);
+        _view.ToggleLock(DiagramLock.Width, isLocked: true);
+        DiagramModel before = Diagram;
+
+        // Act
+        _view.Drag(150, 150, 150, 200, alt: true);
+
+        // Assert
+        Assert.Same(before, Diagram);
+    }
+
+    [Fact]
+    public void Image_IsInsertedWithItsProportionsLocked_AndCanBeReset()
+    {
+        // Arrange
+        _store.Images["a.svg"] = Icon;
+        _view.ImagesToInsert = ["a.svg"];
+        _view.Command(DiagramCommand.InsertImage);
+        Assert.Equal(DiagramLock.AspectRatio, Diagram.Shapes[0].Locks);
+        Assert.True(_view.Properties!.HasImages);
+        _view.ToggleLock(DiagramLock.AspectRatio, isLocked: false);
+        _view.Drag(64, 64, 164, 94, alt: true);
+        Assert.Equal(Box(0, 0, 164, 94), Diagram.Shapes[0].Bounds);
+
+        // Act
+        _view.Command(DiagramCommand.ResetSize);
+
+        // Assert
+        Assert.Equal(Box(0, 0, 64, 64), Diagram.Shapes[0].Bounds);
+        _view.Command(DiagramCommand.Undo);
+        Assert.Equal(Box(0, 0, 164, 94), Diagram.Shapes[0].Bounds);
+    }
+
+    [Fact]
+    public void ResetSize_OfAShapeThatIsntAnImage_DoesNothing()
+    {
+        // Arrange
+        AddShape(100, 100);
+        DiagramModel before = Diagram;
+
+        // Act
+        _view.Command(DiagramCommand.ResetSize);
+
+        // Assert
+        Assert.Same(before, Diagram);
+        Assert.False(_view.Properties!.HasImages);
+    }
+
     [Fact]
     public void Paste_SomethingElseOnTheClipboard_DoesNothing()
     {
@@ -3719,6 +3950,11 @@ public class DiagramEditorPresenterTests
         public string? Version { get; set; } = "1";
 
         public string? VersionOf(string path) => Version;
+
+        public Dictionary<string, string> Images { get; } = [];
+
+        public string ReadImage(string path) =>
+            Images.TryGetValue(path, out string? image) ? image : throw new FileNotFoundException("It isn't there.");
     }
 
     private sealed class FakeExporter : IDiagramPdfExporter
@@ -3781,6 +4017,8 @@ public class DiagramEditorPresenterTests
         public event EventHandler<DiagramArrowHeads>? ArrowHeadsSelected;
 
         public event EventHandler<DiagramLineDirection>? LineDirectionSelected;
+
+        public event EventHandler<DiagramFilesDropModel>? FilesDropped;
 
         public event EventHandler<Rectangle>? BoundsEdited;
 
@@ -4011,6 +4249,13 @@ public class DiagramEditorPresenterTests
         }
 
         public string? AskOpenPath() => PathToOpen;
+
+        public IReadOnlyList<string> ImagesToInsert { get; set; } = [];
+
+        public IReadOnlyList<string> AskImagePaths() => ImagesToInsert;
+
+        public void Drop(int x, int y, params string[] paths) =>
+            FilesDropped?.Invoke(this, new DiagramFilesDropModel(paths, new Point(x, y)));
 
         public DiagramSaveChoice AskSaveChanges(string name) => SaveChoice;
 
