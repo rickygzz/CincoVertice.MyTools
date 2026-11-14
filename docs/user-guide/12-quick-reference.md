@@ -27,6 +27,7 @@ All other actions have no default hotkey. Add them in `hotkeys.cfg`.
 | Enter | Calculate |
 | Esc | Hide |
 | Ctrl+H | Show or hide history |
+| Up / Down | Bring back the lines entered before |
 | Ctrl+Arrow (Shift for larger steps) | Move the window |
 
 ## Snip editor

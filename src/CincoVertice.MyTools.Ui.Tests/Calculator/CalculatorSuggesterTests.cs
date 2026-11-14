@@ -116,6 +116,21 @@ public class CalculatorSuggesterTests
         Assert.Contains("K (kelvin, temperature)", byLetter);
     }
 
+    [Theory]
+    [InlineData("today + 30 ", "d (days)", "wk (weeks)", "mo (months)", "yr (years)")]
+    [InlineData("today + 30 m", "mo (months)")]
+    [InlineData("2026-12-25 - 3w", "wk (weeks)")]
+    [InlineData("TODAY + 1 Y", "yr (years)")]
+    public void AfterANumberWithADate_TheLengthsOfTimeToMoveItBy(string expression, params string[] expected)
+    {
+        // Act
+        CalculatorSuggestionsModel suggestions = Suggest(expression)!;
+
+        // Assert: the unit alone, not a conversion
+        Assert.Equal(expected, suggestions.Items.Select(item => item.Text));
+        Assert.DoesNotContain(suggestions.Items, item => item.Insert.Contains(" to ", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void AfterTo_UnitsOfTheSameKind_ButNotTheSameUnit()
     {

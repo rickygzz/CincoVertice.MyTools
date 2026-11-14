@@ -13,6 +13,9 @@ public interface ICalculatorView
     /// <summary>Raised when the expression's text changes, by typing or by <see cref="SetExpression"/>.</summary>
     event EventHandler? ExpressionChanged;
 
+    /// <summary>Raised with -1 for the line entered before the one shown (Up), or 1 for the next (Down).</summary>
+    event EventHandler<int>? RecallRequested;
+
     /// <summary>Raised with the index of the suggestion the user chose, in the list last shown.</summary>
     event EventHandler<int>? SuggestionChosen;
 

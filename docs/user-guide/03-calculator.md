@@ -9,6 +9,7 @@ Press **Ctrl+Alt+C**. A small bar opens, centered on the screen where your mouse
 | **Enter** | Calculates. Your text stays as typed and the result appears below it. |
 | **Esc** | Hides the calculator |
 | **Ctrl+H** | Shows or hides the history |
+| **Up** / **Down** | Brings back the lines you entered before, the newest first; Down past the newest brings back what you were typing |
 | **Ctrl+Arrow** | Moves the window 10 pixels (with Shift, 120 pixels) |
 | Drag with the left mouse button | Moves the window |
 
@@ -18,6 +19,7 @@ The calculator also hides when it loses focus. The calculator has no title-bar b
 
 - After a time and a space (`10:30 `, `3 pm `, `now `), the places, each with its UTC offset today: `Mexico City (UTC-6)`. Type the start of a place to narrow them; any of its names works, in any case and without accents (`sao`, `cdmx`). After a 12-hour time, `a` or `p` also offers `am` or `pm`.
 - After a number and a space (`10 `), the units, each with its name and kind: `km (kilometer, length)`. Type the start of a symbol or a name (`kilo`) to narrow them. After anything other than a single number, such as `1 + 2 `, the units wait for a letter, so they don't pop up at every space of a sum.
+- After a number in a line with a date (`today + 30 `), the lengths of time to move it by: `d (days)`, `wk (weeks)`, `mo (months)`, `yr (years)`.
 - Choosing the first place or unit writes `to` after it, and the list goes on with the second: the places to convert to, or the units of the same kind. So `10:30 `, then Mexico City, then India writes `10:30 Mexico City to India`.
 
 | Key | In the list |
@@ -31,7 +33,9 @@ Clicking one writes it too. The list shows only while the caret is at the end of
 
 The calculator never touches your clipboard. To copy a result, select it with the mouse and press **Ctrl+C**.
 
-**History.** Kept until you exit the app, up to 200 entries; the oldest are dropped. It is shown as `operation = result` lines, and with "No operations yet" when empty. Only successful calculations are added. You cannot recall an entry into the input box with a key; retype it or copy it with the mouse.
+**History.** Kept until you exit the app, up to 200 entries; the oldest are dropped. It is shown as `operation = result` lines, and with "No operations yet" when empty. Only successful calculations are added.
+
+**Bringing a line back.** **Up** puts the line you entered last back in the box, to change it or calculate it again; each Up goes one further back, through up to 200 lines, until you exit the app. A line that gave an error comes back too, so you can fix it. **Down** goes forward again, and past the newest line brings back what you were typing before you pressed Up. While the suggestion list is open, Up and Down go through it instead.
 
 ## What you can type
 
@@ -40,6 +44,8 @@ The calculator never touches your clipboard. To copy a result, select it with th
   - `^` is right-associative and binds tighter than a leading minus: `-2^2` is `-4`, `2^3^2` is `512`.
   - `%` is the remainder, with the sign of the first number: `-7 % 3` is `-1`.
 - **Constants:** `pi`, `e` (any letter case).
+- **The last answer:** `ans` is the result of the last calculation that worked: after `2+3`, `ans * 2` is `10`. A time in another place has no number, so `ans` stays as it was.
+- **Names:** `x = 5` keeps 5 as `x`, and shows 5; then `x * 2` is `10`. A name keeps whatever its line gives: `rate = 5 km to m` keeps 5000, and `christmas = 2026-12-25` a date. Names are any letter case, kept until you exit the app, and can be given a new value at any time. A constant, a function, `ans`, `today`, `now` and `to` can't be given a value. A line that gives an error leaves the names as they were.
 - **Functions** (any letter case):
 
 | Function | Meaning |
@@ -54,6 +60,14 @@ The calculator never touches your clipboard. To copy a result, select it with th
 | `find("part", "text")` or `find("part", "text", start)` | position of the part in the text, counting from 1, case-sensitive |
 
 Text goes in double quotes (`""` inside means a quote) and is allowed only as a function argument.
+
+## Dates
+
+- **A date** is year-month-day: `2026-12-25` (`2026-1-5` works too). `today` is today's date. A result that is a date shows its day of the week: `2026-12-25 (Friday)`.
+- **Moving a date:** add or subtract a number of days, or a length of time: `today + 30`, `today + 30 d`, `today - 2 wk`, `2026-01-31 + 1 month` (`2026-02-28 (Saturday)`: the month's last day when the day doesn't exist), `today + 1 yr`. The units are `d` (`day`, `days`), `wk` (`w`, `week`, `weeks`), `mo` (`month`, `months`) and `yr` (`y`, `year`, `years`). A date moves by whole days and months only.
+- **Between two dates:** subtract them: `2026-12-25 - today` gives the days between, such as `42 days`; negative when the first is earlier.
+- **Lengths of time** add up and multiply: `2 wk + 3 d` is `17 days`, `1 yr + 2 mo` is `14 months`, `2 * 1 wk` is `14 days`. A month isn't a fixed number of days, so months and days are kept apart: `1 month, 3 days`.
+- **Conversions are as before:** before `to`, a unit of time is converted: `1 yr to d` is `365.25 d`. And `2026 - 12 - 25`, with spaces, is still a subtraction.
 
 ## Number format
 
@@ -161,6 +175,8 @@ Messages you may see (each is followed by ` at position N`):
 - `Expected ')'`, `Expected ',' or ')'`
 - `Expected a unit before 'to'`, `Expected 'to' after '<unit>'`, `Expected a unit after 'to'`
 - `Unknown name '<n>'`, `Unknown function '<n>'`
+- Names: `There's no last answer yet`, `Expected a value after '='`, `'<name>' is a constant` (or `a function`, `the last answer`, `today's date`, `a word the calculator uses`) `, so it can't be given a value`, `A time in another place can't be kept in a name`
+- Dates: `There's no such date as <date>`, `A date moves by whole days and whole months`, `The date is out of range`, `A date can't be negative`, `Can't <add | subtract | multiply | divide> a <date | number | length of time> and a <...>`, `Expected a number, not a date` and `Expected a number, not a length of time`
 - `Function '<f>' expects <1 argument | N arguments | A to B arguments | at least N arguments>`
 - `Division by zero`
 - `Text can only be used as a function argument`

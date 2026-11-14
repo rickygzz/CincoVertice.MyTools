@@ -59,6 +59,31 @@ public class CalculatorFormTests
     }
 
     /// <summary>Presses keys as the window gets them first, before the text box.</summary>
+    [Fact]
+    public void UpAndDown_BringBackTheLinesEntered_UnlessSuggestionsShow()
+    {
+        // Arrange
+        using var form = new KeyedCalculatorForm();
+        _ = new CalculatorPresenter(form, new ExpressionCalculator());
+        form.Show();
+        var input = (TextBox)form.Controls.Find("CalculatorTextBox", true).Single();
+        var list = (ListBox)form.Controls.Find("SuggestionsListBox", true).Single();
+        input.AppendText("2+2");
+        form.PressDown(Keys.Enter);
+        input.Clear();
+
+        // Act / Assert
+        form.PressDown(Keys.Up);
+        Assert.Equal("2+2", input.Text);
+
+        input.Clear();
+        input.AppendText("10 ");
+        Assert.True(list.Visible);
+        Assert.True(form.Press(Keys.Down));
+        Assert.Equal(0, list.SelectedIndex);
+        Assert.Equal("10 ", input.Text);
+    }
+
     private sealed class KeyedCalculatorForm : CalculatorForm
     {
         public bool Press(Keys keys)
@@ -67,5 +92,8 @@ public class CalculatorFormTests
 
             return ProcessCmdKey(ref message, keys);
         }
+
+        /// <summary>A key as the window gets it after the text box's commands: Enter, Up and Down.</summary>
+        public void PressDown(Keys keys) => OnKeyDown(new KeyEventArgs(keys));
     }
 }

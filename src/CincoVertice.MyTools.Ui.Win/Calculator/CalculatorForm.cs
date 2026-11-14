@@ -62,6 +62,8 @@ public partial class CalculatorForm : Form, ICalculatorView
 
     public event EventHandler<int>? SuggestionChosen;
 
+    public event EventHandler<int>? RecallRequested;
+
     public string Expression => CalculatorTextBox.Text;
 
     public int Caret => CalculatorTextBox.SelectionStart;
@@ -226,6 +228,13 @@ public partial class CalculatorForm : Form, ICalculatorView
         if (e.KeyCode == Keys.Escape)
         {
             Hide();
+        }
+        // Up and Down bring back the lines entered; while suggestions show, they go through them instead
+        else if (e.KeyData is Keys.Up or Keys.Down)
+        {
+            RecallRequested?.Invoke(this, e.KeyData == Keys.Up ? -1 : 1);
+            e.Handled = true;
+            e.SuppressKeyPress = true;
         }
         else if (e.KeyCode == Keys.Enter)
         {

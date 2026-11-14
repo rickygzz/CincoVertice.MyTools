@@ -23,6 +23,10 @@ public static partial class CalculatorSuggester
 {
     private const string To = " to ";
 
+    // What a date moves by
+    private static readonly (string Symbol, string Name)[] _durations =
+        [("d", "days"), ("wk", "weeks"), ("mo", "months"), ("yr", "years")];
+
     /// <param name="expression">What's typed.</param>
     /// <param name="caret">Where the caret is; there are suggestions only at the end.</param>
     /// <param name="utcNow">The time now, for each place's UTC offset, which changes with daylight saving time.</param>
@@ -78,6 +82,18 @@ public static partial class CalculatorSuggester
 
     private static CalculatorSuggestionsModel? ForUnits(string expression)
     {
+        // With a date, a number is days, weeks, months or years to move it by
+        if (DateRegex().IsMatch(expression) && DurationRegex().Match(expression) is { Success: true } duration)
+        {
+            Group length = duration.Groups["query"];
+
+            return Result(
+                length,
+                _durations
+                    .Where(unit => StartsWith(unit.Symbol, length.Value) || StartsWith(unit.Name, length.Value))
+                    .Select(unit => new CalculatorSuggestionModel($"{unit.Symbol} ({unit.Name})", unit.Symbol)));
+        }
+
         Match to = ToUnitRegex().Match(expression);
 
         if (to.Success)
@@ -242,4 +258,12 @@ public static partial class CalculatorSuggester
 
     [GeneratedRegex(@"^\s*(?:\d+(?:\.\d*)?|\.\d+)\s+$")]
     private static partial Regex SingleNumberRegex();
+
+    // today, or a date as year-month-day
+    [GeneratedRegex(@"\btoday\b|\d{4}-\d{1,2}-\d{1,2}", RegexOptions.IgnoreCase)]
+    private static partial Regex DateRegex();
+
+    // A number, then a space or the letters of what it is: "30 ", "30 d", "30d"
+    [GeneratedRegex(@"\d(?:\s+(?<query>[A-Za-z]*)|(?<query>[A-Za-z]+))$")]
+    private static partial Regex DurationRegex();
 }

@@ -292,6 +292,102 @@ public class CalculatorPresenterTests
         Assert.Equal("2+2", _view.Expression);
     }
 
+    private void Enter(string expression)
+    {
+        _view.Type(expression);
+        _view.RequestEvaluate();
+    }
+
+    [Fact]
+    public void Recall_UpGoesBackThroughTheLinesEntered_AndDownPastTheNewestBringsBackWhatWasTyped()
+    {
+        // Arrange: a line that failed comes back too, to be fixed; the same line twice is there once
+        Enter("1+1");
+        Enter("2+");
+        Enter("2+");
+        _view.Type("3");
+
+        // Act / Assert
+        _view.Recall(-1);
+        Assert.Equal(("2+", 2), (_view.Expression, _view.Caret));
+        _view.Recall(-1);
+        Assert.Equal("1+1", _view.Expression);
+        _view.Recall(-1);
+        Assert.Equal("1+1", _view.Expression);
+        _view.Recall(1);
+        Assert.Equal("2+", _view.Expression);
+        _view.Recall(1);
+        Assert.Equal("3", _view.Expression);
+        _view.Recall(1);
+        Assert.Equal("3", _view.Expression);
+    }
+
+    [Fact]
+    public void Recall_ALineBroughtBack_OffersNoSuggestions_AndTypingStartsOver()
+    {
+        // Arrange
+        Enter("10 km to mi");
+        Enter("2+2");
+
+        // Act / Assert: else Up would go through the suggestions
+        _view.Recall(-1);
+        _view.Recall(-1);
+        Assert.Equal("10 km to mi", _view.Expression);
+        Assert.Null(_view.Suggestions);
+
+        _view.Type("5");
+        _view.Recall(-1);
+        Assert.Equal("2+2", _view.Expression);
+    }
+
+    [Fact]
+    public void Recall_WithNothingEntered_DoesNothing()
+    {
+        // Arrange
+        _view.Type("7");
+
+        // Act
+        _view.Recall(-1);
+        _view.Recall(1);
+
+        // Assert
+        Assert.Equal("7", _view.Expression);
+    }
+
+    [Fact]
+    public void Names_TheLastAnswerAndNamesGiven_AreKeptForTheNextLines()
+    {
+        // Act / Assert
+        Enter("2+3");
+        Enter("ans * 2");
+        Assert.Equal("10", _view.Result);
+
+        Enter("x = 4");
+        Assert.Equal("4", _view.Result);
+
+        Enter("x * ans");
+        Assert.Equal("16", _view.Result);
+
+        // A time in another place has no value, so the last answer stays
+        Enter("10:00 to UTC");
+        Enter("ans");
+        Assert.Equal("16", _view.Result);
+    }
+
+    [Fact]
+    public void Names_ALineThatFails_LeavesThemAsTheyWere()
+    {
+        // Arrange
+        Enter("x = 4");
+
+        // Act
+        Enter("x = 1/0");
+        Enter("x");
+
+        // Assert
+        Assert.Equal("4", _view.Result);
+    }
+
     private sealed class FakeCalculatorView : ICalculatorView
     {
         public event EventHandler? EvaluateRequested;
@@ -301,6 +397,10 @@ public class CalculatorPresenterTests
         public event EventHandler? ExpressionChanged;
 
         public event EventHandler<int>? SuggestionChosen;
+
+        public event EventHandler<int>? RecallRequested;
+
+        public void Recall(int direction) => RecallRequested?.Invoke(this, direction);
 
         public int Caret { get; set; }
 
