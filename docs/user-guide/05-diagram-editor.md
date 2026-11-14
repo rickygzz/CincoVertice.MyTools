@@ -14,6 +14,7 @@ New text uses [Roboto](https://fonts.google.com/specimen/Roboto), which comes wi
 |---|---|---|
 | Select | V | "Select, move and scale (V). Space or the middle button drags the view" |
 | Connector | C | "Connector (C): drag from one shape to another. Double-click it for a label" |
+| Line | L | "Line (L): drag from one point to another. Shift keeps it level, upright or diagonal" |
 | Rectangle | R | "Rectangle, or process (R)" |
 | Rounded rectangle | U | "Rounded rectangle, or start and end (U)" |
 | Ellipse | O | "Ellipse (O)" |
@@ -34,13 +35,19 @@ New text uses [Roboto](https://fonts.google.com/specimen/Roboto), which comes wi
   - *Connect:* hover a shape, and circles appear around it; drag from one to another shape. Drop on one of that shape's circles to choose its side too. Or pick the Connector tool (C) and drag from one shape to the other, and the sides are chosen for you. **V** or **Esc** goes back to selecting.
   - *Attach an end somewhere else:* click the connector, then drag one of the dots at its ends to another shape, or to a circle on it to choose the side. Dropped on nothing, the end stays where it was. Dropped on the middle of its own shape, the side is chosen for you again.
   - *Change the path:* click an elbow connector, then drag any piece of its line sideways. The line stays level and upright, with rounded corners. **Reset line** on the toolbar lets it work out its own path again, and so does choosing **Elbow** or **Straight**.
+- **Lines** go from one point to another, attached to nothing, so they stay where they are when shapes move. Use them for arrows that point at something, dividers, or underlines.
+  - *Draw:* pick the Line tool (L), then drag from where the line starts to where it ends. Hold **Shift** to keep it level, upright or at 45°. Hold **Alt** to stop it snapping to shapes and the grid. A click without dragging draws nothing. The new line is selected and the Select tool comes back, as after drawing a shape.
+  - *Arrows:* a new line gets the arrows chosen on the toolbar. To change them, select the line and choose **Arrow at end**, **Arrow at start**, **Arrows at both** or **No arrows**, on the toolbar or in the Properties panel.
+  - *Move:* drag the line, or use the arrow keys. A line drawn over a shape is picked before the shape, since it's on top. To change where one end is, click the line, then drag the dot at that end. An end dropped on the other end stays where it was.
+  - *Style and label:* a line takes the line color, width, dashes and text settings, like a connector. Double-click it for a label in its middle.
+  - Lines are always straight, so **Elbow** and **Straight** don't change them. They can be selected with other things, by Shift+click or a selection box around all of a line. They are moved, scaled, copied, pasted, duplicated and deleted with the rest, but not grouped.
 - **Text:** double-click a shape to edit its text, double-click a connector to edit its label, or double-click empty canvas for free text. The Text tool also adds free text where you click, and the Properties panel has a Text box. Enter ends editing; Shift+Enter inserts a new line.
 - **Group:** select two or more shapes and press Ctrl+G, or choose **Edit > Group**, or right-click one of them and choose **Group**. Groups are one level only; there is no nesting. Selecting one shape of a group selects the whole group. Ctrl+Shift+G, **Edit > Ungroup** or **Ungroup** in the right-click menu ungroups. In the right-click menu, Group is grayed out unless two or more shapes are selected that are not already one group, and Ungroup unless a selected shape is in a group.
-- **Copy and paste** use the Windows clipboard as text: the selected shapes and the connectors between them. Pasting adds the shapes 20 pixels further each time. Pasting other text does nothing. If you paste into another program, you get that text, not a picture. Because it is the clipboard, you can copy from one editor window and paste into another. **Duplicate** (Ctrl+D) does the same without using the clipboard.
+- **Copy and paste** use the Windows clipboard as text: the selected shapes and lines, and the connectors between the shapes. Pasting adds them 20 pixels further each time. Pasting other text does nothing. If you paste into another program, you get that text, not a picture. Because it is the clipboard, you can copy from one editor window and paste into another. **Duplicate** (Ctrl+D) does the same without using the clipboard.
 - **Snapping.** While you drag with the mouse, shapes snap in two ways.
   - *To other shapes:* the left edge, middle or right edge of what you move lines up with the left edge, middle or right edge of any other shape (top, middle and bottom likewise) when it is close. A thin guide line is drawn along each alignment.
   - *To a grid:* when no other shape is close in a direction, the position rounds to the nearest 10 pixels: a moved shape's left and top edges land on a multiple of 10 (when resizing, the edge you drag does). The faint grid lines on the canvas are every 50 pixels, not every 10.
-  - It applies when moving selected shapes, resizing with a handle, drawing a new shape, and dragging a connector's bend segment. Dragging a connector from one shape to another does not snap to lines or the grid; the connector attaches to a shape's side instead.
+  - It applies when moving selected shapes, resizing with a handle, drawing a new shape or line, dragging a line's end, and dragging a connector's bend segment. Dragging a connector from one shape to another does not snap to lines or the grid; the connector attaches to a shape's side instead.
   - Arrow-key nudging and the Properties panel never snap.
   - To drag without snapping, hold **Alt**. When resizing, hold **Alt** or **Shift** (Shift also keeps the proportions). There is no other setting to switch snapping off.
 

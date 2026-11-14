@@ -45,6 +45,7 @@ partial class DiagramEditorForm
         ToolsStrip = new ToolStrip();
         SelectButton = new ToolStripButton();
         ConnectorButton = new ToolStripButton();
+        LineButton = new ToolStripButton();
         ToolsSeparator = new ToolStripSeparator();
         RectangleButton = new ToolStripButton();
         RoundedRectangleButton = new ToolStripButton();
@@ -167,7 +168,7 @@ partial class DiagramEditorForm
         //
         ToolsStrip.Dock = DockStyle.Left;
         ToolsStrip.GripStyle = ToolStripGripStyle.Hidden;
-        ToolsStrip.Items.AddRange(new ToolStripItem[] { SelectButton, ConnectorButton, ToolsSeparator, RectangleButton, RoundedRectangleButton, EllipseButton, DiamondButton, ParallelogramButton, HexagonButton, CylinderButton, DocumentButton, TextButton });
+        ToolsStrip.Items.AddRange(new ToolStripItem[] { SelectButton, ConnectorButton, LineButton, ToolsSeparator, RectangleButton, RoundedRectangleButton, EllipseButton, DiamondButton, ParallelogramButton, HexagonButton, CylinderButton, DocumentButton, TextButton });
         ToolsStrip.LayoutStyle = ToolStripLayoutStyle.VerticalStackWithOverflow;
         ToolsStrip.Name = "ToolsStrip";
         ToolsStrip.TabIndex = 2;
@@ -189,6 +190,15 @@ partial class DiagramEditorForm
         ConnectorButton.Text = "Connector";
         ConnectorButton.ToolTipText = "Connector (C): drag from one shape to another. Double-click it for a label";
         ConnectorButton.Click += ToolButton_Click;
+        //
+        // LineButton
+        //
+        LineButton.DisplayStyle = ToolStripItemDisplayStyle.Image;
+        LineButton.Name = "LineButton";
+        LineButton.Tag = "Line";
+        LineButton.Text = "Line";
+        LineButton.ToolTipText = "Line (L): drag from one point to another. Shift keeps it level, upright or diagonal";
+        LineButton.Click += ToolButton_Click;
         //
         // ToolsSeparator
         //
@@ -1137,6 +1147,7 @@ partial class DiagramEditorForm
     private ToolStrip ToolsStrip;
     private ToolStripButton SelectButton;
     private ToolStripButton ConnectorButton;
+    private ToolStripButton LineButton;
     private ToolStripSeparator ToolsSeparator;
     private ToolStripButton RectangleButton;
     private ToolStripButton RoundedRectangleButton;

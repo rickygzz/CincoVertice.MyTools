@@ -494,6 +494,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     [
         SelectButton,
         ConnectorButton,
+        LineButton,
         RectangleButton,
         RoundedRectangleButton,
         EllipseButton,
@@ -1089,6 +1090,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         {
             (Keys.None, Keys.V) => DiagramTool.Select,
             (Keys.None, Keys.C) => DiagramTool.Connector,
+            (Keys.None, Keys.L) => DiagramTool.Line,
             (Keys.None, Keys.R) => DiagramTool.Rectangle,
             (Keys.None, Keys.U) => DiagramTool.RoundedRectangle,
             (Keys.None, Keys.O) => DiagramTool.Ellipse,

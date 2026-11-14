@@ -17,15 +17,11 @@ public static class DiagramRouter
     /// <returns>Where the connector goes; null if one of its shapes doesn't exist.</returns>
     public static DiagramConnectorPathModel? PathOf(DiagramConnectorModel connector, DiagramModel diagram)
     {
-        DiagramShapeModel? from = diagram.Shapes.FirstOrDefault(shape => shape.Id == connector.FromShapeId);
-        DiagramShapeModel? to = diagram.Shapes.FirstOrDefault(shape => shape.Id == connector.ToShapeId);
-
-        if (from is null || to is null)
+        if (RouteFor(connector, diagram) is not { } route)
         {
             return null;
         }
 
-        List<PointF> route = RouteOf(connector, from, to);
         PointF labelCenter = PointAlong(route, 0.5f);
         float headLength = 8 + 2 * connector.Style.LineWidth;
 
@@ -121,6 +117,11 @@ public static class DiagramRouter
     /// <returns>The line; null if one of its shapes doesn't exist.</returns>
     public static List<PointF>? RouteFor(DiagramConnectorModel connector, DiagramModel diagram)
     {
+        if (connector is { FromPoint: Point start, ToPoint: Point end })
+        {
+            return [start, end];
+        }
+
         DiagramShapeModel? from = diagram.Shapes.FirstOrDefault(shape => shape.Id == connector.FromShapeId);
         DiagramShapeModel? to = diagram.Shapes.FirstOrDefault(shape => shape.Id == connector.ToShapeId);
 

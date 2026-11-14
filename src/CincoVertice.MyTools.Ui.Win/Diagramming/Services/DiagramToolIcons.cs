@@ -35,6 +35,9 @@ public static class DiagramToolIcons
             case DiagramTool.Connector:
                 DrawConnector(graphics, pen);
                 break;
+            case DiagramTool.Line:
+                DrawLine(graphics, pen);
+                break;
             case DiagramTool.Text:
                 DrawText(graphics);
                 break;
@@ -69,6 +72,15 @@ public static class DiagramToolIcons
 
         pen.CustomEndCap = head;
         graphics.DrawLines(pen, [new PointF(2, 13), new PointF(8, 13), new PointF(8, 4), new PointF(13, 4)]);
+    }
+
+    /// <summary>A diagonal with a head, unlike the connector's elbow.</summary>
+    private static void DrawLine(Graphics graphics, Pen pen)
+    {
+        using var head = new AdjustableArrowCap(3.2f, 3.2f, isFilled: true);
+
+        pen.CustomEndCap = head;
+        graphics.DrawLine(pen, new PointF(2.5f, 13.5f), new PointF(13, 3));
     }
 
     private static void DrawText(Graphics graphics)

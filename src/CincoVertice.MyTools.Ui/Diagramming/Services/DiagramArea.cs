@@ -11,17 +11,10 @@ public static class DiagramArea
     private const int Margin = 20;
 
     /// <summary>Around everything, including text and lines that go past the shapes, with a margin.</summary>
-    /// <returns>In diagram pixels; 100 by 100 at the origin for a diagram without shapes.</returns>
+    /// <returns>In diagram pixels; 100 by 100 at the origin for an empty diagram.</returns>
     public static Rectangle Of(DiagramModel diagram)
     {
-        if (diagram.Shapes.Count == 0)
-        {
-            return new Rectangle(0, 0, 100, 100);
-        }
-
-        RectangleF area = diagram.Shapes
-            .Select(BoundsWithText)
-            .Aggregate(RectangleF.Union);
+        List<RectangleF> parts = [.. diagram.Shapes.Select(BoundsWithText)];
 
         foreach (DiagramConnectorModel connector in diagram.Connectors)
         {
@@ -34,18 +27,23 @@ public static class DiagramArea
                 .Concat(path.StartHead ?? [])
                 .Concat(path.EndHead ?? []);
 
-            foreach (PointF point in points)
-            {
-                area = RectangleF.Union(area, new RectangleF(point, SizeF.Empty));
-            }
+            parts.AddRange(points.Select(point => new RectangleF(point, SizeF.Empty)));
 
             if (connector.Label.Length > 0)
             {
-                area = RectangleF.Union(
-                    area,
-                    DiagramTextLayout.LayoutAt(connector.Label, path.LabelCenter, connector.Style.FontSize).Bounds);
+                DiagramTextBlockModel label =
+                    DiagramTextLayout.LayoutAt(connector.Label, path.LabelCenter, connector.Style.FontSize);
+
+                parts.Add(label.Bounds);
             }
         }
+
+        if (parts.Count == 0)
+        {
+            return new Rectangle(0, 0, 100, 100);
+        }
+
+        RectangleF area = parts.Aggregate(RectangleF.Union);
 
         // Half of a line's width goes outside what it follows
         int widestLine = diagram.Shapes.Select(shape => shape.Style.LineWidth)

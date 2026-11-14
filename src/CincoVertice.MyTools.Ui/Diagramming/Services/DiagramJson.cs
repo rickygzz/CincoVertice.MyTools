@@ -54,14 +54,16 @@ public static class DiagramJson
                 StyleFile.From(connector.Style),
                 connector.FromSide,
                 connector.ToSide,
-                connector.Bends?.Select(bend => new PointFile(bend.X, bend.Y)).ToList()))]);
+                connector.Bends?.Select(bend => new PointFile(bend.X, bend.Y)).ToList(),
+                connector.FromPoint is Point from ? new PointFile(from.X, from.Y) : null,
+                connector.ToPoint is Point to ? new PointFile(to.X, to.Y) : null))]);
 
         return JsonSerializer.Serialize(file, _options);
     }
 
     /// <summary>
-    ///     Reads a diagram. Sizes and fonts out of range are brought into range, and a connector without both of its
-    ///     shapes is left out.
+    ///     Reads a diagram. Sizes and fonts out of range are brought into range; a connector without both of its
+    ///     shapes, and a line without both of its points or of no length, are left out.
     /// </summary>
     /// <exception cref="InvalidDataException">The text isn't a diagram.</exception>
     public static DiagramModel Read(string json)
@@ -91,24 +93,41 @@ public static class DiagramJson
         }
 
         HashSet<int> shapeIds = [.. shapes.Select(shape => shape.Id)];
-        List<DiagramConnectorModel> connectors =
-        [
-            .. (file.Connectors ?? [])
-                .Where(c => c.FromShapeId != c.ToShapeId
-                    && shapeIds.Contains(c.FromShapeId)
-                    && shapeIds.Contains(c.ToShapeId))
-                .Select(c => new DiagramConnectorModel(
+        List<DiagramConnectorModel> connectors = [];
+
+        foreach (ConnectorFile c in file.Connectors ?? [])
+        {
+            if (c is { FromShapeId: null, ToShapeId: null, FromPoint: { } from, ToPoint: { } to })
+            {
+                // A line of no length has no direction for its heads
+                if (from != to)
+                {
+                    connectors.Add(DiagramConnectorModel.Line(
+                        c.Id,
+                        new Point(from.X, from.Y),
+                        new Point(to.X, to.Y),
+                        c.Heads,
+                        ToStyle(c.Style)) with { Label = c.Label ?? string.Empty });
+                }
+            }
+            else if (c is { FromShapeId: int fromId, ToShapeId: int toId }
+                && fromId != toId
+                && shapeIds.Contains(fromId)
+                && shapeIds.Contains(toId))
+            {
+                connectors.Add(new DiagramConnectorModel(
                     c.Id,
-                    c.FromShapeId,
-                    c.ToShapeId,
+                    fromId,
+                    toId,
                     c.Routing,
                     c.Heads,
                     c.Label ?? string.Empty,
                     ToStyle(c.Style),
                     c.FromSide,
                     c.ToSide,
-                    c.Bends is { Count: > 0 } bends ? [.. bends.Select(bend => new Point(bend.X, bend.Y))] : null)),
-        ];
+                    c.Bends is { Count: > 0 } bends ? [.. bends.Select(bend => new Point(bend.X, bend.Y))] : null));
+            }
+        }
 
         return new DiagramModel(shapes, connectors);
     }
@@ -185,15 +204,17 @@ public static class DiagramJson
 
     private sealed record ConnectorFile(
         int Id,
-        int FromShapeId,
-        int ToShapeId,
+        int? FromShapeId,
+        int? ToShapeId,
         DiagramRouting Routing,
         DiagramArrowHeads Heads,
         string? Label,
         StyleFile? Style,
         DiagramSide? FromSide,
         DiagramSide? ToSide,
-        List<PointFile>? Bends);
+        List<PointFile>? Bends,
+        PointFile? FromPoint = null,
+        PointFile? ToPoint = null);
 
     private sealed record PointFile(int X, int Y);
 

@@ -346,7 +346,10 @@ public sealed class DiagramEditorPresenter
         // Before the circles: the end of a selected connector is on a shape, right next to them
         if (endConnector is not null && connectorEnd is DiagramConnectorEnd end)
         {
-            _drag = new ReconnectDrag(point, endConnector.Id, end);
+            // A line's end goes anywhere; a connector's goes to another shape
+            _drag = endConnector.IsLine
+                ? new LineEndDrag(point, endConnector.Id, end)
+                : new ReconnectDrag(point, endConnector.Id, end);
             Refresh();
 
             return;
@@ -378,6 +381,9 @@ public sealed class DiagramEditorPresenter
             case DiagramTool.Connector:
                 PressWithConnector(point);
                 break;
+            case DiagramTool.Line:
+                _drag = new LineDrag(pointer.Alt ? point : Snap(point));
+                break;
             case DiagramTool.Text:
                 SelectTool(DiagramTool.Select);
                 BeginNewText(point);
@@ -400,7 +406,15 @@ public sealed class DiagramEditorPresenter
         if (_selectedShapes.Count > 0
             && DiagramHitTester.HandleAt(SelectedBox(), point, GrabDistance / _viewport.Zoom) is DiagramHandle handle)
         {
-            _drag = new ScaleDrag(point, handle, SelectedBounds(), SelectedBox());
+            _drag = new ScaleDrag(point, handle, SelectedBounds(), SelectedBox(), SelectedLines());
+
+            return;
+        }
+
+        // Lines are drawn over the shapes, so the one under the mouse is on top
+        if (DiagramHitTester.LineAt(_diagram, point, GrabDistance / _viewport.Zoom) is { } line)
+        {
+            PressOnLine(line, point, isAdding);
 
             return;
         }
@@ -462,7 +476,34 @@ public sealed class DiagramEditorPresenter
             SelectionChanged();
         }
 
-        _drag = new MoveDrag(point, SelectedBounds(), SelectedBox());
+        _drag = new MoveDrag(point, SelectedBounds(), MoveBox(), SelectedLines());
+    }
+
+    /// <summary>Selects a line as a shape is, and drags it with the rest of the selection.</summary>
+    private void PressOnLine(DiagramConnectorModel line, Point point, bool isAdding)
+    {
+        bool isSelected = _selectedConnectors.Contains(line.Id);
+
+        if (isAdding && isSelected)
+        {
+            _selectedConnectors.Remove(line.Id);
+            SelectionChanged();
+
+            return;
+        }
+
+        if (!isSelected)
+        {
+            if (!isAdding)
+            {
+                ClearSelection();
+            }
+
+            _selectedConnectors.Add(line.Id);
+            SelectionChanged();
+        }
+
+        _drag = new MoveDrag(point, SelectedBounds(), MoveBox(), SelectedLines());
     }
 
     private void PressWithConnector(Point point)
@@ -509,6 +550,12 @@ public sealed class DiagramEditorPresenter
                 break;
             case ReconnectDrag reconnect:
                 DragReconnect(reconnect, point);
+                break;
+            case LineDrag line:
+                DragLine(line, point, pointer);
+                break;
+            case LineEndDrag lineEnd:
+                DragLineEnd(lineEnd, point, pointer);
                 break;
             case SegmentDrag segment:
                 DragSegment(segment, point, pointer.Alt);
@@ -557,7 +604,7 @@ public sealed class DiagramEditorPresenter
 
         DiagramConnectorModel connector = _diagram.Connectors.First(c => c.Id == reconnect.ConnectorId);
         bool isStart = reconnect.End == DiagramConnectorEnd.Start;
-        int otherShapeId = isStart ? connector.ToShapeId : connector.FromShapeId;
+        int? otherShapeId = isStart ? connector.ToShapeId : connector.FromShapeId;
         DiagramShapeModel? target = ShapeNear(point);
 
         if (target?.Id == otherShapeId)
@@ -588,6 +635,66 @@ public sealed class DiagramEditorPresenter
         {
             Connectors = [.. _diagram.Connectors.Select(c => c.Id == connector.Id ? moved : c)],
         };
+    }
+
+    /// <summary>Shows the new line, with the style and heads it gets, from where the drag started to here.</summary>
+    private void DragLine(LineDrag line, Point point, DiagramPointerModel pointer)
+    {
+        Point end = LineEnd(line.Start, point, pointer);
+
+        DiagramConnectorModel drawn = DiagramConnectorModel.Line(_diagram.NextId, line.Start, end, _heads, _style);
+
+        _preview = end == line.Start ? null : _diagram with { Connectors = [.. _diagram.Connectors, drawn] };
+    }
+
+    /// <summary>Shows the line with its end here; not on its other end, where it would have no direction.</summary>
+    private void DragLineEnd(LineEndDrag drag, Point point, DiagramPointerModel pointer)
+    {
+        if (IsStillAClick(drag.Start, point))
+        {
+            return;
+        }
+
+        DiagramConnectorModel line = _diagram.Connectors.First(c => c.Id == drag.ConnectorId);
+        bool isStart = drag.End == DiagramConnectorEnd.Start;
+        Point other = (isStart ? line.ToPoint : line.FromPoint)!.Value;
+        Point end = LineEnd(other, point, pointer);
+
+        if (end == other)
+        {
+            return;
+        }
+
+        DiagramConnectorModel moved = isStart ? line with { FromPoint = end } : line with { ToPoint = end };
+
+        _preview = _diagram with { Connectors = [.. _diagram.Connectors.Select(c => c.Id == line.Id ? moved : c)] };
+    }
+
+    /// <summary>
+    ///     Where a line from the point to the mouse ends: on the edges and middles of the shapes nearby, or with Shift
+    ///     along the nearest of level, upright and the diagonals. Alt turns snapping off.
+    /// </summary>
+    private Point LineEnd(Point from, Point point, DiagramPointerModel pointer)
+    {
+        if (pointer.Shift)
+        {
+            return AlongNearestAngle(from, point);
+        }
+
+        return pointer.Alt ? point : Snap(point);
+    }
+
+    /// <summary>The point moved onto the nearest of the eight directions from the start, as far from it.</summary>
+    private static Point AlongNearestAngle(Point from, Point point)
+    {
+        int dx = point.X - from.X;
+        int dy = point.Y - from.Y;
+        double angle = Math.Round(Math.Atan2(dy, dx) / (Math.PI / 4)) * (Math.PI / 4);
+        double length = Math.Sqrt((double)dx * dx + (double)dy * dy);
+
+        return new Point(
+            from.X + (int)Math.Round(Math.Cos(angle) * length),
+            from.Y + (int)Math.Round(Math.Sin(angle) * length));
     }
 
     /// <summary>A drag of the piece of line at the point, of a selected elbow connector.</summary>
@@ -750,7 +857,12 @@ public sealed class DiagramEditorPresenter
 
         delta += new Size(snap.DeltaX, snap.DeltaY);
         _guides = snap.Guides;
-        _preview = WithBounds(_diagram, move.Originals, bounds => Moved(bounds, delta), bend => bend + delta);
+        _preview = WithBounds(
+            _diagram,
+            move.Originals,
+            bounds => Moved(bounds, delta),
+            bend => bend + delta,
+            move.Lines);
     }
 
     /// <summary>A click that moves a little isn't a drag, or snapping would shift what was only clicked.</summary>
@@ -789,7 +901,8 @@ public sealed class DiagramEditorPresenter
             _diagram,
             scale.Originals,
             bounds => ScaleInside(bounds, scale.Box, box),
-            bend => ScaleInside(new Rectangle(bend, Size.Empty), scale.Box, box).Location);
+            bend => ScaleInside(new Rectangle(bend, Size.Empty), scale.Box, box).Location,
+            scale.Lines);
     }
 
     private void DragCreate(CreateDrag create, Point point, bool isSnapOff)
@@ -832,11 +945,14 @@ public sealed class DiagramEditorPresenter
         switch (drag)
         {
             // Dragged and brought back to where it was is nothing to undo
-            case MoveDrag or ScaleDrag when preview is not null && !preview.Shapes.SequenceEqual(_diagram.Shapes):
+            case MoveDrag or ScaleDrag or LineEndDrag when preview is not null && IsMoved(preview):
                 Commit(preview);
                 break;
             case CreateDrag create:
                 ReleaseCreate(create, preview);
+                break;
+            case LineDrag when preview is not null:
+                ReleaseLine(preview);
                 break;
             case ConnectDrag connect when target is int toShapeId:
                 ReleaseConnect(connect, toShapeId, targetSide);
@@ -855,6 +971,11 @@ public sealed class DiagramEditorPresenter
                 _selectedShapes.UnionWith(_diagram.Shapes
                     .Where(shape => box.Contains(shape.Bounds))
                     .SelectMany(WithGroup));
+                _selectedConnectors.UnionWith(_diagram.Connectors
+                    .Where(c => c is { FromPoint: Point from, ToPoint: Point to }
+                        && box.Contains(from)
+                        && box.Contains(to))
+                    .Select(c => c.Id));
                 SelectionChanged();
                 break;
         }
@@ -863,6 +984,14 @@ public sealed class DiagramEditorPresenter
         UpdateHover(point);
         Refresh();
     }
+
+    /// <summary>
+    ///     Whether a shape or a line is somewhere else. Bends go along with the shapes, in new lists that never compare
+    ///     equal, so they don't count.
+    /// </summary>
+    private bool IsMoved(DiagramModel preview) =>
+        !preview.Shapes.SequenceEqual(_diagram.Shapes)
+        || !preview.Connectors.Where(c => c.IsLine).SequenceEqual(_diagram.Connectors.Where(c => c.IsLine));
 
     /// <summary>Dragged and brought back to where it was is nothing to undo.</summary>
     private static bool RouteChanged(SegmentDrag drag, DiagramModel preview)
@@ -891,6 +1020,18 @@ public sealed class DiagramEditorPresenter
         Commit(_diagram with { Shapes = [.. _diagram.Shapes, shape] });
         ClearSelection();
         _selectedShapes.Add(shape.Id);
+        SelectTool(DiagramTool.Select);
+        SelectionChanged();
+    }
+
+    /// <summary>Adds the line drawn, and selects it to change it at once, as a new shape is.</summary>
+    private void ReleaseLine(DiagramModel preview)
+    {
+        DiagramConnectorModel line = preview.Connectors[^1];
+
+        Commit(preview);
+        ClearSelection();
+        _selectedConnectors.Add(line.Id);
         SelectTool(DiagramTool.Select);
         SelectionChanged();
     }
@@ -1373,7 +1514,7 @@ public sealed class DiagramEditorPresenter
 
     private void Copy()
     {
-        if (_selectedShapes.Count > 0)
+        if (_selectedShapes.Count > 0 || SelectedLines().Count > 0)
         {
             _view.SetClipboardText(DiagramJson.Write(SelectedFragment()));
             _pasteCount = 0;
@@ -1401,18 +1542,21 @@ public sealed class DiagramEditorPresenter
         }
     }
 
-    /// <summary>The selected shapes, and the connectors between them.</summary>
+    /// <summary>The selected shapes, the connectors between them, and the selected lines.</summary>
     private DiagramModel SelectedFragment() => new(
         [.. _diagram.Shapes.Where(shape => _selectedShapes.Contains(shape.Id))],
         [
-            .. _diagram.Connectors.Where(connector => _selectedShapes.Contains(connector.FromShapeId)
-                && _selectedShapes.Contains(connector.ToShapeId)),
+            .. _diagram.Connectors.Where(connector => connector.IsLine
+                ? _selectedConnectors.Contains(connector.Id)
+                : IsSelectedShape(connector.FromShapeId) && IsSelectedShape(connector.ToShapeId)),
         ]);
+
+    private bool IsSelectedShape(int? shapeId) => shapeId is int id && _selectedShapes.Contains(id);
 
     /// <summary>Adds copies of the parts, with new ids and groups, and selects them.</summary>
     private void Insert(DiagramModel fragment, int offset)
     {
-        if (fragment.Shapes.Count == 0)
+        if (fragment.Shapes.Count == 0 && !fragment.Connectors.Any(connector => connector.IsLine))
         {
             return;
         }
@@ -1442,20 +1586,32 @@ public sealed class DiagramEditorPresenter
 
         List<DiagramConnectorModel> connectors = [];
 
+        var shift = new Size(offset, offset);
+
         foreach (DiagramConnectorModel connector in fragment.Connectors)
         {
-            connectors.Add(connector with
+            if (connector is { FromPoint: Point from, ToPoint: Point to })
             {
-                Id = nextId++,
-                FromShapeId = shapeIds[connector.FromShapeId],
-                ToShapeId = shapeIds[connector.ToShapeId],
-                Bends = connector.Bends?.Select(bend => bend + new Size(offset, offset)).ToList(),
-            });
+                connectors.Add(connector with { Id = nextId++, FromPoint = from + shift, ToPoint = to + shift });
+            }
+            else if (connector is { FromShapeId: int fromId, ToShapeId: int toId }
+                && shapeIds.TryGetValue(fromId, out int newFromId)
+                && shapeIds.TryGetValue(toId, out int newToId))
+            {
+                connectors.Add(connector with
+                {
+                    Id = nextId++,
+                    FromShapeId = newFromId,
+                    ToShapeId = newToId,
+                    Bends = connector.Bends?.Select(bend => bend + shift).ToList(),
+                });
+            }
         }
 
         Commit(new DiagramModel([.. _diagram.Shapes, .. shapes], [.. _diagram.Connectors, .. connectors]));
         ClearSelection();
         _selectedShapes.UnionWith(shapes.Select(shape => shape.Id));
+        _selectedConnectors.UnionWith(connectors.Where(connector => connector.IsLine).Select(line => line.Id));
         SelectionChanged();
         Refresh();
     }
@@ -1472,8 +1628,8 @@ public sealed class DiagramEditorPresenter
             [.. _diagram.Shapes.Where(shape => !_selectedShapes.Contains(shape.Id))],
             [
                 .. _diagram.Connectors.Where(connector => !_selectedConnectors.Contains(connector.Id)
-                    && !_selectedShapes.Contains(connector.FromShapeId)
-                    && !_selectedShapes.Contains(connector.ToShapeId)),
+                    && !IsSelectedShape(connector.FromShapeId)
+                    && !IsSelectedShape(connector.ToShapeId)),
             ]));
         ClearSelection();
         SelectionChanged();
@@ -1557,11 +1713,16 @@ public sealed class DiagramEditorPresenter
 
     private void OnNudgeRequested(object? sender, Size delta)
     {
-        if (_drag is null && _selectedShapes.Count > 0)
+        if (_drag is null && (_selectedShapes.Count > 0 || SelectedLines().Count > 0))
         {
             // Shapes locked where they are don't move, and that's nothing to undo
             Commit(
-                WithBounds(_diagram, SelectedBounds(), bounds => Moved(bounds, delta), bend => bend + delta),
+                WithBounds(
+                    _diagram,
+                    SelectedBounds(),
+                    bounds => Moved(bounds, delta),
+                    bend => bend + delta,
+                    SelectedLines()),
                 onlyIfChanged: true);
         }
     }
@@ -1734,7 +1895,9 @@ public sealed class DiagramEditorPresenter
         _routing = routing;
 
         // Choosing how it should go takes the place of the bends
-        ChangeSelectedConnectors(connector => connector with { Routing = routing, Bends = null });
+        // A line on its own stays straight
+        ChangeSelectedConnectors(connector =>
+            connector.IsLine ? connector : connector with { Routing = routing, Bends = null });
         SaveSettings();
     }
 
@@ -1871,18 +2034,31 @@ public sealed class DiagramEditorPresenter
 
     private Rectangle SelectedBox() => UnionOf(SelectedBounds().Values);
 
+    /// <summary>The ids of the selected lines on their own.</summary>
+    private HashSet<int> SelectedLines() =>
+        [.. _diagram.Connectors.Where(c => c.IsLine && _selectedConnectors.Contains(c.Id)).Select(c => c.Id)];
+
+    /// <summary>Around everything a move takes along: the selected shapes and lines.</summary>
+    private Rectangle MoveBox() => UnionOf(
+        SelectedBounds().Values.Concat(_diagram.Connectors
+            .Where(c => c.IsLine && _selectedConnectors.Contains(c.Id))
+            .Select(c => FromCorners(c.FromPoint!.Value, c.ToPoint!.Value))));
+
     private List<Rectangle> BoundsOfOthers(IReadOnlyDictionary<int, Rectangle> moving) =>
         [.. _diagram.Shapes.Where(shape => !moving.ContainsKey(shape.Id)).Select(shape => shape.Bounds)];
 
     /// <summary>
-    ///     Changes where some shapes are, except what they have locked. The bends of a connector go along when both of
-    ///     its shapes do, without locks, so a part of a diagram keeps its look when it's moved or scaled as a whole.
+    ///     Changes where some shapes are, except what they have locked, and moves the lines given with them. The bends
+    ///     of a connector go along when both of its shapes do, without locks, so a part of a diagram keeps its look
+    ///     when it's moved or scaled as a whole.
     /// </summary>
+    /// <param name="lines">The ids of the lines on their own whose ends go as the bends do.</param>
     private static DiagramModel WithBounds(
         DiagramModel diagram,
         IReadOnlyDictionary<int, Rectangle> originals,
         Func<Rectangle, Rectangle> change,
-        Func<Point, Point> changeBend)
+        Func<Point, Point> changeBend,
+        IReadOnlySet<int>? lines = null)
     {
         HashSet<int> free =
         [
@@ -1898,13 +2074,21 @@ public sealed class DiagramEditorPresenter
                     : shape),
             ],
             [
-                .. diagram.Connectors.Select(connector => connector.Bends is { } bends
-                    && free.Contains(connector.FromShapeId)
-                    && free.Contains(connector.ToShapeId)
-                        ? connector with { Bends = [.. bends.Select(changeBend)] }
-                        : connector),
+                .. diagram.Connectors.Select(connector => connector switch
+                {
+                    { FromPoint: Point from, ToPoint: Point to } when lines?.Contains(connector.Id) == true =>
+                        MovedLine(connector, changeBend(from), changeBend(to)),
+                    { Bends: { } bends, FromShapeId: int fromId, ToShapeId: int toId }
+                        when free.Contains(fromId) && free.Contains(toId) =>
+                        connector with { Bends = [.. bends.Select(changeBend)] },
+                    _ => connector,
+                }),
             ]);
     }
+
+    /// <summary>A line with its ends here; as it was if they'd meet, since then it would have no direction.</summary>
+    private static DiagramConnectorModel MovedLine(DiagramConnectorModel line, Point from, Point to) =>
+        from == to ? line : line with { FromPoint = from, ToPoint = to };
 
     /// <summary>
     ///     The changed bounds with the locked parts as they were. A locked size keeps the edge that didn't move where
@@ -1969,7 +2153,10 @@ public sealed class DiagramEditorPresenter
             return CursorOf(handle);
         }
 
-        return DiagramHitTester.ShapeAt(_diagram, point) is null ? DiagramCursor.Default : DiagramCursor.Move;
+        bool canMove = DiagramHitTester.LineAt(_diagram, point, GrabDistance / _viewport.Zoom) is not null
+            || DiagramHitTester.ShapeAt(_diagram, point) is not null;
+
+        return canMove ? DiagramCursor.Move : DiagramCursor.Default;
     }
 
     private void ShowCursor(DiagramCursor cursor)
@@ -2065,7 +2252,9 @@ public sealed class DiagramEditorPresenter
             style.TextColor,
             style.FontSize,
             text,
-            connectors.Count > 0 ? connectors[0].Routing : null,
+
+            // A line on its own is always straight
+            connectors.FirstOrDefault(connector => !connector.IsLine)?.Routing,
             connectors.Count > 0 ? connectors[0].Heads : null,
             style.FontFamily,
             style.TextOutlineWidth,
@@ -2082,7 +2271,12 @@ public sealed class DiagramEditorPresenter
             return connectors.Count == 0 ? $"{count} shapes" : $"{count} objects";
         }
 
-        return connectors.Count == 1 ? "Connector" : shapes[0].Kind switch
+        if (connectors.Count == 1)
+        {
+            return connectors[0].IsLine ? "Line" : "Connector";
+        }
+
+        return shapes[0].Kind switch
         {
             DiagramShapeKind.RoundedRectangle => "Rounded rectangle",
             DiagramShapeKind kind => kind.ToString(),
@@ -2127,14 +2321,30 @@ public sealed class DiagramEditorPresenter
 
     private sealed record PanDrag(Point Last) : Drag;
 
-    private sealed record MoveDrag(Point Start, IReadOnlyDictionary<int, Rectangle> Originals, Rectangle Box) : Drag;
+    /// <param name="Lines">The ids of the selected lines on their own, which go along.</param>
+    private sealed record MoveDrag(
+        Point Start,
+        IReadOnlyDictionary<int, Rectangle> Originals,
+        Rectangle Box,
+        IReadOnlySet<int> Lines)
+        : Drag;
 
+    /// <param name="Lines">The ids of the selected lines on their own, which go along.</param>
     private sealed record ScaleDrag(
         Point Start,
         DiagramHandle Handle,
         IReadOnlyDictionary<int, Rectangle> Originals,
-        Rectangle Box)
+        Rectangle Box,
+        IReadOnlySet<int> Lines)
         : Drag;
+
+    /// <param name="Start">Where the line starts.</param>
+    private sealed record LineDrag(Point Start) : Drag;
+
+    /// <param name="Start">Where the drag started.</param>
+    /// <param name="ConnectorId">The line being changed.</param>
+    /// <param name="End">The end being dragged.</param>
+    private sealed record LineEndDrag(Point Start, int ConnectorId, DiagramConnectorEnd End) : Drag;
 
     private sealed record CreateDrag(DiagramShapeKind Kind, Point Start) : Drag;
 

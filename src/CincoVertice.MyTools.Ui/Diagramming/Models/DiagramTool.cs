@@ -7,6 +7,9 @@ public enum DiagramTool
 {
     Select,
     Connector,
+
+    /// <summary>Draws a line on its own, from where the drag starts to where it ends, attached to nothing.</summary>
+    Line,
     Rectangle,
     RoundedRectangle,
     Ellipse,

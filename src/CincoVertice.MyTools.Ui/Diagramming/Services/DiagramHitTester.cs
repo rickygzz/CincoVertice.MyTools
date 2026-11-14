@@ -19,6 +19,14 @@ public static class DiagramHitTester
             DiagramRouter.PathOf(connector, diagram) is { } path && IsNear(path.Points, point, distance));
     }
 
+    /// <returns>The line on its own on top within the distance of the point; null when there's none.</returns>
+    public static DiagramConnectorModel? LineAt(DiagramModel diagram, Point point, float distance)
+    {
+        return diagram.Connectors.LastOrDefault(connector => connector.IsLine
+            && DiagramRouter.PathOf(connector, diagram) is { } path
+            && IsNear(path.Points, point, distance));
+    }
+
     /// <summary>Where an end of a connector touches its shape: the tip of its head, if it has one there.</summary>
     public static PointF EndPoint(DiagramConnectorPathModel path, DiagramConnectorEnd end) => end == DiagramConnectorEnd.Start
         ? path.StartHead?[0] ?? path.Points[0]

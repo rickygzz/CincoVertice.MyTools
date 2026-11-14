@@ -507,6 +507,224 @@ public class DiagramEditorPresenterTests
         Assert.Null(_view.Properties!.Locks);
     }
 
+    /// <summary>Draws a line, from 100, 100 to 300, 200 unless told; it ends with the line selected.</summary>
+    private DiagramConnectorModel DrawLine(int fromX = 100, int fromY = 100, int toX = 300, int toY = 200)
+    {
+        _view.Tool(DiagramTool.Line);
+        _view.Drag(fromX, fromY, toX, toY, alt: true);
+
+        return Diagram.Connectors[^1];
+    }
+
+    [Fact]
+    public void Line_Drag_DrawsALineOnItsOwn_WithTheArrowsChosen_AndSelectsIt()
+    {
+        // Arrange
+        _view.SelectHeads(DiagramArrowHeads.Both);
+
+        // Act
+        DiagramConnectorModel line = DrawLine();
+
+        // Assert
+        Assert.True(line.IsLine);
+        Assert.Null(line.FromShapeId);
+        Assert.Equal(new Point(100, 100), line.FromPoint);
+        Assert.Equal(new Point(300, 200), line.ToPoint);
+        Assert.Equal(DiagramArrowHeads.Both, line.Heads);
+        Assert.Equal(DiagramRouting.Straight, line.Routing);
+        Assert.Equal("Line", _view.Properties!.Title);
+        Assert.Null(_view.Properties.Routing);
+        Assert.Equal(DiagramArrowHeads.Both, _view.Properties.Heads);
+        Assert.Equal(DiagramTool.Select, _view.ShownTool);
+    }
+
+    [Fact]
+    public void Line_AClick_DrawsNothing()
+    {
+        // Arrange
+        _view.Tool(DiagramTool.Line);
+
+        // Act
+        _view.Click(100, 100);
+
+        // Assert
+        Assert.Empty(Diagram.Connectors);
+        Assert.False(_view.CanUndo);
+    }
+
+    [Theory]
+    [InlineData(300, 110, 300, 100)]
+    [InlineData(110, 300, 100, 300)]
+    [InlineData(290, 310, 300, 300)]
+    public void Line_WithShift_IsLevelUprightOrDiagonal(int toX, int toY, int expectedX, int expectedY)
+    {
+        // Arrange
+        _view.Tool(DiagramTool.Line);
+
+        // Act
+        _view.Drag(100, 100, toX, toY, shift: true);
+
+        // Assert: as long as it was dragged
+        Point end = Diagram.Connectors[0].ToPoint!.Value;
+        Assert.InRange(end.X, expectedX - 2, expectedX + 2);
+        Assert.InRange(end.Y, expectedY - 2, expectedY + 2);
+        Assert.True(end.X == 100 || end.Y == 100 || Math.Abs(end.X - 100) == Math.Abs(end.Y - 100));
+    }
+
+    [Fact]
+    public void Line_OverShapes_IsntAttachedToThem()
+    {
+        // Arrange
+        AddShape(100, 100);
+        AddShape(400, 100);
+
+        // Act
+        DiagramConnectorModel line = DrawLine(150, 125, 450, 125);
+        _view.Click(500, 500);
+        _view.Drag(150, 145, 150, 300, alt: true);
+
+        // Assert: the shape moved, and the line stayed
+        Assert.Equal(Box(100, 255, 100, 50), Diagram.Shapes[0].Bounds);
+        Assert.Null(line.FromShapeId);
+        Assert.Null(line.ToShapeId);
+        Assert.Equal(line, Diagram.Connectors[0]);
+    }
+
+    [Fact]
+    public void Line_DragItsMiddle_MovesIt()
+    {
+        // Arrange
+        DrawLine();
+
+        // Act
+        _view.Drag(200, 150, 250, 150, alt: true);
+
+        // Assert
+        Assert.Equal(new Point(150, 100), Diagram.Connectors[0].FromPoint);
+        Assert.Equal(new Point(350, 200), Diagram.Connectors[0].ToPoint);
+    }
+
+    [Fact]
+    public void Line_OnAShape_IsPickedBeforeTheShape()
+    {
+        // Arrange
+        AddShape(100, 100);
+        DrawLine(50, 125, 250, 125);
+        _view.Click(500, 500);
+
+        // Act
+        _view.Click(150, 125);
+
+        // Assert
+        Assert.Equal("Line", _view.Properties!.Title);
+    }
+
+    [Fact]
+    public void Line_DragAnEnd_MovesOnlyThatEnd()
+    {
+        // Arrange
+        DrawLine();
+
+        // Act
+        _view.Drag(300, 200, 400, 250, alt: true);
+
+        // Assert
+        Assert.Equal(new Point(100, 100), Diagram.Connectors[0].FromPoint);
+        Assert.Equal(new Point(400, 250), Diagram.Connectors[0].ToPoint);
+    }
+
+    [Fact]
+    public void Line_DragAnEndOntoTheOther_LeavesIt()
+    {
+        // Arrange
+        DiagramConnectorModel line = DrawLine();
+
+        // Act
+        _view.Drag(300, 200, 100, 100, alt: true);
+
+        // Assert: a line of no length has no direction
+        Assert.Equal(line, Diagram.Connectors[0]);
+    }
+
+    [Fact]
+    public void Line_NudgeDeleteAndUndo()
+    {
+        // Arrange
+        DrawLine();
+
+        // Act / Assert
+        _view.Nudge(10, 0);
+        Assert.Equal(new Point(110, 100), Diagram.Connectors[0].FromPoint);
+
+        _view.Command(DiagramCommand.Delete);
+        Assert.Empty(Diagram.Connectors);
+
+        _view.Command(DiagramCommand.Undo);
+        Assert.Equal(new Point(110, 100), Diagram.Connectors[0].FromPoint);
+    }
+
+    [Fact]
+    public void Line_CopyAndPaste_AddsAMovedCopy_Selected()
+    {
+        // Arrange
+        DiagramConnectorModel line = DrawLine();
+
+        // Act
+        _view.Command(DiagramCommand.Copy);
+        _view.Command(DiagramCommand.Paste);
+
+        // Assert
+        Assert.Equal(2, Diagram.Connectors.Count);
+        DiagramConnectorModel copy = Diagram.Connectors[1];
+        Assert.NotEqual(line.Id, copy.Id);
+        Assert.Equal(new Point(120, 120), copy.FromPoint);
+        Assert.Equal(new Point(320, 220), copy.ToPoint);
+        Assert.Equal("Line", _view.Properties!.Title);
+    }
+
+    [Fact]
+    public void Line_SelectedWithShapes_MovesAndScalesWithThem()
+    {
+        // Arrange
+        AddShape(100, 100);
+        DrawLine(100, 200, 200, 200);
+        _view.Command(DiagramCommand.SelectAll);
+
+        // Act
+        _view.Nudge(0, 10);
+
+        // Assert
+        Assert.Equal(Box(100, 110, 100, 50), Diagram.Shapes[0].Bounds);
+        Assert.Equal(new Point(100, 210), Diagram.Connectors[0].FromPoint);
+    }
+
+    [Fact]
+    public void Line_InsideTheSelectionBand_IsSelected()
+    {
+        // Arrange
+        DrawLine();
+        _view.Click(500, 500);
+
+        // Act
+        _view.Drag(50, 50, 350, 250);
+
+        // Assert
+        Assert.Equal("Line", _view.Properties!.Title);
+    }
+
+    [Fact]
+    public void Line_ChoosingARoute_LeavesItStraight()
+    {
+        // Arrange
+        DrawLine();
+
+        // Act
+        _view.SelectRouting(DiagramRouting.Elbow);
+
+        // Assert
+        Assert.Equal(DiagramRouting.Straight, Diagram.Connectors[0].Routing);
+    }
+
     [Fact]
     public void Scale_ATopHandle_OnlyChangesTheHeight()
     {

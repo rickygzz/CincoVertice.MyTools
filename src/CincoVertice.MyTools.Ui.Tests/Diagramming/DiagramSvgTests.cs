@@ -501,6 +501,60 @@ public sealed class DiagramSvgTests : IDisposable
     }
 
     [Fact]
+    public void Json_ALine_IsKeptWithItsPoints_AndWithoutShapes()
+    {
+        // Arrange
+        DiagramConnectorModel line = DiagramConnectorModel.Line(
+            9,
+            new Point(10, 20),
+            new Point(300, 40),
+            DiagramArrowHeads.Both,
+            _style) with { Label = "over" };
+        DiagramModel diagram = Sample() with { Connectors = [line] };
+
+        // Act
+        string json = DiagramJson.Write(diagram);
+        DiagramModel read = DiagramJson.Read(json);
+
+        // Assert
+        Assert.Equal(line, Assert.Single(read.Connectors));
+        Assert.DoesNotContain("fromShapeId", json);
+    }
+
+    [Theory]
+    [InlineData("\"fromPoint\": { \"x\": 5, \"y\": 5 }, \"toPoint\": { \"x\": 5, \"y\": 5 }")]
+    [InlineData("\"fromPoint\": { \"x\": 5, \"y\": 5 }")]
+    [InlineData("\"fromShapeId\": 1, \"fromPoint\": { \"x\": 5, \"y\": 5 }, \"toPoint\": { \"x\": 9, \"y\": 5 }")]
+    public void Json_ALineWithoutLengthOrAnEnd_IsLeftOut(string ends)
+    {
+        // Arrange
+        string json = $$"""
+            { "format": "mytools-diagram", "shapes": [
+                { "id": 1, "kind": "Ellipse", "x": 0, "y": 0, "width": 9, "height": 9 } ],
+              "connectors": [ { "id": 2, "routing": "Straight", "heads": "End", {{ends}} } ] }
+            """;
+
+        // Act / Assert
+        Assert.Empty(DiagramJson.Read(json).Connectors);
+    }
+
+    [Fact]
+    public void Write_OnlyLines_IsAnImageAroundThem()
+    {
+        // Arrange
+        DiagramModel diagram = new(
+            [],
+            [DiagramConnectorModel.Line(1, new Point(100, 50), new Point(300, 50), DiagramArrowHeads.None, _style)]);
+
+        // Act
+        XElement svg = XDocument.Parse(DiagramSvg.Write(diagram)).Root!;
+
+        // Assert: the margin is around the line, which has no height
+        Assert.Equal("80 30 240 40", (string)svg.Attribute("viewBox")!);
+        Assert.Single(svg.Descendants(_svg + "path"));
+    }
+
+    [Fact]
     public void Store_SaveThenLoad_GivesTheSameDiagram_AndLeavesNoTemporaryFile()
     {
         // Arrange
