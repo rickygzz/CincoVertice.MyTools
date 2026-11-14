@@ -23,6 +23,7 @@ New text uses [Roboto](https://fonts.google.com/specimen/Roboto), which comes wi
 | Hexagon | H | "Hexagon, or preparation (H)" |
 | Cylinder | Y | "Cylinder, or database (Y)" |
 | Document | M | "Document (M)" |
+| Container | B | "Container (B): a box with a title; what's inside goes along when it's moved" |
 | Text | T | "Text (T): click where it goes, Enter to end, Shift+Enter for a new line" |
 
 ## Working with shapes
@@ -57,6 +58,16 @@ New text uses [Roboto](https://fonts.google.com/specimen/Roboto), which comes wi
     - The panel is only a help to insert again: a diagram keeps its own copy of each image, so the folder can be emptied at any time.
   - Images are drawn by Windows. Style sheets in the file (`<style>`) are applied when it's inserted, but only simple rules, by element name, class or id; scripts are left out. Text inside an SVG image isn't shown.
 - **Text:** double-click a shape to edit its text, double-click a connector to edit its label, or double-click empty canvas for free text. The Text tool also adds free text where you click, and the Properties panel has a Text box. Enter ends editing; Shift+Enter inserts a new line.
+- **Containers** are boxes with a title band at the top, for what holds other things: a resource group, a virtual network, a subnet, a lane of a process.
+  - *Draw:* pick the Container tool (B) and drag around what it should hold. It goes under the shapes it's drawn around, so it never hides them. Double-click its title band to type its title. The band grows with its title: a larger **Text size**, or a title on two lines, makes it taller. **Text align** in the Properties panel puts the title at the left, in the middle or at the right.
+  - *Pick:* a container is picked by its title band or its border. A click inside it picks what's there, and a drag from an empty place inside it draws a selection box, as on the canvas.
+  - *Move:* moving a container, by dragging its title, with the arrow keys or with **Align**, takes along everything wholly inside it: shapes, images, text, lines, and containers inside it with what they hold. Copy, paste and **Duplicate** take what's inside too. Resizing it or deleting it leaves what's inside where it is.
+  - A connector can start or end anywhere on a container, to show something reaching a whole group. Style it as any shape: a light fill and a dashed border look like Azure's diagrams. Its **Fill** colors its inside, and **Title fill**, in the Properties panel, its title band, a dark title fill and white text make a header bar. Its menu also has **Same as fill**, as at first, for the inside's fill in the band too (the button then shows that color, saying "Same as fill"), and **No title fill**, which leaves the band see-through, showing what's behind the container, while its inside keeps its fill.
+  - *Corners:* **Top corners** and **Bottom corners**, in the Properties panel, round the top corners, the title band's with them, and the bottom ones, each as much as you choose, apart; 0 is square.
+- **Align and distribute:** select two or more shapes, then choose from **Align** on the toolbar, or right-click one of them and choose **Align**.
+  - **Align left**, **Align centers** and **Align right** line up the left edges, the middles or the right edges with those of the box around all of them; **Align tops**, **Align middles** and **Align bottoms** do the same up and down.
+  - **Distribute horizontally** and **Distribute vertically** need three or more: the two at the ends stay, and the ones between move so the space between each two is the same.
+  - A group moves as one, and so does a container with what's inside it. A locked X or Y is kept. Each is one step to undo.
 - **Group:** select two or more shapes and press Ctrl+G, or choose **Edit > Group**, or right-click one of them and choose **Group**. Groups are one level only; there is no nesting. Selecting one shape of a group selects the whole group. Ctrl+Shift+G, **Edit > Ungroup** or **Ungroup** in the right-click menu ungroups. In the right-click menu, Group is grayed out unless two or more shapes are selected that are not already one group, and Ungroup unless a selected shape is in a group.
 - **Copy and paste** use the Windows clipboard as text: the selected shapes and lines, and the connectors between the shapes. Pasting adds them 20 pixels further each time. Pasting other text does nothing. If you paste into another program, you get that text, not a picture. Because it is the clipboard, you can copy from one editor window and paste into another. **Duplicate** (Ctrl+D) does the same without using the clipboard.
 - **Snapping.** While you drag with the mouse, shapes snap in two ways.
@@ -78,7 +89,11 @@ A toolbar change goes to everything selected, and to what you draw next.
 
 **Copy a style.** Select a shape or connector and choose **Edit > Copy style** (or press **Ctrl+Shift+C**). Then select one or more others and choose **Edit > Paste style** (**Ctrl+Shift+V**). Both are also on the menu you get by right-clicking a shape or connector: a right-click on something not selected selects just it first, and one on the selection keeps it all. Paste style is grayed out there until you copy a style. Pasted objects get the copied fill, border, border width, dashes, text color, font, text size and text edge, as one step to undo. What you draw next gets that style too. A style copied from a connector leaves a shape's fill as it is, since a connector has none. Routing and arrows are not copied. The copied style stays until you copy another, in that window only.
 
-The Properties panel (show or hide with **F4**) has these fields: Text, X, Y, Width, Height, Keep proportions, Reset size (images only), Corner radius, Fill, Border, Border width, Dashed, Text color, Font, Text size, Text edge, Edge width, Route, Arrows and Direction (lines only, see [Lines](#working-with-shapes)).
+The Properties panel (show or hide with **F4**) has these fields: Text, X, Y, Width, Height, Keep proportions, Reset size (images only), Top corners, Bottom corners (rectangles and containers), Fill, Title fill (containers only), Border, Border width, Dashed, Text color, Font, Text size, Text align, Text edge, Edge width, Route, Arrows and Direction (lines only, see [Lines](#working-with-shapes)).
+
+**Text align** puts the lines of a shape's text at the left, in the middle (as at first) or at the right of the part of the shape the text fits in; for a container, of its title band, and for an image, under it, from its left or right edge. A connector's label lines up its lines the same way. Like the other text settings, it goes to what's selected and to what you draw next, and **Copy style** takes it.
+
+**Corners.** A rectangle, a rounded rectangle or a container has **Top corners** and **Bottom corners**: how round its two top corners and its two bottom ones are, in pixels. Each changes apart from the other: a rectangle with only its top corners round looks like a tab.
 
 **Lock a shape's place or size.** Beside X, Y, Width and Height is a lock button, shown as an open padlock. Click it to lock that value for the selected shapes: the button stays pressed, shows a closed padlock, and the field is grayed out. Click it again to unlock it. Each one is separate, so you can, say, lock only the width.
 
@@ -94,6 +109,7 @@ The Properties panel (show or hide with **F4**) has these fields: Text, X, Y, Wi
 | Ctrl+N / Ctrl+O | New / open |
 | Ctrl+S / Ctrl+Shift+S | Save / save as |
 | Ctrl+E | Export as PDF |
+| Ctrl+Shift+E | Export as PNG |
 | Ctrl+Z | Undo |
 | Ctrl+Y or Ctrl+Shift+Z | Redo |
 | Ctrl+X, Ctrl+C, Ctrl+V | Cut, copy, paste |
@@ -116,7 +132,7 @@ The zoom label shows the percentage; its tooltip reads "Ctrl+wheel to zoom. Clic
 
 ## Saving and opening
 
-- The toolbar's **File** menu has **New** (Ctrl+N), **Open...** (Ctrl+O), **Save** (Ctrl+S), **Save as...** (Ctrl+Shift+S), **Export as PDF...** (Ctrl+E) and **Exit**. Exit closes this window, as its X button does, and asks about unsaved changes; the rest of My Tools keeps running.
+- The toolbar's **File** menu has **New** (Ctrl+N), **Open...** (Ctrl+O), **Save** (Ctrl+S), **Save as...** (Ctrl+Shift+S), **Export as PDF...** (Ctrl+E), **Export as PNG...** (Ctrl+Shift+E) and **Exit**. Exit closes this window, as its X button does, and asks about unsaved changes; the rest of My Tools keeps running.
 - The dialogs are "Save diagram" and "Open diagram", with the filter "SVG image (*.svg)". The suggested name is `Diagram.svg`.
 - A saved diagram is a normal SVG image that any browser can show. It carries the diagram's data inside, so only My Tools can edit it again. A failed save leaves the old file as it was.
 - **Only diagrams made by this editor can be opened.** Other files give `This isn't an SVG file.` or `This SVG file wasn't made by the diagram editor, so it can't be edited here.`
@@ -135,6 +151,14 @@ The zoom label shows the percentage; its tooltip reads "Ctrl+wheel to zoom. Clic
 - Text keeps the font it has in the editor, even on a computer without that font, because each letter is drawn as its outline. So the text can't be selected, copied or searched in the PDF.
 - Images are drawn as pictures at 4 pixels to each pixel of the diagram, sharp enough for print, though not lines and curves like the rest. The SVG file keeps them as they are.
 - The export doesn't save the diagram: the title keeps its `*` until you save, and the editor can't open the PDF. A failed export leaves the old file as it was.
+
+### Export as PNG
+
+**Export as PNG...** (Ctrl+Shift+E) writes a copy of the diagram as a PNG picture, which chats and emails show at once. In the dialog, the type of file chooses the size: **PNG picture, twice as large, sharper**, which is the first, or **PNG picture, actual size**.
+
+- The picture is the same part of the diagram as the SVG and PDF files, on white, without the grid or the selection.
+- A very large diagram gets fewer pixels, so the picture is at most 8000 pixels wide or high.
+- As with PDF, the export doesn't save the diagram, and the editor can't open the picture.
 
 The editor remembers your last style, routing, arrow heads, whether the Properties panel is shown, and the window size in `config\diagrameditor.json`.
 

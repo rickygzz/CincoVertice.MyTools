@@ -18,5 +18,6 @@ public enum DiagramTool
     Hexagon,
     Cylinder,
     Document,
+    Container,
     Text,
 }

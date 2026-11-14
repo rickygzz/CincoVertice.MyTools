@@ -20,6 +20,9 @@ public static class DiagramJson
     // What every text used before a font could be chosen, so older diagrams keep their look
     private const string OlderFilesFontFamily = "Segoe UI";
 
+    // A title fill of none, a see-through band
+    private const string NoColor = "none";
+
     private static readonly JsonSerializerOptions _options = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -44,7 +47,8 @@ public static class DiagramJson
                 shape.GroupId,
                 shape.CornerRadius,
                 shape.Locks == DiagramLock.None ? null : shape.Locks,
-                shape.Image))],
+                shape.Image,
+                shape.BottomCornerRadius))],
             [.. diagram.Connectors.Select(connector => new ConnectorFile(
                 connector.Id,
                 connector.FromShapeId,
@@ -166,7 +170,8 @@ public static class DiagramJson
 
         // Values no lock has, from a file written by hand, are left out
         (shape.Locks ?? DiagramLock.None) & DiagramLock.All,
-        shape.Kind == DiagramShapeKind.Image ? shape.Image ?? string.Empty : null);
+        shape.Kind == DiagramShapeKind.Image ? shape.Image ?? string.Empty : null,
+        shape.BottomCornerRadius is int bottom ? Math.Max(bottom, 0) : null);
 
     /// <summary>A style read from a file, with values out of range brought into range.</summary>
     internal static DiagramStyleModel ToStyle(StyleFile? style) => new(
@@ -178,7 +183,22 @@ public static class DiagramJson
         Math.Clamp(style?.FontSize ?? 14, MinFontSize, MaxFontSize),
         string.IsNullOrWhiteSpace(style?.FontFamily) ? OlderFilesFontFamily : style.FontFamily,
         Math.Clamp(style?.TextOutlineWidth ?? 0, 0, DiagramStyleModel.MaxTextOutlineWidth),
-        ParseColor(style?.TextOutlineColor, DiagramStyleModel.DefaultTextOutlineColor));
+        ParseColor(style?.TextOutlineColor, DiagramStyleModel.DefaultTextOutlineColor),
+
+        // Centered in a file from before it could be chosen, or with a value no alignment has
+        style?.TextAlignment is DiagramTextAlignment alignment && Enum.IsDefined(alignment)
+            ? alignment
+            : DiagramTextAlignment.Center,
+        ParseTitleFill(style?.TitleFill));
+
+    /// <summary>None, a see-through title band, is "none": a color has no way to say so.</summary>
+    private static string? FormatTitleFill(Color color) =>
+        color is { IsEmpty: false, A: 0 } ? NoColor : FormatColor(color);
+
+    private static Color ParseTitleFill(string? text) =>
+        string.Equals(text, NoColor, StringComparison.OrdinalIgnoreCase)
+            ? DiagramStyleModel.NoTitleFill
+            : ParseColor(text, Color.Empty);
 
     private static string? FormatColor(Color color) =>
         color.IsEmpty ? null : $"#{color.R:X2}{color.G:X2}{color.B:X2}";
@@ -212,7 +232,8 @@ public static class DiagramJson
         int? GroupId,
         int? CornerRadius,
         DiagramLock? Locks = null,
-        string? Image = null);
+        string? Image = null,
+        int? BottomCornerRadius = null);
 
     private sealed record ConnectorFile(
         int Id,
@@ -241,7 +262,9 @@ public static class DiagramJson
         int FontSize,
         string? FontFamily,
         int TextOutlineWidth = 0,
-        string? TextOutlineColor = null)
+        string? TextOutlineColor = null,
+        DiagramTextAlignment? TextAlignment = null,
+        string? TitleFill = null)
     {
         public static StyleFile From(DiagramStyleModel style) => new(
             FormatColor(style.Fill),
@@ -252,6 +275,10 @@ public static class DiagramJson
             style.FontSize,
             style.FontFamily,
             style.TextOutlineWidth,
-            FormatColor(style.TextOutlineColor));
+            FormatColor(style.TextOutlineColor),
+
+            // Written only when not centered, so older diagrams' files are as they were
+            style.TextAlignment == DiagramTextAlignment.Center ? null : style.TextAlignment,
+            FormatTitleFill(style.TitleFill));
     }
 }

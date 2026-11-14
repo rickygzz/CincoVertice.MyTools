@@ -8,9 +8,26 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Services;
 /// </summary>
 public static class DiagramHitTester
 {
-    /// <returns>The shape on top at the point; null when there's none.</returns>
+    // How near its border a container is picked, in diagram pixels
+    private const int ContainerBorder = 6;
+
+    /// <returns>
+    ///     The shape on top at the point, to pick; null when there's none. A container is picked only by its title band
+    ///     or its border, so a press inside it can select what's in it, or start a selection box.
+    /// </returns>
     public static DiagramShapeModel? ShapeAt(DiagramModel diagram, Point point) =>
+        diagram.Shapes.LastOrDefault(shape => shape.Bounds.Contains(point)
+            && (shape.Kind != DiagramShapeKind.Container || IsOnTitleOrBorder(shape, point)));
+
+    /// <returns>The shape on top whose area has the point, a container's whole box included; null for none.</returns>
+    public static DiagramShapeModel? ShapeUnder(DiagramModel diagram, Point point) =>
         diagram.Shapes.LastOrDefault(shape => shape.Bounds.Contains(point));
+
+    private static bool IsOnTitleOrBorder(DiagramShapeModel container, Point point) =>
+        point.Y < DiagramFigures.ContainerTitle(container).Bottom
+        || point.X < container.Bounds.Left + ContainerBorder
+        || point.X >= container.Bounds.Right - ContainerBorder
+        || point.Y >= container.Bounds.Bottom - ContainerBorder;
 
     /// <returns>The connector on top within the distance of the point; null when there's none.</returns>
     public static DiagramConnectorModel? ConnectorAt(DiagramModel diagram, Point point, float distance)

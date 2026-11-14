@@ -23,6 +23,9 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 /// <param name="TextOutlineColor">The color of that edge.</param>
 /// <param name="Locks">The locks every selected shape has, so a locked field can't be typed in.</param>
 /// <param name="LineDirection">Which way the selected lines on their own may point.</param>
+/// <param name="BottomCornerRadius">How round the bottom corners are; the top ones' is the corner radius.</param>
+/// <param name="TitleFill">A selected container's title band; <see cref="Color.Empty"/> for none.</param>
+/// <param name="TextAlignment">Where the lines of the text go.</param>
 /// <param name="HasImages">True when images are selected, whose size can be reset.</param>
 public sealed record DiagramPropertiesModel(
     string Title,
@@ -42,4 +45,7 @@ public sealed record DiagramPropertiesModel(
     Color? TextOutlineColor = null,
     DiagramLock? Locks = null,
     DiagramLineDirection? LineDirection = null,
-    bool HasImages = false);
+    bool HasImages = false,
+    DiagramTextAlignment? TextAlignment = null,
+    Color? TitleFill = null,
+    int? BottomCornerRadius = null);

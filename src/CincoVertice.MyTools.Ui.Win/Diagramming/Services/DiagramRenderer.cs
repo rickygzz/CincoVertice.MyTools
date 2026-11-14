@@ -32,18 +32,32 @@ public static class DiagramRenderer
 
         graphics.TranslateTransform(viewport.Pan.X, viewport.Pan.Y);
         graphics.ScaleTransform(viewport.Zoom, viewport.Zoom);
+        DrawDiagram(graphics, scene.Diagram, scene.SelectedConnectorIds, viewport.Zoom);
+        DrawOverlay(graphics, scene);
+    }
 
-        foreach (DiagramShapeModel shape in scene.Diagram.Shapes)
+    /// <summary>
+    ///     The diagram alone, without the grid or what only the editor shows: for the canvas, and for a PNG file.
+    /// </summary>
+    /// <param name="graphics">Drawn in diagram pixels; its transform places and scales them.</param>
+    /// <param name="diagram">What to draw.</param>
+    /// <param name="selectedConnectorIds">The connectors drawn as selected; none for a file.</param>
+    /// <param name="zoom">Canvas pixels per diagram pixel, which keeps a selected connector's halo as large.</param>
+    public static void DrawDiagram(
+        Graphics graphics,
+        DiagramModel diagram,
+        IReadOnlySet<int> selectedConnectorIds,
+        float zoom)
+    {
+        foreach (DiagramShapeModel shape in diagram.Shapes)
         {
             DrawShape(graphics, shape);
         }
 
-        foreach (DiagramConnectorModel connector in scene.Diagram.Connectors)
+        foreach (DiagramConnectorModel connector in diagram.Connectors)
         {
-            DrawConnector(graphics, connector, scene.Diagram, scene.SelectedConnectorIds.Contains(connector.Id), viewport.Zoom);
+            DrawConnector(graphics, connector, diagram, selectedConnectorIds.Contains(connector.Id), zoom);
         }
-
-        DrawOverlay(graphics, scene);
     }
 
     /// <summary>A path for GDI+ from a figure, the same one the SVG file writes.</summary>
@@ -124,18 +138,20 @@ public static class DiagramRenderer
 
         using Pen pen = CreateLinePen(shape.Style);
 
-        foreach (DiagramFigureModel figure in DiagramFigures.Of(shape.Kind, shape.Bounds, shape.CornerRadius))
+        foreach (DiagramFigureModel figure in DiagramFigures.Of(shape))
         {
             using GraphicsPath path = ToPath(figure);
 
-            if (figure.Filled && !shape.Style.Fill.IsEmpty)
+            Color fill = DiagramFigures.FillOf(figure, shape.Style);
+
+            if (!fill.IsEmpty)
             {
-                using var brush = new SolidBrush(shape.Style.Fill);
+                using var brush = new SolidBrush(fill);
 
                 graphics.FillPath(brush, path);
             }
 
-            if (shape.Style.LineWidth > 0)
+            if (figure.Stroked && shape.Style.LineWidth > 0)
             {
                 graphics.DrawPath(pen, path);
             }
@@ -190,7 +206,8 @@ public static class DiagramRenderer
             DiagramTextBlockModel block = DiagramTextLayout.LayoutAt(
                 connector.Label,
                 route.LabelCenter,
-                connector.Style.FontSize);
+                connector.Style.FontSize,
+                connector.Style.TextAlignment);
 
             // So the line doesn't run through the words
             RectangleF back = block.Bounds;
@@ -204,7 +221,7 @@ public static class DiagramRenderer
     /// <summary>The letters of a text as a path, placed as they're drawn; the caller disposes it.</summary>
     public static GraphicsPath TextPath(DiagramTextBlockModel block, Font font)
     {
-        using StringFormat format = CreateTextFormat();
+        using StringFormat format = CreateTextFormat(block.Alignment);
 
         // Winding: a letter can be made of overlapping pieces, and the default fill leaves a hole where they overlap
         var path = new GraphicsPath(FillMode.Winding);
@@ -216,17 +233,22 @@ public static class DiagramRenderer
                 font.FontFamily,
                 (int)font.Style,
                 font.Size,
-                new PointF(block.CenterX, block.Top + block.LineHeight * i),
+                new PointF(block.X, block.Top + block.LineHeight * i),
                 format);
         }
 
         return path;
     }
 
-    private static StringFormat CreateTextFormat() =>
+    private static StringFormat CreateTextFormat(DiagramTextAlignment alignment) =>
         new(StringFormat.GenericTypographic)
         {
-            Alignment = StringAlignment.Center,
+            Alignment = alignment switch
+            {
+                DiagramTextAlignment.Left => StringAlignment.Near,
+                DiagramTextAlignment.Right => StringAlignment.Far,
+                _ => StringAlignment.Center,
+            },
             FormatFlags = StringFormatFlags.NoClip | StringFormatFlags.MeasureTrailingSpaces,
         };
 
@@ -242,11 +264,11 @@ public static class DiagramRenderer
             return;
         }
 
-        using StringFormat format = CreateTextFormat();
+        using StringFormat format = CreateTextFormat(block.Alignment);
 
         for (int i = 0; i < block.Lines.Count; i++)
         {
-            graphics.DrawString(block.Lines[i], font, brush, block.CenterX, block.Top + block.LineHeight * i, format);
+            graphics.DrawString(block.Lines[i], font, brush, block.X, block.Top + block.LineHeight * i, format);
         }
     }
 

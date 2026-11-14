@@ -54,6 +54,9 @@ public interface IDiagramEditorView
     /// <summary>Raised with how wide the edge around the text's letters should be, in pixels; 0 for none.</summary>
     event EventHandler<int>? TextOutlineWidthSelected;
 
+    /// <summary>Raised with where the lines of the text should go.</summary>
+    event EventHandler<DiagramTextAlignment>? TextAlignmentSelected;
+
     event EventHandler<DiagramRouting>? RoutingSelected;
 
     event EventHandler<DiagramArrowHeads>? ArrowHeadsSelected;
@@ -72,6 +75,9 @@ public interface IDiagramEditorView
 
     /// <summary>Raised with how round the corners of the selected shapes should be, in pixels.</summary>
     event EventHandler<int>? CornerRadiusEdited;
+
+    /// <summary>Raised with how round the bottom corners of the selected shapes should be, in pixels.</summary>
+    event EventHandler<int>? BottomCornerRadiusEdited;
 
     /// <summary>Raised with the text of the selected shape, or the label of the selected connector.</summary>
     event EventHandler<string>? TextEdited;
@@ -176,6 +182,9 @@ public interface IDiagramEditorView
 
     /// <returns>The PDF file to export to; null when the user cancels.</returns>
     string? AskExportPdfPath(string suggestedFileName);
+
+    /// <returns>The PNG file to export to, and how large; null when the user cancels.</returns>
+    DiagramPngExportModel? AskExportPng(string suggestedFileName);
 
     /// <returns>The file to open; null when the user cancels.</returns>
     string? AskOpenPath();

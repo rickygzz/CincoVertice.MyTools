@@ -138,7 +138,7 @@ public sealed class DiagramSvgImageTests
         DiagramTextBlockModel block = DiagramTextLayout.OfShape(image);
 
         // Assert
-        Assert.Equal(132, block.CenterX);
+        Assert.Equal(132, block.X);
         Assert.Equal(168, block.Top);
         Assert.True(block.Bounds.Width > 64);
         Assert.True(block.Bounds.Width <= 160);

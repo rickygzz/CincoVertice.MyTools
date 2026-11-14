@@ -32,7 +32,11 @@ public static class DiagramArea
             if (connector.Label.Length > 0)
             {
                 DiagramTextBlockModel label =
-                    DiagramTextLayout.LayoutAt(connector.Label, path.LabelCenter, connector.Style.FontSize);
+                    DiagramTextLayout.LayoutAt(
+                        connector.Label,
+                        path.LabelCenter,
+                        connector.Style.FontSize,
+                        connector.Style.TextAlignment);
 
                 parts.Add(label.Bounds);
             }

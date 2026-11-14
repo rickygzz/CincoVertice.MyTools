@@ -157,7 +157,7 @@ public class DiagramEditorFormTests
         // Arrange
         using var form = new DiagramEditorForm();
         var presenter =
-            new DiagramEditorPresenter(form, new NoStore(), new NoSettings(), new NoExporter(), new NoCatalog());
+            NewPresenter(form);
         var list = (ToolStripComboBox)typeof(DiagramEditorForm)
             .GetField("TextOutlineWidthComboBox", BindingFlags.NonPublic | BindingFlags.Instance)!
             .GetValue(form)!;
@@ -189,7 +189,7 @@ public class DiagramEditorFormTests
         // Every tool button's tag, the palettes and the lists are read here
         using var form = new DiagramEditorForm();
         var presenter =
-            new DiagramEditorPresenter(form, new NoStore(), new NoSettings(), new NoExporter(), new NoCatalog());
+            NewPresenter(form);
 
         presenter.Start();
 
@@ -356,7 +356,7 @@ public class DiagramEditorFormTests
     {
         // Arrange
         using var form = new DiagramEditorForm();
-        new DiagramEditorPresenter(form, new NoStore(), new NoSettings(), new NoExporter(), new NoCatalog())
+        NewPresenter(form)
             .Start();
 
         // Act: from a file edited by hand, say; a field's value out of its range would throw
@@ -676,6 +676,75 @@ public class DiagramEditorFormTests
         form.ChooseFocusedImage();
         Assert.Equal(["Azure/app.svg"], chosen);
     }
+
+    [Fact]
+    public void Properties_TextAlign_ShowsTheAlignment_AndChoosingOneIsRaised()
+    {
+        // Arrange
+        using var form = new DiagramEditorForm();
+        List<DiagramTextAlignment> chosen = [];
+        form.TextAlignmentSelected += (_, alignment) => chosen.Add(alignment);
+        var align = (ComboBox)form.Controls.Find("TextAlignPropertyBox", true).Single();
+        form.Show();
+
+        // Act / Assert: showing it isn't the user's choice
+        form.ShowProperties(new DiagramPropertiesModel("Container", TextAlignment: DiagramTextAlignment.Left));
+        Assert.True(align.Visible);
+        Assert.Equal("Left", align.SelectedItem);
+        Assert.Empty(chosen);
+
+        align.SelectedIndex = 2;
+        Assert.Equal([DiagramTextAlignment.Right], chosen);
+
+        form.ShowProperties(new DiagramPropertiesModel("Nothing selected"));
+        Assert.False(align.Visible);
+    }
+
+    [Fact]
+    public void Properties_TitleFill_WithoutItsOwn_ShowsTheFillItHas_AndSaysSo()
+    {
+        // Arrange
+        using var form = new DiagramEditorForm();
+        List<DiagramColorChoiceModel> chosen = [];
+        form.ColorSelected += (_, choice) => chosen.Add(choice);
+        var button = (Button)form.Controls.Find("TitleFillColorButton", true).Single();
+        Color blue = Color.FromArgb(0, 99, 177);
+        Color orange = Color.FromArgb(255, 140, 0);
+        form.Show();
+
+        // Act / Assert: the band is the fill's color, and so is its button
+        form.ShowProperties(new DiagramPropertiesModel("Container", Fill: blue, TitleFill: Color.Empty));
+        Assert.Equal((blue, "Same as fill", Color.White), (button.BackColor, button.Text, button.ForeColor));
+
+        form.ShowProperties(new DiagramPropertiesModel("Container", Fill: blue, TitleFill: orange));
+        Assert.Equal((orange, string.Empty), (button.BackColor, button.Text));
+
+        form.ShowProperties(new DiagramPropertiesModel("Container", Fill: Color.Empty, TitleFill: Color.Empty));
+        Assert.Equal("None", button.Text);
+
+        var sameAsFill = (ToolStripMenuItem)typeof(DiagramEditorForm)
+            .GetField("SameAsFillMenuItem", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(form)!;
+        var noTitleFill = (ToolStripMenuItem)typeof(DiagramEditorForm)
+            .GetField("NoTitleFillMenuItem", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(form)!;
+        sameAsFill.PerformClick();
+        noTitleFill.PerformClick();
+        Assert.Equal(
+            [
+                new DiagramColorChoiceModel(DiagramColorTarget.TitleFill, Color.Empty),
+                new DiagramColorChoiceModel(DiagramColorTarget.TitleFill, DiagramStyleModel.NoTitleFill),
+            ],
+            chosen);
+
+        // A title fill of none is "None": a button can't be see-through
+        form.ShowProperties(
+            new DiagramPropertiesModel("Container", Fill: blue, TitleFill: DiagramStyleModel.NoTitleFill));
+        Assert.Equal("None", button.Text);
+    }
+
+    private static DiagramEditorPresenter NewPresenter(DiagramEditorForm form) =>
+        new(form, new NoStore(), new NoSettings(), new NoExporter(), new PngDiagramExporter(), new NoCatalog());
 
     private sealed class NoSettings : IDiagramEditorSettingsStore
     {

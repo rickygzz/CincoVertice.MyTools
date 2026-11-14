@@ -105,7 +105,10 @@ public static class DiagramToolIcons
         graphics.ScaleTransform(1f / scale, 1f / scale);
         pen.Width *= scale;
 
-        foreach (DiagramFigureModel figure in DiagramFigures.Of(kind, new Rectangle(20, 30, 120, 100)))
+        // Only the lines: an area only filled, as a container's title band, has its border in another figure
+        foreach (DiagramFigureModel figure in DiagramFigures
+                     .Of(kind, new Rectangle(20, 30, 120, 100))
+                     .Where(outline => outline.Stroked))
         {
             using GraphicsPath path = DiagramRenderer.ToPath(figure);
 

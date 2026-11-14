@@ -78,6 +78,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         RoutingPropertyBox.Items.AddRange(routings);
         ArrowsPropertyBox.Items.AddRange(arrows);
         DirectionPropertyBox.Items.AddRange(["Free", "Horizontal", "Vertical"]);
+        TextAlignPropertyBox.Items.AddRange(["Left", "Center", "Right"]);
         FontFamilyBox.Items.AddRange([.. DiagramFonts.Names()]);
 
         // Windows takes drops only on a single-threaded apartment, as the app's UI thread is; elsewhere, such as a
@@ -135,6 +136,8 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
 
     public event EventHandler<DiagramLineDirection>? LineDirectionSelected;
 
+    public event EventHandler<DiagramTextAlignment>? TextAlignmentSelected;
+
     public event EventHandler<DiagramFilesDropModel>? FilesDropped;
 
     public event EventHandler<Rectangle>? BoundsEdited;
@@ -142,6 +145,8 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     public event EventHandler<DiagramLockChoiceModel>? LockToggled;
 
     public event EventHandler<int>? CornerRadiusEdited;
+
+    public event EventHandler<int>? BottomCornerRadiusEdited;
 
     public event EventHandler<string>? TextEdited;
 
@@ -188,6 +193,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     public void ShowPalette(IReadOnlyList<Color> colors)
     {
         FillPalette.Colors = colors;
+        TitleFillPalette.Colors = colors;
         LinePalette.Colors = colors;
         TextPalette.Colors = colors;
         TextOutlinePalette.Colors = colors;
@@ -211,6 +217,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         _isShowingChoices = true;
 
         FillPalette.SelectedColor = style.Fill;
+        TitleFillPalette.SelectedColor = style.TitleFill.A == 0 ? Color.Empty : style.TitleFill;
         LinePalette.SelectedColor = style.Line;
         TextPalette.SelectedColor = style.TextColor;
         // With no edge, its swatch shows no color, as no fill does; the color is kept for when it's turned on
@@ -318,11 +325,20 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         ProportionsCheckBox.Checked = properties.Locks is DiagramLock locks && locks.HasFlag(DiagramLock.AspectRatio);
         ResetSizeButton.Visible = properties.HasImages;
         ShowNumber(CornerRadiusLabel, CornerRadiusBox, properties.CornerRadius);
+        ShowNumber(BottomCornerRadiusLabel, BottomCornerRadiusBox, properties.BottomCornerRadius);
         ShowNumber(LineWidthLabel, LineWidthBox, properties.LineWidth);
         ShowNumber(FontSizeLabel, FontSizeBox, properties.FontSize);
+        TextAlignLabel.Visible = properties.TextAlignment is not null;
+        TextAlignPropertyBox.Visible = properties.TextAlignment is not null;
+        TextAlignPropertyBox.SelectedIndex = (int)(properties.TextAlignment ?? DiagramTextAlignment.Center);
         ShowNumber(TextOutlineWidthLabel, TextOutlineWidthBox, properties.TextOutlineWidth);
 
         ShowColor(FillLabel, FillColorButton, properties.Fill);
+        ShowColor(
+            TitleFillLabel,
+            TitleFillColorButton,
+            properties.TitleFill is { IsEmpty: false, A: 0 } ? Color.Empty : properties.TitleFill);
+        ShowTitleFillAsFill(properties);
         ShowColor(LineLabel, LineColorButton, properties.Line);
         ShowColor(TextColorLabel, TextColorButton, properties.TextColor);
         ShowColor(
@@ -378,6 +394,9 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         PasteStyleContextMenuItem.Enabled = menu.CanPasteStyle;
         GroupContextMenuItem.Enabled = menu.CanGroup;
         UngroupContextMenuItem.Enabled = menu.CanUngroup;
+        AlignContextMenuItem.Enabled = menu.CanAlign;
+        DistributeHorizontallyContextMenuItem.Enabled = menu.CanDistribute;
+        DistributeVerticallyContextMenuItem.Enabled = menu.CanDistribute;
         SelectionMenu.Show(Canvas, location);
     }
 
@@ -453,6 +472,22 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         };
 
         return dialog.ShowDialog(this) == DialogResult.OK ? dialog.FileName : null;
+    }
+
+    /// <summary>The size is the type chosen in the dialog: the same picture, at twice the pixels or not.</summary>
+    public DiagramPngExportModel? AskExportPng(string suggestedFileName)
+    {
+        using var dialog = new SaveFileDialog
+        {
+            DefaultExt = "png",
+            FileName = suggestedFileName,
+            Filter = "PNG picture, twice as large, sharper (*.png)|*.png|PNG picture, actual size (*.png)|*.png",
+            Title = "Export as PNG",
+        };
+
+        return dialog.ShowDialog(this) == DialogResult.OK
+            ? new DiagramPngExportModel(dialog.FileName, dialog.FilterIndex == 2 ? 1 : 2)
+            : null;
     }
 
     public string? AskExportPdfPath(string suggestedFileName)
@@ -544,6 +579,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
             || RoutingPropertyBox.DroppedDown
             || ArrowsPropertyBox.DroppedDown
             || DirectionPropertyBox.DroppedDown
+            || TextAlignPropertyBox.DroppedDown
             || FontFamilyBox.DroppedDown)
         {
             return base.ProcessCmdKey(ref msg, keyData);
@@ -610,6 +646,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         HexagonButton,
         CylinderButton,
         DocumentButton,
+        ContainerButton,
         TextButton,
     ];
 
@@ -669,6 +706,26 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     private static string LockGlyph(bool isLocked) => isLocked ? "\U0001F512" : "\U0001F513";
 
     /// <summary>A color on the button; null hides the field, and an empty color reads as none.</summary>
+    /// <summary>
+    ///     A container without a title fill shows its fill in the band, so its button shows that color too, saying so,
+    ///     rather than "None", which wouldn't be what the band looks like.
+    /// </summary>
+    private void ShowTitleFillAsFill(DiagramPropertiesModel properties)
+    {
+        bool isSameAsFill = properties is { TitleFill.IsEmpty: true, Fill: { IsEmpty: false } };
+
+        TitleFillColorButton.ForeColor = SystemColors.ControlText;
+
+        if (isSameAsFill)
+        {
+            Color fill = properties.Fill!.Value;
+
+            TitleFillColorButton.BackColor = fill;
+            TitleFillColorButton.ForeColor = fill.GetBrightness() < 0.5f ? Color.White : Color.Black;
+            TitleFillColorButton.Text = "Same as fill";
+        }
+    }
+
     private static void ShowColor(Label label, Button button, Color? color)
     {
         label.Visible = color is not null;
@@ -831,6 +888,14 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         CommandRequested?.Invoke(this, DiagramCommand.ResetSize);
     }
 
+    private void BottomCornerRadiusBox_ValueChanged(object? sender, EventArgs e)
+    {
+        if (!_isShowingChoices)
+        {
+            BottomCornerRadiusEdited?.Invoke(this, (int)BottomCornerRadiusBox.Value);
+        }
+    }
+
     private void CornerRadiusBox_ValueChanged(object? sender, EventArgs e)
     {
         if (!_isShowingChoices)
@@ -844,6 +909,14 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         if (!_isShowingChoices)
         {
             LineWidthSelected?.Invoke(this, (int)LineWidthBox.Value);
+        }
+    }
+
+    private void TextAlignPropertyBox_SelectedIndexChanged(object? sender, EventArgs e)
+    {
+        if (!_isShowingChoices && TextAlignPropertyBox.SelectedIndex >= 0)
+        {
+            TextAlignmentSelected?.Invoke(this, (DiagramTextAlignment)TextAlignPropertyBox.SelectedIndex);
         }
     }
 
@@ -903,6 +976,35 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         {
             LineDirectionSelected?.Invoke(this, (DiagramLineDirection)DirectionPropertyBox.SelectedIndex);
         }
+    }
+
+    private void TitleFillColorButton_Click(object? sender, EventArgs e)
+    {
+        ShowColorMenu(TitleFillDropDownButton, TitleFillColorButton);
+    }
+
+    private void TitleFillPalette_ColorPicked(object? sender, Color color)
+    {
+        TitleFillDropDownButton.DropDown.Close();
+        Canvas.Focus();
+        ColorSelected?.Invoke(this, new DiagramColorChoiceModel(DiagramColorTarget.TitleFill, color));
+    }
+
+    private void NoTitleFillMenuItem_Click(object? sender, EventArgs e)
+    {
+        ColorSelected?.Invoke(
+            this,
+            new DiagramColorChoiceModel(DiagramColorTarget.TitleFill, DiagramStyleModel.NoTitleFill));
+    }
+
+    private void SameAsFillMenuItem_Click(object? sender, EventArgs e)
+    {
+        ColorSelected?.Invoke(this, new DiagramColorChoiceModel(DiagramColorTarget.TitleFill, Color.Empty));
+    }
+
+    private void MoreTitleFillColorsMenuItem_Click(object? sender, EventArgs e)
+    {
+        MoreColorsRequested?.Invoke(this, DiagramColorTarget.TitleFill);
     }
 
     private void FillColorButton_Click(object? sender, EventArgs e)
@@ -1295,6 +1397,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
             (Keys.Control, Keys.S) => DiagramCommand.Save,
             (Keys.Control | Keys.Shift, Keys.S) => DiagramCommand.SaveAs,
             (Keys.Control, Keys.E) => DiagramCommand.ExportPdf,
+            (Keys.Control | Keys.Shift, Keys.E) => DiagramCommand.ExportPng,
             (Keys.Control, Keys.Z) => DiagramCommand.Undo,
             (Keys.Control, Keys.Y) or (Keys.Control | Keys.Shift, Keys.Z) => DiagramCommand.Redo,
             (Keys.Control, Keys.X) => DiagramCommand.Cut,
@@ -1334,6 +1437,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
             (Keys.None, Keys.H) => DiagramTool.Hexagon,
             (Keys.None, Keys.Y) => DiagramTool.Cylinder,
             (Keys.None, Keys.M) => DiagramTool.Document,
+            (Keys.None, Keys.B) => DiagramTool.Container,
             (Keys.None, Keys.T) => DiagramTool.Text,
             _ => null,
         };

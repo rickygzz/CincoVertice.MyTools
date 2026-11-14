@@ -15,12 +15,13 @@ public class DiagramEditorPresenterTests
     private readonly FakeStore _store = new();
     private readonly FakeSettingsStore _settings = new();
     private readonly FakeExporter _exporter = new();
+    private readonly FakePngExporter _pngExporter = new();
     private readonly FakeImageCatalog _catalog = new();
     private readonly DiagramEditorPresenter _presenter;
 
     public DiagramEditorPresenterTests()
     {
-        _presenter = new DiagramEditorPresenter(_view, _store, _settings, _exporter, _catalog);
+        _presenter = new DiagramEditorPresenter(_view, _store, _settings, _exporter, _pngExporter, _catalog);
         _presenter.Start();
     }
 
@@ -2176,7 +2177,8 @@ public class DiagramEditorPresenterTests
     private (FakeView View, DiagramEditorPresenter Presenter) NewEditor(DiagramEditorSettingsModel? saved)
     {
         var view = new FakeView();
-        var presenter = new DiagramEditorPresenter(view, _store, new FakeSettingsStore(saved), _exporter, _catalog);
+        var presenter =
+            new DiagramEditorPresenter(view, _store, new FakeSettingsStore(saved), _exporter, _pngExporter, _catalog);
 
         presenter.Start();
 
@@ -2330,7 +2332,7 @@ public class DiagramEditorPresenterTests
             Window: window));
         var view = new FakeView();
 
-        new DiagramEditorPresenter(view, _store, store, _exporter, _catalog).Start();
+        new DiagramEditorPresenter(view, _store, store, _exporter, _pngExporter, _catalog).Start();
 
         // Act
         view.SelectLineWidth(5);
@@ -2849,7 +2851,7 @@ public class DiagramEditorPresenterTests
     }
 
     [Fact]
-    public void RightClick_OnTheSelection_KeepsItAll()
+    public void RightClick_OnTheSelection_KeepsItAll_AndSaysWhetherItCanBeAligned()
     {
         // Arrange
         AddShape(100, 100);
@@ -2859,9 +2861,376 @@ public class DiagramEditorPresenterTests
         // Act
         _view.RightClick(120, 120);
 
-        // Assert
+        // Assert: two can be aligned, but it takes three to distribute
+        Assert.True(_view.ContextMenu!.Value.Menu.CanAlign);
+        Assert.False(_view.ContextMenu.Value.Menu.CanDistribute);
         _view.Command(DiagramCommand.Delete);
         Assert.Empty(Diagram.Shapes);
+    }
+
+    // Three shapes of 100 by 50, at (100, 100), (300, 200) and (500, 300)
+    private void ThreeShapesSelected()
+    {
+        AddShape(100, 100);
+        AddShape(300, 200);
+        AddShape(500, 300);
+        _view.Command(DiagramCommand.SelectAll);
+    }
+
+    [Theory]
+    [InlineData(DiagramCommand.AlignLeft, "100,200 100,300 100,400")]
+    [InlineData(DiagramCommand.AlignCenter, "300,200 300,300 300,400")]
+    [InlineData(DiagramCommand.AlignRight, "500,200 500,300 500,400")]
+    [InlineData(DiagramCommand.AlignTop, "100,100 300,100 500,100")]
+    [InlineData(DiagramCommand.AlignMiddle, "100,200 300,200 500,200")]
+    [InlineData(DiagramCommand.AlignBottom, "100,300 300,300 500,300")]
+    public void Align_LinesUpTheShapes_WithTheBoxAroundThemAll_InOneStep(DiagramCommand command, string expected)
+    {
+        // Arrange
+        ThreeShapesSelected();
+        DiagramModel before = Diagram;
+
+        // Act
+        _view.Command(command);
+
+        // Assert: the top left corners, for the left, center and right; else their left and top
+        string corners = string.Join(' ', Diagram.Shapes.Select(shape => command is DiagramCommand.AlignTop
+            or DiagramCommand.AlignMiddle or DiagramCommand.AlignBottom
+                ? $"{shape.Bounds.X},{shape.Bounds.Y}"
+                : $"{shape.Bounds.X},{shape.Bounds.Y + 100}"));
+        Assert.Equal(expected, corners);
+
+        _view.Command(DiagramCommand.Undo);
+        Assert.Same(before, Diagram);
+    }
+
+    [Fact]
+    public void Distribute_SpacesTheShapesEvenly_InTheOrderOfTheirMiddles_TheOuterTwoStaying()
+    {
+        // Arrange: 100, 100 and 150 wide, from 100 to 500
+        AddShape(100, 100);
+        AddShape(400, 200);
+        AddShape(150, 300, width: 150);
+        _view.Command(DiagramCommand.SelectAll);
+
+        // Act
+        _view.Command(DiagramCommand.DistributeHorizontally);
+
+        // Assert: 400 - 350 = 50 between them, so 25 each; the middle one by its middle is the widest
+        Assert.Equal([100, 400, 225], Diagram.Shapes.Select(shape => shape.Bounds.X));
+        Assert.Equal([100, 200, 300], Diagram.Shapes.Select(shape => shape.Bounds.Y));
+    }
+
+    [Fact]
+    public void Distribute_Vertically_SpacesThemOneAboveTheOther()
+    {
+        // Arrange
+        AddShape(100, 100);
+        AddShape(300, 170);
+        AddShape(500, 400);
+        _view.Command(DiagramCommand.SelectAll);
+
+        // Act
+        _view.Command(DiagramCommand.DistributeVertically);
+
+        // Assert
+        Assert.Equal([100, 250, 400], Diagram.Shapes.Select(shape => shape.Bounds.Y));
+    }
+
+    [Fact]
+    public void Align_AGroup_MovesAsOne()
+    {
+        // Arrange
+        AddShape(300, 100);
+        AddShape(400, 200);
+        _view.Command(DiagramCommand.SelectAll);
+        _view.Command(DiagramCommand.Group);
+        AddShape(100, 400);
+        _view.Command(DiagramCommand.SelectAll);
+
+        // Act
+        _view.Command(DiagramCommand.AlignLeft);
+
+        // Assert: the group's left edge, not each of its shapes'
+        Assert.Equal([100, 200, 100], Diagram.Shapes.Select(shape => shape.Bounds.X));
+    }
+
+    [Fact]
+    public void Align_AShapeWithItsXLocked_StaysWhereItIs()
+    {
+        // Arrange
+        AddShape(300, 100);
+        _view.ToggleLock(DiagramLock.X, isLocked: true);
+        AddShape(100, 300);
+        _view.Command(DiagramCommand.SelectAll);
+
+        // Act
+        _view.Command(DiagramCommand.AlignRight);
+
+        // Assert
+        Assert.Equal([300, 300], Diagram.Shapes.Select(shape => shape.Bounds.X));
+    }
+
+    // A shape at (200, 200), one outside at (600, 200), and a container at (150, 150), 300 by 250, around the first
+    private (DiagramShapeModel Inside, DiagramShapeModel Outside, DiagramShapeModel Container) ContainerAroundAShape()
+    {
+        DiagramShapeModel inside = AddShape(200, 200);
+        DiagramShapeModel outside = AddShape(600, 200);
+
+        _view.Tool(DiagramTool.Container);
+        _view.Drag(150, 150, 450, 400, alt: true);
+
+        return (inside, outside, Diagram.Shapes.Single(shape => shape.Kind == DiagramShapeKind.Container));
+    }
+
+    private DiagramShapeModel ShapeOf(DiagramShapeModel shape) => Diagram.Shapes.Single(s => s.Id == shape.Id);
+
+    [Fact]
+    public void Container_DrawnAroundAShape_GoesUnderIt_AndIsSelected()
+    {
+        // Act
+        (DiagramShapeModel inside, _, DiagramShapeModel container) = ContainerAroundAShape();
+
+        // Assert: under the first shape it's around, so it doesn't hide it
+        Assert.Equal([container.Id, inside.Id], Diagram.Shapes.Take(2).Select(shape => shape.Id));
+        Assert.Equal(Box(150, 150, 300, 250), container.Bounds);
+        Assert.Equal([container.Id], _presenter.SelectedShapeIds);
+        Assert.Equal("Container", _view.Properties!.Title);
+    }
+
+    [Fact]
+    public void Container_DraggedByItsTitle_TakesWhatsInIt_NotWhatsOutside()
+    {
+        // Arrange
+        (DiagramShapeModel inside, DiagramShapeModel outside, DiagramShapeModel container) = ContainerAroundAShape();
+        _view.Click(800, 800);
+
+        // Act
+        _view.Drag(160, 160, 260, 180, alt: true);
+
+        // Assert
+        Assert.Equal(Box(250, 170, 300, 250), ShapeOf(container).Bounds);
+        Assert.Equal(Box(300, 220, 100, 50), ShapeOf(inside).Bounds);
+        Assert.Equal(outside.Bounds, ShapeOf(outside).Bounds);
+    }
+
+    [Fact]
+    public void Container_APressInsideIt_StartsASelectionBox_OverWhatsInIt()
+    {
+        // Arrange
+        (DiagramShapeModel inside, _, _) = ContainerAroundAShape();
+        _view.Click(800, 800);
+        DiagramModel before = Diagram;
+
+        // Act
+        _view.Drag(180, 190, 330, 270);
+
+        // Assert
+        Assert.Same(before, Diagram);
+        Assert.Equal([inside.Id], _presenter.SelectedShapeIds);
+    }
+
+    [Fact]
+    public void Container_Nudged_TakesWhatsInIt_ButScaled_LeavesIt()
+    {
+        // Arrange
+        (DiagramShapeModel inside, _, DiagramShapeModel container) = ContainerAroundAShape();
+
+        // Act / Assert
+        _view.Nudge(10, 0);
+        Assert.Equal(210, ShapeOf(inside).Bounds.X);
+
+        _view.Drag(460, 275, 560, 275, alt: true);
+        Assert.Equal(Box(160, 150, 400, 250), ShapeOf(container).Bounds);
+        Assert.Equal(210, ShapeOf(inside).Bounds.X);
+    }
+
+    [Fact]
+    public void Container_Copied_TakesWhatsInIt()
+    {
+        // Arrange
+        ContainerAroundAShape();
+
+        // Act
+        _view.Command(DiagramCommand.Copy);
+        _view.Command(DiagramCommand.Paste);
+
+        // Assert: the copy of the container under the copy of what's in it
+        Assert.Equal(5, Diagram.Shapes.Count);
+        Assert.Equal(
+            [DiagramShapeKind.Container, DiagramShapeKind.Rectangle],
+            Diagram.Shapes.Skip(3).Select(shape => shape.Kind));
+        Assert.Equal(Box(220, 220, 100, 50), Diagram.Shapes[^1].Bounds);
+    }
+
+    [Fact]
+    public void TextAlignment_GoesToTheSelection_AndToWhatComesNext_AsOneStep()
+    {
+        // Arrange
+        AddShape(100, 100);
+        Assert.Equal(DiagramTextAlignment.Center, _view.Properties!.TextAlignment);
+
+        // Act
+        _view.SelectTextAlignment(DiagramTextAlignment.Left);
+        AddShape(400, 100);
+
+        // Assert
+        Assert.All(Diagram.Shapes, shape => Assert.Equal(DiagramTextAlignment.Left, shape.Style.TextAlignment));
+        Assert.Equal(DiagramTextAlignment.Left, _view.Properties!.TextAlignment);
+        _view.Command(DiagramCommand.Undo);
+        _view.Command(DiagramCommand.Undo);
+        Assert.Equal(DiagramTextAlignment.Center, Assert.Single(Diagram.Shapes).Style.TextAlignment);
+    }
+
+    [Fact]
+    public void Container_TitleFill_IsItsOwn_AndShowsOnlyForContainers()
+    {
+        // Arrange
+        (DiagramShapeModel inside, _, DiagramShapeModel container) = ContainerAroundAShape();
+        Color blue = Color.FromArgb(0, 120, 212);
+        Assert.Equal(Color.Empty, _view.Properties!.TitleFill);
+
+        // Act
+        _view.SelectColor(DiagramColorTarget.TitleFill, blue);
+        _view.RequestMoreColors(DiagramColorTarget.TitleFill);
+
+        // Assert: the fill of its inside stays as it was
+        Assert.Equal(blue, ShapeOf(container).Style.TitleFill);
+        Assert.Equal(container.Style.Fill, ShapeOf(container).Style.Fill);
+        Assert.Equal(blue, _view.Properties!.TitleFill);
+        Assert.Equal(blue, _view.AskedColorFrom);
+
+        _view.Click(inside.Bounds.X + 5, inside.Bounds.Y + 5);
+        Assert.Null(_view.Properties!.TitleFill);
+    }
+
+    [Fact]
+    public void Container_TitleFillOfNone_IsKept_AndShowsAsSuch()
+    {
+        // Arrange
+        (_, _, DiagramShapeModel container) = ContainerAroundAShape();
+
+        // Act
+        _view.SelectColor(DiagramColorTarget.TitleFill, DiagramStyleModel.NoTitleFill);
+
+        // Assert: not made opaque, as a color picked is
+        Assert.Equal(DiagramStyleModel.NoTitleFill, ShapeOf(container).Style.TitleFill);
+        Assert.Equal(DiagramStyleModel.NoTitleFill, _view.Properties!.TitleFill);
+    }
+
+    [Fact]
+    public void Corners_TheTopAndTheBottomOnes_ChangeApart()
+    {
+        // Arrange
+        (_, _, DiagramShapeModel container) = ContainerAroundAShape();
+        Assert.Equal((0, 0), (_view.Properties!.CornerRadius, _view.Properties.BottomCornerRadius));
+
+        // Act / Assert
+        _view.EditCornerRadius(12);
+        Assert.Equal((12, 0), (_view.Properties!.CornerRadius, _view.Properties.BottomCornerRadius));
+
+        _view.EditBottomCornerRadius(30);
+        _view.EditCornerRadius(20);
+        Assert.Equal((20, 30), (_view.Properties!.CornerRadius, _view.Properties.BottomCornerRadius));
+        Assert.Equal((20, 30), (ShapeOf(container).CornerRadius, ShapeOf(container).BottomCornerRadius));
+
+        _view.Command(DiagramCommand.Undo);
+        _view.Command(DiagramCommand.Undo);
+        Assert.Equal((12, 0), (ShapeOf(container).CornerRadius, ShapeOf(container).BottomCornerRadius));
+    }
+
+    [Fact]
+    public void Corners_ARoundedRectangleFromBefore_KeepsItsBottomCorners_WhenItsTopOnesChange()
+    {
+        // Arrange: no radius of its own, so 12 all around
+        _view.Tool(DiagramTool.RoundedRectangle);
+        _view.Drag(100, 100, 300, 200);
+
+        // Act
+        _view.EditCornerRadius(0);
+
+        // Assert
+        Assert.Equal((0, 12), (Diagram.Shapes[0].CornerRadius, Diagram.Shapes[0].BottomCornerRadius));
+    }
+
+    [Fact]
+    public void Container_WithABiggerTitle_TypesItInItsTallerBand()
+    {
+        // Arrange
+        ContainerAroundAShape();
+        _view.SelectFontSize(32);
+
+        // Act: below a band of 32, in one of 52
+        _view.DoubleClick(300, 190);
+
+        // Assert
+        Assert.Equal(Box(150, 150, 300, 52), _view.TextBounds);
+    }
+
+    [Fact]
+    public void Container_DoubleClickOnItsTitle_TypesItInItsBand()
+    {
+        // Arrange
+        ContainerAroundAShape();
+
+        // Act
+        _view.DoubleClick(300, 160);
+
+        // Assert
+        Assert.Equal(Box(150, 150, 300, 32), _view.TextBounds);
+    }
+
+    [Fact]
+    public void Container_AConnector_CanEndAnywhereOnIt()
+    {
+        // Arrange
+        (_, DiagramShapeModel outside, DiagramShapeModel container) = ContainerAroundAShape();
+
+        // Act
+        _view.Tool(DiagramTool.Connector);
+        _view.Drag(650, 225, 420, 350);
+
+        // Assert
+        DiagramConnectorModel connector = Assert.Single(Diagram.Connectors);
+        Assert.Equal((outside.Id, container.Id), (connector.FromShapeId, connector.ToShapeId));
+    }
+
+    [Fact]
+    public void Container_Aligned_TakesWhatsInIt()
+    {
+        // Arrange
+        (DiagramShapeModel inside, DiagramShapeModel outside, _) = ContainerAroundAShape();
+        _view.Click(800, 800);
+        _view.Click(300, 160);
+        _view.Click(650, 225, shift: true);
+
+        // Act
+        _view.Command(DiagramCommand.AlignRight);
+
+        // Assert: the container's right edge goes to the other shape's, 250 further
+        Assert.Equal(450, ShapeOf(inside).Bounds.X);
+        Assert.Equal(600, ShapeOf(outside).Bounds.X);
+    }
+
+    [Theory]
+    [InlineData(DiagramCommand.AlignLeft, 1)]
+    [InlineData(DiagramCommand.DistributeHorizontally, 2)]
+    public void Arrange_WithTooFewSelected_DoesNothing(DiagramCommand command, int count)
+    {
+        // Arrange
+        for (int i = 0; i < count; i++)
+        {
+            AddShape(100 + i * 200, 100 + i * 100);
+        }
+
+        _view.Command(DiagramCommand.SelectAll);
+        DiagramModel before = Diagram;
+
+        // Act
+        _view.Command(command);
+
+        // Assert
+        Assert.Same(before, Diagram);
     }
 
     [Fact]
@@ -3770,6 +4139,36 @@ public class DiagramEditorPresenterTests
     }
 
     [Fact]
+    public void ExportPng_AsksWhereAndHowLarge_ThenExportsTheDiagram()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.PngToExport = new DiagramPngExportModel(@"C:\out\flow.png", 2);
+
+        // Act
+        _view.Command(DiagramCommand.ExportPng);
+
+        // Assert
+        Assert.Equal("Diagram.png", _view.SuggestedPngName);
+        Assert.Equal((@"C:\out\flow.png", Diagram, 2), _pngExporter.Exported);
+        Assert.True(_view.HasChanges);
+    }
+
+    [Fact]
+    public void ExportPng_ThatFails_SaysWhy()
+    {
+        // Arrange
+        _view.PngToExport = new DiagramPngExportModel(@"C:\out\flow.png", 1);
+        _pngExporter.Error = new IOException("The disk is full.");
+
+        // Act
+        _view.Command(DiagramCommand.ExportPng);
+
+        // Assert
+        Assert.Equal("Could not export flow.png: The disk is full.", _view.Error);
+    }
+
+    [Fact]
     public void ExportPdf_AsksWhere_ThenExportsTheDiagram_WhichStaysUnsaved()
     {
         // Arrange
@@ -4162,6 +4561,23 @@ public class DiagramEditorPresenterTests
         }
     }
 
+    private sealed class FakePngExporter : IDiagramPngExporter
+    {
+        public (string Path, DiagramModel Diagram, int Scale)? Exported { get; private set; }
+
+        public Exception? Error { get; set; }
+
+        public void Export(string path, DiagramModel diagram, int scale)
+        {
+            if (Error is not null)
+            {
+                throw Error;
+            }
+
+            Exported = (path, diagram, scale);
+        }
+    }
+
     private sealed class FakeExporter : IDiagramPdfExporter
     {
         public string? ExportedPath { get; private set; }
@@ -4223,11 +4639,18 @@ public class DiagramEditorPresenterTests
 
         public event EventHandler<DiagramLineDirection>? LineDirectionSelected;
 
+        public event EventHandler<DiagramTextAlignment>? TextAlignmentSelected;
+
+        public void SelectTextAlignment(DiagramTextAlignment alignment) =>
+            TextAlignmentSelected?.Invoke(this, alignment);
+
         public event EventHandler<DiagramFilesDropModel>? FilesDropped;
 
         public event EventHandler<Rectangle>? BoundsEdited;
 
         public event EventHandler<int>? CornerRadiusEdited;
+
+        public event EventHandler<int>? BottomCornerRadiusEdited;
 
         public event EventHandler<DiagramLockChoiceModel>? LockToggled;
 
@@ -4424,6 +4847,8 @@ public class DiagramEditorPresenterTests
 
         public void EditCornerRadius(int radius) => CornerRadiusEdited?.Invoke(this, radius);
 
+        public void EditBottomCornerRadius(int radius) => BottomCornerRadiusEdited?.Invoke(this, radius);
+
         public void ToggleLock(DiagramLock which, bool isLocked) =>
             LockToggled?.Invoke(this, new DiagramLockChoiceModel(which, isLocked));
 
@@ -4490,6 +4915,17 @@ public class DiagramEditorPresenterTests
         public string? PathToExport { get; set; }
 
         public string? SuggestedPdfName { get; private set; }
+
+        public DiagramPngExportModel? PngToExport { get; set; }
+
+        public string? SuggestedPngName { get; private set; }
+
+        public DiagramPngExportModel? AskExportPng(string suggestedFileName)
+        {
+            SuggestedPngName = suggestedFileName;
+
+            return PngToExport;
+        }
 
         public string? AskExportPdfPath(string suggestedFileName)
         {

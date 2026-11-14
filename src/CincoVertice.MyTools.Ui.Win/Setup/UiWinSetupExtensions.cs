@@ -148,6 +148,7 @@ public static class UiWinSetupExtensions
         services.AddSingleton<IDiagramImageCatalog>(_ =>
             new FolderDiagramImageCatalog(OpenDiagramEditorAction.ImagesFolder));
         services.AddSingleton<IDiagramPdfExporter, PdfDiagramExporter>();
+        services.AddSingleton<IDiagramPngExporter, PngDiagramExporter>();
         services.AddSingleton<IDiagramEditorSettingsStore>(_ =>
             new JsonFileDiagramEditorSettingsStore(OpenDiagramEditorAction.SettingsFilePath));
         services.AddSingleton(_ => RobotoFontInstaller.ForCurrentUser());

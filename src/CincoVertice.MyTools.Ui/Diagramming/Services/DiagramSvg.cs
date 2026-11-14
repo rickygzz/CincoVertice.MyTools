@@ -118,14 +118,23 @@ public static class DiagramSvg
                 new XAttribute(_xlink + "href", DiagramSvgImage.DataUri(DiagramSvgImage.Filling(markup)))));
         }
 
-        foreach (DiagramFigureModel figure in DiagramFigures.Of(shape.Kind, shape.Bounds, shape.CornerRadius))
+        foreach (DiagramFigureModel figure in DiagramFigures.Of(shape))
         {
             var path = new XElement(
                 _svg + "path",
                 new XAttribute("d", PathData(figure)),
-                new XAttribute("fill", figure.Filled && !shape.Style.Fill.IsEmpty ? Hex(shape.Style.Fill) : "none"));
+                new XAttribute("fill", DiagramFigures.FillOf(figure, shape.Style) is { IsEmpty: false } fill
+                    ? Hex(fill)
+                    : "none"));
 
-            AddLineStyle(path, shape.Style);
+            if (figure.Stroked)
+            {
+                AddLineStyle(path, shape.Style);
+            }
+            else
+            {
+                path.Add(new XAttribute("stroke", "none"));
+            }
             group.Add(path);
         }
 
@@ -164,7 +173,8 @@ public static class DiagramSvg
             DiagramTextBlockModel block = DiagramTextLayout.LayoutAt(
                 connector.Label,
                 path.LabelCenter,
-                connector.Style.FontSize);
+                connector.Style.FontSize,
+                connector.Style.TextAlignment);
 
             // So the line doesn't run through the words
             group.Add(new XElement(
@@ -242,7 +252,12 @@ public static class DiagramSvg
     {
         var text = new XElement(
             _svg + "text",
-            new XAttribute("text-anchor", "middle"),
+            new XAttribute("text-anchor", block.Alignment switch
+            {
+                DiagramTextAlignment.Left => "start",
+                DiagramTextAlignment.Right => "end",
+                _ => "middle",
+            }),
 
             // In quotes for a name with spaces; on a computer without it, any sans serif font shows instead
             new XAttribute("font-family", $"'{style.FontFamily.Replace("'", string.Empty)}', sans-serif"),
@@ -257,7 +272,7 @@ public static class DiagramSvg
 
             text.Add(new XElement(
                 _svg + "tspan",
-                new XAttribute("x", Number(block.CenterX)),
+                new XAttribute("x", Number(block.X)),
                 new XAttribute("y", Number(baseline)),
                 WithoutInvalidCharacters(block.Lines[i])));
         }

@@ -47,9 +47,10 @@ All other actions have no default hotkey. Add them in `hotkeys.cfg`.
 
 | Key | Effect |
 |---|---|
-| V, C, L, R, U, O, D, P, H, Y, M, T | Select, Connector, Line, Rectangle, Rounded rectangle, Ellipse, Diamond, Parallelogram, Hexagon, Cylinder, Document, Text |
+| V, C, L, R, U, O, D, P, H, Y, M, B, T | Select, Connector, Line, Rectangle, Rounded rectangle, Ellipse, Diamond, Parallelogram, Hexagon, Cylinder, Document, Container, Text |
 | Ctrl+N / Ctrl+O / Ctrl+S / Ctrl+Shift+S | New / open / save / save as |
 | Ctrl+E | Export as PDF |
+| Ctrl+Shift+E | Export as PNG |
 | Ctrl+Z / Ctrl+Y or Ctrl+Shift+Z | Undo / redo |
 | Delete or Backspace | Delete the selection |
 | Space (held) or middle mouse button | Drag the view |

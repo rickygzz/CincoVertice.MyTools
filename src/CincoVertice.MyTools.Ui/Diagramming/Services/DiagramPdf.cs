@@ -87,21 +87,23 @@ public static class DiagramPdf
     private static void WriteShape(StringBuilder content, DiagramShapeModel shape, IDiagramTextOutliner textOutliner)
     {
         DiagramStyleModel style = shape.Style;
-        bool hasFill = !style.Fill.IsEmpty;
         bool hasLine = style.LineWidth > 0;
 
         content.Append("q\n");
         WriteLineStyle(content, style);
 
-        if (hasFill)
+        foreach (DiagramFigureModel figure in DiagramFigures.Of(shape))
         {
-            content.Append($"{Color(style.Fill)} rg\n");
-        }
+            // Each figure its own fill: a container's title band has another
+            Color fill = DiagramFigures.FillOf(figure, style);
 
-        foreach (DiagramFigureModel figure in DiagramFigures.Of(shape.Kind, shape.Bounds, shape.CornerRadius))
-        {
+            if (!fill.IsEmpty)
+            {
+                content.Append($"{Color(fill)} rg\n");
+            }
+
             // Filled, then the line over it, as on the screen
-            string? paint = (figure.Filled && hasFill, hasLine) switch
+            string? paint = (!fill.IsEmpty, hasLine && figure.Stroked) switch
             {
                 (true, true) => "B",
                 (true, false) => "f",
@@ -162,7 +164,11 @@ public static class DiagramPdf
 
         if (connector.Label.Length > 0)
         {
-            DiagramTextBlockModel block = DiagramTextLayout.LayoutAt(connector.Label, path.LabelCenter, style.FontSize);
+            DiagramTextBlockModel block = DiagramTextLayout.LayoutAt(
+                connector.Label,
+                path.LabelCenter,
+                style.FontSize,
+                style.TextAlignment);
             RectangleF back = block.Bounds;
 
             // So the line doesn't run through the words

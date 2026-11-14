@@ -9,4 +9,7 @@ public enum DiagramColorTarget
     Line,
     Text,
     TextOutline,
+
+    /// <summary>A container's title band.</summary>
+    TitleFill,
 }

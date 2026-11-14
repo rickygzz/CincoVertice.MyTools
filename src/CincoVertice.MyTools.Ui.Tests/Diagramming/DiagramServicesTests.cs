@@ -990,7 +990,155 @@ public class DiagramServicesTests
         DiagramTextBlockModel block = DiagramTextLayout.Layout("a", new RectangleF(0, 0, 100, 100), 20);
 
         // Assert
-        Assert.Equal(50, block.CenterX);
+        Assert.Equal(50, block.X);
         Assert.Equal(50 - block.LineHeight / 2, block.Top);
+    }
+
+    [Theory]
+    [InlineData(DiagramTextAlignment.Left, 10, 10)]
+    [InlineData(DiagramTextAlignment.Center, 60, 49)]
+    [InlineData(DiagramTextAlignment.Right, 110, 88)]
+    public void Layout_PutsTheLinesWhereTheAlignmentSays(DiagramTextAlignment alignment, float x, float left)
+    {
+        // Act: 2 letters of 20 pixels are about 22 wide
+        DiagramTextBlockModel block = DiagramTextLayout.Layout("ab", new RectangleF(10, 0, 100, 40), 20, alignment);
+
+        // Assert
+        Assert.Equal((x, alignment), (block.X, block.Alignment));
+        Assert.Equal(left, block.Bounds.Left);
+    }
+
+    [Theory]
+    [InlineData(DiagramTextAlignment.Left, 89)]
+    [InlineData(DiagramTextAlignment.Center, 100)]
+    [InlineData(DiagramTextAlignment.Right, 111)]
+    public void LayoutAt_TheLinesLineUpAtTheSideChosen_OfABlockCenteredOnThePoint(
+        DiagramTextAlignment alignment,
+        float x)
+    {
+        // Act: the longer line, "ab", is about 22 wide
+        DiagramTextBlockModel block = DiagramTextLayout.LayoutAt("ab\na", new PointF(100, 50), 20, alignment);
+
+        // Assert
+        Assert.Equal(x, block.X);
+        Assert.Equal(89, block.Bounds.Left);
+    }
+
+    [Theory]
+    [InlineData("", 14, 32)]
+    [InlineData("Resource group", 14, 32)]
+    [InlineData("Resource group", 32, 52)]
+    [InlineData("A title long enough to take two lines in a narrow box", 14, 47)]
+    public void ContainerTitle_IsAsHighAsItsLines_AndNeverLowerThan32(string title, int fontSize, float height)
+    {
+        // Arrange
+        DiagramShapeModel container = new(
+            1,
+            DiagramShapeKind.Container,
+            new Rectangle(0, 0, 300, 200),
+            title,
+            _style with { FontSize = fontSize });
+
+        // Act
+        RectangleF band = DiagramFigures.ContainerTitle(container);
+        DiagramFigureModel line = DiagramFigures.Of(container)[^1];
+
+        // Assert: the line under the band is at its bottom, and the text in the middle of it
+        Assert.Equal(height, band.Height);
+        Assert.Equal(height, line.Segments[0].Points[0].Y);
+        Assert.Equal(height / 2, DiagramTextLayout.OfShape(container).Bounds.Top
+            + DiagramTextLayout.OfShape(container).Bounds.Height / 2, 3);
+    }
+
+    private static DiagramShapeModel Container(Color titleFill, int? top = null, int? bottom = null) => new(
+        1,
+        DiagramShapeKind.Container,
+        new Rectangle(0, 0, 300, 200),
+        string.Empty,
+        _style with { Fill = Color.Blue, TitleFill = titleFill },
+        CornerRadius: top,
+        BottomCornerRadius: bottom);
+
+    [Fact]
+    public void Container_ATitleFillOfItsOwnOrNone_LeavesTheInsideFillBelowTheBand()
+    {
+        // Act
+        IReadOnlyList<DiagramFigureModel> same = DiagramFigures.Of(Container(Color.Empty));
+        IReadOnlyList<DiagramFigureModel> none = DiagramFigures.Of(Container(DiagramStyleModel.NoTitleFill));
+        IReadOnlyList<DiagramFigureModel> own = DiagramFigures.Of(Container(Color.Red));
+
+        // Assert: the inside starts at the top, or under the 32 of the band
+        Assert.Equal(0, same[0].Segments[0].Points[0].Y);
+        Assert.Equal(32, none[0].Segments[0].Points[0].Y);
+        Assert.Equal(32, own[0].Segments[0].Points[0].Y);
+        Assert.Equal(Color.Blue, DiagramFigures.FillOf(same[1], Container(Color.Empty).Style));
+        Assert.Equal(Color.Empty, DiagramFigures.FillOf(none[1], Container(DiagramStyleModel.NoTitleFill).Style));
+        Assert.Equal(Color.Red, DiagramFigures.FillOf(own[1], Container(Color.Red).Style));
+    }
+
+    [Theory]
+    [InlineData(10, null, 4)]
+    [InlineData(10, 0, 2)]
+    [InlineData(0, 10, 2)]
+    [InlineData(0, null, 0)]
+    public void Corners_TopAndBottom_AreRoundedEachAsTheirRadiusSays(int top, int? bottom, int curves)
+    {
+        // Arrange
+        DiagramShapeModel rectangle = new(
+            1,
+            DiagramShapeKind.Rectangle,
+            new Rectangle(0, 0, 100, 50),
+            string.Empty,
+            _style,
+            CornerRadius: top,
+            BottomCornerRadius: bottom);
+
+        // Act
+        DiagramFigureModel outline = Assert.Single(DiagramFigures.Of(rectangle));
+
+        // Assert
+        Assert.Equal(curves, outline.Segments.Count(segment => segment.Operation == DiagramPathOperation.Curve));
+    }
+
+    [Fact]
+    public void Container_ItsTopCorners_AreNoRounderThanItsBandIsHigh()
+    {
+        // Act: a radius of 80, on a band of 32
+        DiagramFigureModel border = DiagramFigures.Of(Container(Color.Red, top: 80, bottom: 0))[2];
+
+        // Assert: the border starts after the top left corner, 32 from the left
+        Assert.Equal(new PointF(32, 0), border.Segments[0].Points[0]);
+    }
+
+    [Fact]
+    public void ContainerTitle_IsNeverHigherThanTheContainer()
+    {
+        // Arrange
+        DiagramShapeModel container = new(
+            1,
+            DiagramShapeKind.Container,
+            new Rectangle(0, 0, 300, 40),
+            "Big",
+            _style with { FontSize = 60 });
+
+        // Act / Assert
+        Assert.Equal(40, DiagramFigures.ContainerTitle(container).Height);
+    }
+
+    [Fact]
+    public void HitTest_AContainersTallerTitle_PicksIt()
+    {
+        // Arrange
+        DiagramShapeModel container = new(
+            1,
+            DiagramShapeKind.Container,
+            new Rectangle(0, 0, 300, 200),
+            "Resource group",
+            _style with { FontSize = 32 });
+        var diagram = new DiagramModel([container], []);
+
+        // Act / Assert: 45 is below a title of 14 pixels, but in this one
+        Assert.Same(container, DiagramHitTester.ShapeAt(diagram, new Point(150, 45)));
+        Assert.Null(DiagramHitTester.ShapeAt(diagram, new Point(150, 100)));
     }
 }

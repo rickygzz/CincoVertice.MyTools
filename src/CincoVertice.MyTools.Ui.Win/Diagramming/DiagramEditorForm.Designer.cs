@@ -17,6 +17,9 @@ partial class DiagramEditorForm
         {
             components?.Dispose();
             SelectionMenu.Dispose();
+
+            // On no toolbar, so nothing else disposes it: the properties panel shows its menu
+            TitleFillDropDownButton.Dispose();
             _textFont?.Dispose();
 
             foreach (Image image in _images.Concat(_swatches.Values))
@@ -37,6 +40,29 @@ partial class DiagramEditorForm
     {
         components = new System.ComponentModel.Container();
         SelectionMenu = new ContextMenuStrip();
+        AlignDropDownButton = new ToolStripDropDownButton();
+        AlignContextMenuItem = new ToolStripMenuItem();
+        AlignContextSeparator = new ToolStripSeparator();
+        AlignLeftMenuItem = new ToolStripMenuItem();
+        AlignLeftContextMenuItem = new ToolStripMenuItem();
+        AlignCenterMenuItem = new ToolStripMenuItem();
+        AlignCenterContextMenuItem = new ToolStripMenuItem();
+        AlignRightMenuItem = new ToolStripMenuItem();
+        AlignRightContextMenuItem = new ToolStripMenuItem();
+        AlignSeparator1 = new ToolStripSeparator();
+        AlignContextSeparator2 = new ToolStripSeparator();
+        AlignTopMenuItem = new ToolStripMenuItem();
+        AlignTopContextMenuItem = new ToolStripMenuItem();
+        AlignMiddleMenuItem = new ToolStripMenuItem();
+        AlignMiddleContextMenuItem = new ToolStripMenuItem();
+        AlignBottomMenuItem = new ToolStripMenuItem();
+        AlignBottomContextMenuItem = new ToolStripMenuItem();
+        AlignSeparator3 = new ToolStripSeparator();
+        AlignContextSeparator4 = new ToolStripSeparator();
+        DistributeHorizontallyMenuItem = new ToolStripMenuItem();
+        DistributeHorizontallyContextMenuItem = new ToolStripMenuItem();
+        DistributeVerticallyMenuItem = new ToolStripMenuItem();
+        DistributeVerticallyContextMenuItem = new ToolStripMenuItem();
         CopyStyleContextMenuItem = new ToolStripMenuItem();
         PasteStyleContextMenuItem = new ToolStripMenuItem();
         GroupContextSeparator = new ToolStripSeparator();
@@ -55,6 +81,7 @@ partial class DiagramEditorForm
         HexagonButton = new ToolStripButton();
         CylinderButton = new ToolStripButton();
         DocumentButton = new ToolStripButton();
+        ContainerButton = new ToolStripButton();
         TextButton = new ToolStripButton();
         StyleStrip = new ToolStrip();
         FileDropDownButton = new ToolStripDropDownButton();
@@ -63,6 +90,7 @@ partial class DiagramEditorForm
         SaveMenuItem = new ToolStripMenuItem();
         SaveAsMenuItem = new ToolStripMenuItem();
         ExportPdfMenuItem = new ToolStripMenuItem();
+        ExportPngMenuItem = new ToolStripMenuItem();
         ExitSeparator = new ToolStripSeparator();
         ExitMenuItem = new ToolStripMenuItem();
         FileSeparator = new ToolStripSeparator();
@@ -76,6 +104,14 @@ partial class DiagramEditorForm
         FillPaletteHost = new ToolStripControlHost(FillPalette);
         NoFillMenuItem = new ToolStripMenuItem();
         MoreFillColorsMenuItem = new ToolStripMenuItem();
+        TitleFillDropDownButton = new ToolStripDropDownButton();
+        TitleFillPalette = new Snipping.ColorPaletteControl();
+        TitleFillPaletteHost = new ToolStripControlHost(TitleFillPalette);
+        SameAsFillMenuItem = new ToolStripMenuItem();
+        NoTitleFillMenuItem = new ToolStripMenuItem();
+        MoreTitleFillColorsMenuItem = new ToolStripMenuItem();
+        TitleFillLabel = new Label();
+        TitleFillColorButton = new Button();
         LineDropDownButton = new ToolStripDropDownButton();
         LinePalette = new Snipping.ColorPaletteControl();
         LinePaletteHost = new ToolStripControlHost(LinePalette);
@@ -136,6 +172,8 @@ partial class DiagramEditorForm
         PropertiesToolTip = new ToolTip(components);
         CornerRadiusLabel = new Label();
         CornerRadiusBox = new NumericUpDown();
+        BottomCornerRadiusLabel = new Label();
+        BottomCornerRadiusBox = new NumericUpDown();
         FillLabel = new Label();
         FillColorButton = new Button();
         LineLabel = new Label();
@@ -149,6 +187,8 @@ partial class DiagramEditorForm
         FontFamilyBox = new ComboBox();
         FontSizeLabel = new Label();
         FontSizeBox = new NumericUpDown();
+        TextAlignLabel = new Label();
+        TextAlignPropertyBox = new ComboBox();
         TextOutlineLabel = new Label();
         TextOutlineColorButton = new Button();
         TextOutlineWidthLabel = new Label();
@@ -173,6 +213,7 @@ partial class DiagramEditorForm
         ((System.ComponentModel.ISupportInitialize)WidthBox).BeginInit();
         ((System.ComponentModel.ISupportInitialize)HeightBox).BeginInit();
         ((System.ComponentModel.ISupportInitialize)CornerRadiusBox).BeginInit();
+        ((System.ComponentModel.ISupportInitialize)BottomCornerRadiusBox).BeginInit();
         ((System.ComponentModel.ISupportInitialize)LineWidthBox).BeginInit();
         ((System.ComponentModel.ISupportInitialize)FontSizeBox).BeginInit();
         ((System.ComponentModel.ISupportInitialize)TextOutlineWidthBox).BeginInit();
@@ -182,7 +223,7 @@ partial class DiagramEditorForm
         //
         ToolsStrip.Dock = DockStyle.Left;
         ToolsStrip.GripStyle = ToolStripGripStyle.Hidden;
-        ToolsStrip.Items.AddRange(new ToolStripItem[] { SelectButton, ConnectorButton, LineButton, ToolsSeparator, RectangleButton, RoundedRectangleButton, EllipseButton, DiamondButton, ParallelogramButton, HexagonButton, CylinderButton, DocumentButton, TextButton });
+        ToolsStrip.Items.AddRange(new ToolStripItem[] { SelectButton, ConnectorButton, LineButton, ToolsSeparator, RectangleButton, RoundedRectangleButton, EllipseButton, DiamondButton, ParallelogramButton, HexagonButton, CylinderButton, DocumentButton, ContainerButton, TextButton });
         ToolsStrip.LayoutStyle = ToolStripLayoutStyle.VerticalStackWithOverflow;
         ToolsStrip.Name = "ToolsStrip";
         ToolsStrip.TabIndex = 2;
@@ -290,6 +331,15 @@ partial class DiagramEditorForm
         DocumentButton.ToolTipText = "Document (M)";
         DocumentButton.Click += ToolButton_Click;
         //
+        // ContainerButton
+        //
+        ContainerButton.DisplayStyle = ToolStripItemDisplayStyle.Image;
+        ContainerButton.Name = "ContainerButton";
+        ContainerButton.Tag = "Container";
+        ContainerButton.Text = "Container";
+        ContainerButton.ToolTipText = "Container (B): a box with a title; what's inside goes along when it's moved";
+        ContainerButton.Click += ToolButton_Click;
+        //
         // TextButton
         //
         TextButton.DisplayStyle = ToolStripItemDisplayStyle.Image;
@@ -302,7 +352,7 @@ partial class DiagramEditorForm
         // StyleStrip
         //
         StyleStrip.GripStyle = ToolStripGripStyle.Hidden;
-        StyleStrip.Items.AddRange(new ToolStripItem[] { FileDropDownButton, EditDropDownButton, FileSeparator, FillDropDownButton, LineDropDownButton, LineWidthComboBox, DashedButton, TextColorDropDownButton, FontSizeComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, StyleSeparator, RoutingComboBox, ArrowHeadsComboBox, ResetRouteButton, ConnectorsSeparator, FrontButton, BackButton, ZoomLabel, PropertiesButton, ImagesButton });
+        StyleStrip.Items.AddRange(new ToolStripItem[] { FileDropDownButton, EditDropDownButton, FileSeparator, FillDropDownButton, LineDropDownButton, LineWidthComboBox, DashedButton, TextColorDropDownButton, FontSizeComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, StyleSeparator, RoutingComboBox, ArrowHeadsComboBox, ResetRouteButton, ConnectorsSeparator, FrontButton, BackButton, AlignDropDownButton, ZoomLabel, PropertiesButton, ImagesButton });
         StyleStrip.Name = "StyleStrip";
         StyleStrip.Padding = new Padding(4, 2, 4, 2);
         StyleStrip.TabIndex = 1;
@@ -319,9 +369,155 @@ partial class DiagramEditorForm
         //
         GroupSeparator.Name = "GroupSeparator";
         //
+        // AlignDropDownButton
+        //
+        AlignDropDownButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
+        AlignDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { AlignLeftMenuItem, AlignCenterMenuItem, AlignRightMenuItem, AlignSeparator1, AlignTopMenuItem, AlignMiddleMenuItem, AlignBottomMenuItem, AlignSeparator3, DistributeHorizontallyMenuItem, DistributeVerticallyMenuItem });
+        AlignDropDownButton.Name = "AlignDropDownButton";
+        AlignDropDownButton.Text = "Align";
+        AlignDropDownButton.ToolTipText = "Line up the selected shapes, or space them evenly";
+        //
+        // AlignContextMenuItem
+        //
+        AlignContextMenuItem.DropDownItems.AddRange(new ToolStripItem[] { AlignLeftContextMenuItem, AlignCenterContextMenuItem, AlignRightContextMenuItem, AlignContextSeparator2, AlignTopContextMenuItem, AlignMiddleContextMenuItem, AlignBottomContextMenuItem, AlignContextSeparator4, DistributeHorizontallyContextMenuItem, DistributeVerticallyContextMenuItem });
+        AlignContextMenuItem.Name = "AlignContextMenuItem";
+        AlignContextMenuItem.Text = "Align";
+        //
+        // AlignContextSeparator
+        //
+        AlignContextSeparator.Name = "AlignContextSeparator";
+        //
+        // AlignLeftMenuItem
+        //
+        AlignLeftMenuItem.Name = "AlignLeftMenuItem";
+        AlignLeftMenuItem.Tag = "AlignLeft";
+        AlignLeftMenuItem.Text = "Align left";
+        AlignLeftMenuItem.ToolTipText = "Line up the left edges with the leftmost";
+        AlignLeftMenuItem.Click += CommandButton_Click;
+        //
+        // AlignLeftContextMenuItem
+        //
+        AlignLeftContextMenuItem.Name = "AlignLeftContextMenuItem";
+        AlignLeftContextMenuItem.Tag = "AlignLeft";
+        AlignLeftContextMenuItem.Text = "Align left";
+        AlignLeftContextMenuItem.ToolTipText = "Line up the left edges with the leftmost";
+        AlignLeftContextMenuItem.Click += CommandButton_Click;
+        //
+        // AlignCenterMenuItem
+        //
+        AlignCenterMenuItem.Name = "AlignCenterMenuItem";
+        AlignCenterMenuItem.Tag = "AlignCenter";
+        AlignCenterMenuItem.Text = "Align centers";
+        AlignCenterMenuItem.ToolTipText = "Line up the middles, left to right";
+        AlignCenterMenuItem.Click += CommandButton_Click;
+        //
+        // AlignCenterContextMenuItem
+        //
+        AlignCenterContextMenuItem.Name = "AlignCenterContextMenuItem";
+        AlignCenterContextMenuItem.Tag = "AlignCenter";
+        AlignCenterContextMenuItem.Text = "Align centers";
+        AlignCenterContextMenuItem.ToolTipText = "Line up the middles, left to right";
+        AlignCenterContextMenuItem.Click += CommandButton_Click;
+        //
+        // AlignRightMenuItem
+        //
+        AlignRightMenuItem.Name = "AlignRightMenuItem";
+        AlignRightMenuItem.Tag = "AlignRight";
+        AlignRightMenuItem.Text = "Align right";
+        AlignRightMenuItem.ToolTipText = "Line up the right edges with the rightmost";
+        AlignRightMenuItem.Click += CommandButton_Click;
+        //
+        // AlignRightContextMenuItem
+        //
+        AlignRightContextMenuItem.Name = "AlignRightContextMenuItem";
+        AlignRightContextMenuItem.Tag = "AlignRight";
+        AlignRightContextMenuItem.Text = "Align right";
+        AlignRightContextMenuItem.ToolTipText = "Line up the right edges with the rightmost";
+        AlignRightContextMenuItem.Click += CommandButton_Click;
+        //
+        // AlignTopMenuItem
+        //
+        AlignTopMenuItem.Name = "AlignTopMenuItem";
+        AlignTopMenuItem.Tag = "AlignTop";
+        AlignTopMenuItem.Text = "Align tops";
+        AlignTopMenuItem.ToolTipText = "Line up the top edges with the highest";
+        AlignTopMenuItem.Click += CommandButton_Click;
+        //
+        // AlignTopContextMenuItem
+        //
+        AlignTopContextMenuItem.Name = "AlignTopContextMenuItem";
+        AlignTopContextMenuItem.Tag = "AlignTop";
+        AlignTopContextMenuItem.Text = "Align tops";
+        AlignTopContextMenuItem.ToolTipText = "Line up the top edges with the highest";
+        AlignTopContextMenuItem.Click += CommandButton_Click;
+        //
+        // AlignMiddleMenuItem
+        //
+        AlignMiddleMenuItem.Name = "AlignMiddleMenuItem";
+        AlignMiddleMenuItem.Tag = "AlignMiddle";
+        AlignMiddleMenuItem.Text = "Align middles";
+        AlignMiddleMenuItem.ToolTipText = "Line up the middles, top to bottom";
+        AlignMiddleMenuItem.Click += CommandButton_Click;
+        //
+        // AlignMiddleContextMenuItem
+        //
+        AlignMiddleContextMenuItem.Name = "AlignMiddleContextMenuItem";
+        AlignMiddleContextMenuItem.Tag = "AlignMiddle";
+        AlignMiddleContextMenuItem.Text = "Align middles";
+        AlignMiddleContextMenuItem.ToolTipText = "Line up the middles, top to bottom";
+        AlignMiddleContextMenuItem.Click += CommandButton_Click;
+        //
+        // AlignBottomMenuItem
+        //
+        AlignBottomMenuItem.Name = "AlignBottomMenuItem";
+        AlignBottomMenuItem.Tag = "AlignBottom";
+        AlignBottomMenuItem.Text = "Align bottoms";
+        AlignBottomMenuItem.ToolTipText = "Line up the bottom edges with the lowest";
+        AlignBottomMenuItem.Click += CommandButton_Click;
+        //
+        // AlignBottomContextMenuItem
+        //
+        AlignBottomContextMenuItem.Name = "AlignBottomContextMenuItem";
+        AlignBottomContextMenuItem.Tag = "AlignBottom";
+        AlignBottomContextMenuItem.Text = "Align bottoms";
+        AlignBottomContextMenuItem.ToolTipText = "Line up the bottom edges with the lowest";
+        AlignBottomContextMenuItem.Click += CommandButton_Click;
+        //
+        // DistributeHorizontallyMenuItem
+        //
+        DistributeHorizontallyMenuItem.Name = "DistributeHorizontallyMenuItem";
+        DistributeHorizontallyMenuItem.Tag = "DistributeHorizontally";
+        DistributeHorizontallyMenuItem.Text = "Distribute horizontally";
+        DistributeHorizontallyMenuItem.ToolTipText = "The same space between each two, side by side";
+        DistributeHorizontallyMenuItem.Click += CommandButton_Click;
+        //
+        // DistributeHorizontallyContextMenuItem
+        //
+        DistributeHorizontallyContextMenuItem.Name = "DistributeHorizontallyContextMenuItem";
+        DistributeHorizontallyContextMenuItem.Tag = "DistributeHorizontally";
+        DistributeHorizontallyContextMenuItem.Text = "Distribute horizontally";
+        DistributeHorizontallyContextMenuItem.ToolTipText = "The same space between each two, side by side";
+        DistributeHorizontallyContextMenuItem.Click += CommandButton_Click;
+        //
+        // DistributeVerticallyMenuItem
+        //
+        DistributeVerticallyMenuItem.Name = "DistributeVerticallyMenuItem";
+        DistributeVerticallyMenuItem.Tag = "DistributeVertically";
+        DistributeVerticallyMenuItem.Text = "Distribute vertically";
+        DistributeVerticallyMenuItem.ToolTipText = "The same space between each two, one above the other";
+        DistributeVerticallyMenuItem.Click += CommandButton_Click;
+        //
+        // DistributeVerticallyContextMenuItem
+        //
+        DistributeVerticallyContextMenuItem.Name = "DistributeVerticallyContextMenuItem";
+        DistributeVerticallyContextMenuItem.Tag = "DistributeVertically";
+        DistributeVerticallyContextMenuItem.Text = "Distribute vertically";
+        DistributeVerticallyContextMenuItem.ToolTipText = "The same space between each two, one above the other";
+        DistributeVerticallyContextMenuItem.Click += CommandButton_Click;
+        //
         // SelectionMenu
         //
-        SelectionMenu.Items.AddRange(new ToolStripItem[] { CopyStyleContextMenuItem, PasteStyleContextMenuItem, GroupContextSeparator, GroupContextMenuItem, UngroupContextMenuItem });
+        SelectionMenu.Items.AddRange(new ToolStripItem[] { CopyStyleContextMenuItem, PasteStyleContextMenuItem, GroupContextSeparator, GroupContextMenuItem, UngroupContextMenuItem, AlignContextSeparator, AlignContextMenuItem });
         SelectionMenu.Name = "SelectionMenu";
         //
         // CopyStyleContextMenuItem
@@ -363,7 +559,7 @@ partial class DiagramEditorForm
         // FileDropDownButton
         //
         FileDropDownButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
-        FileDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { NewMenuItem, OpenMenuItem, SaveMenuItem, SaveAsMenuItem, ExportPdfMenuItem, ExitSeparator, ExitMenuItem });
+        FileDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { NewMenuItem, OpenMenuItem, SaveMenuItem, SaveAsMenuItem, ExportPdfMenuItem, ExportPngMenuItem, ExitSeparator, ExitMenuItem });
         FileDropDownButton.Name = "FileDropDownButton";
         FileDropDownButton.Text = "File";
         FileDropDownButton.ToolTipText = "New, open, save, export and close";
@@ -412,6 +608,15 @@ partial class DiagramEditorForm
         ExportPdfMenuItem.Text = "Export as PDF...";
         ExportPdfMenuItem.ToolTipText = "Save a copy as a PDF file, to share or print";
         ExportPdfMenuItem.Click += CommandButton_Click;
+        //
+        // ExportPngMenuItem
+        //
+        ExportPngMenuItem.Name = "ExportPngMenuItem";
+        ExportPngMenuItem.ShortcutKeyDisplayString = "Ctrl+Shift+E";
+        ExportPngMenuItem.Tag = "ExportPng";
+        ExportPngMenuItem.Text = "Export as PNG...";
+        ExportPngMenuItem.ToolTipText = "Save a copy as a PNG picture, for chats and emails";
+        ExportPngMenuItem.Click += CommandButton_Click;
         //
         // ExitSeparator
         //
@@ -497,6 +702,40 @@ partial class DiagramEditorForm
         MoreFillColorsMenuItem.Name = "MoreFillColorsMenuItem";
         MoreFillColorsMenuItem.Text = "More colors...";
         MoreFillColorsMenuItem.Click += MoreFillColorsMenuItem_Click;
+        //
+        // TitleFillDropDownButton
+        //
+        TitleFillDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { TitleFillPaletteHost, SameAsFillMenuItem, NoTitleFillMenuItem, MoreTitleFillColorsMenuItem });
+        TitleFillDropDownButton.Name = "TitleFillDropDownButton";
+        TitleFillDropDownButton.Text = "Title fill";
+        //
+        // TitleFillPalette
+        //
+        TitleFillPalette.Name = "TitleFillPalette";
+        TitleFillPalette.ColorPicked += TitleFillPalette_ColorPicked;
+        //
+        // TitleFillPaletteHost
+        //
+        TitleFillPaletteHost.AutoSize = true;
+        TitleFillPaletteHost.Name = "TitleFillPaletteHost";
+        //
+        // SameAsFillMenuItem
+        //
+        SameAsFillMenuItem.Name = "SameAsFillMenuItem";
+        SameAsFillMenuItem.Text = "Same as fill";
+        SameAsFillMenuItem.Click += SameAsFillMenuItem_Click;
+        //
+        // NoTitleFillMenuItem
+        //
+        NoTitleFillMenuItem.Name = "NoTitleFillMenuItem";
+        NoTitleFillMenuItem.Text = "No title fill";
+        NoTitleFillMenuItem.Click += NoTitleFillMenuItem_Click;
+        //
+        // MoreTitleFillColorsMenuItem
+        //
+        MoreTitleFillColorsMenuItem.Name = "MoreTitleFillColorsMenuItem";
+        MoreTitleFillColorsMenuItem.Text = "More colors...";
+        MoreTitleFillColorsMenuItem.Click += MoreTitleFillColorsMenuItem_Click;
         //
         // LineDropDownButton
         //
@@ -821,45 +1060,54 @@ partial class DiagramEditorForm
         PropertiesTable.Controls.Add(CornerRadiusLabel, 0, 8);
         PropertiesTable.Controls.Add(CornerRadiusBox, 1, 8);
         PropertiesTable.SetColumnSpan(CornerRadiusBox, 2);
-        PropertiesTable.Controls.Add(FillLabel, 0, 9);
-        PropertiesTable.Controls.Add(FillColorButton, 1, 9);
+        PropertiesTable.Controls.Add(BottomCornerRadiusLabel, 0, 9);
+        PropertiesTable.Controls.Add(BottomCornerRadiusBox, 1, 9);
+        PropertiesTable.SetColumnSpan(BottomCornerRadiusBox, 2);
+        PropertiesTable.Controls.Add(FillLabel, 0, 10);
+        PropertiesTable.Controls.Add(FillColorButton, 1, 10);
         PropertiesTable.SetColumnSpan(FillColorButton, 2);
-        PropertiesTable.Controls.Add(LineLabel, 0, 10);
-        PropertiesTable.Controls.Add(LineColorButton, 1, 10);
+        PropertiesTable.Controls.Add(TitleFillLabel, 0, 11);
+        PropertiesTable.Controls.Add(TitleFillColorButton, 1, 11);
+        PropertiesTable.SetColumnSpan(TitleFillColorButton, 2);
+        PropertiesTable.Controls.Add(LineLabel, 0, 12);
+        PropertiesTable.Controls.Add(LineColorButton, 1, 12);
         PropertiesTable.SetColumnSpan(LineColorButton, 2);
-        PropertiesTable.Controls.Add(LineWidthLabel, 0, 11);
-        PropertiesTable.Controls.Add(LineWidthBox, 1, 11);
+        PropertiesTable.Controls.Add(LineWidthLabel, 0, 13);
+        PropertiesTable.Controls.Add(LineWidthBox, 1, 13);
         PropertiesTable.SetColumnSpan(LineWidthBox, 2);
-        PropertiesTable.Controls.Add(DashedCheckBox, 1, 12);
+        PropertiesTable.Controls.Add(DashedCheckBox, 1, 14);
         PropertiesTable.SetColumnSpan(DashedCheckBox, 2);
-        PropertiesTable.Controls.Add(TextColorLabel, 0, 13);
-        PropertiesTable.Controls.Add(TextColorButton, 1, 13);
+        PropertiesTable.Controls.Add(TextColorLabel, 0, 15);
+        PropertiesTable.Controls.Add(TextColorButton, 1, 15);
         PropertiesTable.SetColumnSpan(TextColorButton, 2);
-        PropertiesTable.Controls.Add(FontFamilyLabel, 0, 14);
-        PropertiesTable.Controls.Add(FontFamilyBox, 1, 14);
+        PropertiesTable.Controls.Add(FontFamilyLabel, 0, 16);
+        PropertiesTable.Controls.Add(FontFamilyBox, 1, 16);
         PropertiesTable.SetColumnSpan(FontFamilyBox, 2);
-        PropertiesTable.Controls.Add(FontSizeLabel, 0, 15);
-        PropertiesTable.Controls.Add(FontSizeBox, 1, 15);
+        PropertiesTable.Controls.Add(FontSizeLabel, 0, 17);
+        PropertiesTable.Controls.Add(FontSizeBox, 1, 17);
+        PropertiesTable.Controls.Add(TextAlignLabel, 0, 18);
+        PropertiesTable.Controls.Add(TextAlignPropertyBox, 1, 18);
+        PropertiesTable.SetColumnSpan(TextAlignPropertyBox, 2);
         PropertiesTable.SetColumnSpan(FontSizeBox, 2);
-        PropertiesTable.Controls.Add(TextOutlineLabel, 0, 16);
-        PropertiesTable.Controls.Add(TextOutlineColorButton, 1, 16);
+        PropertiesTable.Controls.Add(TextOutlineLabel, 0, 19);
+        PropertiesTable.Controls.Add(TextOutlineColorButton, 1, 19);
         PropertiesTable.SetColumnSpan(TextOutlineColorButton, 2);
-        PropertiesTable.Controls.Add(TextOutlineWidthLabel, 0, 17);
-        PropertiesTable.Controls.Add(TextOutlineWidthBox, 1, 17);
+        PropertiesTable.Controls.Add(TextOutlineWidthLabel, 0, 20);
+        PropertiesTable.Controls.Add(TextOutlineWidthBox, 1, 20);
         PropertiesTable.SetColumnSpan(TextOutlineWidthBox, 2);
-        PropertiesTable.Controls.Add(RoutingLabel, 0, 18);
-        PropertiesTable.Controls.Add(RoutingPropertyBox, 1, 18);
+        PropertiesTable.Controls.Add(RoutingLabel, 0, 21);
+        PropertiesTable.Controls.Add(RoutingPropertyBox, 1, 21);
         PropertiesTable.SetColumnSpan(RoutingPropertyBox, 2);
-        PropertiesTable.Controls.Add(ArrowsLabel, 0, 19);
-        PropertiesTable.Controls.Add(ArrowsPropertyBox, 1, 19);
+        PropertiesTable.Controls.Add(ArrowsLabel, 0, 22);
+        PropertiesTable.Controls.Add(ArrowsPropertyBox, 1, 22);
         PropertiesTable.SetColumnSpan(ArrowsPropertyBox, 2);
-        PropertiesTable.Controls.Add(DirectionLabel, 0, 20);
-        PropertiesTable.Controls.Add(DirectionPropertyBox, 1, 20);
+        PropertiesTable.Controls.Add(DirectionLabel, 0, 23);
+        PropertiesTable.Controls.Add(DirectionPropertyBox, 1, 23);
         PropertiesTable.SetColumnSpan(DirectionPropertyBox, 2);
         PropertiesTable.Dock = DockStyle.Top;
         PropertiesTable.Name = "PropertiesTable";
         PropertiesTable.Padding = new Padding(6);
-        PropertiesTable.RowCount = 21;
+        PropertiesTable.RowCount = 24;
         PropertiesTable.TabIndex = 0;
         //
         // PropertiesTitleLabel
@@ -1010,7 +1258,7 @@ partial class DiagramEditorForm
         CornerRadiusLabel.Anchor = AnchorStyles.Left;
         CornerRadiusLabel.AutoSize = true;
         CornerRadiusLabel.Name = "CornerRadiusLabel";
-        CornerRadiusLabel.Text = "Corner radius";
+        CornerRadiusLabel.Text = "Top corners";
         //
         // CornerRadiusBox
         //
@@ -1019,6 +1267,22 @@ partial class DiagramEditorForm
         CornerRadiusBox.Name = "CornerRadiusBox";
         CornerRadiusBox.TabIndex = 5;
         CornerRadiusBox.ValueChanged += CornerRadiusBox_ValueChanged;
+        PropertiesToolTip.SetToolTip(CornerRadiusBox, "How round the top corners are, the title band's too");
+        //
+        // BottomCornerRadiusLabel
+        //
+        BottomCornerRadiusLabel.Anchor = AnchorStyles.Left;
+        BottomCornerRadiusLabel.AutoSize = true;
+        BottomCornerRadiusLabel.Name = "BottomCornerRadiusLabel";
+        BottomCornerRadiusLabel.Text = "Bottom corners";
+        //
+        // BottomCornerRadiusBox
+        //
+        BottomCornerRadiusBox.Dock = DockStyle.Fill;
+        BottomCornerRadiusBox.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
+        BottomCornerRadiusBox.Name = "BottomCornerRadiusBox";
+        BottomCornerRadiusBox.TabIndex = 22;
+        BottomCornerRadiusBox.ValueChanged += BottomCornerRadiusBox_ValueChanged;
         //
         // FillLabel
         //
@@ -1034,6 +1298,21 @@ partial class DiagramEditorForm
         FillColorButton.Name = "FillColorButton";
         FillColorButton.TabIndex = 6;
         FillColorButton.Click += FillColorButton_Click;
+        //
+        // TitleFillLabel
+        //
+        TitleFillLabel.Anchor = AnchorStyles.Left;
+        TitleFillLabel.AutoSize = true;
+        TitleFillLabel.Name = "TitleFillLabel";
+        TitleFillLabel.Text = "Title fill";
+        //
+        // TitleFillColorButton
+        //
+        TitleFillColorButton.Dock = DockStyle.Fill;
+        TitleFillColorButton.FlatStyle = FlatStyle.Flat;
+        TitleFillColorButton.Name = "TitleFillColorButton";
+        TitleFillColorButton.TabIndex = 21;
+        TitleFillColorButton.Click += TitleFillColorButton_Click;
         //
         // LineLabel
         //
@@ -1139,6 +1418,21 @@ partial class DiagramEditorForm
         FontSizeBox.TabIndex = 11;
         FontSizeBox.Value = new decimal(new int[] { 6, 0, 0, 0 });
         FontSizeBox.ValueChanged += FontSizeBox_ValueChanged;
+        //
+        // TextAlignLabel
+        //
+        TextAlignLabel.Anchor = AnchorStyles.Left;
+        TextAlignLabel.AutoSize = true;
+        TextAlignLabel.Name = "TextAlignLabel";
+        TextAlignLabel.Text = "Text align";
+        //
+        // TextAlignPropertyBox
+        //
+        TextAlignPropertyBox.Dock = DockStyle.Fill;
+        TextAlignPropertyBox.DropDownStyle = ComboBoxStyle.DropDownList;
+        TextAlignPropertyBox.Name = "TextAlignPropertyBox";
+        TextAlignPropertyBox.TabIndex = 20;
+        TextAlignPropertyBox.SelectedIndexChanged += TextAlignPropertyBox_SelectedIndexChanged;
         //
         // TextOutlineLabel
         //
@@ -1284,6 +1578,7 @@ partial class DiagramEditorForm
         ((System.ComponentModel.ISupportInitialize)WidthBox).EndInit();
         ((System.ComponentModel.ISupportInitialize)HeightBox).EndInit();
         ((System.ComponentModel.ISupportInitialize)CornerRadiusBox).EndInit();
+        ((System.ComponentModel.ISupportInitialize)BottomCornerRadiusBox).EndInit();
         ((System.ComponentModel.ISupportInitialize)LineWidthBox).EndInit();
         ((System.ComponentModel.ISupportInitialize)FontSizeBox).EndInit();
         ((System.ComponentModel.ISupportInitialize)TextOutlineWidthBox).EndInit();
@@ -1300,6 +1595,29 @@ partial class DiagramEditorForm
     #endregion
 
     private ContextMenuStrip SelectionMenu;
+    private ToolStripDropDownButton AlignDropDownButton;
+    private ToolStripMenuItem AlignContextMenuItem;
+    private ToolStripSeparator AlignContextSeparator;
+    private ToolStripMenuItem AlignLeftMenuItem;
+    private ToolStripMenuItem AlignLeftContextMenuItem;
+    private ToolStripMenuItem AlignCenterMenuItem;
+    private ToolStripMenuItem AlignCenterContextMenuItem;
+    private ToolStripMenuItem AlignRightMenuItem;
+    private ToolStripMenuItem AlignRightContextMenuItem;
+    private ToolStripSeparator AlignSeparator1;
+    private ToolStripSeparator AlignContextSeparator2;
+    private ToolStripMenuItem AlignTopMenuItem;
+    private ToolStripMenuItem AlignTopContextMenuItem;
+    private ToolStripMenuItem AlignMiddleMenuItem;
+    private ToolStripMenuItem AlignMiddleContextMenuItem;
+    private ToolStripMenuItem AlignBottomMenuItem;
+    private ToolStripMenuItem AlignBottomContextMenuItem;
+    private ToolStripSeparator AlignSeparator3;
+    private ToolStripSeparator AlignContextSeparator4;
+    private ToolStripMenuItem DistributeHorizontallyMenuItem;
+    private ToolStripMenuItem DistributeHorizontallyContextMenuItem;
+    private ToolStripMenuItem DistributeVerticallyMenuItem;
+    private ToolStripMenuItem DistributeVerticallyContextMenuItem;
     private ToolStripMenuItem CopyStyleContextMenuItem;
     private ToolStripMenuItem PasteStyleContextMenuItem;
     private ToolStripSeparator GroupContextSeparator;
@@ -1318,6 +1636,7 @@ partial class DiagramEditorForm
     private ToolStripButton HexagonButton;
     private ToolStripButton CylinderButton;
     private ToolStripButton DocumentButton;
+    private ToolStripButton ContainerButton;
     private ToolStripButton TextButton;
     private ToolStrip StyleStrip;
     private ToolStripDropDownButton FileDropDownButton;
@@ -1326,6 +1645,7 @@ partial class DiagramEditorForm
     private ToolStripMenuItem SaveMenuItem;
     private ToolStripMenuItem SaveAsMenuItem;
     private ToolStripMenuItem ExportPdfMenuItem;
+    private ToolStripMenuItem ExportPngMenuItem;
     private ToolStripSeparator ExitSeparator;
     private ToolStripMenuItem ExitMenuItem;
     private ToolStripSeparator FileSeparator;
@@ -1422,6 +1742,18 @@ partial class DiagramEditorForm
     private ComboBox ArrowsPropertyBox;
     private Label DirectionLabel;
     private ComboBox DirectionPropertyBox;
+    private ToolStripDropDownButton TitleFillDropDownButton;
+    private Snipping.ColorPaletteControl TitleFillPalette;
+    private ToolStripControlHost TitleFillPaletteHost;
+    private ToolStripMenuItem SameAsFillMenuItem;
+    private ToolStripMenuItem NoTitleFillMenuItem;
+    private Label BottomCornerRadiusLabel;
+    private NumericUpDown BottomCornerRadiusBox;
+    private ToolStripMenuItem MoreTitleFillColorsMenuItem;
+    private Label TitleFillLabel;
+    private Button TitleFillColorButton;
+    private Label TextAlignLabel;
+    private ComboBox TextAlignPropertyBox;
     private CheckBox ProportionsCheckBox;
     private Button ResetSizeButton;
     private ToolStripMenuItem ResetSizeMenuItem;

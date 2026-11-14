@@ -521,6 +521,102 @@ public sealed class DiagramSvgTests : IDisposable
         Assert.DoesNotContain("fromShapeId", json);
     }
 
+    [Theory]
+    [InlineData(DiagramTextAlignment.Left, "start")]
+    [InlineData(DiagramTextAlignment.Center, "middle")]
+    [InlineData(DiagramTextAlignment.Right, "end")]
+    public void Write_TheTextsAlignment_IsItsAnchor_AndIsKept(DiagramTextAlignment alignment, string anchor)
+    {
+        // Arrange
+        DiagramModel diagram = new(
+            [
+                new DiagramShapeModel(
+                    1,
+                    DiagramShapeKind.Container,
+                    new Rectangle(0, 0, 300, 200),
+                    "Resource group",
+                    _style with { TextAlignment = alignment }),
+            ],
+            []);
+
+        // Act
+        string svg = DiagramSvg.Write(diagram);
+
+        // Assert: centered, as all text was before, isn't written in the diagram
+        XElement text = XDocument.Parse(svg).Descendants(_svg + "text").Single();
+        Assert.Equal(anchor, (string?)text.Attribute("text-anchor"));
+        Assert.Equal(diagram.Shapes, DiagramSvg.Read(svg).Shapes);
+        Assert.Equal(alignment != DiagramTextAlignment.Center, svg.Contains("textAlignment", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Write_AContainer_FillsItsTitleBandWithItsTitleFill_UnderItsBorder()
+    {
+        // Arrange
+        DiagramShapeModel container = new(
+            1,
+            DiagramShapeKind.Container,
+            new Rectangle(0, 0, 300, 200),
+            "Resource group",
+            _style with { Fill = Color.FromArgb(240, 247, 255), TitleFill = Color.FromArgb(0, 120, 212) });
+        DiagramModel diagram = new([container], []);
+
+        // Act
+        string svg = DiagramSvg.Write(diagram);
+
+        // Assert: the inside, the band, then the border and the line under the band, not filled
+        List<XElement> paths = [.. XDocument.Parse(svg).Descendants(_svg + "path")];
+        Assert.Equal(
+            ["#F0F7FF", "#0078D4", "none", "none"],
+            paths.Select(path => (string?)path.Attribute("fill")));
+        Assert.Equal(
+            ["none", "none"],
+            paths.Take(2).Select(path => (string?)path.Attribute("stroke")));
+        Assert.Equal(diagram.Shapes, DiagramSvg.Read(svg).Shapes);
+    }
+
+    [Fact]
+    public void Json_ATitleFillOfNone_AndBottomCorners_AreKept()
+    {
+        // Arrange
+        DiagramModel diagram = new(
+            [
+                new DiagramShapeModel(
+                    1,
+                    DiagramShapeKind.Container,
+                    new Rectangle(0, 0, 300, 200),
+                    "VNet",
+                    _style with { TitleFill = DiagramStyleModel.NoTitleFill },
+                    CornerRadius: 16,
+                    BottomCornerRadius: 0),
+            ],
+            []);
+
+        // Act
+        string json = DiagramJson.Write(diagram);
+
+        // Assert
+        Assert.Matches("""
+            "titleFill":\s*"none"
+            """, json);
+        Assert.Equal(diagram.Shapes, DiagramJson.Read(json).Shapes);
+    }
+
+    [Fact]
+    public void Json_ATextAlignmentNoneHas_IsCentered()
+    {
+        // Arrange
+        const string json = """
+            { "format": "mytools-diagram", "shapes": [
+                { "id": 1, "kind": "Rectangle", "x": 0, "y": 0, "width": 9, "height": 9,
+                  "style": { "lineWidth": 1, "fontSize": 14, "textAlignment": 7 } } ],
+              "connectors": [] }
+            """;
+
+        // Act / Assert
+        Assert.Equal(DiagramTextAlignment.Center, DiagramJson.Read(json).Shapes[0].Style.TextAlignment);
+    }
+
     [Fact]
     public void Json_ALinesDirection_IsKept_AndFreeIsntWritten()
     {

@@ -12,6 +12,9 @@ public enum DiagramCommand
 
     /// <summary>Writes a copy of the diagram as a PDF file, which can't be opened here again.</summary>
     ExportPdf,
+
+    /// <summary>Asks where, and how large, then writes the diagram as a PNG picture.</summary>
+    ExportPng,
     Undo,
     Redo,
     Cut,
@@ -36,6 +39,27 @@ public enum DiagramCommand
 
     /// <summary>Makes the selected connectors work out their own corners again.</summary>
     ResetRoute,
+
+    /// <summary>Lines up the left edges of the selected shapes with the leftmost; a group moves as one.</summary>
+    AlignLeft,
+
+    /// <summary>Lines up the middles of the selected shapes, left to right, with the middle of all of them.</summary>
+    AlignCenter,
+
+    AlignRight,
+
+    AlignTop,
+
+    /// <summary>Lines up the middles of the selected shapes, top to bottom, with the middle of all of them.</summary>
+    AlignMiddle,
+
+    AlignBottom,
+
+    /// <summary>The same space between each two of the selected shapes, side by side; the outer two stay.</summary>
+    DistributeHorizontally,
+
+    /// <summary>The same space between each two of the selected shapes, top to bottom; the outer two stay.</summary>
+    DistributeVertically,
 
     /// <summary>Gives the selected images the size they were inserted at, with their own proportions.</summary>
     ResetSize,

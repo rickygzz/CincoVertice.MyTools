@@ -17,4 +17,10 @@ public enum DiagramShapeKind
 
     /// <summary>An SVG image, such as an icon, drawn to fit the shape; its text goes under it.</summary>
     Image,
+
+    /// <summary>
+    ///     A box with a title band, drawn behind what's in it, which goes along when it's moved; e.g. a resource
+    ///     group or a network around their icons.
+    /// </summary>
+    Container,
 }
