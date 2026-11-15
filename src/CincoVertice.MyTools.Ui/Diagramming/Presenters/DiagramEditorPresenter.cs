@@ -206,6 +206,7 @@ public sealed class DiagramEditorPresenter
         _view.BottomCornerRadiusEdited += OnBottomCornerRadiusEdited;
         _view.LockToggled += OnLockToggled;
         _view.TextEdited += OnTextEdited;
+        _view.NameEdited += OnNameEdited;
         _view.TextCommitted += OnTextCommitted;
         _view.Closing += OnClosing;
         _view.PropertiesPanelToggled += OnPropertiesPanelToggled;
@@ -435,21 +436,33 @@ public sealed class DiagramEditorPresenter
         Refresh();
     }
 
-    private void OnLayerRenamed(object? sender, DiagramLayerRenameModel rename)
+    /// <summary>The name of the one thing selected, typed in the properties panel.</summary>
+    private void OnNameEdited(object? sender, string name)
     {
-        string? name = string.IsNullOrWhiteSpace(rename.Name) ? null : rename.Name.Trim();
+        if (_drag is null && _selectedShapes.Count + _selectedConnectors.Count == 1)
+        {
+            Rename(_selectedShapes.Concat(_selectedConnectors).Single(), name);
+        }
+    }
+
+    private void OnLayerRenamed(object? sender, DiagramLayerRenameModel rename) => Rename(rename.Id, rename.Name);
+
+    /// <summary>Names a shape or a connector; a name of only spaces is none: its kind and text show again.</summary>
+    private void Rename(int id, string typed)
+    {
+        string? name = string.IsNullOrWhiteSpace(typed) ? null : typed.Trim();
 
         Commit(
             _diagram with
             {
                 Shapes =
                 [
-                    .. _diagram.Shapes.Select(shape => shape.Id == rename.Id ? shape with { Name = name } : shape),
+                    .. _diagram.Shapes.Select(shape => shape.Id == id ? shape with { Name = name } : shape),
                 ],
                 Connectors =
                 [
                     .. _diagram.Connectors.Select(connector =>
-                        connector.Id == rename.Id ? connector with { Name = name } : connector),
+                        connector.Id == id ? connector with { Name = name } : connector),
                 ],
             },
             onlyIfChanged: true);
@@ -3532,10 +3545,12 @@ public sealed class DiagramEditorPresenter
         int? bottomCorner = hasCorners ? DiagramFigures.BottomCornerRadius(shapes[0]) : null;
 
         string? text = null;
+        string? name = null;
 
         if (shapes.Count + connectors.Count == 1)
         {
             text = shapes.Count == 1 ? shapes[0].Text : connectors[0].Label;
+            name = (shapes.Count == 1 ? shapes[0].Name : connectors[0].Name) ?? string.Empty;
         }
 
         return new DiagramPropertiesModel(
@@ -3561,7 +3576,8 @@ public sealed class DiagramEditorPresenter
             shapes.Any(shape => shape.Kind == DiagramShapeKind.Image),
             style.TextAlignment,
             shapes.FirstOrDefault(shape => shape.Kind == DiagramShapeKind.Container)?.Style.TitleFill,
-            bottomCorner);
+            bottomCorner,
+            name);
     }
 
     private static string TitleOf(List<DiagramShapeModel> shapes, List<DiagramConnectorModel> connectors)

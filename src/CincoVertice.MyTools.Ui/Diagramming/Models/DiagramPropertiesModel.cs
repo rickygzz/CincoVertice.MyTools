@@ -27,6 +27,9 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 /// <param name="TitleFill">A selected container's title band; <see cref="Color.Empty"/> for none.</param>
 /// <param name="TextAlignment">Where the lines of the text go.</param>
 /// <param name="HasImages">True when images are selected, whose size can be reset.</param>
+/// <param name="Name">
+///     The name of the one shape or connector selected, empty for none; null when not exactly one is selected.
+/// </param>
 public sealed record DiagramPropertiesModel(
     string Title,
     Rectangle? Bounds = null,
@@ -48,4 +51,5 @@ public sealed record DiagramPropertiesModel(
     bool HasImages = false,
     DiagramTextAlignment? TextAlignment = null,
     Color? TitleFill = null,
-    int? BottomCornerRadius = null);
+    int? BottomCornerRadius = null,
+    string? Name = null);

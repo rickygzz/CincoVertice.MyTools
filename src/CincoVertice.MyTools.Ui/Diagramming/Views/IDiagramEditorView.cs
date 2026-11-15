@@ -82,6 +82,9 @@ public interface IDiagramEditorView
     /// <summary>Raised with the text of the selected shape, or the label of the selected connector.</summary>
     event EventHandler<string>? TextEdited;
 
+    /// <summary>Raised with the name typed for the one shape or connector selected; empty for none.</summary>
+    event EventHandler<string>? NameEdited;
+
     /// <summary>
     ///     Raised with what was typed, and the parts of it in bold or italic, when the user ends a text begun by
     ///     <see cref="BeginTextEdit"/>; not when they cancel it.

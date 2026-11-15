@@ -161,6 +161,8 @@ partial class DiagramEditorForm
         ImagesFolderButton = new Button();
         PropertiesTable = new TableLayoutPanel();
         PropertiesTitleLabel = new Label();
+        NameLabel = new Label();
+        NamePropertyBox = new TextBox();
         TextLabel = new Label();
         TextPropertyBox = new TextBox();
         XLabel = new Label();
@@ -1188,90 +1190,93 @@ partial class DiagramEditorForm
         PropertiesTable.Controls.Add(PropertiesTitleLabel, 0, 0);
 
         PropertiesTable.SetColumnSpan(PropertiesTitleLabel, 3);
-        PropertiesTable.Controls.Add(TextLabel, 0, 1);
+        PropertiesTable.Controls.Add(NameLabel, 0, 1);
+        PropertiesTable.Controls.Add(NamePropertyBox, 1, 1);
+        PropertiesTable.SetColumnSpan(NamePropertyBox, 2);
+        PropertiesTable.Controls.Add(TextLabel, 0, 2);
 
-        PropertiesTable.Controls.Add(TextPropertyBox, 1, 1);
+        PropertiesTable.Controls.Add(TextPropertyBox, 1, 2);
 
         PropertiesTable.SetColumnSpan(TextPropertyBox, 2);
-        PropertiesTable.Controls.Add(XLabel, 0, 2);
+        PropertiesTable.Controls.Add(XLabel, 0, 3);
 
-        PropertiesTable.Controls.Add(XBox, 1, 2);
+        PropertiesTable.Controls.Add(XBox, 1, 3);
 
-        PropertiesTable.Controls.Add(XLockCheckBox, 2, 2);
+        PropertiesTable.Controls.Add(XLockCheckBox, 2, 3);
 
-        PropertiesTable.Controls.Add(YLabel, 0, 3);
+        PropertiesTable.Controls.Add(YLabel, 0, 4);
 
-        PropertiesTable.Controls.Add(YBox, 1, 3);
+        PropertiesTable.Controls.Add(YBox, 1, 4);
 
-        PropertiesTable.Controls.Add(YLockCheckBox, 2, 3);
+        PropertiesTable.Controls.Add(YLockCheckBox, 2, 4);
 
-        PropertiesTable.Controls.Add(WidthLabel, 0, 4);
+        PropertiesTable.Controls.Add(WidthLabel, 0, 5);
 
-        PropertiesTable.Controls.Add(WidthBox, 1, 4);
+        PropertiesTable.Controls.Add(WidthBox, 1, 5);
 
-        PropertiesTable.Controls.Add(WidthLockCheckBox, 2, 4);
+        PropertiesTable.Controls.Add(WidthLockCheckBox, 2, 5);
 
-        PropertiesTable.Controls.Add(HeightLabel, 0, 5);
+        PropertiesTable.Controls.Add(HeightLabel, 0, 6);
 
-        PropertiesTable.Controls.Add(HeightBox, 1, 5);
+        PropertiesTable.Controls.Add(HeightBox, 1, 6);
 
-        PropertiesTable.Controls.Add(HeightLockCheckBox, 2, 5);
-        PropertiesTable.Controls.Add(ProportionsCheckBox, 1, 6);
+        PropertiesTable.Controls.Add(HeightLockCheckBox, 2, 6);
+        PropertiesTable.Controls.Add(ProportionsCheckBox, 1, 7);
         PropertiesTable.SetColumnSpan(ProportionsCheckBox, 2);
-        PropertiesTable.Controls.Add(ResetSizeButton, 1, 7);
+        PropertiesTable.Controls.Add(ResetSizeButton, 1, 8);
         PropertiesTable.SetColumnSpan(ResetSizeButton, 2);
 
-        PropertiesTable.Controls.Add(CornerRadiusLabel, 0, 8);
-        PropertiesTable.Controls.Add(CornerRadiusBox, 1, 8);
+        PropertiesTable.Controls.Add(CornerRadiusLabel, 0, 9);
+        PropertiesTable.Controls.Add(CornerRadiusBox, 1, 9);
         PropertiesTable.SetColumnSpan(CornerRadiusBox, 2);
-        PropertiesTable.Controls.Add(BottomCornerRadiusLabel, 0, 9);
-        PropertiesTable.Controls.Add(BottomCornerRadiusBox, 1, 9);
+        PropertiesTable.Controls.Add(BottomCornerRadiusLabel, 0, 10);
+        PropertiesTable.Controls.Add(BottomCornerRadiusBox, 1, 10);
         PropertiesTable.SetColumnSpan(BottomCornerRadiusBox, 2);
-        PropertiesTable.Controls.Add(FillLabel, 0, 10);
-        PropertiesTable.Controls.Add(FillColorButton, 1, 10);
+        PropertiesTable.Controls.Add(FillLabel, 0, 11);
+        PropertiesTable.Controls.Add(FillColorButton, 1, 11);
         PropertiesTable.SetColumnSpan(FillColorButton, 2);
-        PropertiesTable.Controls.Add(TitleFillLabel, 0, 11);
-        PropertiesTable.Controls.Add(TitleFillColorButton, 1, 11);
+        PropertiesTable.Controls.Add(TitleFillLabel, 0, 12);
+        PropertiesTable.Controls.Add(TitleFillColorButton, 1, 12);
         PropertiesTable.SetColumnSpan(TitleFillColorButton, 2);
-        PropertiesTable.Controls.Add(LineLabel, 0, 12);
-        PropertiesTable.Controls.Add(LineColorButton, 1, 12);
+        PropertiesTable.Controls.Add(LineLabel, 0, 13);
+        PropertiesTable.Controls.Add(LineColorButton, 1, 13);
         PropertiesTable.SetColumnSpan(LineColorButton, 2);
-        PropertiesTable.Controls.Add(LineWidthLabel, 0, 13);
-        PropertiesTable.Controls.Add(LineWidthBox, 1, 13);
+        PropertiesTable.Controls.Add(LineWidthLabel, 0, 14);
+        PropertiesTable.Controls.Add(LineWidthBox, 1, 14);
         PropertiesTable.SetColumnSpan(LineWidthBox, 2);
-        PropertiesTable.Controls.Add(DashedCheckBox, 1, 14);
+        PropertiesTable.Controls.Add(DashedCheckBox, 1, 15);
         PropertiesTable.SetColumnSpan(DashedCheckBox, 2);
-        PropertiesTable.Controls.Add(TextColorLabel, 0, 15);
-        PropertiesTable.Controls.Add(TextColorButton, 1, 15);
+        PropertiesTable.Controls.Add(TextColorLabel, 0, 16);
+        PropertiesTable.Controls.Add(TextColorButton, 1, 16);
         PropertiesTable.SetColumnSpan(TextColorButton, 2);
-        PropertiesTable.Controls.Add(FontFamilyLabel, 0, 16);
-        PropertiesTable.Controls.Add(FontFamilyBox, 1, 16);
+        PropertiesTable.Controls.Add(FontFamilyLabel, 0, 17);
+        PropertiesTable.Controls.Add(FontFamilyBox, 1, 17);
         PropertiesTable.SetColumnSpan(FontFamilyBox, 2);
-        PropertiesTable.Controls.Add(FontSizeLabel, 0, 17);
-        PropertiesTable.Controls.Add(FontSizeBox, 1, 17);
-        PropertiesTable.Controls.Add(TextAlignLabel, 0, 18);
-        PropertiesTable.Controls.Add(TextAlignPropertyBox, 1, 18);
+        PropertiesTable.Controls.Add(FontSizeLabel, 0, 18);
+        PropertiesTable.Controls.Add(FontSizeBox, 1, 18);
+        PropertiesTable.Controls.Add(TextAlignLabel, 0, 19);
+        PropertiesTable.Controls.Add(TextAlignPropertyBox, 1, 19);
         PropertiesTable.SetColumnSpan(TextAlignPropertyBox, 2);
         PropertiesTable.SetColumnSpan(FontSizeBox, 2);
-        PropertiesTable.Controls.Add(TextOutlineLabel, 0, 19);
-        PropertiesTable.Controls.Add(TextOutlineColorButton, 1, 19);
+        PropertiesTable.Controls.Add(TextOutlineLabel, 0, 20);
+        PropertiesTable.Controls.Add(TextOutlineColorButton, 1, 20);
         PropertiesTable.SetColumnSpan(TextOutlineColorButton, 2);
-        PropertiesTable.Controls.Add(TextOutlineWidthLabel, 0, 20);
-        PropertiesTable.Controls.Add(TextOutlineWidthBox, 1, 20);
+        PropertiesTable.Controls.Add(TextOutlineWidthLabel, 0, 21);
+        PropertiesTable.Controls.Add(TextOutlineWidthBox, 1, 21);
         PropertiesTable.SetColumnSpan(TextOutlineWidthBox, 2);
-        PropertiesTable.Controls.Add(RoutingLabel, 0, 21);
-        PropertiesTable.Controls.Add(RoutingPropertyBox, 1, 21);
+        PropertiesTable.Controls.Add(RoutingLabel, 0, 22);
+        PropertiesTable.Controls.Add(RoutingPropertyBox, 1, 22);
         PropertiesTable.SetColumnSpan(RoutingPropertyBox, 2);
-        PropertiesTable.Controls.Add(ArrowsLabel, 0, 22);
-        PropertiesTable.Controls.Add(ArrowsPropertyBox, 1, 22);
+        PropertiesTable.Controls.Add(ArrowsLabel, 0, 23);
+        PropertiesTable.Controls.Add(ArrowsPropertyBox, 1, 23);
         PropertiesTable.SetColumnSpan(ArrowsPropertyBox, 2);
-        PropertiesTable.Controls.Add(DirectionLabel, 0, 23);
-        PropertiesTable.Controls.Add(DirectionPropertyBox, 1, 23);
+        PropertiesTable.Controls.Add(DirectionLabel, 0, 24);
+        PropertiesTable.Controls.Add(DirectionPropertyBox, 1, 24);
         PropertiesTable.SetColumnSpan(DirectionPropertyBox, 2);
         PropertiesTable.Dock = DockStyle.Top;
         PropertiesTable.Name = "PropertiesTable";
         PropertiesTable.Padding = new Padding(6);
-        PropertiesTable.RowCount = 24;
+        PropertiesTable.RowCount = 25;
         PropertiesTable.TabIndex = 0;
         //
         // PropertiesTitleLabel
@@ -1280,6 +1285,22 @@ partial class DiagramEditorForm
         PropertiesTitleLabel.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
         PropertiesTitleLabel.Margin = new Padding(3, 3, 3, 9);
         PropertiesTitleLabel.Name = "PropertiesTitleLabel";
+        //
+        // NameLabel
+        //
+        NameLabel.Anchor = AnchorStyles.Left;
+        NameLabel.AutoSize = true;
+        NameLabel.Name = "NameLabel";
+        NameLabel.Text = "Name";
+        //
+        // NamePropertyBox
+        //
+        NamePropertyBox.Dock = DockStyle.Fill;
+        NamePropertyBox.Name = "NamePropertyBox";
+        NamePropertyBox.PlaceholderText = "Shown in the layers";
+        NamePropertyBox.TabIndex = 0;
+        NamePropertyBox.KeyDown += NamePropertyBox_KeyDown;
+        NamePropertyBox.Leave += NamePropertyBox_Leave;
         //
         // TextLabel
         //
@@ -1877,6 +1898,8 @@ partial class DiagramEditorForm
     private Button ImagesFolderButton;
     private TableLayoutPanel PropertiesTable;
     private Label PropertiesTitleLabel;
+    private Label NameLabel;
+    private TextBox NamePropertyBox;
     private Label TextLabel;
     private TextBox TextPropertyBox;
     private Label XLabel;

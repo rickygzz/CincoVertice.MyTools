@@ -171,6 +171,8 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
 
     public event EventHandler<string>? TextEdited;
 
+    public event EventHandler<string>? NameEdited;
+
     public event EventHandler<DiagramRichTextModel>? TextCommitted;
 
     public event EventHandler<bool>? PropertiesPanelToggled;
@@ -460,6 +462,14 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
 
         DashedCheckBox.Visible = properties.Dashed is not null;
         DashedCheckBox.Checked = properties.Dashed ?? false;
+
+        NameLabel.Visible = properties.Name is not null;
+        NamePropertyBox.Visible = properties.Name is not null;
+
+        if (!NamePropertyBox.Focused)
+        {
+            NamePropertyBox.Text = properties.Name ?? string.Empty;
+        }
 
         TextLabel.Visible = properties.Text is not null;
         TextPropertyBox.Visible = properties.Text is not null;
@@ -1495,6 +1505,24 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         {
             e.SuppressKeyPress = true;
             TextEdited?.Invoke(this, TextPropertyBox.Text);
+        }
+    }
+
+    private void NamePropertyBox_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.KeyCode == Keys.Enter)
+        {
+            // No beep
+            e.SuppressKeyPress = true;
+            NameEdited?.Invoke(this, NamePropertyBox.Text);
+        }
+    }
+
+    private void NamePropertyBox_Leave(object? sender, EventArgs e)
+    {
+        if (!_isShowingChoices)
+        {
+            NameEdited?.Invoke(this, NamePropertyBox.Text);
         }
     }
 

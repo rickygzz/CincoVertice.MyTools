@@ -4663,6 +4663,50 @@ public class DiagramEditorPresenterTests
     }
 
     [Fact]
+    public void Properties_ShowTheNameOfTheOneThingSelected_EmptyForNone_AndNothingForSeveral()
+    {
+        // Arrange
+        (DiagramShapeModel back, _, DiagramConnectorModel connector) = AddLayers();
+        _view.RenameLayer(back.Id, "Entry");
+
+        // Act / Assert
+        _view.SelectLayers(back.Id);
+        Assert.Equal("Entry", _view.Properties!.Name);
+        _view.SelectLayers(connector.Id);
+        Assert.Equal(string.Empty, _view.Properties!.Name);
+        _view.Command(DiagramCommand.SelectAll);
+        Assert.Null(_view.Properties!.Name);
+    }
+
+    [Fact]
+    public void NameEdited_RenamesTheOneThingSelected_AsTheLayersShow_AndEmptyTakesTheNameAway()
+    {
+        // Arrange
+        (_, DiagramShapeModel front, DiagramConnectorModel connector) = AddLayers();
+        _view.SelectLayers(connector.Id);
+
+        // Act
+        _view.EditName(" Pays ");
+
+        // Assert
+        Assert.Equal("Pays", Diagram.Connectors[0].Name);
+        Assert.Equal("Pays", _view.Layers![0].Text);
+        Assert.Equal("Pays", _view.Properties!.Name);
+
+        // Act / Assert: empty, its kind and text show again; one step to undo each
+        _view.EditName(string.Empty);
+        Assert.Null(Diagram.Connectors[0].Name);
+        _view.Command(DiagramCommand.Undo);
+        Assert.Equal("Pays", Diagram.Connectors[0].Name);
+
+        // Act / Assert: with two selected, a name goes to neither
+        _view.SelectLayers(connector.Id, front.Id);
+        DiagramModel before = Diagram;
+        _view.EditName("Both");
+        Assert.Same(before, Diagram);
+    }
+
+    [Fact]
     public void LayerRenamed_NamesIt_ShownInsteadOfItsText_AndFoundByIt_AndEmptyTakesTheNameAway()
     {
         // Arrange
@@ -5724,6 +5768,10 @@ public class DiagramEditorPresenterTests
             LockToggled?.Invoke(this, new DiagramLockChoiceModel(which, isLocked));
 
         public void EditText(string text) => TextEdited?.Invoke(this, text);
+
+        public event EventHandler<string>? NameEdited;
+
+        public void EditName(string name) => NameEdited?.Invoke(this, name);
 
         /// <returns>True when the window stays open.</returns>
         public bool Close()

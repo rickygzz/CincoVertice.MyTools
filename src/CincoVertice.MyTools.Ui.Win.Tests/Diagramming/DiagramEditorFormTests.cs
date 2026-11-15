@@ -506,6 +506,7 @@ public class DiagramEditorFormTests
         IDiagramEditorView view = form;
 
         view.TextEdited += (_, text) => events.Add("text " + text);
+        view.NameEdited += (_, name) => events.Add("name " + name);
         view.BoundsEdited += (_, bounds) => events.Add("width " + bounds.Width);
         view.CommandRequested += (_, command) => events.Add(command.ToString());
         view.Closing += (_, _) => events.Add("closing");
@@ -524,7 +525,8 @@ public class DiagramEditorFormTests
             14,
             "old",
             DiagramRouting.Elbow,
-            DiagramArrowHeads.End));
+            DiagramArrowHeads.End,
+            Name: "Entry"));
 
         Control field = form.Controls.Find(fieldName, true).Single();
 
@@ -592,7 +594,32 @@ public class DiagramEditorFormTests
     }
 
     [Fact]
+    public void Properties_TheName_IsShown_AndWhatsTypedIsTakenOnEnter_OrBeforeACommand()
+    {
+        // Arrange
+        List<string> events = [];
+        using DiagramEditorForm form = ShowFormEditingProperties(events, "NamePropertyBox", "Exit");
+        var box = (TextBox)form.Controls.Find("NamePropertyBox", true).Single();
+
+        // Act: Enter, then another name before a command
+        box.Text = "Way out";
+        typeof(DiagramEditorForm)
+            .GetMethod("NamePropertyBox_KeyDown", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .Invoke(form, [box, new KeyEventArgs(Keys.Enter)]);
+        box.Text = "Exit";
+        ClickToolbarButton(form, "SaveMenuItem");
+
+        // Assert
+        Assert.Equal(["name Way out", "name Exit", "Save"], events);
+
+        // Act / Assert: several selected, no name to show
+        form.ShowProperties(new DiagramPropertiesModel("2 shapes"));
+        Assert.False(box.Visible);
+    }
+
+    [Fact]
     public void FileExit_ClosesLikeTheWindowsX_TakingTheTextBeingTyped()
+
     {
         // Arrange
         List<string> events = [];
