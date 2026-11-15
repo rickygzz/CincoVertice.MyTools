@@ -28,7 +28,7 @@ This chapter has several pages:
 
 ### Where scripts live
 
-Scripts are the `.mts` files in the `config\scripts` folder next to `CincoVertice.MyTools.Ui.Win.exe`. The first time My Tools starts, it creates the folder with an example, `GoogleSearch.mts`.
+Scripts are the `.mts` files in the `config\scripts` folder next to `CincoVertice.MyTools.Ui.Win.exe`. The first time My Tools starts, it creates the folder with two examples: `GoogleSearch.mts` (see [below](#the-example-script-googlesearchmts)) and `PasteAsText.mts`, which pastes the clipboard without its formatting (see [Paste without formatting](08c-script-examples.md#paste-without-formatting)).
 
 To edit them, use the tray menu: **Scripts > Edit scripts...**. The [config editor](07-config-editor.md) colors the script, underlines the first syntax error while you type, and can add new scripts with **New script...**. **Scripts > Open scripts folder** opens the folder, if you'd rather use another text editor.
 

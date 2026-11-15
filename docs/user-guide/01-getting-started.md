@@ -20,7 +20,7 @@ The release zip contains three things:
 On the first run the app creates a `config` folder next to the exe. It contains:
 
 - `hotkeys.cfg`, your hotkey list.
-- `scripts\GoogleSearch.mts`, an example script.
+- `scripts\GoogleSearch.mts` and `scripts\PasteAsText.mts`, example scripts.
 
 Nothing on screen tells you where the `config` folder is. To find it, right-click the tray icon and choose **Scripts > Open scripts folder**. That opens `config\scripts` in Explorer; the `config` folder is one level up.
 

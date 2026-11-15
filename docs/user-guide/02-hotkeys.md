@@ -58,6 +58,7 @@ DiagramEditor = Ctrl+Alt+D
 # MoveToPreviousZone = Ctrl+Alt+
 # MoveToZone = Ctrl+Alt+
 # OpenScriptsFolder = Ctrl+Alt+
+# PasteAsText = Ctrl+Alt+
 PickColor = Ctrl+Alt+P
 RecordScreen = Ctrl+Alt+R
 ShowCalculator = Ctrl+Alt+C

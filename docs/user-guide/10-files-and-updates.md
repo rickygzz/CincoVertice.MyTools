@@ -7,7 +7,7 @@ Everything below is in the `config` folder next to the exe unless noted.
 | File | When it is created | Purpose |
 |---|---|---|
 | `hotkeys.cfg` | On startup, if missing | Your hotkeys |
-| `scripts\GoogleSearch.mts` | On startup, if the `scripts` folder is missing | Example script |
+| `scripts\GoogleSearch.mts`, `scripts\PasteAsText.mts` | On startup, if the `scripts` folder is missing | Example scripts |
 | `activity.cfg` | The first time you turn the mouse mover on, or open it in the config editor | Mouse mover settings |
 | `startup.cfg` | The first time Windows starts My Tools, or you open the config editor | Actions to run when Windows starts My Tools (see [Startup actions](01-getting-started.md#startup-actions)) |
 | `zones.cfg` | The first time you show the zones, or open it in the config editor | Window zones (see [Window Zones](13-window-zones.md)) |

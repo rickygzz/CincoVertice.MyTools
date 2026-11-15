@@ -17,7 +17,7 @@ public class ScriptCatalogTests
     }
 
     [Fact]
-    public void GetScriptFiles_CreatesExampleScriptThatParses()
+    public void GetScriptFiles_CreatesTheExampleScripts_ThatParse()
     {
         // Arrange
         string folder = Path.Combine(Path.GetTempPath(), "ScriptCatalogTests_" + Guid.NewGuid());
@@ -28,9 +28,13 @@ public class ScriptCatalogTests
             var files = ScriptCatalog.GetScriptFiles(folder);
 
             // Assert
-            string example = Assert.Single(files, f => Path.GetFileName(f) == "GoogleSearch.mts");
-            var tokens = ScriptLexer.Tokenize(File.ReadAllText(example));
-            Assert.NotEmpty(new ScriptParser().Parse(tokens));
+            Assert.Equal(["GoogleSearch.mts", "PasteAsText.mts"], files.Select(Path.GetFileName));
+
+            foreach (string example in files)
+            {
+                var tokens = ScriptLexer.Tokenize(File.ReadAllText(example));
+                Assert.NotEmpty(new ScriptParser().Parse(tokens));
+            }
         }
         finally
         {

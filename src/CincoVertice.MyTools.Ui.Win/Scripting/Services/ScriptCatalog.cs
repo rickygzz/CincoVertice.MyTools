@@ -10,9 +10,7 @@ public static class ScriptCatalog
 {
     public const string Extension = ".mts";
 
-    private const string ExampleFileName = "GoogleSearch" + Extension;
-
-    private const string ExampleScript =
+    private const string GoogleSearchScript =
         """
         # My Tools script. Bind it in hotkeys.cfg, e.g. GoogleSearch = Ctrl+Alt+G; it applies when you save.
         # The action's name is the file name; changes to this file apply the next time it runs.
@@ -42,6 +40,28 @@ public static class ScriptCatalog
 
         """;
 
+    private const string PasteAsTextScript =
+        """
+        # My Tools script: pastes the clipboard's text without its formatting (fonts, colors, links, tables), as
+        # "Paste as plain text" does in programs that have it. Bind it in hotkeys.cfg, e.g. PasteAsText = Ctrl+Alt+V.
+        # The clipboard keeps its formatting afterwards, so Ctrl+V still pastes the formatted version.
+
+        if clipboard.gettext() == ""
+            tray.notify("The clipboard has no text to paste")
+            script.stop()
+        end
+
+        clipboard.pasteastext()
+
+        """;
+
+    /// <summary>The example scripts written with the folder, the first time: file names and their text.</summary>
+    public static IReadOnlyList<(string FileName, string Script)> Examples { get; } =
+    [
+        ("GoogleSearch" + Extension, GoogleSearchScript),
+        ("PasteAsText" + Extension, PasteAsTextScript),
+    ];
+
     public static string FolderPath { get; } =
         Path.Combine(AppContext.BaseDirectory, "config", "scripts");
 
@@ -53,7 +73,7 @@ public static class ScriptCatalog
 
     /// <summary>
     ///     The script files in <paramref name="folderPath"/> (normally <see cref="FolderPath"/>), sorted by name.
-    ///     Creates the folder with an example script the first time.
+    ///     Creates the folder with the <see cref="Examples"/> the first time.
     /// </summary>
     public static IReadOnlyList<string> GetScriptFiles(string folderPath)
     {
@@ -62,7 +82,10 @@ public static class ScriptCatalog
             if (!Directory.Exists(folderPath))
             {
                 Directory.CreateDirectory(folderPath);
-                File.WriteAllText(Path.Combine(folderPath, ExampleFileName), ExampleScript);
+                foreach ((string fileName, string script) in Examples)
+                {
+                    File.WriteAllText(Path.Combine(folderPath, fileName), script);
+                }
             }
 
             // EnumerationOptions avoids the legacy match where *.mts also matches *.mtsx

@@ -159,6 +159,21 @@ end
 keyboard.type(text.upper(copied))
 ```
 
+### Paste without formatting
+
+Text copied from a web page, Word or an email keeps its fonts, colors and links, which a paste brings along. This pastes only the text, wherever you are, as "Paste as plain text" does in programs that have it. It's one of the two examples My Tools creates, `PasteAsText.mts`; bind it with `PasteAsText = Ctrl+Alt+V`.
+
+```mts
+if clipboard.gettext() == ""
+    tray.notify("The clipboard has no text to paste")
+    script.stop()
+end
+
+clipboard.pasteastext()
+```
+
+The clipboard keeps its formatting afterwards, so Ctrl+V still pastes the formatted version.
+
 ### Search for the selected text
 
 ```mts
