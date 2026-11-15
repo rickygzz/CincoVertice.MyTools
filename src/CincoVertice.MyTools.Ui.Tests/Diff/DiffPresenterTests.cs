@@ -22,7 +22,7 @@ public class DiffPresenterTests
     {
         _files.Write(Left, "a\nb\nc\nd\ne\nf");
         _files.Write(Right, "a\nB\nc\nd\nE\nf\ng");
-        _presenter = new DiffPresenter(_view, _files, _files);
+        _presenter = new DiffPresenter(_view, _files, _files, new ImmediateComparer());
     }
 
     [Fact]
@@ -144,7 +144,7 @@ public class DiffPresenterTests
         // Arrange
         _files.Write(Left, "one\r\ntwo\r\n", Encoding.UTF8);
         _presenter.Open(Left, Right);
-        _view.Edit(DiffSide.Left, ["one", "2"]);
+        _view.Edit(DiffSide.Left, ["one", "2", ""]);
 
         // Act
         _view.Save(DiffSide.Left);
@@ -373,13 +373,233 @@ public class DiffPresenterTests
     {
         // Arrange
         var options = new DiffOptionsModel(IgnoreWhitespace: ignoreWhitespace);
-        DiffResultModel result = TextDiffer.Compare(left, right, options);
+        DiffResultModel result = TextDiffer.Compare(left, right, options, TestContext.Current.CancellationToken);
 
         // Act
         string actual = DiffPresenter.Summary(result, FileOf(left), FileOf(right), options);
 
         // Assert
         Assert.Equal(summary, actual);
+    }
+
+    [Theory]
+    [InlineData(DiffSaveChoice.Cancel, false)]
+    [InlineData(DiffSaveChoice.DontSave, true)]
+    [InlineData(DiffSaveChoice.Save, true)]
+    public void ReplacingEditedFile_AsksBeforeOpeningOrPasting(DiffSaveChoice answer, bool replaced)
+    {
+        foreach (bool paste in new[] { false, true })
+        {
+            _presenter.Open(Left, Right);
+            _view.Edit(DiffSide.Left, ["unsaved"]);
+            _view.SaveAnswer = answer;
+            int questions = _view.SavesAsked.Count;
+
+            if (paste)
+            {
+                _view.Paste(new DiffPasteModel(DiffSide.Left, "replacement"));
+            }
+            else
+            {
+                _view.ChooseFiles(new DiffFilesModel([Right], DiffSide.Left));
+            }
+
+            Assert.Equal(questions + 1, _view.SavesAsked.Count);
+            Assert.Equal(replaced ? paste ? "replacement" : "a" : "unsaved", _view.Texts[DiffSide.Left][0]);
+            if (answer == DiffSaveChoice.Save)
+            {
+                Assert.Equal("unsaved", _files.TextOf(Left));
+            }
+            _view.SaveAnswer = DiffSaveChoice.DontSave;
+        }
+    }
+
+    [Fact]
+    public void OpeningBothSides_CancelDoesNotReplaceEitherSide()
+    {
+        _presenter.Open(Left, Right);
+        _view.Edit(DiffSide.Left, ["left edit"]);
+        _view.Edit(DiffSide.Right, ["right edit"]);
+        _view.SaveAnswer = DiffSaveChoice.Cancel;
+
+        _view.ChooseFiles(new DiffFilesModel([Right, Left], DiffSide.Left));
+
+        Assert.Equal(["old.txt", "new.txt"], Assert.Single(_view.SavesAsked));
+        Assert.Equal(["left edit"], _view.Texts[DiffSide.Left]);
+        Assert.Equal(["right edit"], _view.Texts[DiffSide.Right]);
+    }
+
+    [Fact]
+    public void SavingBeforeReopeningTheSameFile_ReadsTheSavedVersion()
+    {
+        _presenter.Open(Left, Right);
+        _view.Edit(DiffSide.Left, ["saved edit"]);
+        _view.SaveAnswer = DiffSaveChoice.Save;
+
+        _view.ChooseFiles(new DiffFilesModel([Left], DiffSide.Left));
+
+        Assert.Equal(["saved edit"], _view.Texts[DiffSide.Left]);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SavingAfterExternalChange_AsksEvenAfterReloadWasDeclined(bool overwrite)
+    {
+        _presenter.Open(Left, Right);
+        _view.Edit(DiffSide.Left, ["my edit"]);
+        _files.Write(Left, "external edit");
+        _view.ReloadAnswer = false;
+        _view.Activate();
+        _view.Activate();
+        _view.OverwriteAnswer = overwrite;
+
+        _view.Save(DiffSide.Left);
+
+        Assert.Equal(["old.txt"], _view.ReloadsAsked);
+        Assert.Equal(["old.txt"], _view.OverwritesAsked);
+        Assert.Equal(overwrite ? "my edit" : "external edit", _files.TextOf(Left));
+    }
+
+    [Fact]
+    public void Save_RechecksTheDiskWithoutWaitingForWindowActivation()
+    {
+        _presenter.Open(Left, Right);
+        _view.Edit(DiffSide.Left, ["my edit"]);
+        _files.Write(Left, "external edit");
+
+        _view.Save(DiffSide.Left);
+
+        Assert.Equal(["old.txt"], _view.OverwritesAsked);
+        Assert.Equal("external edit", _files.TextOf(Left));
+    }
+
+    [Theory]
+    [InlineData("a\n")]
+    [InlineData("a\r\n")]
+    [InlineData("\n")]
+    public void ClearingATerminatedFile_SavesAnEmptyFile(string original)
+    {
+        _files.Write(Left, original);
+        _presenter.Open(Left, Right);
+        Assert.Equal("", _view.Texts[DiffSide.Left][^1]);
+
+        _view.Edit(DiffSide.Left, [""]);
+        _view.Save(DiffSide.Left);
+
+        Assert.Equal("", _files.TextOf(Left));
+    }
+
+    [Fact]
+    public void TheFinalLineBreak_CanBeDeletedAndRestoredWithUndo()
+    {
+        _files.Write(Left, "a\r\n");
+        _presenter.Open(Left, Right);
+        var buffer = new DiffEditBuffer();
+        buffer.SetLines(_view.Texts[DiffSide.Left]);
+        buffer.MoveTo(buffer.End, false);
+
+        buffer.DeleteBackward(false);
+        _view.Edit(DiffSide.Left, [.. buffer.Lines]);
+        _view.Save(DiffSide.Left);
+        Assert.Equal("a", _files.TextOf(Left));
+
+        buffer.Undo();
+        _view.Edit(DiffSide.Left, [.. buffer.Lines]);
+        _view.Save(DiffSide.Left);
+        Assert.Equal("a\r\n", _files.TextOf(Left));
+    }
+
+    [Fact]
+    public async Task Comparisons_IgnoreOutOfOrderResults_AndCancelObsoleteWork()
+    {
+        var comparer = new ControlledComparer();
+        var presenter = new DiffPresenter(_view, _files, _files, comparer);
+        presenter.Open(Left, Right);
+        Task first = presenter.Comparison;
+        _view.Edit(DiffSide.Left, ["latest"]);
+        Task latest = presenter.Comparison;
+        Assert.True(comparer.Calls[0].Cancellation.IsCancellationRequested);
+        Assert.False(_view.CanNavigate);
+        Assert.Equal("latest", _view.Result!.Rows[0].Left!.Text);
+
+        DiffResultModel expected = TextDiffer.Compare(["latest"], _view.Texts[DiffSide.Right], new(), TestContext.Current.CancellationToken);
+        comparer.Calls[1].Completion.SetResult(expected);
+        await latest;
+        comparer.Calls[0].Completion.SetResult(new DiffResultModel([], [], 0, 0, 0));
+        await first;
+
+        Assert.Same(expected, presenter.Result);
+        Assert.Same(expected, _view.Result);
+    }
+
+    [Fact]
+    public async Task Closing_CancelsComparison_AndLateResultsDoNotTouchTheView()
+    {
+        var comparer = new ControlledComparer();
+        var presenter = new DiffPresenter(_view, _files, _files, comparer);
+        presenter.Open(Left, Right);
+        Task pending = presenter.Comparison;
+        DiffResultModel? before = _view.Result;
+
+        _view.FinishClosing();
+        comparer.Calls[0].Completion.SetResult(new DiffResultModel([], [], 0, 0, 0));
+        await pending;
+
+        Assert.True(comparer.Calls[0].Cancellation.IsCancellationRequested);
+        Assert.Same(before, _view.Result);
+    }
+
+    private sealed class ControlledComparer : IDiffComparer
+    {
+        public List<(TaskCompletionSource<DiffResultModel> Completion, CancellationToken Cancellation)> Calls { get; } = [];
+
+        public Task<DiffResultModel> CompareAsync(IReadOnlyList<string> left, IReadOnlyList<string> right,
+            DiffOptionsModel options, CancellationToken cancellation)
+        {
+            var completion = new TaskCompletionSource<DiffResultModel>();
+            Calls.Add((completion, cancellation));
+            return completion.Task;
+        }
+    }
+
+    [Fact]
+    public void AFailedSave_PreventsReplacement_AndKeepsTheFileDirty()
+    {
+        _presenter.Open(Left, Right);
+        _view.Edit(DiffSide.Left, ["漢"]);
+        _view.SaveAnswer = DiffSaveChoice.Save;
+        _files.WriteProblem = new EncoderFallbackException();
+
+        _view.Paste(new DiffPasteModel(DiffSide.Left, "replacement"));
+
+        Assert.Equal(["漢"], _view.Texts[DiffSide.Left]);
+        Assert.Contains("cannot be saved", Assert.Single(_view.Problems));
+        Assert.Contains("old.txt*", _view.Title);
+        Assert.StartsWith("a\nb", _files.TextOf(Left));
+    }
+
+    [Fact]
+    public async Task Comparisons_UseSnapshotsAndDoNotApplyAfterOneSideIsReplaced()
+    {
+        var view = new FakeDiffView();
+        var comparer = new ControlledComparer();
+        var presenter = new DiffPresenter(view, _files, _files, comparer);
+        presenter.Open(Left, Right);
+        Task pending = presenter.Comparison;
+        view.Paste(new DiffPasteModel(DiffSide.Right, "new text"));
+        Task current = presenter.Comparison;
+
+        comparer.Calls[0].Completion.SetResult(new DiffResultModel([], [], 0, 0, 0));
+        await pending;
+        Assert.Null(presenter.Result);
+        Assert.Equal("new text", view.Result!.Rows[0].Right!.Text);
+
+        var expected = TextDiffer.Compare(view.Texts[DiffSide.Left], view.Texts[DiffSide.Right], new(),
+            TestContext.Current.CancellationToken);
+        comparer.Calls[1].Completion.SetResult(expected);
+        await current;
+        Assert.Same(expected, view.Result);
     }
 
     private static DiffSourceModel FileOf(string text) => new(
@@ -390,6 +610,7 @@ public class DiffPresenterTests
 
     private sealed class FakeFiles : IDiffFileReader, IDiffFileWriter
     {
+        public Exception? WriteProblem { get; set; }
         private readonly Dictionary<string, DiffFileModel> _files = [];
         private DateTime _now = new(2026, 11, 15, 9, 0, 0, DateTimeKind.Utc);
 
@@ -411,6 +632,10 @@ public class DiffPresenterTests
 
         DateTime IDiffFileWriter.Write(string path, string text, Encoding encoding)
         {
+            if (WriteProblem is not null)
+            {
+                throw WriteProblem;
+            }
             Write(path, text, encoding);
 
             return _now;
@@ -434,6 +659,8 @@ public class DiffPresenterTests
         public event EventHandler? WindowActivated;
 
         public event EventHandler<CancelEventArgs>? CloseRequested;
+
+        public event EventHandler? Closed;
 
         public event EventHandler<DiffOptionsModel>? OptionsChanged;
 
@@ -466,6 +693,8 @@ public class DiffPresenterTests
         public List<IReadOnlyList<string>> SavesAsked { get; } = [];
 
         public bool ReloadAnswer { get; set; } = true;
+        public bool OverwriteAnswer { get; set; }
+        public List<string> OverwritesAsked { get; } = [];
 
         public List<string> ReloadsAsked { get; } = [];
 
@@ -505,6 +734,14 @@ public class DiffPresenterTests
             return ReloadAnswer;
         }
 
+        public bool AskOverwrite(string name)
+        {
+            OverwritesAsked.Add(name);
+            return OverwriteAnswer;
+        }
+
+        public void FinishClosing() => Closed?.Invoke(this, EventArgs.Empty);
+
         public void ChooseFiles(DiffFilesModel files) => FilesChosen?.Invoke(this, files);
 
         public void Paste(DiffPasteModel paste) => TextPasted?.Invoke(this, paste);
@@ -536,5 +773,12 @@ public class DiffPresenterTests
         public void Next(int fromRow) => NextChangeRequested?.Invoke(this, fromRow);
 
         public void Previous(int fromRow) => PreviousChangeRequested?.Invoke(this, fromRow);
+    }
+
+    private sealed class ImmediateComparer : IDiffComparer
+    {
+        public Task<DiffResultModel> CompareAsync(IReadOnlyList<string> left, IReadOnlyList<string> right,
+            DiffOptionsModel options, CancellationToken cancellation) =>
+            Task.FromResult(TextDiffer.Compare(left, right, options, cancellation));
     }
 }

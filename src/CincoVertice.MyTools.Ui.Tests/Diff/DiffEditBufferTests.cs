@@ -6,6 +6,35 @@ namespace CincoVertice.MyTools.Ui.Tests.Diff;
 
 public class DiffEditBufferTests
 {
+    [Theory]
+    [InlineData("😀")]
+    [InlineData("e\u0301")]
+    [InlineData("👩‍💻")]
+    public void SelectingOrDeletingAnElement_NeverSplitsItsUtf16OrCombiningSequence(string element)
+    {
+        var buffer = new DiffEditBuffer();
+        buffer.SetLines([element + " X"]);
+        buffer.SelectWord(new DiffPosition(0, 0));
+        Assert.Equal(element, buffer.SelectedText);
+        buffer.DeleteForward(false);
+        Assert.Equal([" X"], buffer.Lines);
+        buffer.Undo();
+        Assert.Equal([element + " X"], buffer.Lines);
+        buffer.MoveTo(new DiffPosition(0, element.Length), false);
+        buffer.DeleteBackward(false);
+        Assert.Equal([" X"], buffer.Lines);
+    }
+
+    [Fact]
+    public void APositionInsideASurrogatePair_IsClampedToACharacterBoundary()
+    {
+        var buffer = new DiffEditBuffer();
+        buffer.SetLines(["😀x"]);
+        buffer.MoveTo(new DiffPosition(0, 1), false);
+        Assert.Equal(new DiffPosition(0, 0), buffer.Caret);
+        buffer.DeleteForward(false);
+        Assert.Equal(["x"], buffer.Lines);
+    }
     private readonly DiffEditBuffer _buffer = new();
 
     [Fact]
@@ -215,6 +244,6 @@ public class DiffEditBufferTests
 
         // Assert
         Assert.Equal((lineBreak, endsWithIt), (format.LineBreak, format.EndsWithLineBreak));
-        Assert.Equal(text, format.Join(TextDiffer.SplitLines(text)));
+        Assert.Equal(text, format.Join(TextDiffer.SplitLines(text, preserveFinalLine: true)));
     }
 }

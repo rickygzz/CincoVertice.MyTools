@@ -9,7 +9,9 @@ public sealed class DiskDiffFileWriter : IDiffFileWriter
 {
     public DateTime Write(string path, string text, Encoding encoding)
     {
-        AtomicFile.WriteAllText(path, text, encoding);
+        var strict = (Encoding)encoding.Clone();
+        strict.EncoderFallback = EncoderFallback.ExceptionFallback;
+        AtomicFile.WriteAllText(path, text, strict);
 
         return File.GetLastWriteTimeUtc(path);
     }

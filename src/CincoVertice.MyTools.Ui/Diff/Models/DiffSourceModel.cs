@@ -9,7 +9,8 @@ public sealed record DiffSourceModel(
     string? Path,
     DateTime? WrittenUtc,
     DiffTextFormatModel Format,
-    bool IsModified = false)
+    bool IsModified = false,
+    DateTime? DeclinedReloadUtc = null)
 {
     public bool IsFile => Path is not null;
 

@@ -9,7 +9,7 @@ public class MyersDiffTests
     public void TheSame_HasNoChanges()
     {
         // Act
-        (bool[] removed, bool[] added) = MyersDiff.Compare([1, 2, 3], [1, 2, 3]);
+        (bool[] removed, bool[] added) = MyersDiff.Compare([1, 2, 3], [1, 2, 3], TestContext.Current.CancellationToken);
 
         // Assert
         Assert.DoesNotContain(true, removed);
@@ -20,7 +20,7 @@ public class MyersDiffTests
     public void AnItemInserted_IsAdded()
     {
         // Act
-        (bool[] removed, bool[] added) = MyersDiff.Compare([1, 2, 3], [1, 2, 9, 3]);
+        (bool[] removed, bool[] added) = MyersDiff.Compare([1, 2, 3], [1, 2, 9, 3], TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal([false, false, false], removed);
@@ -31,8 +31,8 @@ public class MyersDiffTests
     public void EmptySides_AreAllAddedOrRemoved()
     {
         // Act
-        (bool[] removed, bool[] added) = MyersDiff.Compare([], [1, 2]);
-        (bool[] removed2, bool[] added2) = MyersDiff.Compare([1, 2], []);
+        (bool[] removed, bool[] added) = MyersDiff.Compare([], [1, 2], TestContext.Current.CancellationToken);
+        (bool[] removed2, bool[] added2) = MyersDiff.Compare([1, 2], [], TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Empty(removed);
@@ -45,7 +45,7 @@ public class MyersDiffTests
     public void NothingInCommon_IsAllChanged()
     {
         // Act
-        (bool[] removed, bool[] added) = MyersDiff.Compare([1, 2, 3], [4, 5]);
+        (bool[] removed, bool[] added) = MyersDiff.Compare([1, 2, 3], [4, 5], TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal([true, true, true], removed);
@@ -64,7 +64,7 @@ public class MyersDiffTests
             int[] b = random.Next(3) == 0 ? Edited(a, random) : Sequence(random);
 
             // Act
-            (bool[] removed, bool[] added) = MyersDiff.Compare(a, b);
+            (bool[] removed, bool[] added) = MyersDiff.Compare(a, b, TestContext.Current.CancellationToken);
 
             // Assert
             int[] keptA = [.. a.Where((_, i) => !removed[i])];
@@ -85,7 +85,7 @@ public class MyersDiffTests
         b[199_000] = -3;
 
         // Act
-        (bool[] removed, bool[] added) = MyersDiff.Compare(a, b);
+        (bool[] removed, bool[] added) = MyersDiff.Compare(a, b, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(3, removed.Count(r => r));

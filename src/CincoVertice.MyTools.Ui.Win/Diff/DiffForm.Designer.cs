@@ -263,6 +263,7 @@ partial class DiffForm
         Text = "Compare files";
         Activated += DiffForm_Activated;
         FormClosing += DiffForm_FormClosing;
+        FormClosed += DiffForm_FormClosed;
         Toolbar.ResumeLayout(false);
         Toolbar.PerformLayout();
         HeaderTable.ResumeLayout(false);

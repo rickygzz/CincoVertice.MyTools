@@ -3,12 +3,13 @@ using CincoVertice.MyTools.Ui.Diff.Interfaces;
 using CincoVertice.MyTools.Ui.Diff.Models;
 using CincoVertice.MyTools.Ui.Diff.Services;
 using CincoVertice.MyTools.Ui.Diff.Views;
+using System.Text;
 
 namespace CincoVertice.MyTools.Ui.Diff.Presenters;
 
 /// <summary>
 ///     Compare files: two files, or texts pasted in their place, compared line by line (<see cref="TextDiffer"/>), and
-///     compared again whenever one side or an option changes, including at each edit the user makes in the view. Next
+///     compared in the background whenever one side or an option changes. Obsolete work is cancelled. Next
 ///     and Previous go from change to change. Saving writes a side as it was read: same encoding and line breaks.
 ///     <para>
 ///         When the window becomes active again, files written meanwhile are read again, so the comparison stays
@@ -25,6 +26,10 @@ public sealed class DiffPresenter
     private readonly IDiffView _view;
     private readonly IDiffFileReader _files;
     private readonly IDiffFileWriter _writer;
+    private readonly IDiffComparer _comparer;
+    private CancellationTokenSource? _comparisonCancellation;
+    private int _generation;
+    private bool _closed;
 
     private DiffSourceModel? _left;
     private DiffSourceModel? _right;
@@ -35,11 +40,12 @@ public sealed class DiffPresenter
     // While asking whether to read a file again: the window becomes active again when the question closes
     private bool _isCheckingFiles;
 
-    public DiffPresenter(IDiffView view, IDiffFileReader files, IDiffFileWriter writer)
+    public DiffPresenter(IDiffView view, IDiffFileReader files, IDiffFileWriter writer, IDiffComparer? comparer = null)
     {
         _view = view;
         _files = files;
         _writer = writer;
+        _comparer = comparer ?? new BackgroundDiffComparer();
 
         _view.FilesChosen += OnFilesChosen;
         _view.TextPasted += OnTextPasted;
@@ -49,6 +55,7 @@ public sealed class DiffPresenter
         _view.ReloadRequested += OnReloadRequested;
         _view.WindowActivated += OnWindowActivated;
         _view.CloseRequested += OnCloseRequested;
+        _view.Closed += OnClosed;
         _view.OptionsChanged += OnOptionsChanged;
         _view.NextChangeRequested += OnNextChangeRequested;
         _view.PreviousChangeRequested += OnPreviousChangeRequested;
@@ -56,9 +63,18 @@ public sealed class DiffPresenter
 
     public DiffResultModel? Result => _result;
 
+    public Task Comparison { get; private set; } = Task.CompletedTask;
+
     /// <summary>Shows the files given, or the window empty, ready for them.</summary>
     public void Open(string? leftPath = null, string? rightPath = null)
     {
+        DiffSide[] replaced = [.. Sides.Where(side => side == DiffSide.Left ? leftPath is not null : rightPath is not null)];
+
+        if (!ConfirmReplace(replaced))
+        {
+            return;
+        }
+
         if (leftPath is not null && Read(leftPath) is { } left)
         {
             SetSource(DiffSide.Left, left);
@@ -208,8 +224,13 @@ public sealed class DiffPresenter
             return;
         }
 
+        if (!ConfirmReplace([paste.Side]))
+        {
+            return;
+        }
+
         var source = new DiffSourceModel(
-            TextDiffer.SplitLines(paste.Text),
+            TextDiffer.SplitLines(paste.Text, preserveFinalLine: true),
             null,
             null,
             DiffTextFormatModel.Of(paste.Text, DiffTextFormatModel.Default.Encoding));
@@ -222,6 +243,10 @@ public sealed class DiffPresenter
         DiffSourceModel source = SourceOf(edit.Side) is { } old
             ? old with { Lines = edit.Lines, IsModified = true }
             : new DiffSourceModel(edit.Lines, null, null, DiffTextFormatModel.Default, IsModified: true);
+        source = source with
+        {
+            Format = source.Format with { EndsWithLineBreak = edit.Lines.Count > 1 && edit.Lines[^1].Length == 0 },
+        };
         Keep(edit.Side, source);
         Compare(keepPlace: true);
     }
@@ -281,7 +306,7 @@ public sealed class DiffPresenter
         {
             if (SourceOf(side) is not { Path: { } path } source
                 || _files.WrittenUtc(path) is not { } written
-                || written == source.WrittenUtc)
+                || written == source.WrittenUtc || written == source.DeclinedReloadUtc)
             {
                 continue;
             }
@@ -289,7 +314,7 @@ public sealed class DiffPresenter
             if (source.NeedsSaving && !_view.AskReload(Path.GetFileName(path)))
             {
                 // Kept as edited here; not asked again until the file changes again
-                Keep(side, source with { WrittenUtc = written });
+                Keep(side, source with { DeclinedReloadUtc = written });
                 continue;
             }
 
@@ -308,24 +333,48 @@ public sealed class DiffPresenter
 
     private void OnCloseRequested(object? sender, CancelEventArgs e)
     {
-        DiffSide[] unsaved = [.. Sides.Where(side => SourceOf(side)?.NeedsSaving == true)];
+        e.Cancel = !ConfirmReplace(Sides);
+    }
+
+    private bool ConfirmReplace(IEnumerable<DiffSide> sides)
+    {
+        DiffSide[] unsaved = [.. sides.Where(side => SourceOf(side)?.NeedsSaving == true)];
 
         if (unsaved.Length == 0)
         {
-            return;
+            return true;
         }
 
-        DiffSaveChoice choice =
-            _view.AskSaveChanges([.. unsaved.Select(side => Path.GetFileName(SourceOf(side)!.Path!))]);
+        return AskWithoutReload(() => _view.AskSaveChanges(
+            [.. unsaved.Select(side => Path.GetFileName(SourceOf(side)!.Path!))])) switch
+        {
+            DiffSaveChoice.Cancel => false,
+            DiffSaveChoice.Save => unsaved.All(Save),
+            _ => true,
+        };
+    }
 
-        if (choice == DiffSaveChoice.Cancel)
+    private T AskWithoutReload<T>(Func<T> ask)
+    {
+        bool wasChecking = _isCheckingFiles;
+        _isCheckingFiles = true;
+        try
         {
-            e.Cancel = true;
+            return ask();
         }
-        else if (choice == DiffSaveChoice.Save)
+        finally
         {
-            e.Cancel = !unsaved.All(Save);
+            _isCheckingFiles = wasChecking;
         }
+    }
+
+    private void OnClosed(object? sender, EventArgs e)
+    {
+        _closed = true;
+        _generation++;
+        _comparisonCancellation?.Cancel();
+        _comparisonCancellation?.Dispose();
+        _comparisonCancellation = null;
     }
 
     private void OnOptionsChanged(object? sender, DiffOptionsModel options)
@@ -393,11 +442,23 @@ public sealed class DiffPresenter
 
         try
         {
+            if (source.IsFile && _files.WrittenUtc(path) != source.WrittenUtc
+                && !AskWithoutReload(() => _view.AskOverwrite(Path.GetFileName(path))))
+            {
+                return false;
+            }
+
             DateTime written = _writer.Write(path, source.Format.Join(source.Lines), source.Format.Encoding);
-            Keep(side, source with { Path = path, WrittenUtc = written, IsModified = false });
+            Keep(side, source with { Path = path, WrittenUtc = written, IsModified = false, DeclinedReloadUtc = null });
             Compare(keepPlace: true);
 
             return true;
+        }
+        catch (EncoderFallbackException)
+        {
+            _view.ShowProblem($"The text contains characters that cannot be saved using {source.Format.Encoding.EncodingName}. "
+                + "The file was not changed. Copy the text to an editor that supports saving as UTF-8.");
+            return false;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -424,7 +485,7 @@ public sealed class DiffPresenter
             }
 
             return new DiffSourceModel(
-                TextDiffer.SplitLines(file.Text),
+                TextDiffer.SplitLines(file.Text, preserveFinalLine: true),
                 path,
                 file.WrittenUtc,
                 DiffTextFormatModel.Of(file.Text, file.Encoding));
@@ -442,6 +503,16 @@ public sealed class DiffPresenter
 
     private void Compare(bool keepPlace)
     {
+        if (_closed)
+        {
+            return;
+        }
+
+        int generation = ++_generation;
+        _comparisonCancellation?.Cancel();
+        _comparisonCancellation?.Dispose();
+        _comparisonCancellation = null;
+        Comparison = Task.CompletedTask;
         _view.ShowSides(DescriptionOf(_left), DescriptionOf(_right));
         _view.ShowTitle(_left is null && _right is null ? Title : $"{NameOf(_left)} vs {NameOf(_right)} - {Title}");
         _change = -1;
@@ -465,7 +536,53 @@ public sealed class DiffPresenter
             return;
         }
 
-        _result = TextDiffer.Compare(_left.Lines, _right.Lines, _options);
+        // Fresh, unaligned rows remain editable while the worker computes the comparison.
+        var left = _left with { Lines = _left.Lines.ToArray() };
+        var right = _right with { Lines = _right.Lines.ToArray() };
+        _result = null;
+        var rowsPending = new List<DiffRowModel>(Math.Max(left.Lines.Count, right.Lines.Count));
+        for (int i = 0; i < Math.Max(left.Lines.Count, right.Lines.Count); i++)
+        {
+            rowsPending.Add(new DiffRowModel(DiffRowKind.Same,
+                i < left.Lines.Count ? new DiffLineModel(i + 1, left.Lines[i], []) : null,
+                i < right.Lines.Count ? new DiffLineModel(i + 1, right.Lines[i], []) : null));
+        }
+
+        _view.ShowDiff(new DiffResultModel(rowsPending, [], 0, 0, 0), keepPlace);
+        _view.ShowCanNavigate(false);
+        _view.ShowStatus("Comparing...", string.Empty);
+        _comparisonCancellation = new CancellationTokenSource();
+        Comparison = CompleteComparisonAsync(left, right, _options, keepPlace, generation, _comparisonCancellation.Token);
+    }
+
+    private async Task CompleteComparisonAsync(DiffSourceModel left, DiffSourceModel right, DiffOptionsModel options,
+        bool keepPlace, int generation, CancellationToken cancellation)
+    {
+        DiffResultModel result;
+        try
+        {
+            result = await _comparer.CompareAsync(left.Lines, right.Lines, options, cancellation);
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception ex)
+        {
+            if (!_closed && generation == _generation)
+            {
+                _view.ShowStatus("Comparison failed.", string.Empty);
+                _view.ShowProblem($"Could not compare the texts: {ex.Message}");
+            }
+            return;
+        }
+
+        if (_closed || cancellation.IsCancellationRequested || generation != _generation)
+        {
+            return;
+        }
+
+        _result = result;
         _view.ShowDiff(_result, keepPlace);
         _view.ShowCanNavigate(_result.HasChanges);
 

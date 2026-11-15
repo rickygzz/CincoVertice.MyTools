@@ -24,7 +24,7 @@ public class TextDifferTests
     public void Compare_GivesRowsSideBySide_WithLineNumbers()
     {
         // Act
-        DiffResultModel result = TextDiffer.Compare("one\ntwo\nthree\nfour", "one\n2\nthree\nfour\nfive", _exact);
+        DiffResultModel result = TextDiffer.Compare("one\ntwo\nthree\nfour", "one\n2\nthree\nfour\nfive", _exact, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(
@@ -42,7 +42,7 @@ public class TextDifferTests
     public void Compare_PairsRemovedAndAddedLines_AndKeepsTheRestApart()
     {
         // Act
-        DiffResultModel result = TextDiffer.Compare("x\na\nb\nc\ny", "x\nA\ny", _exact);
+        DiffResultModel result = TextDiffer.Compare("x\na\nb\nc\ny", "x\nA\ny", _exact, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(
@@ -56,7 +56,7 @@ public class TextDifferTests
     public void Compare_LineEndings_NeverDiffer()
     {
         // Act
-        DiffResultModel result = TextDiffer.Compare("a\r\nb\r\n", "a\nb", _exact);
+        DiffResultModel result = TextDiffer.Compare("a\r\nb\r\n", "a\nb", _exact, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.False(result.HasChanges);
@@ -67,9 +67,9 @@ public class TextDifferTests
     {
         // Act
         DiffResultModel whitespace =
-            TextDiffer.Compare("int x = 1;", "int  x=1;\t", new DiffOptionsModel(IgnoreWhitespace: true));
-        DiffResultModel exact = TextDiffer.Compare("int x = 1;", "int  x=1;\t", _exact);
-        DiffResultModel noCase = TextDiffer.Compare("Hello", "HELLO", new DiffOptionsModel(IgnoreCase: true));
+            TextDiffer.Compare("int x = 1;", "int  x=1;\t", new DiffOptionsModel(IgnoreWhitespace: true), TestContext.Current.CancellationToken);
+        DiffResultModel exact = TextDiffer.Compare("int x = 1;", "int  x=1;\t", _exact, TestContext.Current.CancellationToken);
+        DiffResultModel noCase = TextDiffer.Compare("Hello", "HELLO", new DiffOptionsModel(IgnoreCase: true), TestContext.Current.CancellationToken);
 
         // Assert
         Assert.False(whitespace.HasChanges);
@@ -82,7 +82,7 @@ public class TextDifferTests
     {
         // Act
         (IReadOnlyList<DiffRange> left, IReadOnlyList<DiffRange> right) =
-            TextDiffer.ChangedWords("var total = price * 2;", "var total = cost * 3;", _exact);
+            TextDiffer.ChangedWords("var total = price * 2;", "var total = cost * 3;", _exact, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal([new DiffRange(12, 5), new DiffRange(20, 1)], left);
@@ -102,7 +102,7 @@ public class TextDifferTests
     {
         // Act
         (IReadOnlyList<DiffRange> leftRanges, IReadOnlyList<DiffRange> rightRanges) =
-            TextDiffer.ChangedWords(left, right, _exact);
+            TextDiffer.ChangedWords(left, right, _exact, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(leftMarked, string.Join(" ", leftRanges.Select(range => $"{range.Start}+{range.Length}")));
@@ -114,7 +114,7 @@ public class TextDifferTests
     {
         // Act: "name" and "id" share nothing, "price" and "cost" only a c
         (IReadOnlyList<DiffRange> left, IReadOnlyList<DiffRange> right) =
-            TextDiffer.ChangedWords("get(name, price)", "get(id, cost)", _exact);
+            TextDiffer.ChangedWords("get(name, price)", "get(id, cost)", _exact, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal([new DiffRange(4, 4), new DiffRange(10, 5)], left);
@@ -126,7 +126,7 @@ public class TextDifferTests
     {
         // Act
         (IReadOnlyList<DiffRange> left, IReadOnlyList<DiffRange> right) =
-            TextDiffer.ChangedWords("a b c d", "a x y d", _exact);
+            TextDiffer.ChangedWords("a b c d", "a x y d", _exact, TestContext.Current.CancellationToken);
 
         // Assert: "b c" and "x y", spaces between included
         Assert.Equal([new DiffRange(2, 3)], left);
@@ -138,7 +138,7 @@ public class TextDifferTests
     {
         // Act
         (IReadOnlyList<DiffRange> left, IReadOnlyList<DiffRange> right) =
-            TextDiffer.ChangedWords("f(a,  b)", "f(a, c)", new DiffOptionsModel(IgnoreWhitespace: true));
+            TextDiffer.ChangedWords("f(a,  b)", "f(a, c)", new DiffOptionsModel(IgnoreWhitespace: true), TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal([new DiffRange(6, 1)], left);
@@ -149,7 +149,7 @@ public class TextDifferTests
     public void Compare_NothingInCommon_IsAllChanged()
     {
         // Act
-        DiffResultModel result = TextDiffer.Compare("a\nb", "c\nd\ne", _exact);
+        DiffResultModel result = TextDiffer.Compare("a\nb", "c\nd\ne", _exact, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(
@@ -162,7 +162,7 @@ public class TextDifferTests
     public void Compare_AnEmptySide_IsAllAdded()
     {
         // Act
-        DiffResultModel result = TextDiffer.Compare(string.Empty, "a\nb", _exact);
+        DiffResultModel result = TextDiffer.Compare(string.Empty, "a\nb", _exact, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.All(result.Rows, row => Assert.Equal(DiffRowKind.Added, row.Kind));

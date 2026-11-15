@@ -15,20 +15,29 @@ public static class TextDiffer
     /// <summary>Changed parts longer than this are marked by words, never compared character by character.</summary>
     public const int MaxCharactersCompared = 2000;
 
-    public static DiffResultModel Compare(string left, string right, DiffOptionsModel options) =>
-        Compare(SplitLines(left), SplitLines(right), options);
+    public static DiffResultModel Compare(
+        string left, string right, DiffOptionsModel options, CancellationToken cancellation = default) =>
+        Compare(SplitLines(left), SplitLines(right), options, cancellation);
 
     /// <summary>Compares lines already split, such as those being edited.</summary>
     public static DiffResultModel Compare(
         IReadOnlyList<string> leftLines,
         IReadOnlyList<string> rightLines,
-        DiffOptionsModel options)
+        DiffOptionsModel options,
+        CancellationToken cancellation = default)
     {
+        cancellation.ThrowIfCancellationRequested();
         // Each different line gets a number, lines equal as the options say the same one
         var ids = new Dictionary<string, int>(StringComparer.Ordinal);
-        int[] a = [.. leftLines.Select(line => IdOf(Normalized(line, options), ids))];
-        int[] b = [.. rightLines.Select(line => IdOf(Normalized(line, options), ids))];
-        (bool[] removed, bool[] added) = MyersDiff.Compare(a, b);
+        int LineId(string line)
+        {
+            cancellation.ThrowIfCancellationRequested();
+            return IdOf(Normalized(line, options), ids);
+        }
+
+        int[] a = [.. leftLines.Select(LineId)];
+        int[] b = [.. rightLines.Select(LineId)];
+        (bool[] removed, bool[] added) = MyersDiff.Compare(a, b, cancellation);
 
         var rows = new List<DiffRowModel>(Math.Max(a.Length, b.Length));
         var hunks = new List<DiffHunkModel>();
@@ -40,6 +49,7 @@ public static class TextDiffer
 
         while (i < a.Length || j < b.Length)
         {
+            cancellation.ThrowIfCancellationRequested();
             if (i < a.Length && j < b.Length && !removed[i] && !added[j])
             {
                 rows.Add(new DiffRowModel(DiffRowKind.Same, Line(i, leftLines[i]), Line(j, rightLines[j])));
@@ -71,7 +81,7 @@ public static class TextDiffer
                 int l = removedFrom + n;
                 int r = addedFrom + n;
                 (IReadOnlyList<DiffRange> leftChanges, IReadOnlyList<DiffRange> rightChanges) =
-                    ChangedWords(leftLines[l], rightLines[r], options);
+                    ChangedWords(leftLines[l], rightLines[r], options, cancellation);
                 rows.Add(new DiffRowModel(
                     DiffRowKind.Changed,
                     new DiffLineModel(l + 1, leftLines[l], leftChanges),
@@ -105,7 +115,9 @@ public static class TextDiffer
     ///     The lines of a text, without their breaks. A break at the very end ends the last line, rather than starting
     ///     an empty one; an empty text has no lines.
     /// </summary>
-    public static string[] SplitLines(string text)
+    /// <param name="text">The text to split.</param>
+    /// <param name="preserveFinalLine">Keep the final empty line for editing a trailing newline, or an empty text.</param>
+    public static string[] SplitLines(string text, bool preserveFinalLine = false)
     {
         var lines = new List<string>();
         int start = 0;
@@ -125,7 +137,7 @@ public static class TextDiffer
             }
         }
 
-        if (start < text.Length)
+        if (start < text.Length || preserveFinalLine)
         {
             lines.Add(text[start..]);
         }
@@ -141,7 +153,8 @@ public static class TextDiffer
     public static (IReadOnlyList<DiffRange> Left, IReadOnlyList<DiffRange> Right) ChangedWords(
         string left,
         string right,
-        DiffOptionsModel options)
+        DiffOptionsModel options,
+        CancellationToken cancellation = default)
     {
         List<DiffRange> leftWords = Words(left, options);
         List<DiffRange> rightWords = Words(right, options);
@@ -154,9 +167,9 @@ public static class TextDiffer
         var ids = new Dictionary<string, int>(StringComparer.Ordinal);
         int[] a = [.. leftWords.Select(word => IdOf(Normalized(Text(left, word), options), ids))];
         int[] b = [.. rightWords.Select(word => IdOf(Normalized(Text(right, word), options), ids))];
-        (bool[] removed, bool[] added) = MyersDiff.Compare(a, b);
+        (bool[] removed, bool[] added) = MyersDiff.Compare(a, b, cancellation);
 
-        return Refined(left, leftWords, removed, right, rightWords, added, options);
+        return Refined(left, leftWords, removed, right, rightWords, added, options, cancellation);
     }
 
     private static string Text(string line, DiffRange range) => line.Substring(range.Start, range.Length);
@@ -251,7 +264,8 @@ public static class TextDiffer
         string right,
         List<DiffRange> rightWords,
         bool[] added,
-        DiffOptionsModel options)
+        DiffOptionsModel options,
+        CancellationToken cancellation)
     {
         var leftChanged = new bool[left.Length];
         var rightChanged = new bool[right.Length];
@@ -285,7 +299,7 @@ public static class TextDiffer
             DiffRange? rightSpan = SpanOf(rightWords, fromRight, j);
 
             if (leftSpan is not { } l || rightSpan is not { } r
-                || !MarkCharacters(left, l, leftChanged, right, r, rightChanged, options))
+                || !MarkCharacters(left, l, leftChanged, right, r, rightChanged, options, cancellation))
             {
                 MarkWords(leftWords, fromLeft, i, leftChanged);
                 MarkWords(rightWords, fromRight, j, rightChanged);
@@ -317,7 +331,8 @@ public static class TextDiffer
         string right,
         DiffRange rightSpan,
         bool[] rightChanged,
-        DiffOptionsModel options)
+        DiffOptionsModel options,
+        CancellationToken cancellation)
     {
         if (leftSpan.Length > MaxCharactersCompared || rightSpan.Length > MaxCharactersCompared)
         {
@@ -328,7 +343,7 @@ public static class TextDiffer
         List<int> rightIndexes = Compared(right, rightSpan, options);
         int[] a = [.. leftIndexes.Select(index => CharId(left[index], options))];
         int[] b = [.. rightIndexes.Select(index => CharId(right[index], options))];
-        (bool[] removed, bool[] added) = MyersDiff.Compare(a, b);
+        (bool[] removed, bool[] added) = MyersDiff.Compare(a, b, cancellation);
         int common = removed.Count(isRemoved => !isRemoved);
 
         if (common * 2 < Math.Min(a.Length, b.Length) || common == 0)

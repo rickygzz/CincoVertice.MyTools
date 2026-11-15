@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using CincoVertice.MyTools.Ui.Diff.Models;
+using System.Globalization;
 
 namespace CincoVertice.MyTools.Ui.Diff.Services;
 
@@ -93,8 +94,8 @@ public sealed class DiffEditBuffer
 
         int at = Math.Min(position.Column, line.Length - 1);
         int kind = KindOf(line[at]);
-        int start = at;
-        int end = at + 1;
+        int start = Boundary(line, at, forward: false);
+        int end = Boundary(line, at + 1, forward: true);
 
         if (kind != OtherKind)
         {
@@ -187,7 +188,7 @@ public sealed class DiffEditBuffer
     {
         int line = Math.Clamp(position.Line, 0, _lines.Count - 1);
 
-        return new DiffPosition(line, Math.Clamp(position.Column, 0, _lines[line].Length));
+        return new DiffPosition(line, Boundary(_lines[line], Math.Clamp(position.Column, 0, _lines[line].Length), false));
     }
 
     public DiffPosition CharLeft(DiffPosition position)
@@ -197,11 +198,7 @@ public sealed class DiffEditBuffer
             string line = _lines[position.Line];
             int column = position.Column - 1;
 
-            // Both halves of a character outside the BMP
-            if (column > 0 && char.IsLowSurrogate(line[column]) && char.IsHighSurrogate(line[column - 1]))
-            {
-                column--;
-            }
+            column = Boundary(line, column, forward: false);
 
             return position with { Column = column };
         }
@@ -217,10 +214,7 @@ public sealed class DiffEditBuffer
         {
             int column = position.Column + 1;
 
-            if (column < line.Length && char.IsLowSurrogate(line[column]) && char.IsHighSurrogate(line[column - 1]))
-            {
-                column++;
-            }
+            column = Boundary(line, column, forward: true);
 
             return position with { Column = column };
         }
@@ -254,7 +248,7 @@ public sealed class DiffEditBuffer
             }
         }
 
-        return position with { Column = column };
+        return position with { Column = Boundary(line, column, forward: false) };
     }
 
     /// <summary>The start of the word after: the rest of this word skipped, then spaces.</summary>
@@ -280,7 +274,27 @@ public sealed class DiffEditBuffer
             column++;
         }
 
-        return position with { Column = column };
+        return position with { Column = Boundary(line, column, forward: true) };
+    }
+
+    // A caret or selection must never split a surrogate pair, combining sequence, or joined emoji.
+    private static int Boundary(string text, int column, bool forward)
+    {
+        if (column == 0 || column == text.Length)
+        {
+            return column;
+        }
+
+        int[] starts = StringInfo.ParseCombiningCharacters(text);
+        int index = Array.BinarySearch(starts, column);
+
+        if (index >= 0)
+        {
+            return column;
+        }
+
+        index = ~index;
+        return forward ? index < starts.Length ? starts[index] : text.Length : starts[index - 1];
     }
 
     private const int SpaceKind = 0;

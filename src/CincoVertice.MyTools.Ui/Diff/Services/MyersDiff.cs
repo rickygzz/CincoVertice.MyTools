@@ -16,11 +16,13 @@ public sealed class MyersDiff
     private readonly int[] _down;
     private readonly int[] _up;
     private readonly int _offset;
+    private readonly CancellationToken _cancellation;
 
-    private MyersDiff(int[] a, int[] b)
+    private MyersDiff(int[] a, int[] b, CancellationToken cancellation)
     {
         _a = a;
         _b = b;
+        _cancellation = cancellation;
         _offset = a.Length + b.Length + 1;
         _down = new int[2 * _offset + 2];
         _up = new int[2 * _offset + 2];
@@ -30,8 +32,10 @@ public sealed class MyersDiff
     ///     Which items of <paramref name="a"/> are removed, and which of <paramref name="b"/> are added; the others are
     ///     common to both, in the same order.
     /// </returns>
-    public static (bool[] Removed, bool[] Added) Compare(IReadOnlyList<int> a, IReadOnlyList<int> b)
+    public static (bool[] Removed, bool[] Added) Compare(
+        IReadOnlyList<int> a, IReadOnlyList<int> b, CancellationToken cancellation = default)
     {
+        cancellation.ThrowIfCancellationRequested();
         var removed = new bool[a.Count];
         var added = new bool[b.Count];
         var inA = new HashSet<int>(a);
@@ -45,7 +49,7 @@ public sealed class MyersDiff
         var shortRemoved = new bool[shortA.Length];
         var shortAdded = new bool[shortB.Length];
 
-        new MyersDiff(shortA, shortB).Solve(0, shortA.Length, 0, shortB.Length, shortRemoved, shortAdded);
+        new MyersDiff(shortA, shortB, cancellation).Solve(0, shortA.Length, 0, shortB.Length, shortRemoved, shortAdded);
 
         for (int i = 0; i < keptA.Count; i++)
         {
@@ -84,6 +88,7 @@ public sealed class MyersDiff
     {
         while (true)
         {
+            _cancellation.ThrowIfCancellationRequested();
             // The same at the start and the end is common
             while (lowerA < upperA && lowerB < upperB && _a[lowerA] == _b[lowerB])
             {
@@ -134,6 +139,7 @@ public sealed class MyersDiff
 
         for (int d = 0; d <= maxD; d++)
         {
+            _cancellation.ThrowIfCancellationRequested();
             // Forward, from the top left
             for (int k = downK - d; k <= downK + d; k += 2)
             {

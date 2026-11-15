@@ -18,6 +18,9 @@ Each side shows a file or a text:
 
 The path of each side's file shows above it, and the window's title gives both names.
 
+Choosing another file or using **Paste left** or **Paste right** asks to save any unsaved file edits on the sides
+being replaced. Cancel keeps those sides as they are.
+
 Files are read as their byte order mark says (UTF-8, UTF-16), else as UTF-8, else as Latin-1 for older files with accents. A file that isn't text, such as a program or an image, isn't compared: a message says so. Files of more than 64 MB aren't read.
 
 ## Reading the comparison
@@ -39,7 +42,8 @@ The narrow strip at the right shows the whole text from top to bottom, with each
 
 The status bar sums it up, such as "3 changes: 2 lines added, 1 removed, 4 changed", and says which change is the current one, such as "Change 2 of 3". When there are no differences, it says why the two still aren't the very same text, if they aren't: only the line endings differ, or what's ignored does.
 
-Line endings never count: a file with Windows line endings (CRLF) and the same file with Unix ones (LF) are the same, and so are a file that ends with a line break and one that doesn't.
+The kind of line ending does not count: Windows line endings (CRLF) and Unix ones (LF) compare the same.
+A final line break appears as an empty last line, so you can add or remove it while editing.
 
 ## Going from change to change
 
@@ -58,7 +62,10 @@ When you come back to the window after a file changed, for example after saving 
 
 ## Editing
 
-Both sides are editors. Click a side to put the caret there, and type: the two sides are compared again at every change, so the colors, the strip and the status bar always show the texts as they are now. **F6** moves the caret to the other side, at the same row. The path of a file changed and not saved ends with `*`, as does its name in the title.
+Both sides are editors. Click a side to put the caret there, and type. Comparison runs in the background after a brief
+pause in typing. While the status bar says "Comparing...", the text stays editable and difference navigation is
+disabled; the colors and change strip return when the current comparison finishes. **F6** moves the caret to the
+other side, at the same row. The path of a file changed and not saved ends with `*`, as does its name in the title.
 
 | Key | Effect |
 |---|---|
@@ -80,7 +87,14 @@ A click on a blank row of a side, where only the other side has a line, puts the
 
 ## Saving
 
-**Save** (Ctrl+S) saves the side with the caret to its file, written as it was read: the same encoding, with its byte order mark or without, the same line breaks (those of its first line, for a file that mixed them) and a line break at the end only if it had one. Text that was pasted or typed is saved where you choose.
+**Save** (Ctrl+S) saves the side with the caret to its file, keeping its encoding and byte order mark, and using the
+same kind of line break (the first one, for a file that mixed them). The final line break follows your edits: remove
+the empty last line to remove it, or clear the whole side to save an empty file. Text that was pasted or typed is
+saved where you choose.
+
+If the file changed on disk since it was read, Save asks before replacing it, even if you declined to reload it.
+If its encoding cannot represent a character you added, saving is refused and the original file stays intact. Copy
+the text to an editor that supports saving as UTF-8 to keep those characters.
 
 Closing the window with a file changed and not saved asks whether to save it. Pasted or typed text isn't asked for: save it first if you want to keep it.
 

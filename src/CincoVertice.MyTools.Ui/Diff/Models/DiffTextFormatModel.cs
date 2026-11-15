@@ -23,11 +23,11 @@ public sealed record DiffTextFormatModel(Encoding Encoding, string LineBreak, bo
         return new DiffTextFormatModel(encoding, lineBreak, endsWithLineBreak);
     }
 
-    /// <summary>The lines as one text, with this format's line breaks.</summary>
+    /// <summary>The editable lines as one text; a final empty line represents a trailing line break.</summary>
     public string Join(IReadOnlyList<string> lines)
     {
         string text = string.Join(LineBreak, lines);
 
-        return EndsWithLineBreak && lines.Count > 0 ? text + LineBreak : text;
+        return text;
     }
 }

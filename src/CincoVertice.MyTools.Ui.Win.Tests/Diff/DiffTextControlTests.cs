@@ -184,7 +184,7 @@ public sealed class DiffTextControlTests : IDisposable
         DiffResultModel result = TextDiffer.Compare(
             _control.LinesOf(DiffSide.Left),
             _control.LinesOf(DiffSide.Right),
-            new DiffOptionsModel());
+            new DiffOptionsModel(), TestContext.Current.CancellationToken);
         _control.SetRows(result.Rows, result.Hunks, keepPlace);
         _hunks = result.Hunks;
     }

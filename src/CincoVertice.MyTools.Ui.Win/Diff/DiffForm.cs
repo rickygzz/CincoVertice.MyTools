@@ -37,6 +37,8 @@ public partial class DiffForm : Form, IDiffView
 
     public event EventHandler<CancelEventArgs>? CloseRequested;
 
+    public new event EventHandler? Closed;
+
     public event EventHandler<DiffOptionsModel>? OptionsChanged;
 
     public event EventHandler<int>? NextChangeRequested;
@@ -121,6 +123,15 @@ public partial class DiffForm : Form, IDiffView
 
         return answer == DialogResult.Yes;
     }
+
+    public bool AskOverwrite(string name) => MessageBox.Show(
+        this,
+        $"{name} changed on disk since it was opened. Replace it with the text shown here?",
+        DiffPresenter.Title,
+        MessageBoxButtons.YesNo,
+        MessageBoxIcon.Warning) == DialogResult.Yes;
+
+    private void DiffForm_FormClosed(object? sender, FormClosedEventArgs e) => Closed?.Invoke(this, EventArgs.Empty);
 
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {

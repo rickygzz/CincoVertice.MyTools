@@ -32,6 +32,9 @@ public interface IDiffView
     /// <summary>The user is closing the window; cancel to keep it open.</summary>
     event EventHandler<CancelEventArgs>? CloseRequested;
 
+    /// <summary>Raised after the window closes, including when Windows is shutting down.</summary>
+    event EventHandler? Closed;
+
     event EventHandler<DiffOptionsModel>? OptionsChanged;
 
     /// <summary>With the row the view is at: the one the caret is on, or else the first one showing.</summary>
@@ -70,4 +73,6 @@ public interface IDiffView
 
     /// <returns>Whether to read again a file that changed on disk, losing the changes made to it here.</returns>
     bool AskReload(string name);
+
+    bool AskOverwrite(string name);
 }

@@ -21,7 +21,7 @@ public sealed class DiffFormTests : IDisposable
     }
 
     [Fact]
-    public void TwoFiles_ShowSideBySide_WithTheirChanges()
+    public async Task TwoFiles_ShowSideBySide_WithTheirChanges()
     {
         // Arrange
         string left = Write("old.cs", "int a = 1;\r\nint b = 2;\r\n");
@@ -32,9 +32,20 @@ public sealed class DiffFormTests : IDisposable
         // Act
         presenter.Open(left, right);
 
+        // Keep the actual UI message loop moving while the worker returns its result to this thread.
+        var wait = System.Diagnostics.Stopwatch.StartNew();
+        while (!presenter.Comparison.IsCompleted && wait.Elapsed < TimeSpan.FromSeconds(10))
+        {
+            TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
+            System.Windows.Forms.Application.DoEvents();
+            Thread.Sleep(1);
+        }
+        Assert.True(presenter.Comparison.IsCompleted);
+        await presenter.Comparison;
+
         // Assert
         Assert.Equal("old.cs vs new.cs - Compare files", form.Text);
-        Assert.Equal(3, presenter.Result!.Rows.Count);
+        Assert.Equal(4, presenter.Result!.Rows.Count);
         Assert.Single(presenter.Result.Hunks);
     }
 
