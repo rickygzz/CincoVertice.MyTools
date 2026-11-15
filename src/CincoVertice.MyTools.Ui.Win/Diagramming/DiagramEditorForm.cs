@@ -58,6 +58,9 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     // Held with a drag to move the view instead
     private bool _isSpaceDown;
 
+    // Set while a tab is shown as the presenter says, so that isn't taken as the user's choice
+    private bool _isShowingTabs;
+
     // Set while the layers panel is filled from the presenter, so that isn't taken as the user's choice
     private bool _isShowingLayers;
 
@@ -112,8 +115,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     }
 
     /// <summary>Whether the focus is in a panel or the find box, whose keys are their own.</summary>
-    private bool IsInAPanel =>
-        PropertiesPanel.ContainsFocus || ImagesPanel.ContainsFocus || LayersPanel.ContainsFocus || FindBox.Focused;
+    private bool IsInAPanel => SidePanelTabs.ContainsFocus || FindBox.Focused;
 
     public event EventHandler<DiagramPointerModel>? PointerPressed;
 
@@ -269,16 +271,91 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         _isShowingChoices = false;
     }
 
-    public void ShowPropertiesPanel(bool isVisible)
+    public void ShowPropertiesPanel(bool isVisible) => ShowTab(PropertiesTab, isVisible);
+
+    public void ShowImagesPanel(bool isVisible) => ShowTab(ImagesTab, isVisible);
+
+    public void ShowLayersPanel(bool isVisible) => ShowTab(LayersTab, isVisible);
+
+    /// <summary>
+    ///     As the presenter says: a tab shown is selected, with the panel; one hidden hides the panel only when it's the
+    ///     tab shown. Nothing is raised, since it isn't the user's choice.
+    /// </summary>
+    private void ShowTab(TabPage tab, bool isVisible)
     {
-        PropertiesPanel.Visible = isVisible;
-        PropertiesButton.Checked = isVisible;
+        _isShowingTabs = true;
+
+        try
+        {
+            if (isVisible)
+            {
+                SidePanelTabs.SelectedTab = tab;
+                SidePanelTabs.Visible = true;
+            }
+            else if (SidePanelTabs.SelectedTab == tab)
+            {
+                SidePanelTabs.Visible = false;
+            }
+        }
+        finally
+        {
+            _isShowingTabs = false;
+        }
+
+        ShowTabButtons();
     }
 
-    public void ShowImagesPanel(bool isVisible)
+    /// <summary>The tab shown, or null when the panel is hidden.</summary>
+    private TabPage? ShownTab => SidePanelTabs.Visible ? SidePanelTabs.SelectedTab : null;
+
+    /// <summary>The Panels button is pressed while the side panel shows.</summary>
+    private void ShowTabButtons()
     {
-        ImagesPanel.Visible = isVisible;
-        ImagesButton.Checked = isVisible;
+        PanelsButton.Checked = SidePanelTabs.Visible;
+    }
+
+    /// <summary>
+    ///     The Panels button or F4: shows the side panel, at the tab it had, or hides it. Says which tab starts or stops
+    ///     showing.
+    /// </summary>
+    private void TogglePanels()
+    {
+        SidePanelTabs.Visible = !SidePanelTabs.Visible;
+
+        if (SidePanelTabs.SelectedTab is TabPage tab)
+        {
+            RaiseTabShown(tab, SidePanelTabs.Visible);
+        }
+
+        ShowTabButtons();
+    }
+
+    private void RaiseTabShown(TabPage tab, bool isVisible)
+    {
+        EventHandler<bool>? toggled = tab == PropertiesTab ? PropertiesPanelToggled
+            : tab == ImagesTab ? ImagesPanelToggled
+            : LayersPanelToggled;
+
+        toggled?.Invoke(this, isVisible);
+    }
+
+    // A tab header clicked: the tab left stops showing
+    private void SidePanelTabs_Deselected(object? sender, TabControlEventArgs e)
+    {
+        if (!_isShowingTabs && SidePanelTabs.Visible && e.TabPage is TabPage tab)
+        {
+            RaiseTabShown(tab, false);
+        }
+    }
+
+    // And the one clicked starts
+    private void SidePanelTabs_Selected(object? sender, TabControlEventArgs e)
+    {
+        if (!_isShowingTabs && SidePanelTabs.Visible && e.TabPage is TabPage tab)
+        {
+            RaiseTabShown(tab, true);
+            ShowTabButtons();
+        }
     }
 
     public void ShowCatalog(IReadOnlyList<DiagramCatalogImageModel> images, string emptyText)
@@ -910,22 +987,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         menu.Show(button, new Point(0, button.Height));
     }
 
-    private void PropertiesButton_Click(object? sender, EventArgs e)
-    {
-        ToggleProperties();
-    }
-
-    private void ToggleProperties()
-    {
-        ShowPropertiesPanel(!PropertiesPanel.Visible);
-        PropertiesPanelToggled?.Invoke(this, PropertiesPanel.Visible);
-    }
-
-    public void ShowLayersPanel(bool isVisible)
-    {
-        LayersPanel.Visible = isVisible;
-        LayersButton.Checked = isVisible;
-    }
+    private void PanelsButton_Click(object? sender, EventArgs e) => TogglePanels();
 
     public void ShowLayers(IReadOnlyList<DiagramLayerModel> layers)
     {
@@ -990,12 +1052,6 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         LayersListView.TileSize = new Size(
             Math.Max(LayersListView.ClientSize.Width - LogicalToDeviceUnits(4), LogicalToDeviceUnits(40)),
             LayersListView.Font.Height + LogicalToDeviceUnits(8));
-    }
-
-    private void LayersButton_Click(object? sender, EventArgs e)
-    {
-        ShowLayersPanel(!LayersPanel.Visible);
-        LayersPanelToggled?.Invoke(this, LayersPanel.Visible);
     }
 
     private void LayersListView_Resize(object? sender, EventArgs e) => SizeLayerTiles();
@@ -1182,12 +1238,6 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
 
             e.Graphics.DrawLine(line, row.Left, lineY + 1, row.Right, lineY + 1);
         }
-    }
-
-    private void ImagesButton_Click(object? sender, EventArgs e)
-    {
-        ShowImagesPanel(!ImagesPanel.Visible);
-        ImagesPanelToggled?.Invoke(this, ImagesPanel.Visible);
     }
 
     private void ImageSearchBox_TextChanged(object? sender, EventArgs e) =>
@@ -1822,7 +1872,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         // Not with Alt, which closes the window
         if (e.KeyData == Keys.F4)
         {
-            ToggleProperties();
+            TogglePanels();
             e.Handled = true;
 
             return;

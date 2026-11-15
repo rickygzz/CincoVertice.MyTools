@@ -511,6 +511,7 @@ public class DiagramEditorFormTests
         view.Closing += (_, _) => events.Add("closing");
 
         form.Show();
+        form.ShowPropertiesPanel(true);
         form.ShowProperties(new DiagramPropertiesModel(
             "Rectangle",
             new Rectangle(0, 0, 100, 50),
@@ -655,6 +656,47 @@ public class DiagramEditorFormTests
     }
 
     [Fact]
+    public void SidePanel_IsTabbed_ThePanelsButtonShowsOrHidesIt_AndSaysWhatShowsAndWhatStops()
+    {
+        // Arrange
+        List<string> events = [];
+        using DiagramEditorForm form = ShowFormEditingProperties([], "TextPropertyBox", "new");
+        IDiagramEditorView view = form;
+        T Field<T>(string name) => (T)typeof(DiagramEditorForm)
+            .GetField(name, BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(form)!;
+        var tabs = Field<TabControl>("SidePanelTabs");
+        view.PropertiesPanelToggled += (_, shown) => events.Add($"properties {shown}");
+        view.ImagesPanelToggled += (_, shown) => events.Add($"images {shown}");
+        view.LayersPanelToggled += (_, shown) => events.Add($"layers {shown}");
+
+        // Act: as the presenter shows it, nothing is raised
+        view.ShowPropertiesPanel(true);
+        view.ShowImagesPanel(false);
+
+        // Assert: Images, Layers, Properties, at the canvas' right
+        Assert.Equal(["Images", "Layers", "Properties"], tabs.TabPages.Cast<TabPage>().Select(tab => tab.Text));
+        Assert.Equal(DockStyle.Right, tabs.Dock);
+        Assert.True(tabs.Visible);
+        Assert.Equal("Properties", tabs.SelectedTab!.Text);
+        Assert.True(Field<ToolStripButton>("PanelsButton").Checked);
+        Assert.Null(form.Controls.Find("LayersButton", true).FirstOrDefault());
+        Assert.Empty(events);
+
+        // Act: a click on the Layers tab, then the Panels button hides the panel, then shows it again
+        tabs.SelectedIndex = 1;
+        Field<ToolStripButton>("PanelsButton").PerformClick();
+        bool isHidden = !tabs.Visible && !Field<ToolStripButton>("PanelsButton").Checked;
+        Field<ToolStripButton>("PanelsButton").PerformClick();
+
+        // Assert
+        Assert.Equal(["properties False", "layers True", "layers False", "layers True"], events);
+        Assert.True(isHidden);
+        Assert.True(tabs.Visible);
+        Assert.Equal("Layers", tabs.SelectedTab!.Text);
+    }
+
+    [Fact]
     public void LayersPanel_ShowsTheRowsAndSelection_WithoutTakingThemForTheUsers_AndTheUsersAreRaised()
     {
         // Arrange
@@ -773,6 +815,7 @@ public class DiagramEditorFormTests
 
         // Act / Assert: showing it isn't the user's choice
         form.Show();
+        form.ShowPropertiesPanel(true);
         form.ShowProperties(new DiagramPropertiesModel("Rectangle", new Rectangle(0, 0, 100, 50)));
         Assert.False(directions.Visible);
 
@@ -797,6 +840,7 @@ public class DiagramEditorFormTests
         var proportions = (CheckBox)form.Controls.Find("ProportionsCheckBox", true).Single();
         var reset = (Button)form.Controls.Find("ResetSizeButton", true).Single();
         form.Show();
+        form.ShowPropertiesPanel(true);
 
         // Act / Assert: showing it isn't the user's choice
         form.ShowProperties(
@@ -831,6 +875,7 @@ public class DiagramEditorFormTests
         var empty = (Label)form.Controls.Find("ImagesEmptyLabel", true).Single();
         const string Markup = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 9"/>""";
         form.Show();
+        form.ShowImagesPanel(true);
 
         // Act / Assert
         form.ShowCatalog([], "Nothing yet");
@@ -862,6 +907,7 @@ public class DiagramEditorFormTests
         form.TextAlignmentSelected += (_, alignment) => chosen.Add(alignment);
         var align = (ComboBox)form.Controls.Find("TextAlignPropertyBox", true).Single();
         form.Show();
+        form.ShowPropertiesPanel(true);
 
         // Act / Assert: showing it isn't the user's choice
         form.ShowProperties(new DiagramPropertiesModel("Container", TextAlignment: DiagramTextAlignment.Left));

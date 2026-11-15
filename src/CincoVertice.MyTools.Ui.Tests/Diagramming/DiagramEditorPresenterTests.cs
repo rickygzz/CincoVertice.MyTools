@@ -2511,6 +2511,36 @@ public class DiagramEditorPresenterTests
     }
 
     [Theory]
+    [InlineData(true, true, true, "properties")]
+    [InlineData(false, true, true, "images")]
+    [InlineData(false, false, true, "layers")]
+    [InlineData(false, false, false, "none")]
+    public void Settings_FromBeforeThePanelsWereTabs_ShowOneTabAtMost(
+        bool properties,
+        bool images,
+        bool layers,
+        string shown)
+    {
+        // Arrange: several panels on, as an older file can have
+        DiagramEditorSettingsModel saved = new(
+            _view.ShownStyle!,
+            DiagramRouting.Elbow,
+            DiagramArrowHeads.End,
+            properties,
+            null,
+            images,
+            layers);
+
+        // Act
+        (FakeView view, _) = NewEditor(saved);
+
+        // Assert
+        Assert.Equal(
+            (shown == "properties", shown == "images", shown == "layers"),
+            (view.PanelShown == true, view.ImagesPanelShown == true, view.LayersPanelShown == true));
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public void Settings_TheWindowsSize_IsKeptWhenItCloses(bool isMaximized)
@@ -3899,6 +3929,7 @@ public class DiagramEditorPresenterTests
     public void Catalog_AnImageInserted_GoesIntoIt_AndShowsFirst_AsUsedLast()
     {
         // Arrange
+        _view.ToggleImagesPanel(true);
         _store.Images[@"C:\icons\vm.svg"] = Icon;
         _view.ImagesToInsert = [@"C:\icons\vm.svg"];
 
@@ -3942,6 +3973,7 @@ public class DiagramEditorPresenterTests
     public void Catalog_ImagesCopiedIn_ShowWhenTheWindowIsBack_InTheirGroups()
     {
         // Arrange
+        _view.ToggleImagesPanel(true);
         AddToCatalog("Azure/Compute/vm.svg", "Virtual Machine", "Azure/Compute");
         AddToCatalog("Azure/Web/app.svg", "App Service", "Azure/Web");
         Assert.Empty(_view.Catalog!);
@@ -3961,6 +3993,7 @@ public class DiagramEditorPresenterTests
     public void Catalog_Choosing_InsertsItWhereTheMouseWas_WithItsProportionsLocked_AndMakesItRecent()
     {
         // Arrange
+        _view.ToggleImagesPanel(true);
         AddToCatalog("Azure/vm.svg", "Virtual Machine", "Azure");
         _view.ActivateWindow();
         _view.Hover(100, 100);
@@ -3980,6 +4013,7 @@ public class DiagramEditorPresenterTests
     public void Catalog_Dropped_IsInsertedWhereItWasDropped()
     {
         // Arrange
+        _view.ToggleImagesPanel(true);
         AddToCatalog("vm.svg", "vm", "Inserted");
         _view.ActivateWindow();
 
@@ -4007,6 +4041,7 @@ public class DiagramEditorPresenterTests
     public void Catalog_Search_ShowsTheImagesWhoseNameOrGroupHasTheText_WithoutRecent()
     {
         // Arrange
+        _view.ToggleImagesPanel(true);
         AddToCatalog("Azure/Compute/vm.svg", "Virtual Machine", "Azure/Compute");
         AddToCatalog("Azure/Web/app.svg", "App Service", "Azure/Web");
         AddToCatalog("logo.svg", "logo", "Inserted");
@@ -4031,6 +4066,7 @@ public class DiagramEditorPresenterTests
     public void Catalog_PanelHidden_IsRemembered_AndShowsNothingUntilShownAgain()
     {
         // Arrange
+        _view.ToggleImagesPanel(true);
         AddToCatalog("vm.svg", "vm", "Inserted");
 
         // Act / Assert

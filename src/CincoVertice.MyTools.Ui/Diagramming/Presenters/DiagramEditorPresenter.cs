@@ -92,8 +92,9 @@ public sealed class DiagramEditorPresenter
 
     private DiagramRouting _routing = DiagramRouting.Elbow;
     private DiagramArrowHeads _heads = DiagramArrowHeads.End;
+    // The side panel's tabs: one at most is shown
     private bool _isPropertiesPanelVisible = true;
-    private bool _isImagesPanelVisible = true;
+    private bool _isImagesPanelVisible;
     private bool _isLayersPanelVisible;
 
     // What the layers panel shows, so it's told only of changes; null until it's told
@@ -268,9 +269,10 @@ public sealed class DiagramEditorPresenter
         }
 
         _style = saved.Style;
+        // From before the panels were tabs, several can be on: properties first, then images
         _isPropertiesPanelVisible = saved.IsPropertiesPanelVisible;
-        _isImagesPanelVisible = saved.IsImagesPanelVisible;
-        _isLayersPanelVisible = saved.IsLayersPanelVisible;
+        _isImagesPanelVisible = saved.IsImagesPanelVisible && !_isPropertiesPanelVisible;
+        _isLayersPanelVisible = saved.IsLayersPanelVisible && !_isPropertiesPanelVisible && !_isImagesPanelVisible;
 
         if (Enum.IsDefined(saved.Routing))
         {

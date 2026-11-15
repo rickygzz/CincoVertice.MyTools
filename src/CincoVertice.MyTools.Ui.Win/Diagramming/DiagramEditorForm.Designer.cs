@@ -142,9 +142,7 @@ partial class DiagramEditorForm
         InsertImageMenuItem = new ToolStripMenuItem();
         FrontButton = new ToolStripButton();
         BackButton = new ToolStripButton();
-        PropertiesButton = new ToolStripButton();
-        ImagesButton = new ToolStripButton();
-        LayersButton = new ToolStripButton();
+        PanelsButton = new ToolStripButton();
         LayersPanel = new Panel();
         LayersListView = new ListView();
         LayersHintLabel = new Label();
@@ -152,6 +150,10 @@ partial class DiagramEditorForm
         Canvas = new DiagramCanvasControl();
         TextInputBox = new RichTextBox();
         PropertiesPanel = new Panel();
+        SidePanelTabs = new TabControl();
+        ImagesTab = new TabPage();
+        LayersTab = new TabPage();
+        PropertiesTab = new TabPage();
         ImagesPanel = new Panel();
         ImagesListView = new ListView();
         ImagesEmptyLabel = new Label();
@@ -223,6 +225,10 @@ partial class DiagramEditorForm
         StyleStrip.SuspendLayout();
         Canvas.SuspendLayout();
         PropertiesPanel.SuspendLayout();
+        SidePanelTabs.SuspendLayout();
+        ImagesTab.SuspendLayout();
+        LayersTab.SuspendLayout();
+        PropertiesTab.SuspendLayout();
         ImagesPanel.SuspendLayout();
         LayersPanel.SuspendLayout();
         PropertiesTable.SuspendLayout();
@@ -370,7 +376,7 @@ partial class DiagramEditorForm
         // StyleStrip
         //
         StyleStrip.GripStyle = ToolStripGripStyle.Hidden;
-        StyleStrip.Items.AddRange(new ToolStripItem[] { FileDropDownButton, EditDropDownButton, FileSeparator, FillDropDownButton, LineDropDownButton, LineWidthComboBox, DashedButton, TextColorDropDownButton, FontSizeComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, StyleSeparator, RoutingComboBox, ArrowHeadsComboBox, ResetRouteButton, ConnectorsSeparator, FrontButton, BackButton, AlignDropDownButton, ZoomLabel, PropertiesButton, ImagesButton, LayersButton });
+        StyleStrip.Items.AddRange(new ToolStripItem[] { FileDropDownButton, EditDropDownButton, FileSeparator, FillDropDownButton, LineDropDownButton, LineWidthComboBox, DashedButton, TextColorDropDownButton, FontSizeComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, StyleSeparator, RoutingComboBox, ArrowHeadsComboBox, ResetRouteButton, ConnectorsSeparator, FrontButton, BackButton, AlignDropDownButton, ZoomLabel, PanelsButton });
         StyleStrip.Name = "StyleStrip";
         StyleStrip.Padding = new Padding(4, 2, 4, 2);
         StyleStrip.TabIndex = 1;
@@ -1026,46 +1032,58 @@ partial class DiagramEditorForm
         BackButton.ToolTipText = "Send to back (Ctrl+[)";
         BackButton.Click += CommandButton_Click;
         //
-        // PropertiesButton
+        // PanelsButton
         //
-        PropertiesButton.Alignment = ToolStripItemAlignment.Right;
-        PropertiesButton.Checked = true;
-        PropertiesButton.Name = "PropertiesButton";
-        PropertiesButton.Overflow = ToolStripItemOverflow.Never;
-        PropertiesButton.Text = "Properties";
-        PropertiesButton.ToolTipText = "Show or hide the properties panel (F4)";
-        PropertiesButton.Click += PropertiesButton_Click;
+        PanelsButton.Alignment = ToolStripItemAlignment.Right;
+        PanelsButton.Name = "PanelsButton";
+        PanelsButton.Overflow = ToolStripItemOverflow.Never;
+        PanelsButton.Text = "Panels";
+        PanelsButton.ToolTipText = "Show or hide the side panel: images, layers and properties (F4)";
+        PanelsButton.Click += PanelsButton_Click;
         //
-        // ImagesButton
+        // SidePanelTabs
         //
-        ImagesButton.Alignment = ToolStripItemAlignment.Right;
-        ImagesButton.Checked = true;
-        ImagesButton.Name = "ImagesButton";
-        ImagesButton.Overflow = ToolStripItemOverflow.Never;
-        ImagesButton.Text = "Images";
-        ImagesButton.ToolTipText = "Show or hide the images to insert again";
-        ImagesButton.Click += ImagesButton_Click;
+        SidePanelTabs.Controls.Add(ImagesTab);
+        SidePanelTabs.Controls.Add(LayersTab);
+        SidePanelTabs.Controls.Add(PropertiesTab);
+        SidePanelTabs.Dock = DockStyle.Right;
+        SidePanelTabs.Name = "SidePanelTabs";
+        SidePanelTabs.SelectedIndex = 0;
+        SidePanelTabs.Size = new Size(260, 700);
+        SidePanelTabs.TabIndex = 3;
+        SidePanelTabs.Visible = false;
+        SidePanelTabs.Deselected += SidePanelTabs_Deselected;
+        SidePanelTabs.Selected += SidePanelTabs_Selected;
         //
-        // LayersButton
+        // PropertiesTab
         //
-        LayersButton.Alignment = ToolStripItemAlignment.Right;
-        LayersButton.Name = "LayersButton";
-        LayersButton.Overflow = ToolStripItemOverflow.Never;
-        LayersButton.Text = "Layers";
-        LayersButton.ToolTipText = "Show or hide the layers: what's in front of what, and names for them";
-        LayersButton.Click += LayersButton_Click;
+        PropertiesTab.Controls.Add(PropertiesPanel);
+        PropertiesTab.Name = "PropertiesTab";
+        PropertiesTab.Text = "Properties";
+        PropertiesTab.UseVisualStyleBackColor = true;
+        //
+        // LayersTab
+        //
+        LayersTab.Controls.Add(LayersPanel);
+        LayersTab.Name = "LayersTab";
+        LayersTab.Text = "Layers";
+        LayersTab.UseVisualStyleBackColor = true;
+        //
+        // ImagesTab
+        //
+        ImagesTab.Controls.Add(ImagesPanel);
+        ImagesTab.Name = "ImagesTab";
+        ImagesTab.Text = "Images";
+        ImagesTab.UseVisualStyleBackColor = true;
         //
         // LayersPanel
         //
-        LayersPanel.BorderStyle = BorderStyle.FixedSingle;
         LayersPanel.Controls.Add(LayersListView);
         LayersPanel.Controls.Add(LayersHintLabel);
-        LayersPanel.Dock = DockStyle.Right;
+        LayersPanel.Dock = DockStyle.Fill;
         LayersPanel.Name = "LayersPanel";
         LayersPanel.Padding = new Padding(4);
-        LayersPanel.Size = new Size(210, 700);
         LayersPanel.TabIndex = 5;
-        LayersPanel.Visible = false;
         //
         // LayersListView
         //
@@ -1102,15 +1120,13 @@ partial class DiagramEditorForm
         //
         // ImagesPanel
         //
-        ImagesPanel.BorderStyle = BorderStyle.FixedSingle;
         ImagesPanel.Controls.Add(ImagesListView);
         ImagesPanel.Controls.Add(ImagesEmptyLabel);
         ImagesPanel.Controls.Add(ImageSearchBox);
         ImagesPanel.Controls.Add(ImagesFolderButton);
-        ImagesPanel.Dock = DockStyle.Left;
+        ImagesPanel.Dock = DockStyle.Fill;
         ImagesPanel.Name = "ImagesPanel";
         ImagesPanel.Padding = new Padding(4);
-        ImagesPanel.Size = new Size(230, 700);
         ImagesPanel.TabIndex = 4;
         //
         // ImagesListView
@@ -1156,11 +1172,9 @@ partial class DiagramEditorForm
         // PropertiesPanel
         //
         PropertiesPanel.AutoScroll = true;
-        PropertiesPanel.BorderStyle = BorderStyle.FixedSingle;
         PropertiesPanel.Controls.Add(PropertiesTable);
-        PropertiesPanel.Dock = DockStyle.Right;
+        PropertiesPanel.Dock = DockStyle.Fill;
         PropertiesPanel.Name = "PropertiesPanel";
-        PropertiesPanel.Size = new Size(230, 700);
         PropertiesPanel.TabIndex = 3;
         //
         // PropertiesTable
@@ -1709,9 +1723,7 @@ partial class DiagramEditorForm
         AutoScaleMode = AutoScaleMode.Font;
         ClientSize = new Size(1280, 760);
         Controls.Add(Canvas);
-        Controls.Add(LayersPanel);
-        Controls.Add(ImagesPanel);
-        Controls.Add(PropertiesPanel);
+        Controls.Add(SidePanelTabs);
         Controls.Add(ToolsStrip);
         Controls.Add(StyleStrip);
         Controls.Add(StatusBar);
@@ -1748,6 +1760,10 @@ partial class DiagramEditorForm
         ImagesPanel.ResumeLayout(false);
         ImagesPanel.PerformLayout();
         LayersPanel.ResumeLayout(false);
+        ImagesTab.ResumeLayout(false);
+        LayersTab.ResumeLayout(false);
+        PropertiesTab.ResumeLayout(false);
+        SidePanelTabs.ResumeLayout(false);
         ResumeLayout(false);
         PerformLayout();
     }
@@ -1849,12 +1865,11 @@ partial class DiagramEditorForm
     private ToolStripMenuItem InsertImageMenuItem;
     private ToolStripButton FrontButton;
     private ToolStripButton BackButton;
-    private ToolStripButton PropertiesButton;
+    private ToolStripButton PanelsButton;
     private ToolStripLabel ZoomLabel;
     private DiagramCanvasControl Canvas;
     private RichTextBox TextInputBox;
     private Panel PropertiesPanel;
-    private ToolStripButton ImagesButton;
     private Panel ImagesPanel;
     private ListView ImagesListView;
     private Label ImagesEmptyLabel;
@@ -1917,8 +1932,11 @@ partial class DiagramEditorForm
     private CheckBox ProportionsCheckBox;
     private Button ResetSizeButton;
     private ToolStripMenuItem ResetSizeMenuItem;
-    private ToolStripButton LayersButton;
     private Panel LayersPanel;
+    private TabControl SidePanelTabs;
+    private TabPage ImagesTab;
+    private TabPage LayersTab;
+    private TabPage PropertiesTab;
     private ListView LayersListView;
     private Label LayersHintLabel;
     private ToolStripMenuItem CopyPictureMenuItem;

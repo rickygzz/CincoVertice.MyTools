@@ -50,7 +50,7 @@ New text uses [Roboto](https://fonts.google.com/specimen/Roboto), which comes wi
   - *Reset size:* **Reset size** in the Properties panel, or **Edit > Reset image size**, gives the selected images the size and proportions they were inserted at, keeping their top left corner. It's a step you can undo.
   - *Text:* double-click an image to type its name. The text goes under the image, and can be wider than it.
   - An image works like any other shape: connectors attach to it, and it can be locked, grouped, copied, duplicated and deleted. It has no fill, border or corners. An image Windows can't draw shows as a gray box with a cross.
-  - *The images panel*, on the left (the **Images** button at the top right shows or hides it), keeps every image you insert, to insert again:
+  - *The images panel*, the **Images** tab of the side panel (see [The side panel](#the-side-panel)), keeps every image you insert, to insert again:
     - Each image inserted, from a file, a drop or pasted text, is copied into the `config\images` folder next to the exe. The same image inserted again isn't copied twice; a different image with the same file name gets a number, as in `vm (2).svg`.
     - The panel shows **Recent**, the 12 images used last, then **Inserted**, then a group for each folder of your own in `config\images`. Copy SVG files there, such as a whole icon pack in its folders: **Open the images folder**, at the bottom, opens it, and the panel shows what's new when you come back to the editor.
     - Names are easier to read than the files': dashes and underscores show as spaces, and Azure's `10021-icon-service-` goes away, so `10021-icon-service-Virtual-Machine.svg` is "Virtual Machine". Hover over one for its whole name and file.
@@ -82,7 +82,7 @@ New text uses [Roboto](https://fonts.google.com/specimen/Roboto), which comes wi
   - It applies when moving selected shapes, resizing with a handle, drawing a new shape or line, dragging a line's end, and dragging a connector's bend segment. Dragging a connector from one shape to another does not snap to lines or the grid; the connector attaches to a shape's side instead.
   - Arrow-key nudging and the Properties panel never snap.
   - To drag without snapping, hold **Alt**. When resizing, hold **Alt** or **Shift** (Shift also keeps the proportions). There is no other setting to switch snapping off.
-- **Layers:** the **Layers** button at the top right shows or hides the layers panel, at the right of the canvas. It lists everything in the diagram, what's in front first: the connectors and lines, which are always in front of the shapes, then the shapes, the one drawn last at the top.
+- **Layers:** the **Layers** tab of the side panel (see [The side panel](#the-side-panel)) lists everything in the diagram, what's in front first: the connectors and lines, which are always in front of the shapes, then the shapes, the one drawn last at the top.
   - Each row shows its name, or else its kind and the start of its text, such as `Rectangle: Start`, `Connector: Start → End` or `Line`.
   - *Select:* click a row, or Ctrl+click or Shift+click for several. The canvas selects them too, and selecting on the canvas marks their rows. A row selects only that one, even a shape in a group, which a click on the canvas can't: so you can change one shape of a group without ungrouping it.
   - *Name:* double-click a row, or select it and press **F2**, and type a name; Enter keeps it, Esc doesn't. Clearing the name gives the row its kind and text back. Names are saved with the diagram, and **Find** finds them too.
@@ -91,9 +91,13 @@ New text uses [Roboto](https://fonts.google.com/specimen/Roboto), which comes wi
 - **Find:** press **Ctrl+F**, or click the **Find** box at the bottom right, and type. The first shape whose text has what you type, or connector whose label has it, in any case, is selected; they go top to bottom, then left to right. **Enter** or **F3** goes to the next one, and **Shift+Enter** or **Shift+F3** to the one before; after the last, it starts again from the first. Beside the box, "2 of 5" says which one it is, or "Not found". One out of view is brought to the middle of the canvas. **Esc** goes back to the canvas.
 - **The status bar**, under the canvas, shows where the mouse is on the diagram, as `x, y` in diagram pixels, and what's selected, such as `2 shapes, 1 line: 240 × 120 at 40, 80`: its width and height, then its left and top. It follows a drag as it goes, so you can move or resize something to an exact size.
 
+## The side panel
+
+At the right of the canvas, one panel holds three tabs: **Images** (the images to insert again), **Layers** (what's in front of what, and names) and **Properties** (the fields of what's selected). Click a tab to switch. The **Panels** button at the top right, or **F4**, hides the panel, for more room, and shows it again at the tab it had; it stays pressed while the panel shows. The editor remembers which tab was shown, or that the panel was hidden.
+
 ## Style and properties
 
-The toolbar offers the **File** menu (see [Saving and opening](#saving-and-opening)), the **Edit** menu, Fill (with "No fill"), Line, line width, Dashed, Text color, text size, Edge color (with "No edge") and width, routing ("Elbow" or "Straight", tooltip "How connectors go between shapes"), arrows ("Arrow at end", "Arrow at start", "Arrows at both", "No arrows"), "Reset line" (tooltip "Let the selected connectors work out their own path again"), Front, Back, Align, and at the right Layers, Images and Properties.
+The toolbar offers the **File** menu (see [Saving and opening](#saving-and-opening)), the **Edit** menu, Fill (with "No fill"), Line, line width, Dashed, Text color, text size, Edge color (with "No edge") and width, routing ("Elbow" or "Straight", tooltip "How connectors go between shapes"), arrows ("Arrow at end", "Arrow at start", "Arrows at both", "No arrows"), "Reset line" (tooltip "Let the selected connectors work out their own path again"), Front, Back, Align, and at the right Panels.
 
 The **Edit** menu has **Undo** (Ctrl+Z), **Redo** (Ctrl+Y), **Copy as picture** (Ctrl+Shift+P), **Copy style** (Ctrl+Shift+C), **Bold** (Ctrl+B), **Italic**, **Paste style** (Ctrl+Shift+V), **Group** (Ctrl+G) and **Ungroup** (Ctrl+Shift+G). Undo and Redo are grayed out when there is nothing to undo or redo.
 
@@ -103,7 +107,7 @@ A toolbar change goes to everything selected, and to what you draw next.
 
 **Copy a style.** Select a shape or connector and choose **Edit > Copy style** (or press **Ctrl+Shift+C**). Then select one or more others and choose **Edit > Paste style** (**Ctrl+Shift+V**). Both are also on the menu you get by right-clicking a shape or connector: a right-click on something not selected selects just it first, and one on the selection keeps it all. Paste style is grayed out there until you copy a style. Pasted objects get the copied fill, border, border width, dashes, text color, font, text size and text edge, as one step to undo. What you draw next gets that style too. A style copied from a connector leaves a shape's fill as it is, since a connector has none. Routing and arrows are not copied. The copied style stays until you copy another, in that window only.
 
-The Properties panel (show or hide with **F4**) has these fields: Text, X, Y, Width, Height, Keep proportions, Reset size (images only), Top corners, Bottom corners (rectangles and containers), Fill, Title fill (containers only), Border, Border width, Dashed, Text color, Font, Text size, Text align, Text edge, Edge width, Route, Arrows and Direction (lines only, see [Lines](#working-with-shapes)).
+The **Properties** tab of the side panel has these fields: Text, X, Y, Width, Height, Keep proportions, Reset size (images only), Top corners, Bottom corners (rectangles and containers), Fill, Title fill (containers only), Border, Border width, Dashed, Text color, Font, Text size, Text align, Text edge, Edge width, Route, Arrows and Direction (lines only, see [Lines](#working-with-shapes)).
 
 **Text align** puts the lines of a shape's text at the left, in the middle (as at first) or at the right of the part of the shape the text fits in; for a container, of its title band, and for an image, under it, from its left or right edge. A connector's label lines up its lines the same way. Like the other text settings, it goes to what's selected and to what you draw next, and **Copy style** takes it.
 
@@ -139,7 +143,7 @@ The Properties panel (show or hide with **F4**) has these fields: Text, X, Y, Wi
 | Ctrl++ / Ctrl+- / Ctrl+0 | Zoom in / zoom out / reset zoom |
 | Delete or Backspace | Delete the selection |
 | Arrow keys | Move the selection 10 px (with Shift, 1 px) |
-| F4 | Show or hide the Properties panel |
+| F4 | Show or hide the side panel |
 | Ctrl+F | Find a shape by its text |
 | F3 / Shift+F3 | Next / previous one found |
 | Space (held) or middle mouse button | Drag the view |
