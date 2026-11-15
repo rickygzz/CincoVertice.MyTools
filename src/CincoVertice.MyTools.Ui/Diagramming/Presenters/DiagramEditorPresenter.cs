@@ -64,6 +64,7 @@ public sealed class DiagramEditorPresenter
     private readonly IDiagramPngExporter _pngExporter;
     private readonly IDiagramImageCatalog _imageCatalog;
     private readonly IDiagramEditorSettingsStore _settingsStore;
+    private readonly IDiagramRecoveryStore _recoveryStore;
     private readonly Stack<DiagramModel> _undo = new();
     private readonly Stack<DiagramModel> _redo = new();
     private readonly HashSet<int> _selectedShapes = [];
@@ -132,6 +133,13 @@ public sealed class DiagramEditorPresenter
     private string _findText = string.Empty;
     private int _findIndex = -1;
 
+    // This window's copy of its unsaved changes, and what the copy has, so it's written only when that changes
+    private string _recoveryId;
+    private (DiagramModel Diagram, bool HasChanges)? _autosaved;
+
+    // Set once the user said what to do with the changes as the window closes: then the copy isn't needed
+    private bool _isLeaveConfirmed;
+
     /// <param name="view">The window.</param>
     /// <param name="fileStore">Where diagrams are opened from and saved to.</param>
     /// <param name="settingsStore">
@@ -141,14 +149,21 @@ public sealed class DiagramEditorPresenter
     /// <param name="pdfExporter">Writes the diagram as a PDF file.</param>
     /// <param name="pngExporter">Writes the diagram as a PNG picture.</param>
     /// <param name="imageCatalog">Keeps the images inserted, and those the user adds, to insert again.</param>
+    /// <param name="recoveryStore">
+    ///     Keeps a copy of the diagram while it has changes that weren't saved, to get them back after the app or
+    ///     Windows ends.
+    /// </param>
     public DiagramEditorPresenter(
         IDiagramEditorView view,
         IDiagramFileStore fileStore,
         IDiagramEditorSettingsStore settingsStore,
         IDiagramPdfExporter pdfExporter,
         IDiagramPngExporter pngExporter,
-        IDiagramImageCatalog imageCatalog)
+        IDiagramImageCatalog imageCatalog,
+        IDiagramRecoveryStore recoveryStore)
     {
+        _recoveryStore = recoveryStore;
+        _recoveryId = recoveryStore.NewId();
         _imageCatalog = imageCatalog;
         _view = view;
         _fileStore = fileStore;
@@ -194,6 +209,7 @@ public sealed class DiagramEditorPresenter
         _view.CatalogImageDropped += OnCatalogImageDropped;
         _view.ImagesFolderRequested += OnImagesFolderRequested;
         _view.FindRequested += OnFindRequested;
+        _view.AutosaveDue += OnAutosaveDue;
         _view.WindowActivated += OnWindowActivated;
         _view.WindowClosed += OnWindowClosed;
     }
@@ -379,6 +395,71 @@ public sealed class DiagramEditorPresenter
     {
         _windowSize = size;
         SaveSettings();
+
+        // Closed without asking, as when Windows shuts down: the copy stays, up to date, to get the changes back
+        if (_isLeaveConfirmed || !HasChanges)
+        {
+            _recoveryStore.Delete(_recoveryId);
+        }
+        else
+        {
+            Autosave();
+        }
+    }
+
+    /// <summary>
+    ///     Opens a copy of a diagram whose changes weren't saved when the app or Windows ended, still with changes to
+    ///     save, to the file it had. Call it after <see cref="Start"/>, in place of the empty diagram.
+    /// </summary>
+    public void Recover(DiagramRecoveryModel recovery)
+    {
+        _recoveryStore.Adopt(recovery.Id);
+        _recoveryStore.Delete(_recoveryId);
+        _recoveryId = recovery.Id;
+        Replace(recovery.Diagram, recovery.Path);
+
+        // Its changes aren't saved; and a file changed since the copy was made is asked about before it's replaced
+        _savedDiagram = DiagramModel.Empty;
+        _savedVersion = recovery.Version;
+        _autosaved = (_diagram, true);
+        Refresh();
+    }
+
+    private void OnAutosaveDue(object? sender, EventArgs e)
+    {
+        Autosave();
+    }
+
+    /// <summary>Keeps a copy of the diagram while it has unsaved changes, and none once it hasn't.</summary>
+    private void Autosave()
+    {
+        (DiagramModel Diagram, bool HasChanges) state = (_diagram, HasChanges);
+
+        if (_autosaved is { } saved
+            && ReferenceEquals(saved.Diagram, state.Diagram)
+            && saved.HasChanges == state.HasChanges)
+        {
+            return;
+        }
+
+        if (!state.HasChanges)
+        {
+            _recoveryStore.Delete(_recoveryId);
+            _autosaved = state;
+
+            return;
+        }
+
+        try
+        {
+            _recoveryStore.Save(
+                new DiagramRecoveryModel(_recoveryId, _path, _savedVersion, _diagram, DateTime.UtcNow));
+            _autosaved = state;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Tried again the next time; the diagram itself is still in the window
+        }
     }
 
     private static Rectangle FromCorners(Point a, Point b) => Rectangle.FromLTRB(
@@ -1884,6 +1965,7 @@ public sealed class DiagramEditorPresenter
     private void OnClosing(object? sender, CancelEventArgs e)
     {
         e.Cancel = !ConfirmLeave();
+        _isLeaveConfirmed = !e.Cancel;
     }
 
     private void Undo()

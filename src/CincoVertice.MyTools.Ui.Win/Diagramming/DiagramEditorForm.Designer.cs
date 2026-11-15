@@ -170,6 +170,7 @@ partial class DiagramEditorForm
         WidthLockCheckBox = new CheckBox();
         HeightLockCheckBox = new CheckBox();
         PropertiesToolTip = new ToolTip(components);
+        AutosaveTimer = new System.Windows.Forms.Timer(components);
         CornerRadiusLabel = new Label();
         CornerRadiusBox = new NumericUpDown();
         BottomCornerRadiusLabel = new Label();
@@ -1637,6 +1638,12 @@ partial class DiagramEditorForm
         TextInputBox.KeyDown += TextInputBox_KeyDown;
         TextInputBox.Leave += TextInputBox_Leave;
         //
+        // AutosaveTimer
+        //
+        AutosaveTimer.Enabled = true;
+        AutosaveTimer.Interval = 10000;
+        AutosaveTimer.Tick += AutosaveTimer_Tick;
+        //
         // DiagramEditorForm
         //
         AutoScaleDimensions = new SizeF(7F, 15F);
@@ -1850,6 +1857,7 @@ partial class DiagramEditorForm
     private Button ResetSizeButton;
     private ToolStripMenuItem ResetSizeMenuItem;
     private ToolStripMenuItem CopyPictureMenuItem;
+    private System.Windows.Forms.Timer AutosaveTimer;
     private ToolStripMenuItem BoldMenuItem;
     private ToolStripMenuItem ItalicMenuItem;
     private ToolStripSeparator TextFormatSeparator;

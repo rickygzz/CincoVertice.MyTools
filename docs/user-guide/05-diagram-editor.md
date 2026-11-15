@@ -155,6 +155,13 @@ The zoom label shows the percentage; its tooltip reads "Ctrl+wheel to zoom. Clic
   - `Could not open <file name>: <message>`, `Could not save <file name>: <message>` and `Could not export <file name>: <message>`.
 - There is no printing from the editor; print the PDF instead.
 
+### Getting unsaved changes back
+
+While a window has changes that aren't saved, the editor keeps a copy of its diagram, every 10 seconds, in `config\recovery`. Once you save it, or close the window and choose to save it or not, the copy is deleted. So when My Tools ends or Windows shuts down with changes not saved, at most the last 10 seconds are lost.
+
+- When Windows shuts down, or My Tools exits from the tray menu, the editor doesn't ask about the changes, since the question could stop Windows shutting down: it keeps the copy instead.
+- The next time you open the diagram editor, it lists the diagrams with changes that weren't saved, each with when its copy was made, and asks to open them. **Yes** opens each in a window of its own, with the changes still to save: **Save** saves to the file it was opened from, asking first if that file was changed since, and a diagram never saved asks where. **No** throws the changes away. **Cancel** keeps them, to ask again next time.
+
 ### Export as PDF
 
 **Export as PDF...** (Ctrl+E) writes a copy of the diagram as a PDF file, to share or print. The dialog is "Export as PDF", with the filter "PDF document (*.pdf)"; the suggested name is the diagram's, such as `flow.pdf`, or `Diagram.pdf` for a diagram never saved.

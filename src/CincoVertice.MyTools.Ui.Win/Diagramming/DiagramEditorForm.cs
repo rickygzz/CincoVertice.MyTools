@@ -171,6 +171,8 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
 
     public event EventHandler<DiagramFindModel>? FindRequested;
 
+    public event EventHandler? AutosaveDue;
+
     public event EventHandler? WindowActivated;
 
     public event EventHandler<DiagramWindowSizeModel>? WindowClosed;
@@ -1217,6 +1219,11 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         CommandRequested?.Invoke(this, DiagramCommand.ZoomReset);
     }
 
+    private void AutosaveTimer_Tick(object? sender, EventArgs e)
+    {
+        AutosaveDue?.Invoke(this, EventArgs.Empty);
+    }
+
     private void FindBox_TextChanged(object? sender, EventArgs e)
     {
         Find(DiagramFindStep.First);
@@ -1498,10 +1505,14 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         // Applies what was typed in a panel field, so it counts as a change to ask about
         Canvas.Focus();
 
-        var closing = new CancelEventArgs();
+        // Only the user is asked: a question could stop Windows shutting down, and the changes are kept anyway
+        if (e.CloseReason == CloseReason.UserClosing)
+        {
+            var closing = new CancelEventArgs();
 
-        _closing?.Invoke(this, closing);
-        e.Cancel = closing.Cancel;
+            _closing?.Invoke(this, closing);
+            e.Cancel = closing.Cancel;
+        }
 
         if (!e.Cancel)
         {

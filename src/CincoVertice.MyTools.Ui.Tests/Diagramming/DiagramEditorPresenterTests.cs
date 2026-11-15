@@ -17,11 +17,13 @@ public class DiagramEditorPresenterTests
     private readonly FakeExporter _exporter = new();
     private readonly FakePngExporter _pngExporter = new();
     private readonly FakeImageCatalog _catalog = new();
+    private readonly FakeRecoveryStore _recovery = new();
     private readonly DiagramEditorPresenter _presenter;
 
     public DiagramEditorPresenterTests()
     {
-        _presenter = new DiagramEditorPresenter(_view, _store, _settings, _exporter, _pngExporter, _catalog);
+        _presenter =
+            new DiagramEditorPresenter(_view, _store, _settings, _exporter, _pngExporter, _catalog, _recovery);
         _presenter.Start();
     }
 
@@ -2372,7 +2374,14 @@ public class DiagramEditorPresenterTests
     {
         var view = new FakeView();
         var presenter =
-            new DiagramEditorPresenter(view, _store, new FakeSettingsStore(saved), _exporter, _pngExporter, _catalog);
+            new DiagramEditorPresenter(
+                view,
+                _store,
+                new FakeSettingsStore(saved),
+                _exporter,
+                _pngExporter,
+                _catalog,
+                _recovery);
 
         presenter.Start();
 
@@ -2526,7 +2535,7 @@ public class DiagramEditorPresenterTests
             Window: window));
         var view = new FakeView();
 
-        new DiagramEditorPresenter(view, _store, store, _exporter, _pngExporter, _catalog).Start();
+        new DiagramEditorPresenter(view, _store, store, _exporter, _pngExporter, _catalog, _recovery).Start();
 
         // Act
         view.SelectLineWidth(5);
@@ -4539,6 +4548,142 @@ public class DiagramEditorPresenterTests
     }
 
     [Fact]
+    public void Autosave_KeepsACopy_OnlyWhileThereAreUnsavedChanges_AndWritesItOnlyWhenTheyChange()
+    {
+        // Act / Assert: nothing to keep yet
+        _view.Tick();
+        Assert.Empty(_recovery.Copies);
+
+        // Act: a change
+        AddShape(100, 100);
+        _view.Tick();
+        _view.Tick();
+
+        // Assert: one copy, written once
+        DiagramRecoveryModel copy = Assert.Single(_recovery.Copies.Values);
+        Assert.Same(Diagram, copy.Diagram);
+        Assert.Null(copy.Path);
+        Assert.Equal(1, _recovery.Saves);
+
+        // Act: saved, the copy isn't needed
+        _view.PathToSave = @"C:\flow.svg";
+        _view.Command(DiagramCommand.Save);
+        _view.Tick();
+
+        // Assert
+        Assert.Empty(_recovery.Copies);
+
+        // Act: another change; the copy knows the file now
+        AddShape(400, 100);
+        _view.Tick();
+
+        // Assert
+        Assert.Equal(@"C:\flow.svg", Assert.Single(_recovery.Copies.Values).Path);
+    }
+
+    [Fact]
+    public void Autosave_ThatCantWrite_TriesAgainNextTime()
+    {
+        // Arrange
+        AddShape(100, 100);
+        _recovery.SaveError = new IOException("disk full");
+
+        // Act
+        _view.Tick();
+        _recovery.SaveError = null;
+        _view.Tick();
+
+        // Assert
+        Assert.Single(_recovery.Copies);
+    }
+
+    [Theory]
+    [InlineData(DiagramSaveChoice.Discard)]
+    [InlineData(DiagramSaveChoice.Save)]
+    public void Closing_AfterTheUserSaidWhatToDo_DeletesTheCopy(DiagramSaveChoice choice)
+    {
+        // Arrange
+        AddShape(100, 100);
+        _view.Tick();
+        _view.SaveChoice = choice;
+        _view.PathToSave = @"C:\flow.svg";
+
+        // Act
+        Assert.False(_view.Close());
+        _view.CloseWithSize(800, 600);
+
+        // Assert
+        Assert.Empty(_recovery.Copies);
+    }
+
+    [Fact]
+    public void ClosedWithoutAsking_AsWhenWindowsShutsDown_KeepsAnUpToDateCopy()
+    {
+        // Arrange: a copy, then another change before the next tick
+        AddShape(100, 100);
+        _view.Tick();
+        AddShape(400, 100);
+
+        // Act: the window doesn't ask, it only closes
+        _view.CloseWithSize(800, 600);
+
+        // Assert
+        Assert.Equal(2, Assert.Single(_recovery.Copies.Values).Diagram.Shapes.Count);
+    }
+
+    [Fact]
+    public void Recover_ShowsTheDiagram_WithChangesToSave_ToItsFile_AndKeepsItsCopy()
+    {
+        // Arrange: a copy left from before, of a file that's still as it was then
+        var shape = new DiagramShapeModel(
+            1,
+            DiagramShapeKind.Rectangle,
+            new Rectangle(100, 100, 100, 50),
+            "kept",
+            new DiagramStyleModel(Color.White, Color.Black, 2, false, Color.Black, 14));
+        var left = new DiagramRecoveryModel(
+            "old",
+            @"C:\flow.svg",
+            "1",
+            new DiagramModel([shape], []),
+            new DateTime(2026, 11, 14, 9, 0, 0, DateTimeKind.Utc));
+        _recovery.Leave(left);
+
+        // Act
+        _presenter.Recover(left);
+
+        // Assert: it's this window's copy now, and the one it had is gone
+        Assert.Equal("kept", Assert.Single(Diagram.Shapes).Text);
+        Assert.Equal(("flow.svg", true), (_view.DocumentName, _view.HasChanges));
+        Assert.Empty(_recovery.Left());
+        Assert.Equal(["old"], _recovery.Copies.Keys);
+
+        // Act: saved to its own file, without asking where
+        _view.Command(DiagramCommand.Save);
+        _view.Tick();
+
+        // Assert
+        Assert.Equal(@"C:\flow.svg", _store.SavedPath);
+        Assert.Empty(_recovery.Copies);
+    }
+
+    [Fact]
+    public void Recover_AFileChangedSinceTheCopy_AsksBeforeReplacingIt()
+    {
+        // Arrange: the file is at version 2 now
+        var left = new DiagramRecoveryModel("old", @"C:\flow.svg", "1", DiagramModel.Empty with { }, DateTime.UtcNow);
+        _store.Version = "2";
+        _view.OverwriteAnswer = false;
+        _presenter.Recover(left);
+
+        // Act
+        _view.Command(DiagramCommand.Save);
+
+        // Assert
+        Assert.Null(_store.SavedPath);
+    }
+
+    [Fact]
     public void Open_ReplacesTheDiagram_ClearsUndo_AndShowsItsTopLeft()
     {
         // Arrange
@@ -5012,6 +5157,46 @@ public class DiagramEditorPresenterTests
         }
     }
 
+    /// <summary>Copies in memory; ids from a run before this one are given to it with <see cref="Leave"/>.</summary>
+    private sealed class FakeRecoveryStore : IDiagramRecoveryStore
+    {
+        private readonly HashSet<string> _ours = [];
+        private int _next;
+
+        public Dictionary<string, DiagramRecoveryModel> Copies { get; } = [];
+
+        public int Saves { get; private set; }
+
+        public Exception? SaveError { get; set; }
+
+        public string NewId()
+        {
+            string id = $"window{++_next}";
+            _ours.Add(id);
+
+            return id;
+        }
+
+        public void Save(DiagramRecoveryModel recovery)
+        {
+            if (SaveError is not null)
+            {
+                throw SaveError;
+            }
+
+            Saves++;
+            Copies[recovery.Id] = recovery;
+        }
+
+        public void Delete(string id) => Copies.Remove(id);
+
+        public IReadOnlyList<DiagramRecoveryModel> Left() => [.. Copies.Values.Where(copy => !_ours.Contains(copy.Id))];
+
+        public void Adopt(string id) => _ours.Add(id);
+
+        public void Leave(DiagramRecoveryModel recovery) => Copies[recovery.Id] = recovery;
+    }
+
     private sealed class FakePngExporter : IDiagramPngExporter
     {
         public (string Path, DiagramModel Diagram, int Scale)? Exported { get; private set; }
@@ -5124,6 +5309,10 @@ public class DiagramEditorPresenterTests
         public event EventHandler? ImagesFolderRequested;
 
         public event EventHandler<DiagramFindModel>? FindRequested;
+
+        public event EventHandler? AutosaveDue;
+
+        public void Tick() => AutosaveDue?.Invoke(this, EventArgs.Empty);
 
         public event EventHandler? WindowActivated;
 

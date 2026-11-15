@@ -109,13 +109,19 @@ public interface IDiagramEditorView
     /// <summary>Raised when the user looks for a text, as it's typed and to go to the next or previous one.</summary>
     event EventHandler<DiagramFindModel>? FindRequested;
 
+    /// <summary>Raised every few seconds while the window is open, to keep a copy of unsaved changes.</summary>
+    event EventHandler? AutosaveDue;
+
     /// <summary>Raised when the window gets the focus, e.g. back from copying images into the catalog.</summary>
     event EventHandler? WindowActivated;
 
     /// <summary>Raised with the window's size as it closes, once closing wasn't cancelled.</summary>
     event EventHandler<DiagramWindowSizeModel>? WindowClosed;
 
-    /// <summary>Raised before the window closes; cancel to keep it open.</summary>
+    /// <summary>
+    ///     Raised before the user closes the window; cancel to keep it open. Not when Windows shuts down or the app
+    ///     exits, which a question could stop: the window then only raises <see cref="WindowClosed"/>.
+    /// </summary>
     event EventHandler<CancelEventArgs>? Closing;
 
     /// <summary>Draws these instead of what was shown before.</summary>

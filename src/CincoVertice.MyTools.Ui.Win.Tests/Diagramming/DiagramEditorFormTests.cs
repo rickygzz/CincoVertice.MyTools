@@ -1,4 +1,5 @@
 ﻿using System.Drawing;
+using System.Globalization;
 using System.Reflection;
 using System.Windows.Forms;
 using CincoVertice.MyTools.Ui.Diagramming.Interfaces;
@@ -6,6 +7,7 @@ using CincoVertice.MyTools.Ui.Diagramming.Models;
 using CincoVertice.MyTools.Ui.Diagramming.Presenters;
 using CincoVertice.MyTools.Ui.Diagramming.Views;
 using CincoVertice.MyTools.Ui.Win.Diagramming;
+using CincoVertice.MyTools.Ui.Win.Diagramming.Actions;
 using CincoVertice.MyTools.Ui.Win.Diagramming.Services;
 using Xunit;
 
@@ -880,8 +882,76 @@ public class DiagramEditorFormTests
         Assert.Equal("None", button.Text);
     }
 
-    private static DiagramEditorPresenter NewPresenter(DiagramEditorForm form) =>
-        new(form, new NoStore(), new NoSettings(), new NoExporter(), new PngDiagramExporter(), new NoCatalog());
+    private static DiagramEditorPresenter NewPresenter(DiagramEditorForm form) => new(
+        form,
+        new NoStore(),
+        new NoSettings(),
+        new NoExporter(),
+        new PngDiagramExporter(),
+        new NoCatalog(),
+        new NoRecovery());
+
+    [Theory]
+    [InlineData(CloseReason.WindowsShutDown)]
+    [InlineData(CloseReason.ApplicationExitCall)]
+    [InlineData(CloseReason.TaskManagerClosing)]
+    public void Closing_NotByTheUser_AsksNothing_ButSaysTheWindowClosed(CloseReason reason)
+    {
+        // Arrange
+        List<string> events = [];
+        using var form = new DiagramEditorForm();
+        IDiagramEditorView view = form;
+        view.Closing += (_, _) => events.Add("closing");
+        view.WindowClosed += (_, _) => events.Add("closed");
+
+        // Act
+        typeof(DiagramEditorForm)
+            .GetMethod("DiagramEditorForm_FormClosing", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .Invoke(form, [form, new FormClosingEventArgs(reason, false)]);
+
+        // Assert
+        Assert.Equal(["closed"], events);
+    }
+
+    [Fact]
+    public void RecoverQuestion_NamesEachDiagram_WithWhenItsCopyWasMade()
+    {
+        // Arrange
+        DateTime savedAt = new(2026, 11, 14, 15, 30, 0, DateTimeKind.Utc);
+        DiagramRecoveryModel[] left =
+        [
+            new("a", @"C:\work\flow.svg", null, DiagramModel.Empty, savedAt),
+            new("b", null, null, DiagramModel.Empty, savedAt),
+        ];
+
+        // Act
+        string question = OpenDiagramEditorAction.RecoverQuestion(left, CultureInfo.InvariantCulture);
+
+        // Assert
+        string time = savedAt.ToLocalTime().ToString("g", CultureInfo.InvariantCulture);
+        Assert.Contains("these diagrams", question);
+        Assert.Contains($"• flow.svg, {time}\n• Untitled, {time}", question);
+        Assert.Contains("Cancel: ask again next time.", question);
+    }
+
+    private sealed class NoRecovery : IDiagramRecoveryStore
+    {
+        public string NewId() => Guid.NewGuid().ToString("N");
+
+        public void Save(DiagramRecoveryModel recovery)
+        {
+        }
+
+        public void Delete(string id)
+        {
+        }
+
+        public IReadOnlyList<DiagramRecoveryModel> Left() => [];
+
+        public void Adopt(string id)
+        {
+        }
+    }
 
     private sealed class NoSettings : IDiagramEditorSettingsStore
     {
