@@ -4547,6 +4547,146 @@ public class DiagramEditorPresenterTests
         Assert.True(_view.HasChanges);
     }
 
+    /// <summary>Two shapes joined by a connector, the layers panel shown: "Start" at the back, "End" in front.</summary>
+    private (DiagramShapeModel Back, DiagramShapeModel Front, DiagramConnectorModel Connector) AddLayers()
+    {
+        _view.ToggleLayersPanel(true);
+        DiagramShapeModel back = AddShape(100, 100);
+        _view.DoubleClick(150, 125);
+        _view.CommitText("Start");
+        DiagramShapeModel front = AddShape(400, 100);
+        _view.DoubleClick(450, 125);
+        _view.CommitText("End");
+        Connect(back, front);
+
+        return (back, front, Diagram.Connectors[0]);
+    }
+
+    [Fact]
+    public void Layers_AreShownFrontFirst_TheConnectorsBeforeTheShapes_WithTheirKindAndText()
+    {
+        // Act
+        (DiagramShapeModel back, DiagramShapeModel front, DiagramConnectorModel connector) = AddLayers();
+
+        // Assert
+        Assert.True(_settings.Saved[^1].IsLayersPanelVisible);
+        Assert.Equal(
+            [
+                new DiagramLayerModel(connector.Id, "Connector: Start → End", string.Empty, true),
+                new DiagramLayerModel(front.Id, "Rectangle: End", string.Empty, false),
+                new DiagramLayerModel(back.Id, "Rectangle: Start", string.Empty, false),
+            ],
+            _view.Layers!);
+    }
+
+    [Fact]
+    public void Layers_AreToldOnlyOfChanges_NotOfEveryMouseMove()
+    {
+        // Arrange
+        AddLayers();
+        int shown = _view.LayersShownCount;
+
+        // Act
+        _view.Hover(700, 400);
+        _view.Hover(710, 410);
+
+        // Assert
+        Assert.Equal(shown, _view.LayersShownCount);
+    }
+
+    [Fact]
+    public void Layers_HiddenPanel_IsToldNothing()
+    {
+        // Act
+        AddShape(100, 100);
+
+        // Assert
+        Assert.Null(_view.Layers);
+        Assert.False(_view.LayersPanelShown);
+    }
+
+    [Fact]
+    public void LayersSelected_SelectsExactlyThose_EvenOneShapeOfAGroup()
+    {
+        // Arrange
+        (DiagramShapeModel back, DiagramShapeModel front, _) = AddLayers();
+        _view.Command(DiagramCommand.SelectAll);
+        _view.Command(DiagramCommand.Group);
+
+        // Act
+        _view.SelectLayers(front.Id);
+
+        // Assert
+        Assert.Equal([front.Id], _presenter.SelectedShapeIds);
+        Assert.Empty(_presenter.SelectedConnectorIds);
+
+        // Act / Assert: a click on the canvas still takes the whole group, and the panel is told
+        ClickEmpty();
+        _view.Click(150, 125);
+        Assert.Equal([back.Id, front.Id], _view.LayerSelection!.Order());
+    }
+
+    [Fact]
+    public void LayerRenamed_NamesIt_ShownInsteadOfItsText_AndFoundByIt_AndEmptyTakesTheNameAway()
+    {
+        // Arrange
+        (DiagramShapeModel back, _, _) = AddLayers();
+
+        // Act
+        _view.RenameLayer(back.Id, "  Entry point ");
+
+        // Assert
+        Assert.Equal("Entry point", Diagram.Shapes[0].Name);
+        Assert.Equal(new DiagramLayerModel(back.Id, "Entry point", "Entry point", false), _view.Layers![^1]);
+        _view.Find("entry");
+        Assert.Equal([back.Id], _presenter.SelectedShapeIds);
+
+        // Act / Assert: kept in the file
+        Assert.Equal("Entry point", DiagramJson.Read(DiagramJson.Write(Diagram)).Shapes[0].Name);
+        _view.RenameLayer(back.Id, " ");
+        Assert.Null(Diagram.Shapes[0].Name);
+        Assert.Equal("Rectangle: Start", _view.Layers![^1].Text);
+    }
+
+    [Fact]
+    public void LayersMoved_PutsThemInFrontOfTheRowDroppedOn_AsOneStep()
+    {
+        // Arrange: a third shape, in front of both
+        (DiagramShapeModel back, DiagramShapeModel front, _) = AddLayers();
+        DiagramShapeModel top = AddShape(100, 300);
+
+        // Act: the back one dropped above the top one
+        _view.MoveLayers(top.Id, back.Id);
+
+        // Assert: drawn last, so in front
+        Assert.Equal([front.Id, top.Id, back.Id], Diagram.Shapes.Select(shape => shape.Id));
+
+        // Act / Assert: dropped at the bottom, it's at the back again
+        _view.MoveLayers(null, back.Id);
+        Assert.Equal([back.Id, front.Id, top.Id], Diagram.Shapes.Select(shape => shape.Id));
+        _view.Command(DiagramCommand.Undo);
+        Assert.Equal([front.Id, top.Id, back.Id], Diagram.Shapes.Select(shape => shape.Id));
+    }
+
+    [Fact]
+    public void LayersMoved_AShapeAmongTheConnectors_GoesInFrontOfTheShapes_AndOntoItselfChangesNothing()
+    {
+        // Arrange
+        (DiagramShapeModel back, DiagramShapeModel front, DiagramConnectorModel connector) = AddLayers();
+        DiagramModel before = Diagram;
+
+        // Act / Assert: dropped on itself
+        _view.MoveLayers(back.Id, back.Id);
+        Assert.Same(before, Diagram);
+
+        // Act: above the connector
+        _view.MoveLayers(connector.Id, back.Id);
+
+        // Assert
+        Assert.Equal([front.Id, back.Id], Diagram.Shapes.Select(shape => shape.Id));
+        Assert.Equal([connector.Id], Diagram.Connectors.Select(c => c.Id));
+    }
+
     [Fact]
     public void Autosave_KeepsACopy_OnlyWhileThereAreUnsavedChanges_AndWritesItOnlyWhenTheyChange()
     {
@@ -5311,6 +5451,42 @@ public class DiagramEditorPresenterTests
         public event EventHandler<DiagramFindModel>? FindRequested;
 
         public event EventHandler? AutosaveDue;
+
+        public event EventHandler<bool>? LayersPanelToggled;
+
+        public event EventHandler<IReadOnlyList<int>>? LayersSelected;
+
+        public event EventHandler<DiagramLayerRenameModel>? LayerRenamed;
+
+        public event EventHandler<DiagramLayerMoveModel>? LayersMoved;
+
+        public bool? LayersPanelShown { get; private set; }
+
+        public IReadOnlyList<DiagramLayerModel>? Layers { get; private set; }
+
+        public int LayersShownCount { get; private set; }
+
+        public IReadOnlySet<int>? LayerSelection { get; private set; }
+
+        public void ToggleLayersPanel(bool isVisible) => LayersPanelToggled?.Invoke(this, isVisible);
+
+        public void SelectLayers(params int[] ids) => LayersSelected?.Invoke(this, ids);
+
+        public void RenameLayer(int id, string name) =>
+            LayerRenamed?.Invoke(this, new DiagramLayerRenameModel(id, name));
+
+        public void MoveLayers(int? beforeId, params int[] ids) =>
+            LayersMoved?.Invoke(this, new DiagramLayerMoveModel(ids, beforeId));
+
+        public void ShowLayersPanel(bool isVisible) => LayersPanelShown = isVisible;
+
+        public void ShowLayers(IReadOnlyList<DiagramLayerModel> layers)
+        {
+            Layers = layers;
+            LayersShownCount++;
+        }
+
+        public void ShowLayerSelection(IReadOnlySet<int> ids) => LayerSelection = ids;
 
         public void Tick() => AutosaveDue?.Invoke(this, EventArgs.Empty);
 

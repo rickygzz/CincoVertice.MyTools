@@ -9,10 +9,12 @@
 /// <param name="IsPropertiesPanelVisible">True when the properties panel is shown.</param>
 /// <param name="Window">How large the window was; null when it isn't known yet.</param>
 /// <param name="IsImagesPanelVisible">True when the images panel is shown.</param>
+/// <param name="IsLayersPanelVisible">True when the layers panel is shown.</param>
 public sealed record DiagramEditorSettingsModel(
     DiagramStyleModel Style,
     DiagramRouting Routing,
     DiagramArrowHeads Heads,
     bool IsPropertiesPanelVisible = true,
     DiagramWindowSizeModel? Window = null,
-    bool IsImagesPanelVisible = true);
+    bool IsImagesPanelVisible = true,
+    bool IsLayersPanelVisible = false);

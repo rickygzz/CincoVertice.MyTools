@@ -26,6 +26,9 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     // What an image dragged from the images panel carries: its path in the catalog
     private const string CatalogImageFormat = "CincoVertice.MyTools.DiagramCatalogImage";
 
+    // What rows dragged in the layers panel carry: their ids, with commas between
+    private const string LayersDragFormat = "CincoVertice.MyTools.DiagramLayers";
+
     // The name browsers, chats and Office give a PNG picture on the clipboard
     internal const string PngClipboardFormat = "PNG";
 
@@ -54,6 +57,15 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
 
     // Held with a drag to move the view instead
     private bool _isSpaceDown;
+
+    // Set while the layers panel is filled from the presenter, so that isn't taken as the user's choice
+    private bool _isShowingLayers;
+
+    // True while a row of the layers panel is being renamed, so Esc is the rename's
+    private bool _isRenamingLayer;
+
+    // The row a drag in the layers panel would put the rows above; the number of rows for the bottom, -1 for none
+    private int _layerDropIndex = -1;
 
     public DiagramEditorForm()
     {
@@ -88,6 +100,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         // Windows takes drops only on a single-threaded apartment, as the app's UI thread is; elsewhere, such as a
         // test, it would show an error when the canvas is created
         Canvas.AllowDrop = Thread.CurrentThread.GetApartmentState() == ApartmentState.STA;
+        LayersListView.AllowDrop = Canvas.AllowDrop;
 
         FormExtensions.CenterOnCursorScreen(this);
         _thumbnails.ImageSize = new Size(LogicalToDeviceUnits(ThumbnailSize), LogicalToDeviceUnits(ThumbnailSize));
@@ -99,7 +112,8 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     }
 
     /// <summary>Whether the focus is in a panel or the find box, whose keys are their own.</summary>
-    private bool IsInAPanel => PropertiesPanel.ContainsFocus || ImagesPanel.ContainsFocus || FindBox.Focused;
+    private bool IsInAPanel =>
+        PropertiesPanel.ContainsFocus || ImagesPanel.ContainsFocus || LayersPanel.ContainsFocus || FindBox.Focused;
 
     public event EventHandler<DiagramPointerModel>? PointerPressed;
 
@@ -170,6 +184,14 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     public event EventHandler? ImagesFolderRequested;
 
     public event EventHandler<DiagramFindModel>? FindRequested;
+
+    public event EventHandler<bool>? LayersPanelToggled;
+
+    public event EventHandler<IReadOnlyList<int>>? LayersSelected;
+
+    public event EventHandler<DiagramLayerRenameModel>? LayerRenamed;
+
+    public event EventHandler<DiagramLayerMoveModel>? LayersMoved;
 
     public event EventHandler? AutosaveDue;
 
@@ -694,8 +716,9 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
 
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
-        // An open list closes itself on Esc
+        // An open list closes itself on Esc, and a rename in the layers panel ends with it
         if (keyData != Keys.Escape
+            || _isRenamingLayer
             || LineWidthComboBox.DroppedDown
             || FontSizeComboBox.DroppedDown
             || TextOutlineWidthComboBox.DroppedDown
@@ -896,6 +919,269 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     {
         ShowPropertiesPanel(!PropertiesPanel.Visible);
         PropertiesPanelToggled?.Invoke(this, PropertiesPanel.Visible);
+    }
+
+    public void ShowLayersPanel(bool isVisible)
+    {
+        LayersPanel.Visible = isVisible;
+        LayersButton.Checked = isVisible;
+    }
+
+    public void ShowLayers(IReadOnlyList<DiagramLayerModel> layers)
+    {
+        _isShowingLayers = true;
+        LayersListView.BeginUpdate();
+
+        try
+        {
+            LayersListView.Items.Clear();
+
+            foreach (DiagramLayerModel layer in layers)
+            {
+                LayersListView.Items.Add(new ListViewItem(layer.Text)
+                {
+                    Tag = layer,
+                    ToolTipText = layer.IsConnector
+                        ? "Connectors and lines are always in front of the shapes"
+                        : layer.GroupId is null
+                            ? null
+                            : "In a group: a click on the canvas selects the whole group, a click here only this",
+                });
+            }
+
+            SizeLayerTiles();
+        }
+        finally
+        {
+            LayersListView.EndUpdate();
+            _isShowingLayers = false;
+        }
+    }
+
+    public void ShowLayerSelection(IReadOnlySet<int> ids)
+    {
+        _isShowingLayers = true;
+
+        try
+        {
+            ListViewItem? first = null;
+
+            foreach (ListViewItem item in LayersListView.Items)
+            {
+                item.Selected = ids.Contains(((DiagramLayerModel)item.Tag!).Id);
+                first ??= item.Selected ? item : null;
+            }
+
+            first?.EnsureVisible();
+        }
+        finally
+        {
+            _isShowingLayers = false;
+        }
+    }
+
+    /// <summary>The ids of the rows, as the layers panel shows them, front first.</summary>
+    private static IEnumerable<int> LayerIds(System.Collections.IEnumerable items) =>
+        items.Cast<ListViewItem>().Select(item => ((DiagramLayerModel)item.Tag!).Id);
+
+    /// <summary>One row per tile, as wide as the list: a tile view is the one that shows where a drop goes.</summary>
+    private void SizeLayerTiles()
+    {
+        LayersListView.TileSize = new Size(
+            Math.Max(LayersListView.ClientSize.Width - LogicalToDeviceUnits(4), LogicalToDeviceUnits(40)),
+            LayersListView.Font.Height + LogicalToDeviceUnits(8));
+    }
+
+    private void LayersButton_Click(object? sender, EventArgs e)
+    {
+        ShowLayersPanel(!LayersPanel.Visible);
+        LayersPanelToggled?.Invoke(this, LayersPanel.Visible);
+    }
+
+    private void LayersListView_Resize(object? sender, EventArgs e) => SizeLayerTiles();
+
+    // The selection's color shows whether the list has the focus
+    private void LayersListView_FocusChanged(object? sender, EventArgs e) => LayersListView.Invalidate();
+
+    private void LayersListView_SelectedIndexChanged(object? sender, EventArgs e)
+    {
+        if (!_isShowingLayers)
+        {
+            LayersSelected?.Invoke(this, [.. LayerIds(LayersListView.SelectedItems)]);
+        }
+    }
+
+    private void LayersListView_DoubleClick(object? sender, EventArgs e) => LayersListView.FocusedItem?.BeginEdit();
+
+    private void LayersListView_KeyDown(object? sender, KeyEventArgs e)
+    {
+        switch (e.KeyData)
+        {
+            case Keys.F2:
+                LayersListView.FocusedItem?.BeginEdit();
+                break;
+            case Keys.Delete:
+                CommandRequested?.Invoke(this, DiagramCommand.Delete);
+                break;
+            default:
+                return;
+        }
+
+        e.Handled = true;
+    }
+
+    private void LayersListView_BeforeLabelEdit(object? sender, LabelEditEventArgs e) => _isRenamingLayer = true;
+
+    /// <summary>
+    ///     The presenter shows the name, after the list is done with its edit: changing its rows inside this event would
+    ///     upset it. A text left as it was isn't a name.
+    /// </summary>
+    private void LayersListView_AfterLabelEdit(object? sender, LabelEditEventArgs e)
+    {
+        _isRenamingLayer = false;
+        e.CancelEdit = true;
+
+        ListViewItem item = LayersListView.Items[e.Item];
+
+        if (e.Label is string name && name != item.Text)
+        {
+            int id = ((DiagramLayerModel)item.Tag!).Id;
+
+            BeginInvoke(() => LayerRenamed?.Invoke(this, new DiagramLayerRenameModel(id, name)));
+        }
+    }
+
+    private void LayersListView_ItemDrag(object? sender, ItemDragEventArgs e)
+    {
+        string ids = string.Join(',', LayerIds(LayersListView.SelectedItems));
+
+        LayersListView.DoDragDrop(new DataObject(LayersDragFormat, ids), DragDropEffects.Move);
+    }
+
+    private void LayersListView_DragOver(object? sender, DragEventArgs e)
+    {
+        if (e.Data?.GetDataPresent(LayersDragFormat) != true)
+        {
+            e.Effect = DragDropEffects.None;
+
+            return;
+        }
+
+        e.Effect = DragDropEffects.Move;
+        ShowLayerDrop(LayerDropIndex(LayersListView.PointToClient(new Point(e.X, e.Y))));
+    }
+
+    /// <summary>The row the dragged rows would go above: the one under the point, or the next below its middle.</summary>
+    private int LayerDropIndex(Point point)
+    {
+        int count = LayersListView.Items.Count;
+
+        if (count == 0)
+        {
+            return 0;
+        }
+
+        Rectangle last = LayersListView.GetItemRect(count - 1);
+
+        if (point.Y >= last.Bottom)
+        {
+            return count;
+        }
+
+        for (int i = 0; i < count; i++)
+        {
+            Rectangle row = LayersListView.GetItemRect(i);
+
+            if (point.Y < row.Bottom)
+            {
+                return point.Y < row.Top + row.Height / 2 ? i : i + 1;
+            }
+        }
+
+        return count;
+    }
+
+    /// <summary>Draws the line where the rows would go, between the rows it's at.</summary>
+    private void ShowLayerDrop(int index)
+    {
+        if (index == _layerDropIndex)
+        {
+            return;
+        }
+
+        int old = _layerDropIndex;
+
+        _layerDropIndex = index;
+
+        foreach (int row in new[] { old - 1, old, index - 1, index })
+        {
+            if (row >= 0 && row < LayersListView.Items.Count)
+            {
+                LayersListView.Invalidate(LayersListView.GetItemRect(row));
+            }
+        }
+    }
+
+    private void LayersListView_DragLeave(object? sender, EventArgs e) => ShowLayerDrop(-1);
+
+    /// <summary>The rows dropped go above the row the line was over, or at the bottom.</summary>
+    private void LayersListView_DragDrop(object? sender, DragEventArgs e)
+    {
+        int index = _layerDropIndex;
+
+        ShowLayerDrop(-1);
+
+        if (index < 0 || e.Data?.TryGetData(LayersDragFormat, out string? text) != true || text is null)
+        {
+            return;
+        }
+
+        int[] ids = [.. text.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse)];
+        int? beforeId = index < LayersListView.Items.Count
+            ? ((DiagramLayerModel)LayersListView.Items[index].Tag!).Id
+            : null;
+
+        LayersMoved?.Invoke(this, new DiagramLayerMoveModel(ids, beforeId));
+    }
+
+    /// <summary>
+    ///     Each row: its text, highlighted when selected (grayed while the list hasn't the focus), and the line where
+    ///     dragged rows would go, above it or, for the last, under it.
+    /// </summary>
+    private void LayersListView_DrawItem(object? sender, DrawListViewItemEventArgs e)
+    {
+        Rectangle row = e.Bounds;
+        bool isFocused = LayersListView.Focused;
+        Color back = !e.Item.Selected ? LayersListView.BackColor
+            : isFocused ? SystemColors.Highlight
+            : SystemColors.ControlLight;
+        Color fore = e.Item.Selected && isFocused ? SystemColors.HighlightText : LayersListView.ForeColor;
+        int padding = LogicalToDeviceUnits(4);
+
+        using (var brush = new SolidBrush(back))
+        {
+            e.Graphics.FillRectangle(brush, row);
+        }
+
+        TextRenderer.DrawText(
+            e.Graphics,
+            e.Item.Text,
+            LayersListView.Font,
+            Rectangle.FromLTRB(row.Left + padding, row.Top, row.Right - padding, row.Bottom),
+            fore,
+            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis
+                | TextFormatFlags.NoPrefix);
+
+        int lineY = _layerDropIndex == e.ItemIndex ? row.Top
+            : _layerDropIndex == e.ItemIndex + 1 && e.ItemIndex == LayersListView.Items.Count - 1 ? row.Bottom - 2
+            : -1;
+
+        if (lineY >= 0)
+        {
+            using var line = new Pen(SystemColors.Highlight, LogicalToDeviceUnits(2));
+
+            e.Graphics.DrawLine(line, row.Left, lineY + 1, row.Right, lineY + 1);
+        }
     }
 
     private void ImagesButton_Click(object? sender, EventArgs e)

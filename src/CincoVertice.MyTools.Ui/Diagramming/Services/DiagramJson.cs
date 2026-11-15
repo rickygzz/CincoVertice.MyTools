@@ -50,7 +50,8 @@ public static class DiagramJson
                 shape.Image,
                 shape.BottomCornerRadius,
                 shape.InnerGroupIds is { Count: > 0 } inner ? [.. inner] : null,
-                SpanFile.From(shape.TextSpans)))],
+                SpanFile.From(shape.TextSpans),
+                NameOrNull(shape.Name)))],
             [.. diagram.Connectors.Select(connector => new ConnectorFile(
                 connector.Id,
                 connector.FromShapeId,
@@ -65,7 +66,8 @@ public static class DiagramJson
                 connector.FromPoint is Point from ? new PointFile(from.X, from.Y) : null,
                 connector.ToPoint is Point to ? new PointFile(to.X, to.Y) : null,
                 connector.Direction == DiagramLineDirection.Free ? null : connector.Direction,
-                SpanFile.From(connector.LabelSpans)))]);
+                SpanFile.From(connector.LabelSpans),
+                NameOrNull(connector.Name)))]);
 
         return JsonSerializer.Serialize(file, _options);
     }
@@ -121,6 +123,7 @@ public static class DiagramJson
                         Label = c.Label ?? string.Empty,
                         Direction = DirectionOf(c),
                         LabelSpans = SpanFile.ToSpans(c.LabelSpans, c.Label ?? string.Empty),
+                        Name = NameOrNull(c.Name),
                     };
 
                     connectors.Add(line.Aligned());
@@ -142,7 +145,8 @@ public static class DiagramJson
                     c.FromSide,
                     c.ToSide,
                     c.Bends is { Count: > 0 } bends ? [.. bends.Select(bend => new Point(bend.X, bend.Y))] : null,
-                    LabelSpans: SpanFile.ToSpans(c.LabelSpans, c.Label ?? string.Empty)));
+                    LabelSpans: SpanFile.ToSpans(c.LabelSpans, c.Label ?? string.Empty),
+                    Name: NameOrNull(c.Name)));
             }
         }
 
@@ -164,6 +168,9 @@ public static class DiagramJson
             && (connector.ToSide is not DiagramSide to || Enum.IsDefined(to))
             && (connector.Bends ?? []).All(bend => bend is not null)
             && (connector.LabelSpans ?? []).All(span => span is not null));
+
+    /// <summary>A name of only spaces is none.</summary>
+    private static string? NameOrNull(string? name) => string.IsNullOrWhiteSpace(name) ? null : name.Trim();
 
     /// <summary>A value no direction has, from a file written by hand, leaves the line free.</summary>
     private static DiagramLineDirection DirectionOf(ConnectorFile connector) =>
@@ -187,7 +194,8 @@ public static class DiagramJson
 
         // Groups inside one only mean something in a group
         shape.GroupId is not null && shape.InnerGroupIds is { Count: > 0 } inner ? [.. inner] : null,
-        SpanFile.ToSpans(shape.TextSpans, shape.Text ?? string.Empty));
+        SpanFile.ToSpans(shape.TextSpans, shape.Text ?? string.Empty),
+        NameOrNull(shape.Name));
 
     /// <summary>A style read from a file, with values out of range brought into range.</summary>
     internal static DiagramStyleModel ToStyle(StyleFile? style) => new(
@@ -251,7 +259,8 @@ public static class DiagramJson
         string? Image = null,
         int? BottomCornerRadius = null,
         List<int>? InnerGroupIds = null,
-        List<SpanFile>? TextSpans = null);
+        List<SpanFile>? TextSpans = null,
+        string? Name = null);
 
     private sealed record ConnectorFile(
         int Id,
@@ -267,7 +276,8 @@ public static class DiagramJson
         PointFile? FromPoint = null,
         PointFile? ToPoint = null,
         DiagramLineDirection? Direction = null,
-        List<SpanFile>? LabelSpans = null);
+        List<SpanFile>? LabelSpans = null,
+        string? Name = null);
 
     private sealed record PointFile(int X, int Y);
 

@@ -94,6 +94,11 @@ public sealed class DiagramEditorPresenter
     private DiagramArrowHeads _heads = DiagramArrowHeads.End;
     private bool _isPropertiesPanelVisible = true;
     private bool _isImagesPanelVisible = true;
+    private bool _isLayersPanelVisible;
+
+    // What the layers panel shows, so it's told only of changes; null until it's told
+    private IReadOnlyList<DiagramLayerModel>? _shownLayers;
+    private HashSet<int>? _shownLayerSelection;
 
     // What the images panel shows, and what it shows only the images of
     private IReadOnlyList<DiagramCatalogImageModel> _shownCatalog = [];
@@ -204,6 +209,10 @@ public sealed class DiagramEditorPresenter
         _view.Closing += OnClosing;
         _view.PropertiesPanelToggled += OnPropertiesPanelToggled;
         _view.ImagesPanelToggled += OnImagesPanelToggled;
+        _view.LayersPanelToggled += OnLayersPanelToggled;
+        _view.LayersSelected += OnLayersSelected;
+        _view.LayerRenamed += OnLayerRenamed;
+        _view.LayersMoved += OnLayersMoved;
         _view.ImageSearchChanged += OnImageSearchChanged;
         _view.CatalogImageChosen += OnCatalogImageChosen;
         _view.CatalogImageDropped += OnCatalogImageDropped;
@@ -234,6 +243,7 @@ public sealed class DiagramEditorPresenter
         _view.ShowSizes(LineWidths, FontSizes, SnipEditorPresenter.TextOutlineWidths);
         _view.ShowPropertiesPanel(_isPropertiesPanelVisible);
         _view.ShowImagesPanel(_isImagesPanelVisible);
+        _view.ShowLayersPanel(_isLayersPanelVisible);
         ShowCatalog();
 
         if (_windowSize is not null)
@@ -260,6 +270,7 @@ public sealed class DiagramEditorPresenter
         _style = saved.Style;
         _isPropertiesPanelVisible = saved.IsPropertiesPanelVisible;
         _isImagesPanelVisible = saved.IsImagesPanelVisible;
+        _isLayersPanelVisible = saved.IsLayersPanelVisible;
 
         if (Enum.IsDefined(saved.Routing))
         {
@@ -285,7 +296,8 @@ public sealed class DiagramEditorPresenter
             _heads,
             _isPropertiesPanelVisible,
             _windowSize,
-            _isImagesPanelVisible));
+            _isImagesPanelVisible,
+            _isLayersPanelVisible));
     }
 
     private void OnPropertiesPanelToggled(object? sender, bool isVisible)
@@ -299,6 +311,182 @@ public sealed class DiagramEditorPresenter
         _isImagesPanelVisible = isVisible;
         SaveSettings();
         ShowCatalog();
+    }
+
+    private void OnLayersPanelToggled(object? sender, bool isVisible)
+    {
+        _isLayersPanelVisible = isVisible;
+        _shownLayers = null;
+        _shownLayerSelection = null;
+        SaveSettings();
+        Refresh();
+    }
+
+    /// <summary>
+    ///     The layers panel's rows and which are selected, when they changed: the diagram, not a drag's preview, so the
+    ///     list doesn't change on every mouse move.
+    /// </summary>
+    private void ShowLayers()
+    {
+        if (!_isLayersPanelVisible)
+        {
+            return;
+        }
+
+        List<DiagramLayerModel> layers = LayersOf(_diagram);
+
+        if (_shownLayers is null || !_shownLayers.SequenceEqual(layers))
+        {
+            _shownLayers = layers;
+            _shownLayerSelection = null;
+            _view.ShowLayers(layers);
+        }
+
+        HashSet<int> selected = [.. _selectedShapes, .. _selectedConnectors];
+
+        if (_shownLayerSelection is null || !_shownLayerSelection.SetEquals(selected))
+        {
+            _shownLayerSelection = selected;
+            _view.ShowLayerSelection(selected);
+        }
+    }
+
+    /// <summary>Front first: connectors and lines, drawn over every shape, then the shapes, last drawn first.</summary>
+    private static List<DiagramLayerModel> LayersOf(DiagramModel diagram) =>
+    [
+        .. diagram.Connectors.Reverse().Select(connector => new DiagramLayerModel(
+            connector.Id,
+            LayerText(connector, diagram),
+            connector.Name ?? string.Empty,
+            true)),
+        .. diagram.Shapes.Reverse().Select(shape => new DiagramLayerModel(
+            shape.Id,
+            LayerText(shape),
+            shape.Name ?? string.Empty,
+            false,
+            shape.GroupId)),
+    ];
+
+    /// <summary>Its name, or else its kind and the start of its text, e.g. "Rectangle: Start".</summary>
+    private static string LayerText(DiagramShapeModel shape)
+    {
+        string kind = shape.Kind switch
+        {
+            DiagramShapeKind.RoundedRectangle => "Rounded rectangle",
+            _ => shape.Kind.ToString(),
+        };
+
+        return shape.Name ?? WithExcerpt(kind, shape.Text);
+    }
+
+    /// <summary>Its name, or else "Line" or "Connector" and its label, or the shapes it joins.</summary>
+    private static string LayerText(DiagramConnectorModel connector, DiagramModel diagram)
+    {
+        if (connector.Name is string name)
+        {
+            return name;
+        }
+
+        if (connector.IsLine || connector.Label.Length > 0)
+        {
+            return WithExcerpt(connector.IsLine ? "Line" : "Connector", connector.Label);
+        }
+
+        string Of(int? shapeId) => diagram.Shapes.FirstOrDefault(shape => shape.Id == shapeId) is { } shape
+            ? Excerpt(shape.Name ?? shape.Text)
+            : string.Empty;
+
+        string from = Of(connector.FromShapeId);
+        string to = Of(connector.ToShapeId);
+
+        return from.Length > 0 || to.Length > 0 ? $"Connector: {from} → {to}" : "Connector";
+    }
+
+    private static string WithExcerpt(string kind, string text) =>
+        Excerpt(text) is { Length: > 0 } excerpt ? $"{kind}: {excerpt}" : kind;
+
+    /// <summary>The first line of a text, cut short when it's long.</summary>
+    private static string Excerpt(string text)
+    {
+        const int longest = 30;
+        string line = text.ReplaceLineEndings("\n").Split('\n')[0].Trim();
+
+        return line.Length <= longest ? line : line[..(longest - 1)].TrimEnd() + "…";
+    }
+
+    /// <summary>Selects exactly the rows chosen, even one shape of a group, which a click on the canvas can't.</summary>
+    private void OnLayersSelected(object? sender, IReadOnlyList<int> ids)
+    {
+        if (_drag is not null)
+        {
+            return;
+        }
+
+        ClearSelection();
+        _selectedShapes.UnionWith(_diagram.Shapes.Where(shape => ids.Contains(shape.Id)).Select(shape => shape.Id));
+        _selectedConnectors.UnionWith(
+            _diagram.Connectors.Where(connector => ids.Contains(connector.Id)).Select(connector => connector.Id));
+
+        // The panel shows it already
+        _shownLayerSelection = [.. _selectedShapes, .. _selectedConnectors];
+        SelectionChanged();
+        Refresh();
+    }
+
+    private void OnLayerRenamed(object? sender, DiagramLayerRenameModel rename)
+    {
+        string? name = string.IsNullOrWhiteSpace(rename.Name) ? null : rename.Name.Trim();
+
+        Commit(
+            _diagram with
+            {
+                Shapes =
+                [
+                    .. _diagram.Shapes.Select(shape => shape.Id == rename.Id ? shape with { Name = name } : shape),
+                ],
+                Connectors =
+                [
+                    .. _diagram.Connectors.Select(connector =>
+                        connector.Id == rename.Id ? connector with { Name = name } : connector),
+                ],
+            },
+            onlyIfChanged: true);
+    }
+
+    /// <summary>
+    ///     Puts the rows dragged above the one they were dropped on, in the order they had, as one step to undo. Shapes
+    ///     stay under the connectors and lines whatever the drop: a shape dropped among them goes in front of the other
+    ///     shapes.
+    /// </summary>
+    private void OnLayersMoved(object? sender, DiagramLayerMoveModel move)
+    {
+        if (_drag is not null)
+        {
+            return;
+        }
+
+        List<int> shown = [.. LayersOf(_diagram).Select(layer => layer.Id)];
+        HashSet<int> moving = [.. move.Ids.Where(shown.Contains)];
+
+        // Dropped on one of the rows dragged: above the first row after it that stays
+        int start = move.BeforeId is int id ? shown.IndexOf(id) : -1;
+        int? before = start < 0
+            ? null
+            : shown.Skip(start).Where(other => !moving.Contains(other)).Cast<int?>().FirstOrDefault();
+        List<int> order = [.. shown.Where(other => !moving.Contains(other))];
+        int at = before is int target ? order.IndexOf(target) : order.Count;
+
+        order.InsertRange(at, shown.Where(moving.Contains));
+
+        Dictionary<int, DiagramShapeModel> shapes = _diagram.Shapes.ToDictionary(shape => shape.Id);
+        Dictionary<int, DiagramConnectorModel> connectors = _diagram.Connectors.ToDictionary(c => c.Id);
+        List<int> backFirst = [.. Enumerable.Reverse(order)];
+
+        Commit(
+            new DiagramModel(
+                [.. backFirst.Where(shapes.ContainsKey).Select(shapeId => shapes[shapeId])],
+                [.. backFirst.Where(connectors.ContainsKey).Select(connectorId => connectors[connectorId])]),
+            onlyIfChanged: true);
     }
 
     private void OnImageSearchChanged(object? sender, string search)
@@ -848,7 +1036,14 @@ public sealed class DiagramEditorPresenter
                 new Rectangle(Point.Empty, _defaultShapeSize),
                 string.Empty,
                 _style)
-            : original with { Text = string.Empty, TextSpans = null, GroupId = null, InnerGroupIds = null };
+            : original with
+            {
+                Text = string.Empty,
+                TextSpans = null,
+                GroupId = null,
+                InnerGroupIds = null,
+                Name = null,
+            };
         Size size = copy.Bounds.Size;
         Point middle = CenterOf(source);
         int dx = point.X - middle.X;
@@ -3118,6 +3313,7 @@ public sealed class DiagramEditorPresenter
             ConnectorEndsOf(shown)));
         ShowProperties(shown);
         ShowStatus(shown);
+        ShowLayers();
         _view.ShowUndoRedo(_undo.Count > 0, _redo.Count > 0);
         _view.ShowDocument(Name, HasChanges);
         _view.ShowZoom((int)Math.Round(_viewport.Zoom * 100));
@@ -3252,10 +3448,12 @@ public sealed class DiagramEditorPresenter
         }
 
         IEnumerable<(DiagramShapeModel?, DiagramConnectorModel?, Rectangle)> shapes = _diagram.Shapes
-            .Where(shape => shape.Text.Contains(text, StringComparison.OrdinalIgnoreCase))
+            .Where(shape => shape.Text.Contains(text, StringComparison.OrdinalIgnoreCase)
+                || shape.Name?.Contains(text, StringComparison.OrdinalIgnoreCase) == true)
             .Select(shape => ((DiagramShapeModel?)shape, (DiagramConnectorModel?)null, shape.Bounds));
         IEnumerable<(DiagramShapeModel?, DiagramConnectorModel?, Rectangle)> connectors = _diagram.Connectors
-            .Where(connector => connector.Label.Contains(text, StringComparison.OrdinalIgnoreCase))
+            .Where(connector => connector.Label.Contains(text, StringComparison.OrdinalIgnoreCase)
+                || connector.Name?.Contains(text, StringComparison.OrdinalIgnoreCase) == true)
             .Select(connector => (Path: DiagramRouter.PathOf(connector, _diagram), Connector: connector))
             .Where(item => item.Path is { Points.Count: > 0 })
             .Select(item =>

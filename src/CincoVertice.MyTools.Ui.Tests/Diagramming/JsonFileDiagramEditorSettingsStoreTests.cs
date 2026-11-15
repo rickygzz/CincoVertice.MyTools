@@ -56,7 +56,8 @@ public sealed class JsonFileDiagramEditorSettingsStoreTests : IDisposable
             DiagramRouting.Straight,
             DiagramArrowHeads.Both,
             false,
-            new DiagramWindowSizeModel(new Size(900, 600), true));
+            new DiagramWindowSizeModel(new Size(900, 600), true),
+            IsLayersPanelVisible: true);
 
         // Act
         _store.Save(settings);

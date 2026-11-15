@@ -28,6 +28,7 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 ///     it: ungrouping makes the last one its group again. Null when there are none.
 /// </param>
 /// <param name="TextSpans">The parts of <paramref name="Text"/> in bold or italic; null or none for plain text.</param>
+/// <param name="Name">What the user calls it, shown in the layers panel; null for none.</param>
 public sealed record DiagramShapeModel(
     int Id,
     DiagramShapeKind Kind,
@@ -40,4 +41,5 @@ public sealed record DiagramShapeModel(
     string? Image = null,
     int? BottomCornerRadius = null,
     IReadOnlyList<int>? InnerGroupIds = null,
-    IReadOnlyList<DiagramTextSpanModel>? TextSpans = null);
+    IReadOnlyList<DiagramTextSpanModel>? TextSpans = null,
+    string? Name = null);

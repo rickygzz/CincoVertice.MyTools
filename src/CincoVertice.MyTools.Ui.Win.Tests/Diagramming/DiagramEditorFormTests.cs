@@ -655,6 +655,43 @@ public class DiagramEditorFormTests
     }
 
     [Fact]
+    public void LayersPanel_ShowsTheRowsAndSelection_WithoutTakingThemForTheUsers_AndTheUsersAreRaised()
+    {
+        // Arrange
+        List<IReadOnlyList<int>> selected = [];
+        using DiagramEditorForm form = ShowFormEditingProperties([], "TextPropertyBox", "new");
+        IDiagramEditorView view = form;
+        var list = (ListView)typeof(DiagramEditorForm)
+            .GetField("LayersListView", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(form)!;
+        view.LayersSelected += (_, ids) => selected.Add(ids);
+
+        // Act
+        view.ShowLayersPanel(true);
+        view.ShowLayers(
+        [
+            new DiagramLayerModel(3, "Connector: Start → End", string.Empty, true),
+            new DiagramLayerModel(2, "Rectangle: End", string.Empty, false),
+            new DiagramLayerModel(1, "Entry", "Entry", false, GroupId: 5),
+        ]);
+        view.ShowLayerSelection(new HashSet<int> { 2 });
+
+        // Assert
+        Assert.Equal(
+            ["Connector: Start → End", "Rectangle: End", "Entry"],
+            list.Items.Cast<ListViewItem>().Select(item => item.Text));
+        Assert.Equal([1], list.SelectedIndices.Cast<int>());
+        Assert.Empty(selected);
+        Assert.Contains("group", list.Items[2].ToolTipText);
+
+        // Act: the user selects the last row too
+        list.Items[2].Selected = true;
+
+        // Assert
+        Assert.Equal([2, 1], selected[^1]);
+    }
+
+    [Fact]
     public void StatusBar_ShowsWhatItsGiven_AndTheFindBoxAsksToFind()
     {
         // Arrange

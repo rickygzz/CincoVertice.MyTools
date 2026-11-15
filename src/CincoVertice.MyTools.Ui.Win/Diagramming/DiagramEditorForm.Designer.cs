@@ -144,6 +144,10 @@ partial class DiagramEditorForm
         BackButton = new ToolStripButton();
         PropertiesButton = new ToolStripButton();
         ImagesButton = new ToolStripButton();
+        LayersButton = new ToolStripButton();
+        LayersPanel = new Panel();
+        LayersListView = new ListView();
+        LayersHintLabel = new Label();
         ZoomLabel = new ToolStripLabel();
         Canvas = new DiagramCanvasControl();
         TextInputBox = new RichTextBox();
@@ -220,6 +224,7 @@ partial class DiagramEditorForm
         Canvas.SuspendLayout();
         PropertiesPanel.SuspendLayout();
         ImagesPanel.SuspendLayout();
+        LayersPanel.SuspendLayout();
         PropertiesTable.SuspendLayout();
         ((System.ComponentModel.ISupportInitialize)XBox).BeginInit();
         ((System.ComponentModel.ISupportInitialize)YBox).BeginInit();
@@ -365,7 +370,7 @@ partial class DiagramEditorForm
         // StyleStrip
         //
         StyleStrip.GripStyle = ToolStripGripStyle.Hidden;
-        StyleStrip.Items.AddRange(new ToolStripItem[] { FileDropDownButton, EditDropDownButton, FileSeparator, FillDropDownButton, LineDropDownButton, LineWidthComboBox, DashedButton, TextColorDropDownButton, FontSizeComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, StyleSeparator, RoutingComboBox, ArrowHeadsComboBox, ResetRouteButton, ConnectorsSeparator, FrontButton, BackButton, AlignDropDownButton, ZoomLabel, PropertiesButton, ImagesButton });
+        StyleStrip.Items.AddRange(new ToolStripItem[] { FileDropDownButton, EditDropDownButton, FileSeparator, FillDropDownButton, LineDropDownButton, LineWidthComboBox, DashedButton, TextColorDropDownButton, FontSizeComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, StyleSeparator, RoutingComboBox, ArrowHeadsComboBox, ResetRouteButton, ConnectorsSeparator, FrontButton, BackButton, AlignDropDownButton, ZoomLabel, PropertiesButton, ImagesButton, LayersButton });
         StyleStrip.Name = "StyleStrip";
         StyleStrip.Padding = new Padding(4, 2, 4, 2);
         StyleStrip.TabIndex = 1;
@@ -1041,6 +1046,60 @@ partial class DiagramEditorForm
         ImagesButton.ToolTipText = "Show or hide the images to insert again";
         ImagesButton.Click += ImagesButton_Click;
         //
+        // LayersButton
+        //
+        LayersButton.Alignment = ToolStripItemAlignment.Right;
+        LayersButton.Name = "LayersButton";
+        LayersButton.Overflow = ToolStripItemOverflow.Never;
+        LayersButton.Text = "Layers";
+        LayersButton.ToolTipText = "Show or hide the layers: what's in front of what, and names for them";
+        LayersButton.Click += LayersButton_Click;
+        //
+        // LayersPanel
+        //
+        LayersPanel.BorderStyle = BorderStyle.FixedSingle;
+        LayersPanel.Controls.Add(LayersListView);
+        LayersPanel.Controls.Add(LayersHintLabel);
+        LayersPanel.Dock = DockStyle.Right;
+        LayersPanel.Name = "LayersPanel";
+        LayersPanel.Padding = new Padding(4);
+        LayersPanel.Size = new Size(210, 700);
+        LayersPanel.TabIndex = 5;
+        LayersPanel.Visible = false;
+        //
+        // LayersListView
+        //
+        LayersListView.BorderStyle = BorderStyle.None;
+        LayersListView.Dock = DockStyle.Fill;
+        LayersListView.HideSelection = false;
+        LayersListView.LabelEdit = true;
+        LayersListView.OwnerDraw = true;
+        LayersListView.Name = "LayersListView";
+        LayersListView.ShowItemToolTips = true;
+        LayersListView.TabIndex = 0;
+        LayersListView.View = View.Tile;
+        LayersListView.AfterLabelEdit += LayersListView_AfterLabelEdit;
+        LayersListView.BeforeLabelEdit += LayersListView_BeforeLabelEdit;
+        LayersListView.DoubleClick += LayersListView_DoubleClick;
+        LayersListView.DragDrop += LayersListView_DragDrop;
+        LayersListView.DragLeave += LayersListView_DragLeave;
+        LayersListView.DragOver += LayersListView_DragOver;
+        LayersListView.DrawItem += LayersListView_DrawItem;
+        LayersListView.ItemDrag += LayersListView_ItemDrag;
+        LayersListView.KeyDown += LayersListView_KeyDown;
+        LayersListView.SelectedIndexChanged += LayersListView_SelectedIndexChanged;
+        LayersListView.Enter += LayersListView_FocusChanged;
+        LayersListView.Leave += LayersListView_FocusChanged;
+        LayersListView.Resize += LayersListView_Resize;
+        //
+        // LayersHintLabel
+        //
+        LayersHintLabel.Dock = DockStyle.Bottom;
+        LayersHintLabel.ForeColor = SystemColors.GrayText;
+        LayersHintLabel.Name = "LayersHintLabel";
+        LayersHintLabel.Size = new Size(200, 48);
+        LayersHintLabel.Text = "Front first. Drag to put in front or behind. Double-click or F2 to rename.";
+        //
         // ImagesPanel
         //
         ImagesPanel.BorderStyle = BorderStyle.FixedSingle;
@@ -1650,6 +1709,7 @@ partial class DiagramEditorForm
         AutoScaleMode = AutoScaleMode.Font;
         ClientSize = new Size(1280, 760);
         Controls.Add(Canvas);
+        Controls.Add(LayersPanel);
         Controls.Add(ImagesPanel);
         Controls.Add(PropertiesPanel);
         Controls.Add(ToolsStrip);
@@ -1687,6 +1747,7 @@ partial class DiagramEditorForm
         PropertiesPanel.PerformLayout();
         ImagesPanel.ResumeLayout(false);
         ImagesPanel.PerformLayout();
+        LayersPanel.ResumeLayout(false);
         ResumeLayout(false);
         PerformLayout();
     }
@@ -1856,6 +1917,10 @@ partial class DiagramEditorForm
     private CheckBox ProportionsCheckBox;
     private Button ResetSizeButton;
     private ToolStripMenuItem ResetSizeMenuItem;
+    private ToolStripButton LayersButton;
+    private Panel LayersPanel;
+    private ListView LayersListView;
+    private Label LayersHintLabel;
     private ToolStripMenuItem CopyPictureMenuItem;
     private System.Windows.Forms.Timer AutosaveTimer;
     private ToolStripMenuItem BoldMenuItem;

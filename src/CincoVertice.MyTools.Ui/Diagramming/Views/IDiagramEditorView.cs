@@ -94,6 +94,18 @@ public interface IDiagramEditorView
     /// <summary>Raised with true when the user shows the images panel, and false when they hide it.</summary>
     event EventHandler<bool>? ImagesPanelToggled;
 
+    /// <summary>Raised with true when the user shows the layers panel, and false when they hide it.</summary>
+    event EventHandler<bool>? LayersPanelToggled;
+
+    /// <summary>Raised with the shapes and connectors whose rows the user selected in the layers panel.</summary>
+    event EventHandler<IReadOnlyList<int>>? LayersSelected;
+
+    /// <summary>Raised when the user names a row of the layers panel.</summary>
+    event EventHandler<DiagramLayerRenameModel>? LayerRenamed;
+
+    /// <summary>Raised when the user drags rows of the layers panel up or down, in front of or behind others.</summary>
+    event EventHandler<DiagramLayerMoveModel>? LayersMoved;
+
     /// <summary>Raised with what the images panel should show only the images of; empty for all.</summary>
     event EventHandler<string>? ImageSearchChanged;
 
@@ -150,6 +162,17 @@ public interface IDiagramEditorView
     /// <param name="images">What to show; the same image can be in two groups, e.g. Recent and its own.</param>
     /// <param name="emptyText">What to show when there are none.</param>
     void ShowCatalog(IReadOnlyList<DiagramCatalogImageModel> images, string emptyText);
+
+    /// <summary>Shows or hides the layers panel.</summary>
+    void ShowLayersPanel(bool isVisible);
+
+    /// <summary>
+    ///     Shows the rows of the layers panel, front first; called only when they changed, so the panel keeps its place.
+    /// </summary>
+    void ShowLayers(IReadOnlyList<DiagramLayerModel> layers);
+
+    /// <summary>Marks the rows of what's selected; called only when that changed.</summary>
+    void ShowLayerSelection(IReadOnlySet<int> ids);
 
     /// <summary>Opens a folder, e.g. in File Explorer.</summary>
     void OpenFolder(string folder);
