@@ -68,20 +68,24 @@ New text uses [Roboto](https://fonts.google.com/specimen/Roboto), which comes wi
   - **Align left**, **Align centers** and **Align right** line up the left edges, the middles or the right edges with those of the box around all of them; **Align tops**, **Align middles** and **Align bottoms** do the same up and down.
   - **Distribute horizontally** and **Distribute vertically** need three or more: the two at the ends stay, and the ones between move so the space between each two is the same.
   - A group moves as one, and so does a container with what's inside it. A locked X or Y is kept. Each is one step to undo.
-- **Group:** select two or more shapes and press Ctrl+G, or choose **Edit > Group**, or right-click one of them and choose **Group**. Groups are one level only; there is no nesting. Selecting one shape of a group selects the whole group. Ctrl+Shift+G, **Edit > Ungroup** or **Ungroup** in the right-click menu ungroups. In the right-click menu, Group is grayed out unless two or more shapes are selected that are not already one group, and Ungroup unless a selected shape is in a group.
+- **Group:** select two or more shapes and press Ctrl+G, or choose **Edit > Group**, or right-click one of them and choose **Group**. Selecting one shape of a group selects the whole group. Ctrl+Shift+G, **Edit > Ungroup** or **Ungroup** in the right-click menu ungroups. In the right-click menu, Group is grayed out unless two or more shapes are selected that are not already one group, and Ungroup unless a selected shape is in a group.
+  - *Groups inside groups:* select two groups, or a group and other shapes, and group them: the groups go inside the new one whole. Ungroup takes away only the outermost group, so the groups inside are back as they were; ungroup again to take them apart too. Copies and pastes keep the groups inside, and so does saving.
 - **Copy and paste** use the Windows clipboard as text: the selected shapes and lines, and the connectors between the shapes. Pasting adds them 20 pixels further each time. Pasting other text does nothing. If you paste into another program, you get that text, not a picture. Because it is the clipboard, you can copy from one editor window and paste into another. **Duplicate** (Ctrl+D) does the same without using the clipboard.
+- **Copy as picture** (Ctrl+Shift+P, **Edit > Copy as picture**, or in the right-click menu) puts a picture of the selection on the clipboard, or of the whole diagram when nothing is selected, to paste in a chat, an email or a document. It is drawn as **Export as PNG** draws it, on white, sharp at your screen's scaling. The editor itself pastes only shapes copied with Ctrl+C, not pictures.
 - **Snapping.** While you drag with the mouse, shapes snap in two ways.
   - *To other shapes:* the left edge, middle or right edge of what you move lines up with the left edge, middle or right edge of any other shape (top, middle and bottom likewise) when it is close. A thin guide line is drawn along each alignment.
   - *To a grid:* when no other shape is close in a direction, the position rounds to the nearest 10 pixels: a moved shape's left and top edges land on a multiple of 10 (when resizing, the edge you drag does). The faint grid lines on the canvas are every 50 pixels, not every 10.
   - It applies when moving selected shapes, resizing with a handle, drawing a new shape or line, dragging a line's end, and dragging a connector's bend segment. Dragging a connector from one shape to another does not snap to lines or the grid; the connector attaches to a shape's side instead.
   - Arrow-key nudging and the Properties panel never snap.
   - To drag without snapping, hold **Alt**. When resizing, hold **Alt** or **Shift** (Shift also keeps the proportions). There is no other setting to switch snapping off.
+- **Find:** press **Ctrl+F**, or click the **Find** box at the bottom right, and type. The first shape whose text has what you type, or connector whose label has it, in any case, is selected; they go top to bottom, then left to right. **Enter** or **F3** goes to the next one, and **Shift+Enter** or **Shift+F3** to the one before; after the last, it starts again from the first. Beside the box, "2 of 5" says which one it is, or "Not found". One out of view is brought to the middle of the canvas. **Esc** goes back to the canvas.
+- **The status bar**, under the canvas, shows where the mouse is on the diagram, as `x, y` in diagram pixels, and what's selected, such as `2 shapes, 1 line: 240 × 120 at 40, 80`: its width and height, then its left and top. It follows a drag as it goes, so you can move or resize something to an exact size.
 
 ## Style and properties
 
 The toolbar offers the **File** menu (see [Saving and opening](#saving-and-opening)), the **Edit** menu, Fill (with "No fill"), Line, line width, Dashed, Text color, text size, Edge color (with "No edge") and width, routing ("Elbow" or "Straight", tooltip "How connectors go between shapes"), arrows ("Arrow at end", "Arrow at start", "Arrows at both", "No arrows"), "Reset line" (tooltip "Let the selected connectors work out their own path again"), Front, Back and Properties.
 
-The **Edit** menu has **Undo** (Ctrl+Z), **Redo** (Ctrl+Y), **Copy style** (Ctrl+Shift+C), **Paste style** (Ctrl+Shift+V), **Group** (Ctrl+G) and **Ungroup** (Ctrl+Shift+G). Undo and Redo are grayed out when there is nothing to undo or redo.
+The **Edit** menu has **Undo** (Ctrl+Z), **Redo** (Ctrl+Y), **Copy as picture** (Ctrl+Shift+P), **Copy style** (Ctrl+Shift+C), **Paste style** (Ctrl+Shift+V), **Group** (Ctrl+G) and **Ungroup** (Ctrl+Shift+G). Undo and Redo are grayed out when there is nothing to undo or redo.
 
 A toolbar change goes to everything selected, and to what you draw next.
 
@@ -113,6 +117,7 @@ The Properties panel (show or hide with **F4**) has these fields: Text, X, Y, Wi
 | Ctrl+Z | Undo |
 | Ctrl+Y or Ctrl+Shift+Z | Redo |
 | Ctrl+X, Ctrl+C, Ctrl+V | Cut, copy, paste |
+| Ctrl+Shift+P | Copy as picture |
 | Ctrl+D | Duplicate |
 | Ctrl+I | Insert SVG images |
 | Ctrl+Shift+C / Ctrl+Shift+V | Copy style / paste style |
@@ -123,6 +128,8 @@ The Properties panel (show or hide with **F4**) has these fields: Text, X, Y, Wi
 | Delete or Backspace | Delete the selection |
 | Arrow keys | Move the selection 10 px (with Shift, 1 px) |
 | F4 | Show or hide the Properties panel |
+| Ctrl+F | Find a shape by its text |
+| F3 / Shift+F3 | Next / previous one found |
 | Space (held) or middle mouse button | Drag the view |
 | Wheel / Shift+wheel | Move the view up and down / sideways |
 | Ctrl+wheel | Zoom (25% to 400%) |
@@ -135,12 +142,12 @@ The zoom label shows the percentage; its tooltip reads "Ctrl+wheel to zoom. Clic
 - The toolbar's **File** menu has **New** (Ctrl+N), **Open...** (Ctrl+O), **Save** (Ctrl+S), **Save as...** (Ctrl+Shift+S), **Export as PDF...** (Ctrl+E), **Export as PNG...** (Ctrl+Shift+E) and **Exit**. Exit closes this window, as its X button does, and asks about unsaved changes; the rest of My Tools keeps running.
 - The dialogs are "Save diagram" and "Open diagram", with the filter "SVG image (*.svg)". The suggested name is `Diagram.svg`.
 - A saved diagram is a normal SVG image that any browser can show. It carries the diagram's data inside, so only My Tools can edit it again. A failed save leaves the old file as it was.
-- **Only diagrams made by this editor can be opened.** Other files give `This isn't an SVG file.` or `This SVG file wasn't made by the diagram editor, so it can't be edited here.`
+- **An SVG image made elsewhere**, such as an icon or a drawing from Inkscape, opens as a new, untitled diagram that holds it as an image, at its own size (its longer side at least 64 and at most 2000 pixels). Add to it and save it as a diagram; the file you opened is never saved over. The image also goes into the images panel. A file that isn't an SVG image gives `This isn't an SVG file.`
 - Messages from the editor, in boxes titled "Diagram editor":
   - "Save the changes to <name>?" (Yes, No or Cancel), shown when closing or leaving unsaved work.
   - "<name> was changed elsewhere since it was opened here. Replace it with this diagram?" (Yes or No).
   - `Could not open <file name>: <message>`, `Could not save <file name>: <message>` and `Could not export <file name>: <message>`.
-- There is no export to PNG and no printing from the editor; print the PDF instead.
+- There is no printing from the editor; print the PDF instead.
 
 ### Export as PDF
 

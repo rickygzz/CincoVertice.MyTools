@@ -202,7 +202,16 @@ partial class DiagramEditorForm
         ProportionsCheckBox = new CheckBox();
         ResetSizeButton = new Button();
         ResetSizeMenuItem = new ToolStripMenuItem();
+        CopyPictureMenuItem = new ToolStripMenuItem();
+        CopyPictureContextMenuItem = new ToolStripMenuItem();
+        CopyPictureContextSeparator = new ToolStripSeparator();
+        StatusBar = new StatusStrip();
+        PointerStatusLabel = new ToolStripStatusLabel();
+        SelectionStatusLabel = new ToolStripStatusLabel();
+        FindResultLabel = new ToolStripStatusLabel();
+        FindBox = new ToolStripTextBox();
         ToolsStrip.SuspendLayout();
+        StatusBar.SuspendLayout();
         StyleStrip.SuspendLayout();
         Canvas.SuspendLayout();
         PropertiesPanel.SuspendLayout();
@@ -360,7 +369,7 @@ partial class DiagramEditorForm
         // EditDropDownButton
         //
         EditDropDownButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
-        EditDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { UndoMenuItem, RedoMenuItem, HistorySeparator, CopyStyleMenuItem, PasteStyleMenuItem, GroupSeparator, GroupMenuItem, UngroupMenuItem, ImageSeparator, InsertImageMenuItem, ResetSizeMenuItem });
+        EditDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { UndoMenuItem, RedoMenuItem, HistorySeparator, CopyPictureMenuItem, CopyStyleMenuItem, PasteStyleMenuItem, GroupSeparator, GroupMenuItem, UngroupMenuItem, ImageSeparator, InsertImageMenuItem, ResetSizeMenuItem });
         EditDropDownButton.Name = "EditDropDownButton";
         EditDropDownButton.Text = "Edit";
         EditDropDownButton.ToolTipText = "Undo, redo, copy and paste a style, group";
@@ -517,7 +526,7 @@ partial class DiagramEditorForm
         //
         // SelectionMenu
         //
-        SelectionMenu.Items.AddRange(new ToolStripItem[] { CopyStyleContextMenuItem, PasteStyleContextMenuItem, GroupContextSeparator, GroupContextMenuItem, UngroupContextMenuItem, AlignContextSeparator, AlignContextMenuItem });
+        SelectionMenu.Items.AddRange(new ToolStripItem[] { CopyPictureContextMenuItem, CopyPictureContextSeparator, CopyStyleContextMenuItem, PasteStyleContextMenuItem, GroupContextSeparator, GroupContextMenuItem, UngroupContextMenuItem, AlignContextSeparator, AlignContextMenuItem });
         SelectionMenu.Name = "SelectionMenu";
         //
         // CopyStyleContextMenuItem
@@ -638,6 +647,63 @@ partial class DiagramEditorForm
         CopyStyleMenuItem.ShortcutKeyDisplayString = "Ctrl+Shift+C";
         CopyStyleMenuItem.ToolTipText = "Copy the style of what's selected";
         CopyStyleMenuItem.Click += CommandButton_Click;
+        //
+        // CopyPictureMenuItem
+        //
+        CopyPictureMenuItem.Name = "CopyPictureMenuItem";
+        CopyPictureMenuItem.Tag = "CopyPicture";
+        CopyPictureMenuItem.Text = "Copy as picture";
+        CopyPictureMenuItem.ShortcutKeyDisplayString = "Ctrl+Shift+P";
+        CopyPictureMenuItem.ToolTipText = "Copy a picture of what's selected, or of the whole diagram, to paste in a chat, an email or a document";
+        CopyPictureMenuItem.Click += CommandButton_Click;
+        //
+        // CopyPictureContextMenuItem
+        //
+        CopyPictureContextMenuItem.Name = "CopyPictureContextMenuItem";
+        CopyPictureContextMenuItem.ShortcutKeyDisplayString = "Ctrl+Shift+P";
+        CopyPictureContextMenuItem.Tag = "CopyPicture";
+        CopyPictureContextMenuItem.Text = "Copy as picture";
+        CopyPictureContextMenuItem.Click += CommandButton_Click;
+        //
+        // CopyPictureContextSeparator
+        //
+        CopyPictureContextSeparator.Name = "CopyPictureContextSeparator";
+        //
+        // StatusBar
+        //
+        StatusBar.Items.AddRange(new ToolStripItem[] { PointerStatusLabel, SelectionStatusLabel, FindResultLabel, FindBox });
+        StatusBar.Name = "StatusBar";
+        StatusBar.ShowItemToolTips = true;
+        StatusBar.SizingGrip = false;
+        StatusBar.TabIndex = 4;
+        //
+        // PointerStatusLabel
+        //
+        PointerStatusLabel.AutoSize = false;
+        PointerStatusLabel.Name = "PointerStatusLabel";
+        PointerStatusLabel.Size = new Size(100, 17);
+        PointerStatusLabel.TextAlign = ContentAlignment.MiddleLeft;
+        PointerStatusLabel.ToolTipText = "Where the mouse is on the diagram";
+        //
+        // SelectionStatusLabel
+        //
+        SelectionStatusLabel.Name = "SelectionStatusLabel";
+        SelectionStatusLabel.Spring = true;
+        SelectionStatusLabel.TextAlign = ContentAlignment.MiddleLeft;
+        SelectionStatusLabel.ToolTipText = "What's selected: its width × height, at its left and top";
+        //
+        // FindResultLabel
+        //
+        FindResultLabel.Name = "FindResultLabel";
+        //
+        // FindBox
+        //
+        FindBox.AutoSize = false;
+        FindBox.Name = "FindBox";
+        FindBox.Size = new Size(180, 23);
+        FindBox.ToolTipText = "Find a shape by its text (Ctrl+F). Enter or F3 for the next one, Shift for the one before";
+        FindBox.KeyDown += FindBox_KeyDown;
+        FindBox.TextChanged += FindBox_TextChanged;
         //
         // PasteStyleMenuItem
         //
@@ -1558,6 +1624,7 @@ partial class DiagramEditorForm
         Controls.Add(PropertiesPanel);
         Controls.Add(ToolsStrip);
         Controls.Add(StyleStrip);
+        Controls.Add(StatusBar);
         KeyPreview = true;
         MinimumSize = new Size(640, 360);
         Name = "DiagramEditorForm";
@@ -1569,6 +1636,8 @@ partial class DiagramEditorForm
         KeyUp += DiagramEditorForm_KeyUp;
         ToolsStrip.ResumeLayout(false);
         ToolsStrip.PerformLayout();
+        StatusBar.ResumeLayout(false);
+        StatusBar.PerformLayout();
         StyleStrip.ResumeLayout(false);
         StyleStrip.PerformLayout();
         Canvas.ResumeLayout(false);
@@ -1757,4 +1826,12 @@ partial class DiagramEditorForm
     private CheckBox ProportionsCheckBox;
     private Button ResetSizeButton;
     private ToolStripMenuItem ResetSizeMenuItem;
+    private ToolStripMenuItem CopyPictureMenuItem;
+    private ToolStripMenuItem CopyPictureContextMenuItem;
+    private ToolStripSeparator CopyPictureContextSeparator;
+    private StatusStrip StatusBar;
+    private ToolStripStatusLabel PointerStatusLabel;
+    private ToolStripStatusLabel SelectionStatusLabel;
+    private ToolStripStatusLabel FindResultLabel;
+    private ToolStripTextBox FindBox;
 }

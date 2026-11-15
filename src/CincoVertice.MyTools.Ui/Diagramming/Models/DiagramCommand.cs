@@ -19,6 +19,9 @@ public enum DiagramCommand
     Redo,
     Cut,
     Copy,
+
+    /// <summary>Puts a picture of what's selected, or of the whole diagram, on the clipboard.</summary>
+    CopyPicture,
     Paste,
     Duplicate,
 

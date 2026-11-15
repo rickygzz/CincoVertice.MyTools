@@ -488,6 +488,40 @@ public sealed class DiagramSvgTests : IDisposable
     }
 
     [Fact]
+    public void Json_GroupsInsideAGroup_AreKept_AndOnlyWhenThereAreSome()
+    {
+        // Arrange
+        DiagramModel diagram = Sample() with
+        {
+            Shapes = [Sample().Shapes[0] with { InnerGroupIds = [3, 5] }, Sample().Shapes[1]],
+            Connectors = [],
+        };
+
+        // Act
+        string json = DiagramJson.Write(diagram);
+        DiagramModel read = DiagramJson.Read(json);
+
+        // Assert
+        Assert.Contains("\"innerGroupIds\":[3,5]", json);
+        Assert.Single(Regex.Matches(json, "\"innerGroupIds\""));
+        Assert.Equal([3, 5], read.Shapes[0].InnerGroupIds!);
+        Assert.Null(read.Shapes[1].InnerGroupIds);
+    }
+
+    [Fact]
+    public void Json_GroupsInsideNoGroup_AreLeftOut()
+    {
+        // Arrange
+        const string json = """
+            { "format": "mytools-diagram", "shapes": [
+                { "id": 1, "kind": "Ellipse", "x": 0, "y": 0, "width": 9, "height": 9, "innerGroupIds": [2] } ] }
+            """;
+
+        // Act / Assert
+        Assert.Null(DiagramJson.Read(json).Shapes[0].InnerGroupIds);
+    }
+
+    [Fact]
     public void Json_LocksNoShapeCanHave_AreLeftOut()
     {
         // Arrange

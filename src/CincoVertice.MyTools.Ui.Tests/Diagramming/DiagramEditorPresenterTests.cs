@@ -3925,6 +3925,76 @@ public class DiagramEditorPresenterTests
     }
 
     [Fact]
+    public void Group_OfGroups_NestsThem_AndUngroupGivesThemBackOneLevelAtATime()
+    {
+        // Arrange: a and b in one group, c and d in another
+        DiagramShapeModel a = AddShape(100, 100);
+        DiagramShapeModel b = AddShape(250, 100);
+        _view.Click(120, 120, shift: true);
+        _view.Command(DiagramCommand.Group);
+        DiagramShapeModel c = AddShape(100, 300);
+        DiagramShapeModel d = AddShape(250, 300);
+        _view.Click(120, 320, shift: true);
+        _view.Command(DiagramCommand.Group);
+
+        // Act: both groups in a third
+        _view.Command(DiagramCommand.SelectAll);
+        _view.Command(DiagramCommand.Group);
+        ClickEmpty();
+        _view.Click(120, 120);
+
+        // Assert: one picks all four
+        Assert.Equal([a.Id, b.Id, c.Id, d.Id], _presenter.SelectedShapeIds.Order());
+
+        // Act: ungrouped once, the two groups are back
+        _view.Command(DiagramCommand.Ungroup);
+        ClickEmpty();
+        _view.Click(120, 120);
+
+        // Assert
+        Assert.Equal([a.Id, b.Id], _presenter.SelectedShapeIds.Order());
+
+        // Act: and once more, a alone
+        _view.Command(DiagramCommand.Ungroup);
+        ClickEmpty();
+        _view.Click(120, 120);
+
+        // Assert
+        Assert.Equal([a.Id], _presenter.SelectedShapeIds);
+        Assert.All(Diagram.Shapes.Where(shape => shape.Id is 1 or 2), shape => Assert.Null(shape.InnerGroupIds));
+    }
+
+    [Fact]
+    public void Paste_OfNestedGroups_KeepsThemNested_AsNewGroups()
+    {
+        // Arrange
+        AddShape(100, 100);
+        AddShape(250, 100);
+        _view.Command(DiagramCommand.SelectAll);
+        _view.Command(DiagramCommand.Group);
+        AddShape(100, 300);
+        _view.Command(DiagramCommand.SelectAll);
+        _view.Command(DiagramCommand.Group);
+        _view.Command(DiagramCommand.Copy);
+
+        // Act
+        _view.Command(DiagramCommand.Paste);
+
+        // Assert: the copies' groups are none of the originals'
+        List<DiagramShapeModel> copies = [.. Diagram.Shapes.Skip(3)];
+        HashSet<int> originalGroups =
+            [.. Diagram.Shapes.Take(3).SelectMany(shape => (shape.InnerGroupIds ?? []).Append(shape.GroupId!.Value))];
+        Assert.Single(copies.Select(shape => shape.GroupId).Distinct());
+        Assert.Equal(2, copies.Count(shape => shape.InnerGroupIds is { Count: 1 }));
+        Assert.DoesNotContain(copies.SelectMany(shape => (shape.InnerGroupIds ?? []).Append(shape.GroupId!.Value)),
+            originalGroups.Contains);
+
+        // And ungrouping a copy gives back its inner group
+        _view.Command(DiagramCommand.Ungroup);
+        Assert.Equal(2, Diagram.Shapes.Skip(3).Count(shape => shape.GroupId is not null));
+    }
+
+    [Fact]
     public void Group_OneShape_DoesNothing()
     {
         // Arrange
@@ -4316,6 +4386,193 @@ public class DiagramEditorPresenterTests
         Assert.Equal(shape.Id, Diagram.Shapes[0].Id);
     }
 
+    [Fact]
+    public void Open_AnSvgImageMadeElsewhere_OpensAsANewDiagramHoldingIt()
+    {
+        // Arrange
+        const string icon =
+            """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 9"><rect width="18" height="9"/></svg>""";
+        AddShape(100, 100);
+        _view.SaveChoice = DiagramSaveChoice.Discard;
+        _view.PathToOpen = @"C:\icons\vm.svg";
+        _store.LoadError = new InvalidDataException("wasn't made by the diagram editor");
+        _store.Images[@"C:\icons\vm.svg"] = icon;
+
+        // Act
+        _view.Command(DiagramCommand.Open);
+
+        // Assert: its own proportions, the shorter side made at least 64
+        DiagramShapeModel image = Assert.Single(Diagram.Shapes);
+        Assert.Equal(DiagramShapeKind.Image, image.Kind);
+        Assert.Equal(new Size(64, 32), image.Bounds.Size);
+        Assert.Null(_view.Error);
+        Assert.Equal("Untitled", _view.DocumentName);
+        Assert.False(_view.HasChanges);
+        Assert.Contains((icon, "vm.svg"), _catalog.Added);
+    }
+
+    [Fact]
+    public void Open_AnSvgImage_KeepsItsOwnSize_UpTo2000()
+    {
+        // Arrange
+        _view.PathToOpen = @"C:\big.svg";
+        _store.LoadError = new InvalidDataException("wasn't made by the diagram editor");
+        _store.Images[@"C:\big.svg"] =
+            """<svg xmlns="http://www.w3.org/2000/svg" width="4000" height="1000"><rect width="9" height="9"/></svg>""";
+
+        // Act
+        _view.Command(DiagramCommand.Open);
+
+        // Assert
+        Assert.Equal(new Size(2000, 500), Assert.Single(Diagram.Shapes).Bounds.Size);
+    }
+
+    [Fact]
+    public void CopyPicture_OfTheSelection_OrOfTheWholeDiagram()
+    {
+        // Arrange
+        DiagramShapeModel a = AddShape(100, 100);
+        AddShape(400, 100);
+
+        // Act: the second is selected
+        _view.Command(DiagramCommand.CopyPicture);
+        DiagramModel? selected = _view.Picture;
+        ClickEmpty();
+        _view.Command(DiagramCommand.CopyPicture);
+
+        // Assert
+        Assert.Single(selected!.Shapes);
+        Assert.NotEqual(a.Id, selected.Shapes[0].Id);
+        Assert.Equal(2, _view.Picture!.Shapes.Count);
+        Assert.Null(_view.Clipboard);
+    }
+
+    [Fact]
+    public void CopyPicture_OfAnEmptyDiagram_DoesNothing()
+    {
+        // Act
+        _view.Command(DiagramCommand.CopyPicture);
+
+        // Assert
+        Assert.Null(_view.Picture);
+    }
+
+    [Fact]
+    public void Status_SaysWhereTheMouseIs_AndWhatsSelected()
+    {
+        // Arrange
+        AddShape(100, 100, 120, 60);
+
+        // Act
+        _view.Hover(500, 300);
+
+        // Assert
+        Assert.Equal(("500, 300", "1 shape: 120 × 60 at 100, 100"), _view.Status);
+
+        // Act: with a line too, and the mouse off the canvas
+        _view.Tool(DiagramTool.Line);
+        _view.Drag(300, 400, 400, 400);
+        _view.Command(DiagramCommand.SelectAll);
+        _view.LeaveCanvas();
+
+        // Assert
+        Assert.Equal((string.Empty, "1 shape, 1 line: 300 × 300 at 100, 100"), _view.Status);
+
+        // Act
+        ClickEmpty();
+
+        // Assert
+        Assert.Equal(string.Empty, _view.Status.Selection);
+    }
+
+    [Fact]
+    public void Status_WhileDragging_SaysWhereTheSelectionGoes()
+    {
+        // Arrange
+        AddShape(100, 100, 120, 60);
+
+        // Act
+        _view.Press(150, 120);
+        _view.Move(203, 157, alt: true);
+
+        // Assert
+        Assert.Equal("1 shape: 120 × 60 at 153, 137", _view.Status.Selection);
+    }
+
+    [Fact]
+    public void Find_SelectsWhatHasTheText_InReadingOrder_AndGoesOnFromIt()
+    {
+        // Arrange: typed in any order, found top to bottom
+        DiagramShapeModel lower = AddShape(100, 300);
+        _view.DoubleClick(150, 320);
+        _view.CommitText("Web server");
+        DiagramShapeModel upper = AddShape(100, 100);
+        _view.DoubleClick(150, 120);
+        _view.CommitText("Database server");
+        AddShape(400, 100);
+
+        // Act
+        _view.Find("SERVER");
+
+        // Assert
+        Assert.Equal([upper.Id], _presenter.SelectedShapeIds);
+        Assert.Equal("1 of 2", _view.FindResult);
+
+        // Act / Assert: next, then back to the first after the last
+        _view.Find("SERVER", DiagramFindStep.Next);
+        Assert.Equal([lower.Id], _presenter.SelectedShapeIds);
+        _view.Find("SERVER", DiagramFindStep.Next);
+        Assert.Equal([upper.Id], _presenter.SelectedShapeIds);
+        _view.Find("SERVER", DiagramFindStep.Previous);
+        Assert.Equal([lower.Id], _presenter.SelectedShapeIds);
+        Assert.Equal("2 of 2", _view.FindResult);
+    }
+
+    [Fact]
+    public void Find_NothingWithTheText_SaysSo_AndAnEmptyTextSaysNothing()
+    {
+        // Arrange
+        AddShape(100, 100);
+
+        // Act / Assert
+        _view.Find("router");
+        Assert.Equal("Not found", _view.FindResult);
+        _view.Find(string.Empty);
+        Assert.Equal(string.Empty, _view.FindResult);
+    }
+
+    [Fact]
+    public void Find_SomethingOutOfView_BringsItIntoTheMiddle()
+    {
+        // Arrange
+        AddShape(3000, 2000);
+        _view.DoubleClick(3010, 2010);
+        _view.CommitText("far");
+
+        // Act: a canvas 800 by 600
+        _view.Find("far");
+
+        // Assert: its middle, (3050, 2025), is the canvas' middle
+        Assert.Equal(new Point(400, 300), _view.Scene!.Viewport.ToCanvas(new Point(3050, 2025)));
+    }
+
+    [Fact]
+    public void Find_AConnectorsLabel()
+    {
+        // Arrange
+        (_, _, _) = AddSelectedConnector();
+        _view.EditText("yes");
+        ClickEmpty();
+
+        // Act
+        _view.Find("YES");
+
+        // Assert
+        Assert.Equal([Diagram.Connectors[0].Id], _presenter.SelectedConnectorIds);
+        Assert.Empty(_presenter.SelectedShapeIds);
+        Assert.Equal("1 of 1", _view.FindResult);
+    }
+
     [Theory]
     [InlineData(DiagramSaveChoice.Cancel, true)]
     [InlineData(DiagramSaveChoice.Discard, false)]
@@ -4672,7 +4929,24 @@ public class DiagramEditorPresenterTests
 
         public event EventHandler? ImagesFolderRequested;
 
+        public event EventHandler<DiagramFindModel>? FindRequested;
+
         public event EventHandler? WindowActivated;
+
+        public (string Pointer, string Selection) Status { get; private set; }
+
+        public string? FindResult { get; private set; }
+
+        public DiagramModel? Picture { get; private set; }
+
+        public void Find(string text, DiagramFindStep step = DiagramFindStep.First, int width = 800, int height = 600) =>
+            FindRequested?.Invoke(this, new DiagramFindModel(text, step, new Size(width, height)));
+
+        public void ShowStatus(string pointer, string selection) => Status = (pointer, selection);
+
+        public void ShowFindResult(string result) => FindResult = result;
+
+        public void SetClipboardPicture(DiagramModel diagram) => Picture = diagram;
 
         public bool? ImagesPanelShown { get; private set; }
 

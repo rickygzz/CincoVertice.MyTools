@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel;
 using System.Drawing;
+using System.Globalization;
 using CincoVertice.MyTools.Ui.Diagramming.Interfaces;
 using CincoVertice.MyTools.Ui.Diagramming.Models;
 using CincoVertice.MyTools.Ui.Diagramming.Services;
@@ -121,7 +122,15 @@ public sealed class DiagramEditorPresenter
 
     private DiagramCursor _cursor = DiagramCursor.Default;
     private Point _lastPointer;
+    private bool _isPointerOnCanvas;
     private int _pasteCount;
+
+    // The status shown under the canvas, so it's sent only when it changes
+    private (string Pointer, string Selection)? _shownStatus;
+
+    // What was looked for last, and which of what has it was found last
+    private string _findText = string.Empty;
+    private int _findIndex = -1;
 
     /// <param name="view">The window.</param>
     /// <param name="fileStore">Where diagrams are opened from and saved to.</param>
@@ -184,6 +193,7 @@ public sealed class DiagramEditorPresenter
         _view.CatalogImageChosen += OnCatalogImageChosen;
         _view.CatalogImageDropped += OnCatalogImageDropped;
         _view.ImagesFolderRequested += OnImagesFolderRequested;
+        _view.FindRequested += OnFindRequested;
         _view.WindowActivated += OnWindowActivated;
         _view.WindowClosed += OnWindowClosed;
     }
@@ -653,6 +663,7 @@ public sealed class DiagramEditorPresenter
     private void OnPointerMoved(object? sender, DiagramPointerModel pointer)
     {
         _lastPointer = pointer.Location;
+        _isPointerOnCanvas = true;
         Point point = _viewport.ToDiagram(pointer.Location);
 
         switch (_drag)
@@ -660,6 +671,7 @@ public sealed class DiagramEditorPresenter
             case null:
                 ShowCursor(HoverCursor(point));
                 UpdateHover(point);
+                ShowStatus(Shown);
                 return;
             case PanDrag pan:
                 _viewport = _viewport with
@@ -976,10 +988,16 @@ public sealed class DiagramEditorPresenter
 
     private void OnPointerLeft(object? sender, EventArgs e)
     {
+        _isPointerOnCanvas = false;
+
         if (_drag is null && _hoverShape is not null)
         {
             ClearHover();
             Refresh();
+        }
+        else
+        {
+            ShowStatus(Shown);
         }
     }
 
@@ -1493,6 +1511,9 @@ public sealed class DiagramEditorPresenter
             case DiagramCommand.Copy:
                 Copy();
                 break;
+            case DiagramCommand.CopyPicture:
+                CopyPicture();
+                break;
             case DiagramCommand.Paste:
                 Paste();
                 break;
@@ -1593,10 +1614,55 @@ public sealed class DiagramEditorPresenter
             Replace(_fileStore.Load(path), path);
             _savedVersion = _fileStore.VersionOf(path);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        catch (InvalidDataException ex)
+        {
+            // Not a diagram, but maybe an SVG image made elsewhere
+            if (!OpenAsImage(path))
+            {
+                _view.ShowError($"Could not open {Path.GetFileName(path)}: {ex.Message}");
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             _view.ShowError($"Could not open {Path.GetFileName(path)}: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    ///     An SVG image made elsewhere opens as a new diagram that holds it, at its own size: it's never saved over,
+    ///     since the diagram isn't the file.
+    /// </summary>
+    /// <returns>False when the file isn't an SVG image either.</returns>
+    private bool OpenAsImage(string path)
+    {
+        string text;
+        string image;
+
+        try
+        {
+            text = _fileStore.ReadImage(path);
+            image = DiagramSvgImage.Prepare(text);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            return false;
+        }
+
+        var shape = new DiagramShapeModel(
+            1,
+            DiagramShapeKind.Image,
+            new Rectangle(Point.Empty, DiagramSvgImage.OpenSize(image)),
+            string.Empty,
+            _style,
+            Locks: DiagramLock.AspectRatio,
+            Image: image);
+
+        Replace(new DiagramModel([shape], []), null);
+        _savedVersion = null;
+        _imageCatalog.Add(text, Path.GetFileName(path));
+        ShowCatalog();
+
+        return true;
     }
 
     /// <summary>Starts over with another diagram, with its top left corner in view.</summary>
@@ -1754,6 +1820,17 @@ public sealed class DiagramEditorPresenter
         }
     }
 
+    /// <summary>A picture of what's selected, or of the whole diagram when nothing is, for other programs.</summary>
+    private void CopyPicture()
+    {
+        DiagramModel picture = _selectedShapes.Count > 0 || SelectedLines().Count > 0 ? SelectedFragment() : _diagram;
+
+        if (picture.Shapes.Count > 0 || picture.Connectors.Count > 0)
+        {
+            _view.SetClipboardPicture(picture);
+        }
+    }
+
     private void Paste()
     {
         if (_view.GetClipboardText() is not string text)
@@ -1908,20 +1985,27 @@ public sealed class DiagramEditorPresenter
         Dictionary<int, int> groupIds = [];
         List<DiagramShapeModel> shapes = [];
 
+        int NewGroupId(int groupId)
+        {
+            if (!groupIds.TryGetValue(groupId, out int newGroupId))
+            {
+                newGroupId = nextGroupId++;
+                groupIds[groupId] = newGroupId;
+            }
+
+            return newGroupId;
+        }
+
         foreach (DiagramShapeModel shape in fragment.Shapes)
         {
             shapeIds[shape.Id] = nextId++;
-
-            if (shape.GroupId is int groupId && !groupIds.ContainsKey(groupId))
-            {
-                groupIds[groupId] = nextGroupId++;
-            }
 
             shapes.Add(shape with
             {
                 Id = shapeIds[shape.Id],
                 Bounds = Moved(shape.Bounds, new Size(offset, offset)),
-                GroupId = shape.GroupId is int group ? groupIds[group] : null,
+                GroupId = shape.GroupId is int group ? NewGroupId(group) : null,
+                InnerGroupIds = shape.InnerGroupIds is { } inner ? [.. inner.Select(NewGroupId)] : null,
             });
         }
 
@@ -2013,16 +2097,23 @@ public sealed class DiagramEditorPresenter
 
         int groupId = _diagram.NextGroupId;
 
+        // A group selected goes inside the new one whole, so ungrouping gives it back
         Commit(_diagram with
         {
             Shapes =
             [
-                .. _diagram.Shapes.Select(shape =>
-                    _selectedShapes.Contains(shape.Id) ? shape with { GroupId = groupId } : shape),
+                .. _diagram.Shapes.Select(shape => _selectedShapes.Contains(shape.Id)
+                    ? shape with
+                    {
+                        GroupId = groupId,
+                        InnerGroupIds = shape.GroupId is int outer ? [.. shape.InnerGroupIds ?? [], outer] : null,
+                    }
+                    : shape),
             ],
         });
     }
 
+    /// <summary>Takes the selected shapes out of their outermost group, back into the group just inside it.</summary>
     private void Ungroup()
     {
         if (CanUngroup())
@@ -2031,11 +2122,24 @@ public sealed class DiagramEditorPresenter
             {
                 Shapes =
                 [
-                    .. _diagram.Shapes.Select(shape =>
-                        _selectedShapes.Contains(shape.Id) ? shape with { GroupId = null } : shape),
+                    .. _diagram.Shapes.Select(shape => _selectedShapes.Contains(shape.Id) ? Ungrouped(shape) : shape),
                 ],
             });
         }
+    }
+
+    private static DiagramShapeModel Ungrouped(DiagramShapeModel shape)
+    {
+        if (shape.InnerGroupIds is not { Count: > 0 } inner)
+        {
+            return shape with { GroupId = null, InnerGroupIds = null };
+        }
+
+        return shape with
+        {
+            GroupId = inner[^1],
+            InnerGroupIds = inner.Count > 1 ? [.. inner.Take(inner.Count - 1)] : null,
+        };
     }
 
     /// <summary>Moves the selected shapes to the start or the end of the list, keeping their order.</summary>
@@ -2775,9 +2879,179 @@ public sealed class DiagramEditorPresenter
             AnchorsOf(shown),
             ConnectorEndsOf(shown)));
         ShowProperties(shown);
+        ShowStatus(shown);
         _view.ShowUndoRedo(_undo.Count > 0, _redo.Count > 0);
         _view.ShowDocument(Name, HasChanges);
         _view.ShowZoom((int)Math.Round(_viewport.Zoom * 100));
+    }
+
+    /// <summary>Where the mouse and the selection are; only when it changed, as this runs on every mouse move.</summary>
+    private void ShowStatus(DiagramModel diagram)
+    {
+        Point pointer = _viewport.ToDiagram(_lastPointer);
+        (string Pointer, string Selection) status = (
+            _isPointerOnCanvas ? string.Create(CultureInfo.InvariantCulture, $"{pointer.X}, {pointer.Y}") : string.Empty,
+            SelectionText(diagram));
+
+        if (status != _shownStatus)
+        {
+            _shownStatus = status;
+            _view.ShowStatus(status.Pointer, status.Selection);
+        }
+    }
+
+    /// <summary>E.g. "2 shapes, 1 line: 120 × 60 at 40, 80"; the box is around the shapes and the lines.</summary>
+    private string SelectionText(DiagramModel diagram)
+    {
+        List<Rectangle> shapes =
+            [.. diagram.Shapes.Where(shape => _selectedShapes.Contains(shape.Id)).Select(shape => shape.Bounds)];
+        List<DiagramConnectorModel> connectors =
+            [.. diagram.Connectors.Where(connector => _selectedConnectors.Contains(connector.Id))];
+        int lines = connectors.Count(connector => connector.IsLine);
+        List<string> counts = [];
+
+        static string Counted(int count, string name) => count == 1 ? $"1 {name}" : $"{count} {name}s";
+
+        if (shapes.Count > 0)
+        {
+            counts.Add(Counted(shapes.Count, "shape"));
+        }
+
+        if (lines > 0)
+        {
+            counts.Add(Counted(lines, "line"));
+        }
+
+        if (connectors.Count > lines)
+        {
+            counts.Add(Counted(connectors.Count - lines, "connector"));
+        }
+
+        List<Rectangle> boxes =
+        [
+            .. shapes,
+            .. connectors
+                .Where(connector => connector is { FromPoint: not null, ToPoint: not null })
+                .Select(connector => BoxOf(connector.FromPoint!.Value, connector.ToPoint!.Value)),
+        ];
+
+        if (boxes.Count == 0)
+        {
+            return string.Join(", ", counts);
+        }
+
+        Rectangle box = UnionOf(boxes);
+
+        return string.Create(
+            CultureInfo.InvariantCulture,
+            $"{string.Join(", ", counts)}: {box.Width} × {box.Height} at {box.X}, {box.Y}");
+    }
+
+    private static Rectangle BoxOf(Point from, Point to) => Rectangle.FromLTRB(
+        Math.Min(from.X, to.X),
+        Math.Min(from.Y, to.Y),
+        Math.Max(from.X, to.X),
+        Math.Max(from.Y, to.Y));
+
+    /// <summary>
+    ///     Selects the shape or connector with the text, as asked, in reading order, top to bottom, then left to right,
+    ///     and brings it into view when it's out of it.
+    /// </summary>
+    private void OnFindRequested(object? sender, DiagramFindModel find)
+    {
+        if (_drag is not null)
+        {
+            return;
+        }
+
+        string text = find.Text.Trim();
+        List<(DiagramShapeModel? Shape, DiagramConnectorModel? Connector, Rectangle Box)> found = Found(text);
+        bool isSameText = string.Equals(text, _findText, StringComparison.OrdinalIgnoreCase) && _findIndex >= 0;
+
+        _findText = text;
+
+        if (text.Length == 0 || found.Count == 0)
+        {
+            _findIndex = -1;
+            _view.ShowFindResult(text.Length == 0 ? string.Empty : "Not found");
+
+            return;
+        }
+
+        _findIndex = (find.Step, isSameText) switch
+        {
+            (DiagramFindStep.Next, true) => (_findIndex + 1) % found.Count,
+            (DiagramFindStep.Previous, true) => (_findIndex + found.Count - 1) % found.Count,
+            (DiagramFindStep.Previous, false) => found.Count - 1,
+            _ => 0,
+        };
+
+        (DiagramShapeModel? shape, DiagramConnectorModel? connector, Rectangle box) = found[_findIndex];
+
+        ClearSelection();
+
+        if (shape is not null)
+        {
+            _selectedShapes.UnionWith(WithGroup(shape));
+        }
+        else
+        {
+            _selectedConnectors.Add(connector!.Id);
+        }
+
+        BringIntoView(box, find.CanvasSize);
+        SelectionChanged();
+        Refresh();
+        _view.ShowFindResult(string.Create(CultureInfo.InvariantCulture, $"{_findIndex + 1} of {found.Count}"));
+    }
+
+    /// <summary>The shapes whose text, and the connectors whose label, has the text, in any case.</summary>
+    private List<(DiagramShapeModel? Shape, DiagramConnectorModel? Connector, Rectangle Box)> Found(string text)
+    {
+        if (text.Length == 0)
+        {
+            return [];
+        }
+
+        IEnumerable<(DiagramShapeModel?, DiagramConnectorModel?, Rectangle)> shapes = _diagram.Shapes
+            .Where(shape => shape.Text.Contains(text, StringComparison.OrdinalIgnoreCase))
+            .Select(shape => ((DiagramShapeModel?)shape, (DiagramConnectorModel?)null, shape.Bounds));
+        IEnumerable<(DiagramShapeModel?, DiagramConnectorModel?, Rectangle)> connectors = _diagram.Connectors
+            .Where(connector => connector.Label.Contains(text, StringComparison.OrdinalIgnoreCase))
+            .Select(connector => (Path: DiagramRouter.PathOf(connector, _diagram), Connector: connector))
+            .Where(item => item.Path is { Points.Count: > 0 })
+            .Select(item =>
+                ((DiagramShapeModel?)null, (DiagramConnectorModel?)item.Connector, BoxOf(item.Path!.Points)));
+
+        return [.. shapes.Concat(connectors).OrderBy(item => item.Item3.Y).ThenBy(item => item.Item3.X)];
+    }
+
+    private static Rectangle BoxOf(IReadOnlyList<PointF> points) => Rectangle.FromLTRB(
+        (int)Math.Floor(points.Min(point => point.X)),
+        (int)Math.Floor(points.Min(point => point.Y)),
+        (int)Math.Ceiling(points.Max(point => point.X)),
+        (int)Math.Ceiling(points.Max(point => point.Y)));
+
+    /// <summary>Moves the view so the box is in the middle of the canvas, unless it's all in view already.</summary>
+    private void BringIntoView(Rectangle box, Size canvasSize)
+    {
+        Point topLeft = _viewport.ToCanvas(box.Location);
+        Point bottomRight = _viewport.ToCanvas(new Point(box.Right, box.Bottom));
+        var canvas = new Rectangle(Point.Empty, canvasSize);
+
+        if (canvasSize.IsEmpty || (canvas.Contains(topLeft) && canvas.Contains(bottomRight)))
+        {
+            return;
+        }
+
+        var middle = new PointF(box.X + (box.Width / 2f), box.Y + (box.Height / 2f));
+
+        _viewport = _viewport with
+        {
+            Pan = new Point(
+                (canvasSize.Width / 2) - (int)Math.Round(middle.X * _viewport.Zoom),
+                (canvasSize.Height / 2) - (int)Math.Round(middle.Y * _viewport.Zoom)),
+        };
     }
 
     /// <summary>Only when they changed, since this runs on every mouse move and the fields shouldn't flicker.</summary>

@@ -17,6 +17,9 @@ public sealed record DiagramModel(
         .DefaultIfEmpty(0)
         .Max() + 1;
 
-    /// <summary>A group id that no shape has.</summary>
-    public int NextGroupId => Shapes.Select(shape => shape.GroupId ?? 0).DefaultIfEmpty(0).Max() + 1;
+    /// <summary>A group id that no shape has, as its group or as a group inside it.</summary>
+    public int NextGroupId => Shapes
+        .SelectMany(shape => (shape.InnerGroupIds ?? []).Append(shape.GroupId ?? 0))
+        .DefaultIfEmpty(0)
+        .Max() + 1;
 }

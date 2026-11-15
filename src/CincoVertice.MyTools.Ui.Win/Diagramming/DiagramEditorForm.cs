@@ -25,6 +25,9 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     // What an image dragged from the images panel carries: its path in the catalog
     private const string CatalogImageFormat = "CincoVertice.MyTools.DiagramCatalogImage";
 
+    // The name browsers, chats and Office give a PNG picture on the clipboard
+    internal const string PngClipboardFormat = "PNG";
+
     private readonly int _iconSize;
     private readonly List<Image> _images = [];
 
@@ -91,10 +94,11 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         components?.Add(_thumbnails);
 
         FormExtensions.ActivateWhenShown(this);
+        FindBox.TextBox.PlaceholderText = "Find (Ctrl+F)";
     }
 
-    /// <summary>Whether the focus is in the properties or the images panel, whose keys are their own.</summary>
-    private bool IsInAPanel => PropertiesPanel.ContainsFocus || ImagesPanel.ContainsFocus;
+    /// <summary>Whether the focus is in a panel or the find box, whose keys are their own.</summary>
+    private bool IsInAPanel => PropertiesPanel.ContainsFocus || ImagesPanel.ContainsFocus || FindBox.Focused;
 
     public event EventHandler<DiagramPointerModel>? PointerPressed;
 
@@ -163,6 +167,8 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     public event EventHandler<DiagramCatalogDropModel>? CatalogImageDropped;
 
     public event EventHandler? ImagesFolderRequested;
+
+    public event EventHandler<DiagramFindModel>? FindRequested;
 
     public event EventHandler? WindowActivated;
 
@@ -431,6 +437,17 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         };
     }
 
+    public void ShowStatus(string pointer, string selection)
+    {
+        PointerStatusLabel.Text = pointer;
+        SelectionStatusLabel.Text = selection;
+    }
+
+    public void ShowFindResult(string result)
+    {
+        FindResultLabel.Text = result;
+    }
+
     public void BeginTextEdit(Rectangle bounds, string text, int fontSize, string fontFamily, Color color)
     {
         Font? oldFont = _textFont;
@@ -566,6 +583,34 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     }
 
     public string? GetClipboardText() => Clipboard.ContainsText() ? Clipboard.GetText() : null;
+
+    /// <summary>
+    ///     As a bitmap, which every program takes, and as PNG, which browsers and chats prefer; sharp at the screen's
+    ///     scaling.
+    /// </summary>
+    public void SetClipboardPicture(DiagramModel diagram)
+    {
+        int scale = Math.Max(1, (int)Math.Ceiling(DeviceDpi / 96.0));
+
+        using Bitmap picture = PngDiagramExporter.Draw(diagram, scale);
+        using var png = new MemoryStream();
+
+        // Copied now, so the picture and the stream can be disposed
+        Clipboard.SetDataObject(PictureData(picture, png), true);
+    }
+
+    /// <summary>What the clipboard gets for a picture: the bitmap, and the PNG file written into the stream.</summary>
+    internal static DataObject PictureData(Bitmap picture, MemoryStream png)
+    {
+        picture.Save(png, System.Drawing.Imaging.ImageFormat.Png);
+
+        var data = new DataObject();
+
+        data.SetImage(picture);
+        data.SetData(PngClipboardFormat, false, png);
+
+        return data;
+    }
 
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
@@ -1094,6 +1139,30 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         CommandRequested?.Invoke(this, DiagramCommand.ZoomReset);
     }
 
+    private void FindBox_TextChanged(object? sender, EventArgs e)
+    {
+        Find(DiagramFindStep.First);
+    }
+
+    private void FindBox_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.KeyCode != Keys.Enter)
+        {
+            return;
+        }
+
+        Find(e.Shift ? DiagramFindStep.Previous : DiagramFindStep.Next);
+
+        // No beep
+        e.Handled = true;
+        e.SuppressKeyPress = true;
+    }
+
+    private void Find(DiagramFindStep step)
+    {
+        FindRequested?.Invoke(this, new DiagramFindModel(FindBox.Text, step, Canvas.ClientSize));
+    }
+
     private void FillPalette_ColorPicked(object? sender, Color color)
     {
         // Not HideDropDown: the panel's color buttons show this same menu themselves
@@ -1350,6 +1419,25 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
             return;
         }
 
+        // Anywhere in the window, even in the find box
+        if (e.KeyData is Keys.F3 or (Keys.Shift | Keys.F3))
+        {
+            Find(e.Shift ? DiagramFindStep.Previous : DiagramFindStep.Next);
+            e.Handled = true;
+
+            return;
+        }
+
+        if (e.KeyData == (Keys.Control | Keys.F) && !_isEditingText)
+        {
+            FindBox.Focus();
+            FindBox.SelectAll();
+            e.Handled = true;
+            e.SuppressKeyPress = true;
+
+            return;
+        }
+
         // While typing a text or in a panel, keys are theirs
         if (_isEditingText || IsInAPanel)
         {
@@ -1406,6 +1494,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
             (Keys.Control, Keys.D) => DiagramCommand.Duplicate,
             (Keys.Control, Keys.I) => DiagramCommand.InsertImage,
             (Keys.Control | Keys.Shift, Keys.C) => DiagramCommand.CopyStyle,
+            (Keys.Control | Keys.Shift, Keys.P) => DiagramCommand.CopyPicture,
             (Keys.Control | Keys.Shift, Keys.V) => DiagramCommand.PasteStyle,
             (Keys.Control, Keys.A) => DiagramCommand.SelectAll,
             (Keys.Control, Keys.G) => DiagramCommand.Group,

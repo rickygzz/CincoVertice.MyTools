@@ -86,6 +86,18 @@ public sealed class DiagramSvgImageTests
         Assert.Contains("<path ", prepared);
     }
 
+    [Theory]
+    [InlineData("0 0 18 18", 64, 64)]
+    [InlineData("0 0 800 600", 800, 600)]
+    [InlineData("0 0 3000 1500", 2000, 1000)]
+    public void OpenSize_IsItsOwn_WithTheLongerSideBetween64And2000(string viewBox, int width, int height)
+    {
+        // Act / Assert
+        Assert.Equal(
+            new Size(width, height),
+            DiagramSvgImage.OpenSize($"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="{viewBox}"/>"""));
+    }
+
     [Fact]
     public void Prepare_ADoctype_IsSkipped()
     {

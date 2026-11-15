@@ -48,7 +48,8 @@ public static class DiagramJson
                 shape.CornerRadius,
                 shape.Locks == DiagramLock.None ? null : shape.Locks,
                 shape.Image,
-                shape.BottomCornerRadius))],
+                shape.BottomCornerRadius,
+                shape.InnerGroupIds is { Count: > 0 } inner ? [.. inner] : null))],
             [.. diagram.Connectors.Select(connector => new ConnectorFile(
                 connector.Id,
                 connector.FromShapeId,
@@ -171,7 +172,10 @@ public static class DiagramJson
         // Values no lock has, from a file written by hand, are left out
         (shape.Locks ?? DiagramLock.None) & DiagramLock.All,
         shape.Kind == DiagramShapeKind.Image ? shape.Image ?? string.Empty : null,
-        shape.BottomCornerRadius is int bottom ? Math.Max(bottom, 0) : null);
+        shape.BottomCornerRadius is int bottom ? Math.Max(bottom, 0) : null,
+
+        // Groups inside one only mean something in a group
+        shape.GroupId is not null && shape.InnerGroupIds is { Count: > 0 } inner ? [.. inner] : null);
 
     /// <summary>A style read from a file, with values out of range brought into range.</summary>
     internal static DiagramStyleModel ToStyle(StyleFile? style) => new(
@@ -233,7 +237,8 @@ public static class DiagramJson
         int? CornerRadius,
         DiagramLock? Locks = null,
         string? Image = null,
-        int? BottomCornerRadius = null);
+        int? BottomCornerRadius = null,
+        List<int>? InnerGroupIds = null);
 
     private sealed record ConnectorFile(
         int Id,

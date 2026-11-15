@@ -10,7 +10,10 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 /// <param name="Bounds">Where it is, in diagram pixels.</param>
 /// <param name="Text">The text inside it, which can have several lines.</param>
 /// <param name="Style">How it looks.</param>
-/// <param name="GroupId">The shapes with the same value are selected and moved together; null for no group.</param>
+/// <param name="GroupId">
+///     The shapes with the same value are selected and moved together; null for no group. It's the outermost group
+///     the shape is in.
+/// </param>
 /// <param name="CornerRadius">How round a rectangle's corners are, in pixels; null for its kind's usual ones.</param>
 /// <param name="Locks">What of <paramref name="Bounds"/> stays as it is when the shape is moved or scaled.</param>
 /// <param name="BottomCornerRadius">
@@ -19,6 +22,10 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 /// </param>
 /// <param name="Image">
 ///     The SVG markup an image shows, as <see cref="Services.DiagramSvgImage.Prepare"/> gives it; null for other kinds.
+/// </param>
+/// <param name="InnerGroupIds">
+///     The groups inside <paramref name="GroupId"/> the shape is also in, from the innermost to the one just inside
+///     it: ungrouping makes the last one its group again. Null when there are none.
 /// </param>
 public sealed record DiagramShapeModel(
     int Id,
@@ -30,4 +37,5 @@ public sealed record DiagramShapeModel(
     int? CornerRadius = null,
     DiagramLock Locks = DiagramLock.None,
     string? Image = null,
-    int? BottomCornerRadius = null);
+    int? BottomCornerRadius = null,
+    IReadOnlyList<int>? InnerGroupIds = null);

@@ -21,6 +21,9 @@ public static partial class DiagramSvgImage
     private const int SmallestSide = 64;
     private const int LargestSide = 320;
 
+    // An image opened is the whole diagram, so it keeps its own size, unless it's huge
+    private const int LargestOpenedSide = 2000;
+
     private static readonly XNamespace _svg = "http://www.w3.org/2000/svg";
 
     /// <summary>The markup to keep in the diagram: style sheets applied, scripts left out, and scaled to fit.</summary>
@@ -87,11 +90,19 @@ public static partial class DiagramSvgImage
     /// <summary>
     ///     How large to insert an image: its own size, with the longer side made at least 64 and at most 320 pixels.
     /// </summary>
-    public static Size InsertSize(string markup)
+    public static Size InsertSize(string markup) => Fitted(markup, LargestSide);
+
+    /// <summary>
+    ///     How large an image opened as a diagram is: its own size, with the longer side made at least 64 and at most
+    ///     2000 pixels.
+    /// </summary>
+    public static Size OpenSize(string markup) => Fitted(markup, LargestOpenedSide);
+
+    private static Size Fitted(string markup, int largestSide)
     {
         SizeF size = SizeOf(markup);
         float longer = Math.Max(size.Width, size.Height);
-        float scale = Math.Clamp(longer, SmallestSide, LargestSide) / longer;
+        float scale = Math.Clamp(longer, SmallestSide, largestSide) / longer;
 
         return new Size(
             Math.Max((int)Math.Round(size.Width * scale), 1),

@@ -103,6 +103,9 @@ public interface IDiagramEditorView
     /// <summary>Raised when the user wants to open the catalog's folder.</summary>
     event EventHandler? ImagesFolderRequested;
 
+    /// <summary>Raised when the user looks for a text, as it's typed and to go to the next or previous one.</summary>
+    event EventHandler<DiagramFindModel>? FindRequested;
+
     /// <summary>Raised when the window gets the focus, e.g. back from copying images into the catalog.</summary>
     event EventHandler? WindowActivated;
 
@@ -165,6 +168,14 @@ public interface IDiagramEditorView
 
     void ShowCursor(DiagramCursor cursor);
 
+    /// <summary>Shows where the mouse is and where the selection is, in diagram pixels, under the canvas.</summary>
+    /// <param name="pointer">E.g. "120, 340"; empty when the mouse isn't on the canvas.</param>
+    /// <param name="selection">E.g. "2 shapes: 120 × 60 at 40, 80"; empty when nothing is selected.</param>
+    void ShowStatus(string pointer, string selection);
+
+    /// <summary>Shows how the last search went, e.g. "2 of 5" or "Not found"; empty when there's none.</summary>
+    void ShowFindResult(string result);
+
     /// <summary>Lets the user type over a part of the canvas; ends with <see cref="TextCommitted"/>.</summary>
     /// <param name="bounds">Where, in canvas pixels.</param>
     /// <param name="text">The text to start from, selected.</param>
@@ -202,6 +213,12 @@ public interface IDiagramEditorView
     void ShowError(string message);
 
     void SetClipboardText(string text);
+
+    /// <summary>
+    ///     Puts a picture of the diagram on the clipboard, drawn as the PNG export draws it, for chats, emails and
+    ///     documents.
+    /// </summary>
+    void SetClipboardPicture(DiagramModel diagram);
 
     /// <returns>The text on the clipboard; null when there's none.</returns>
     string? GetClipboardText();

@@ -530,6 +530,8 @@ public class DiagramEditorFormTests
     [InlineData("PasteStyleContextMenuItem", "PasteStyle")]
     [InlineData("GroupContextMenuItem", "Group")]
     [InlineData("UngroupContextMenuItem", "Ungroup")]
+    [InlineData("CopyPictureMenuItem", "CopyPicture")]
+    [InlineData("CopyPictureContextMenuItem", "CopyPicture")]
     public void Toolbar_ItemsAskForTheirCommand(string item, string command)
     {
         // Arrange
@@ -541,6 +543,56 @@ public class DiagramEditorFormTests
 
         // Assert
         Assert.Equal(["text new", command], events);
+    }
+
+    [Fact]
+    public void PictureData_IsABitmap_AndAPng_OfTheDiagram()
+    {
+        // Arrange
+        var diagram = new DiagramModel(
+            [new DiagramShapeModel(1, DiagramShapeKind.Rectangle, new Rectangle(0, 0, 100, 50), "A", _style)],
+            []);
+        using Bitmap picture = PngDiagramExporter.Draw(diagram, 2);
+        using var png = new MemoryStream();
+
+        // Act
+        DataObject data = DiagramEditorForm.PictureData(picture, png);
+
+        // Assert: the PNG is the same picture, which a program can read
+        Assert.Same(picture, data.GetImage());
+        png.Position = 0;
+        Assert.True(data.TryGetData(DiagramEditorForm.PngClipboardFormat, out MemoryStream? stream));
+        using var read = new Bitmap(stream!);
+        Assert.Equal(picture.Size, read.Size);
+        Assert.Equal(_style.Fill.ToArgb(), read.GetPixel(read.Width / 2, read.Height / 2).ToArgb());
+    }
+
+    [Fact]
+    public void StatusBar_ShowsWhatItsGiven_AndTheFindBoxAsksToFind()
+    {
+        // Arrange
+        List<DiagramFindModel> finds = [];
+        List<string> events = [];
+        using DiagramEditorForm form = ShowFormEditingProperties(events, "TextPropertyBox", "new");
+        IDiagramEditorView view = form;
+        var findBox = (ToolStripTextBox)typeof(DiagramEditorForm)
+            .GetField("FindBox", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(form)!;
+        view.FindRequested += (_, find) => finds.Add(find);
+
+        // Act
+        view.ShowStatus("12, 34", "1 shape: 100 × 50 at 0, 0");
+        view.ShowFindResult("1 of 2");
+        findBox.Text = "web";
+
+        // Assert
+        StatusStrip status = form.Controls.OfType<StatusStrip>().Single();
+        Assert.Equal(
+            ["12, 34", "1 shape: 100 × 50 at 0, 0", "1 of 2"],
+            status.Items.OfType<ToolStripStatusLabel>().Select(label => label.Text));
+        DiagramFindModel find = Assert.Single(finds);
+        Assert.Equal(("web", DiagramFindStep.First), (find.Text, find.Step));
+        Assert.False(find.CanvasSize.IsEmpty);
     }
 
     [Fact]
