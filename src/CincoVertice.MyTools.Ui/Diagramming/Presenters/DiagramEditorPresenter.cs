@@ -118,7 +118,7 @@ public sealed class DiagramEditorPresenter
     private DiagramPropertiesModel? _shownProperties;
 
     // What ends the text being typed
-    private Action<string>? _commitText;
+    private Action<DiagramRichTextModel>? _commitText;
 
     private DiagramCursor _cursor = DiagramCursor.Default;
     private Point _lastPointer;
@@ -767,7 +767,7 @@ public sealed class DiagramEditorPresenter
                 new Rectangle(Point.Empty, _defaultShapeSize),
                 string.Empty,
                 _style)
-            : original with { Text = string.Empty, GroupId = null, InnerGroupIds = null };
+            : original with { Text = string.Empty, TextSpans = null, GroupId = null, InnerGroupIds = null };
         Size size = copy.Bounds.Size;
         Point middle = CenterOf(source);
         int dx = point.X - middle.X;
@@ -1416,7 +1416,12 @@ public sealed class DiagramEditorPresenter
     {
         _commitText = text => Commit(_diagram with
         {
-            Shapes = [.. _diagram.Shapes.Select(s => s.Id == shape.Id ? s with { Text = text } : s)],
+            Shapes =
+            [
+                .. _diagram.Shapes.Select(s => s.Id == shape.Id
+                    ? s with { Text = text.Text, TextSpans = DiagramRichText.OrNull(text.Spans) }
+                    : s),
+            ],
         });
 
         Rectangle area = shape.Kind switch
@@ -1430,7 +1435,7 @@ public sealed class DiagramEditorPresenter
 
         _view.BeginTextEdit(
             Rectangle.FromLTRB(topLeft.X, topLeft.Y, bottomRight.X, bottomRight.Y),
-            shape.Text,
+            new DiagramRichTextModel(shape.Text, shape.TextSpans ?? []),
             CanvasFontSize(shape.Style.FontSize),
             shape.Style.FontFamily,
             shape.Style.TextColor);
@@ -1451,7 +1456,12 @@ public sealed class DiagramEditorPresenter
     {
         _commitText = text => Commit(_diagram with
         {
-            Connectors = [.. _diagram.Connectors.Select(c => c.Id == connector.Id ? c with { Label = text } : c)],
+            Connectors =
+            [
+                .. _diagram.Connectors.Select(c => c.Id == connector.Id
+                    ? c with { Label = text.Text, LabelSpans = DiagramRichText.OrNull(text.Spans) }
+                    : c),
+            ],
         });
 
         PointF center = DiagramRouter.PathOf(connector, _diagram)!.LabelCenter;
@@ -1462,7 +1472,7 @@ public sealed class DiagramEditorPresenter
 
         _view.BeginTextEdit(
             new Rectangle(canvas.X - width / 2, canvas.Y - height / 2, width, height),
-            connector.Label,
+            new DiagramRichTextModel(connector.Label, connector.LabelSpans ?? []),
             fontSize,
             connector.Style.FontFamily,
             connector.Style.TextColor);
@@ -1471,8 +1481,10 @@ public sealed class DiagramEditorPresenter
     /// <summary>A text on its own is only added once it has something in it.</summary>
     private void BeginNewText(Point point)
     {
-        _commitText = text =>
+        _commitText = typed =>
         {
+            string text = typed.Text;
+
             if (text.Length == 0)
             {
                 return;
@@ -1486,7 +1498,8 @@ public sealed class DiagramEditorPresenter
                 DiagramShapeKind.Text,
                 new Rectangle(point.X, point.Y, width, height),
                 text,
-                _style);
+                _style,
+                TextSpans: DiagramRichText.OrNull(typed.Spans));
 
             Commit(_diagram with { Shapes = [.. _diagram.Shapes, shape] });
             ClearSelection();
@@ -1499,18 +1512,18 @@ public sealed class DiagramEditorPresenter
 
         _view.BeginTextEdit(
             new Rectangle(canvas.X, canvas.Y, fontSize * 14, fontSize * 2),
-            string.Empty,
+            DiagramRichTextModel.Plain(string.Empty),
             fontSize,
             _style.FontFamily,
             _style.TextColor);
     }
 
-    private void OnTextCommitted(object? sender, string text)
+    private void OnTextCommitted(object? sender, DiagramRichTextModel typed)
     {
-        Action<string>? commit = _commitText;
+        Action<DiagramRichTextModel>? commit = _commitText;
 
         _commitText = null;
-        commit?.Invoke(text.ReplaceLineEndings("\n").TrimEnd());
+        commit?.Invoke(DiagramRichText.Normalized(typed.Text, typed.Spans));
         Refresh();
     }
 
@@ -1641,6 +1654,12 @@ public sealed class DiagramEditorPresenter
                 break;
             case DiagramCommand.ResetSize:
                 ResetSize();
+                break;
+            case DiagramCommand.Bold:
+                ToggleFormat(DiagramTextFormat.Bold);
+                break;
+            case DiagramCommand.Italic:
+                ToggleFormat(DiagramTextFormat.Italic);
                 break;
             case DiagramCommand.ZoomIn:
                 ZoomAround(_lastPointer, CommandZoomFactor);
@@ -2413,6 +2432,48 @@ public sealed class DiagramEditorPresenter
         }
     }
 
+    /// <summary>
+    ///     The whole text of each selected shape and label in the format; or out of it when all of them already have it
+    ///     everywhere. One step to undo.
+    /// </summary>
+    private void ToggleFormat(DiagramTextFormat format)
+    {
+        List<DiagramShapeModel> shapes =
+            [.. _diagram.Shapes.Where(shape => _selectedShapes.Contains(shape.Id) && shape.Text.Length > 0)];
+        List<DiagramConnectorModel> connectors =
+        [
+            .. _diagram.Connectors.Where(connector =>
+                _selectedConnectors.Contains(connector.Id) && connector.Label.Length > 0),
+        ];
+
+        if (shapes.Count + connectors.Count == 0)
+        {
+            return;
+        }
+
+        bool hasIt = shapes.All(shape => DiagramRichText.HasFormat(shape.Text, shape.TextSpans, format))
+            && connectors.All(connector => DiagramRichText.HasFormat(connector.Label, connector.LabelSpans, format));
+
+        IReadOnlyList<DiagramTextSpanModel>? Changed(string text, IReadOnlyList<DiagramTextSpanModel>? spans) =>
+            DiagramRichText.OrNull(DiagramRichText.WithFormat(text, spans, format, !hasIt));
+
+        Commit(_diagram with
+        {
+            Shapes =
+            [
+                .. _diagram.Shapes.Select(shape => shapes.Contains(shape)
+                    ? shape with { TextSpans = Changed(shape.Text, shape.TextSpans) }
+                    : shape),
+            ],
+            Connectors =
+            [
+                .. _diagram.Connectors.Select(connector => connectors.Contains(connector)
+                    ? connector with { LabelSpans = Changed(connector.Label, connector.LabelSpans) }
+                    : connector),
+            ],
+        });
+    }
+
     /// <summary>The text of the one thing selected: a shape's text or a connector's label.</summary>
     private void OnTextEdited(object? sender, string text)
     {
@@ -2425,12 +2486,23 @@ public sealed class DiagramEditorPresenter
 
         Commit(new DiagramModel(
             [
-                .. _diagram.Shapes.Select(shape =>
-                    _selectedShapes.Contains(shape.Id) && shape.Text != edited ? shape with { Text = edited } : shape),
+                .. _diagram.Shapes.Select(shape => _selectedShapes.Contains(shape.Id) && shape.Text != edited
+                    ? shape with
+                    {
+                        Text = edited,
+                        TextSpans = DiagramRichText.OrNull(
+                            DiagramRichText.AfterEdit(shape.Text, shape.TextSpans, edited)),
+                    }
+                    : shape),
             ],
             [
                 .. _diagram.Connectors.Select(connector => _selectedConnectors.Contains(connector.Id) && connector.Label != edited
-                    ? connector with { Label = edited }
+                    ? connector with
+                    {
+                        Label = edited,
+                        LabelSpans = DiagramRichText.OrNull(
+                            DiagramRichText.AfterEdit(connector.Label, connector.LabelSpans, edited)),
+                    }
                     : connector),
             ]),
             onlyIfChanged: true);

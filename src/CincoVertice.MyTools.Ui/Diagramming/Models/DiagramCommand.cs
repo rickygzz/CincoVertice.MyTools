@@ -64,6 +64,15 @@ public enum DiagramCommand
     /// <summary>The same space between each two of the selected shapes, top to bottom; the outer two stay.</summary>
     DistributeVertically,
 
+    /// <summary>
+    ///     Makes the whole text of what's selected bold, or no longer bold when all of it is; while typing, the text
+    ///     box does it for what's selected in it.
+    /// </summary>
+    Bold,
+
+    /// <summary>As <see cref="Bold"/>, for italic.</summary>
+    Italic,
+
     /// <summary>Gives the selected images the size they were inserted at, with their own proportions.</summary>
     ResetSize,
     ZoomIn,

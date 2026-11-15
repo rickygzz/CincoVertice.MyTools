@@ -58,7 +58,10 @@ New text uses [Roboto](https://fonts.google.com/specimen/Roboto), which comes wi
     - Double-click an image, or press Enter on it, to insert it where the mouse was last on the canvas; or drag it onto the canvas, where you drop it. It goes first in Recent.
     - The panel is only a help to insert again: a diagram keeps its own copy of each image, so the folder can be emptied at any time.
   - Images are drawn by Windows. Style sheets in the file (`<style>`) are applied when it's inserted, but only simple rules, by element name, class or id; scripts are left out. Text inside an SVG image isn't shown.
-- **Text:** double-click a shape to edit its text, double-click a connector to edit its label, or double-click empty canvas for free text. The Text tool also adds free text where you click, and the Properties panel has a Text box. Enter ends editing; Shift+Enter inserts a new line.
+- **Text:** double-click a shape to edit its text, double-click a connector to edit its label, or double-click empty canvas for free text. The Text tool also adds free text where you click, and the Properties panel has a Text box. You type right on the canvas: click to place the caret, drag or Shift+arrows to select, Ctrl+A for all. Enter ends editing; Shift+Enter inserts a new line; Esc drops what you typed.
+  - *Bold and italic:* while typing, select a part of the text and press **Ctrl+B** for bold or **Ctrl+I** for italic; press it again to take it off. With nothing selected, it's for what you type next. A part can be both. Shapes and connector labels both have them, and the SVG, PDF and PNG files show them.
+  - *A whole text:* select shapes or connectors, not typing, and press **Ctrl+B**, or choose **Edit > Bold** or **Edit > Italic**: their whole text becomes bold or italic, or, when all of it already is, no longer. (On the canvas, Ctrl+I inserts images, so italic is in the menu.)
+  - Pasting while typing pastes only the text, in the diagram's font. Changing a text in the Properties panel keeps its bold and italic parts where they were; what you type there takes the format of the character before it.
 - **Containers** are boxes with a title band at the top, for what holds other things: a resource group, a virtual network, a subnet, a lane of a process.
   - *Draw:* pick the Container tool (B) and drag around what it should hold. It goes under the shapes it's drawn around, so it never hides them. Double-click its title band to type its title. The band grows with its title: a larger **Text size**, or a title on two lines, makes it taller. **Text align** in the Properties panel puts the title at the left, in the middle or at the right.
   - *Pick:* a container is picked by its title band or its border. A click inside it picks what's there, and a drag from an empty place inside it draws a selection box, as on the canvas.
@@ -86,7 +89,7 @@ New text uses [Roboto](https://fonts.google.com/specimen/Roboto), which comes wi
 
 The toolbar offers the **File** menu (see [Saving and opening](#saving-and-opening)), the **Edit** menu, Fill (with "No fill"), Line, line width, Dashed, Text color, text size, Edge color (with "No edge") and width, routing ("Elbow" or "Straight", tooltip "How connectors go between shapes"), arrows ("Arrow at end", "Arrow at start", "Arrows at both", "No arrows"), "Reset line" (tooltip "Let the selected connectors work out their own path again"), Front, Back and Properties.
 
-The **Edit** menu has **Undo** (Ctrl+Z), **Redo** (Ctrl+Y), **Copy as picture** (Ctrl+Shift+P), **Copy style** (Ctrl+Shift+C), **Paste style** (Ctrl+Shift+V), **Group** (Ctrl+G) and **Ungroup** (Ctrl+Shift+G). Undo and Redo are grayed out when there is nothing to undo or redo.
+The **Edit** menu has **Undo** (Ctrl+Z), **Redo** (Ctrl+Y), **Copy as picture** (Ctrl+Shift+P), **Copy style** (Ctrl+Shift+C), **Bold** (Ctrl+B), **Italic**, **Paste style** (Ctrl+Shift+V), **Group** (Ctrl+G) and **Ungroup** (Ctrl+Shift+G). Undo and Redo are grayed out when there is nothing to undo or redo.
 
 A toolbar change goes to everything selected, and to what you draw next.
 
@@ -119,6 +122,8 @@ The Properties panel (show or hide with **F4**) has these fields: Text, X, Y, Wi
 | Ctrl+Y or Ctrl+Shift+Z | Redo |
 | Ctrl+X, Ctrl+C, Ctrl+V | Cut, copy, paste |
 | Ctrl+Shift+P | Copy as picture |
+| Ctrl+B | Bold: the selected shapes' whole text, or, while typing, the selected part |
+| Ctrl+I while typing | Italic for the selected part |
 | Ctrl+D | Duplicate |
 | Ctrl+I | Insert SVG images |
 | Ctrl+Shift+C / Ctrl+Shift+V | Copy style / paste style |

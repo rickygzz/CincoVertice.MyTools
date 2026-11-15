@@ -146,7 +146,7 @@ partial class DiagramEditorForm
         ImagesButton = new ToolStripButton();
         ZoomLabel = new ToolStripLabel();
         Canvas = new DiagramCanvasControl();
-        TextInputBox = new TextBox();
+        TextInputBox = new RichTextBox();
         PropertiesPanel = new Panel();
         ImagesPanel = new Panel();
         ImagesListView = new ListView();
@@ -203,6 +203,9 @@ partial class DiagramEditorForm
         ResetSizeButton = new Button();
         ResetSizeMenuItem = new ToolStripMenuItem();
         CopyPictureMenuItem = new ToolStripMenuItem();
+        BoldMenuItem = new ToolStripMenuItem();
+        ItalicMenuItem = new ToolStripMenuItem();
+        TextFormatSeparator = new ToolStripSeparator();
         CopyPictureContextMenuItem = new ToolStripMenuItem();
         CopyPictureContextSeparator = new ToolStripSeparator();
         StatusBar = new StatusStrip();
@@ -369,7 +372,7 @@ partial class DiagramEditorForm
         // EditDropDownButton
         //
         EditDropDownButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
-        EditDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { UndoMenuItem, RedoMenuItem, HistorySeparator, CopyPictureMenuItem, CopyStyleMenuItem, PasteStyleMenuItem, GroupSeparator, GroupMenuItem, UngroupMenuItem, ImageSeparator, InsertImageMenuItem, ResetSizeMenuItem });
+        EditDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { UndoMenuItem, RedoMenuItem, HistorySeparator, CopyPictureMenuItem, CopyStyleMenuItem, PasteStyleMenuItem, TextFormatSeparator, BoldMenuItem, ItalicMenuItem, GroupSeparator, GroupMenuItem, UngroupMenuItem, ImageSeparator, InsertImageMenuItem, ResetSizeMenuItem });
         EditDropDownButton.Name = "EditDropDownButton";
         EditDropDownButton.Text = "Edit";
         EditDropDownButton.ToolTipText = "Undo, redo, copy and paste a style, group";
@@ -656,6 +659,27 @@ partial class DiagramEditorForm
         CopyPictureMenuItem.ShortcutKeyDisplayString = "Ctrl+Shift+P";
         CopyPictureMenuItem.ToolTipText = "Copy a picture of what's selected, or of the whole diagram, to paste in a chat, an email or a document";
         CopyPictureMenuItem.Click += CommandButton_Click;
+        //
+        // BoldMenuItem
+        //
+        BoldMenuItem.Name = "BoldMenuItem";
+        BoldMenuItem.Tag = "Bold";
+        BoldMenuItem.Text = "Bold";
+        BoldMenuItem.ShortcutKeyDisplayString = "Ctrl+B";
+        BoldMenuItem.ToolTipText = "Make the whole text of what's selected bold, or no longer bold. While typing, Ctrl+B does it for what's selected in the text";
+        BoldMenuItem.Click += CommandButton_Click;
+        //
+        // ItalicMenuItem
+        //
+        ItalicMenuItem.Name = "ItalicMenuItem";
+        ItalicMenuItem.Tag = "Italic";
+        ItalicMenuItem.Text = "Italic";
+        ItalicMenuItem.ToolTipText = "Make the whole text of what's selected italic, or no longer italic. While typing, Ctrl+I does it for what's selected in the text";
+        ItalicMenuItem.Click += CommandButton_Click;
+        //
+        // TextFormatSeparator
+        //
+        TextFormatSeparator.Name = "TextFormatSeparator";
         //
         // CopyPictureContextMenuItem
         //
@@ -1604,12 +1628,11 @@ partial class DiagramEditorForm
         //
         // TextInputBox
         //
-        TextInputBox.AcceptsReturn = true;
         TextInputBox.BorderStyle = BorderStyle.FixedSingle;
-        TextInputBox.Multiline = true;
+        TextInputBox.DetectUrls = false;
         TextInputBox.Name = "TextInputBox";
         TextInputBox.TabIndex = 0;
-        TextInputBox.TextAlign = HorizontalAlignment.Center;
+        TextInputBox.ScrollBars = RichTextBoxScrollBars.None;
         TextInputBox.Visible = false;
         TextInputBox.KeyDown += TextInputBox_KeyDown;
         TextInputBox.Leave += TextInputBox_Leave;
@@ -1761,7 +1784,7 @@ partial class DiagramEditorForm
     private ToolStripButton PropertiesButton;
     private ToolStripLabel ZoomLabel;
     private DiagramCanvasControl Canvas;
-    private TextBox TextInputBox;
+    private RichTextBox TextInputBox;
     private Panel PropertiesPanel;
     private ToolStripButton ImagesButton;
     private Panel ImagesPanel;
@@ -1827,6 +1850,9 @@ partial class DiagramEditorForm
     private Button ResetSizeButton;
     private ToolStripMenuItem ResetSizeMenuItem;
     private ToolStripMenuItem CopyPictureMenuItem;
+    private ToolStripMenuItem BoldMenuItem;
+    private ToolStripMenuItem ItalicMenuItem;
+    private ToolStripSeparator TextFormatSeparator;
     private ToolStripMenuItem CopyPictureContextMenuItem;
     private ToolStripSeparator CopyPictureContextSeparator;
     private StatusStrip StatusBar;

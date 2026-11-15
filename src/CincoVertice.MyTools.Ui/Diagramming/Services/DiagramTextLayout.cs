@@ -34,9 +34,11 @@ public static class DiagramTextLayout
         string text,
         RectangleF area,
         int fontSize,
-        DiagramTextAlignment alignment = DiagramTextAlignment.Center)
+        DiagramTextAlignment alignment = DiagramTextAlignment.Center,
+        IReadOnlyList<DiagramTextSpanModel>? spans = null)
     {
-        IReadOnlyList<string> lines = Wrap(text, area.Width, fontSize);
+        DiagramRichTextModel normalized = DiagramRichText.Normalized(text, spans, trimEnd: false);
+        IReadOnlyList<Range> lines = WrapRanges(normalized.Text, area.Width, fontSize);
         float x = alignment switch
         {
             DiagramTextAlignment.Left => area.Left,
@@ -44,7 +46,7 @@ public static class DiagramTextLayout
             _ => area.Left + area.Width / 2,
         };
 
-        return Place(lines, x, area.Top + area.Height / 2, fontSize, alignment);
+        return Place(normalized, lines, x, area.Top + area.Height / 2, fontSize, alignment);
     }
 
     /// <summary>A shape's text: in the middle of the part of it a text fits in, or under an image.</summary>
@@ -56,12 +58,13 @@ public static class DiagramTextLayout
 
         if (shape.Kind != DiagramShapeKind.Image)
         {
-            return Layout(shape.Text, DiagramFigures.TextArea(shape), fontSize, alignment);
+            return Layout(shape.Text, DiagramFigures.TextArea(shape), fontSize, alignment, shape.TextSpans);
         }
 
         // A name under an icon is often wider than the icon
         Rectangle bounds = shape.Bounds;
-        IReadOnlyList<string> lines = Wrap(shape.Text, Math.Max(bounds.Width, ImageTextWidth), fontSize);
+        DiagramRichTextModel normalized = DiagramRichText.Normalized(shape.Text, shape.TextSpans, trimEnd: false);
+        IReadOnlyList<Range> lines = WrapRanges(normalized.Text, Math.Max(bounds.Width, ImageTextWidth), fontSize);
         float height = lines.Count * fontSize * LineHeightFactor;
 
         // At the left or right, from the image's own edge
@@ -72,8 +75,16 @@ public static class DiagramTextLayout
             _ => bounds.Left + bounds.Width / 2f,
         };
 
-        return Place(lines, x, bounds.Bottom + ImageTextGap + height / 2, fontSize, alignment);
+        return Place(normalized, lines, x, bounds.Bottom + ImageTextGap + height / 2, fontSize, alignment);
     }
+
+    /// <summary>A connector's label, around the point its route gives it.</summary>
+    public static DiagramTextBlockModel OfLabel(DiagramConnectorModel connector, PointF center) => LayoutAt(
+        connector.Label,
+        center,
+        connector.Style.FontSize,
+        connector.Style.TextAlignment,
+        connector.LabelSpans);
 
     /// <summary>
     ///     The lines of a text around a point, wrapped only at its own line breaks; at the left, the right or the
@@ -83,10 +94,20 @@ public static class DiagramTextLayout
         string text,
         PointF center,
         int fontSize,
-        DiagramTextAlignment alignment = DiagramTextAlignment.Center)
+        DiagramTextAlignment alignment = DiagramTextAlignment.Center,
+        IReadOnlyList<DiagramTextSpanModel>? spans = null)
     {
-        string[] lines = text.ReplaceLineEndings("\n").Split('\n');
-        float half = lines.Max(line => WidthOf(line, fontSize)) / 2;
+        DiagramRichTextModel normalized = DiagramRichText.Normalized(text, spans, trimEnd: false);
+        List<Range> lines = [];
+        int start = 0;
+
+        foreach (string line in normalized.Text.Split('\n'))
+        {
+            lines.Add(new Range(start, start + line.Length));
+            start += line.Length + 1;
+        }
+
+        float half = lines.Max(line => WidthOf(normalized.Text[line], fontSize)) / 2;
         float x = alignment switch
         {
             DiagramTextAlignment.Left => center.X - half,
@@ -94,7 +115,7 @@ public static class DiagramTextLayout
             _ => center.X,
         };
 
-        return Place(lines, x, center.Y, fontSize, alignment);
+        return Place(normalized, lines, x, center.Y, fontSize, alignment);
     }
 
     /// <summary>
@@ -103,47 +124,61 @@ public static class DiagramTextLayout
     /// </summary>
     public static IReadOnlyList<string> Wrap(string text, float width, int fontSize)
     {
-        int maxCharacters = Math.Max(1, (int)(width / (fontSize * AverageCharacterWidth)));
-        List<string> lines = [];
+        string normalized = text.ReplaceLineEndings("\n");
 
-        foreach (string paragraph in text.ReplaceLineEndings("\n").Split('\n'))
+        return [.. WrapRanges(normalized, width, fontSize).Select(line => normalized[line])];
+    }
+
+    /// <summary>Where each line of <see cref="Wrap"/> is in the text, whose line breaks must be "\n".</summary>
+    private static IReadOnlyList<Range> WrapRanges(string text, float width, int fontSize)
+    {
+        int maxCharacters = Math.Max(1, (int)(width / (fontSize * AverageCharacterWidth)));
+        List<Range> lines = [];
+        int paragraphStart = 0;
+
+        foreach (string paragraph in text.Split('\n'))
         {
-            string line = string.Empty;
+            // The line so far, from its start to its end in the text; a line is always one piece of it
+            int lineStart = paragraphStart;
+            int lineEnd = paragraphStart;
 
             foreach (Match match in _spacesThenWord.Matches(paragraph))
             {
-                string rest = match.Groups[2].Value;
-                string longer = line + match.Groups[1].Value + rest;
+                int spacesStart = paragraphStart + match.Index;
+                int restStart = paragraphStart + match.Groups[2].Index;
+                int restEnd = restStart + match.Groups[2].Length;
+                int longerStart = lineEnd > lineStart ? lineStart : spacesStart;
 
-                if (longer.Length <= maxCharacters)
+                if (restEnd - longerStart <= maxCharacters)
                 {
-                    line = longer;
+                    (lineStart, lineEnd) = (longerStart, restEnd);
 
                     continue;
                 }
 
-                if (line.Length > 0)
+                if (lineEnd > lineStart)
                 {
-                    lines.Add(line);
+                    lines.Add(new Range(lineStart, lineEnd));
                 }
 
-                while (rest.Length > maxCharacters)
+                while (restEnd - restStart > maxCharacters)
                 {
-                    int split = SplitPoint(rest, maxCharacters);
+                    int split = SplitPoint(text[restStart..restEnd], maxCharacters);
 
-                    if (split >= rest.Length)
+                    if (split >= restEnd - restStart)
                     {
                         break;
                     }
 
-                    lines.Add(rest[..split]);
-                    rest = rest[split..];
+                    lines.Add(new Range(restStart, restStart + split));
+                    restStart += split;
                 }
 
-                line = rest;
+                (lineStart, lineEnd) = (restStart, restEnd);
             }
 
-            lines.Add(line);
+            lines.Add(new Range(lineStart, lineEnd));
+            paragraphStart += paragraph.Length + 1;
         }
 
         return lines;
@@ -161,6 +196,37 @@ public static class DiagramTextLayout
         }
 
         return maxCharacters > 1 ? maxCharacters - 1 : maxCharacters + 1;
+    }
+
+    /// <param name="text">The whole text, with its spans, which the lines are parts of.</param>
+    /// <param name="ranges">Where each line is in it.</param>
+    private static DiagramTextBlockModel Place(
+        DiagramRichTextModel text,
+        IReadOnlyList<Range> ranges,
+        float x,
+        float centerY,
+        int fontSize,
+        DiagramTextAlignment alignment)
+    {
+        IReadOnlyList<string> lines = [.. ranges.Select(range => text.Text[range])];
+        IReadOnlyList<IReadOnlyList<DiagramTextRunModel>>? runs = null;
+
+        if (text.Spans.Count > 0)
+        {
+            DiagramTextFormat[] formats = DiagramRichText.FormatsOf(text.Text.Length, text.Spans);
+
+            runs =
+            [
+                .. ranges.Select(range =>
+                {
+                    (int start, int length) = range.GetOffsetAndLength(text.Text.Length);
+
+                    return DiagramRichText.RunsOf(text.Text, formats, start, length);
+                }),
+            ];
+        }
+
+        return Place(lines, x, centerY, fontSize, alignment) with { Runs = runs };
     }
 
     private static DiagramTextBlockModel Place(

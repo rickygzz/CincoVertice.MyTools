@@ -203,11 +203,7 @@ public static class DiagramRenderer
 
         if (connector.Label.Length > 0)
         {
-            DiagramTextBlockModel block = DiagramTextLayout.LayoutAt(
-                connector.Label,
-                route.LabelCenter,
-                connector.Style.FontSize,
-                connector.Style.TextAlignment);
+            DiagramTextBlockModel block = DiagramTextLayout.OfLabel(connector, route.LabelCenter);
 
             // So the line doesn't run through the words
             RectangleF back = block.Bounds;
@@ -225,6 +221,25 @@ public static class DiagramRenderer
 
         // Winding: a letter can be made of overlapping pieces, and the default fill leaves a hole where they overlap
         var path = new GraphicsPath(FillMode.Winding);
+
+        if (block.Runs is not null)
+        {
+            for (int i = 0; i < block.Lines.Count; i++)
+            {
+                foreach ((DiagramTextRunModel run, float x) in DiagramTextRuns.Placed(block, i, font))
+                {
+                    path.AddString(
+                        run.Text,
+                        font.FontFamily,
+                        (int)DiagramTextRuns.StyleOf(run.Format),
+                        font.Size,
+                        new PointF(x, block.Top + block.LineHeight * i),
+                        DiagramTextRuns.Format);
+                }
+            }
+
+            return path;
+        }
 
         for (int i = 0; i < block.Lines.Count; i++)
         {
@@ -264,11 +279,54 @@ public static class DiagramRenderer
             return;
         }
 
+        if (block.Runs is not null)
+        {
+            DrawRuns(graphics, block, font, brush);
+
+            return;
+        }
+
         using StringFormat format = CreateTextFormat(block.Alignment);
 
         for (int i = 0; i < block.Lines.Count; i++)
         {
             graphics.DrawString(block.Lines[i], font, brush, block.X, block.Top + block.LineHeight * i, format);
+        }
+    }
+
+    /// <summary>A text with parts in bold or italic: each piece in its own font, after the one before it.</summary>
+    private static void DrawRuns(Graphics graphics, DiagramTextBlockModel block, Font font, Brush brush)
+    {
+        Dictionary<DiagramTextFormat, Font> fonts = [];
+
+        try
+        {
+            for (int i = 0; i < block.Lines.Count; i++)
+            {
+                foreach ((DiagramTextRunModel run, float x) in DiagramTextRuns.Placed(block, i, font))
+                {
+                    if (!fonts.TryGetValue(run.Format, out Font? runFont))
+                    {
+                        runFont = DiagramTextRuns.FontOf(font, run.Format);
+                        fonts[run.Format] = runFont;
+                    }
+
+                    graphics.DrawString(
+                        run.Text,
+                        runFont,
+                        brush,
+                        x,
+                        block.Top + block.LineHeight * i,
+                        DiagramTextRuns.Format);
+                }
+            }
+        }
+        finally
+        {
+            foreach (Font runFont in fonts.Values)
+            {
+                runFont.Dispose();
+            }
         }
     }
 

@@ -27,6 +27,7 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 ///     The groups inside <paramref name="GroupId"/> the shape is also in, from the innermost to the one just inside
 ///     it: ungrouping makes the last one its group again. Null when there are none.
 /// </param>
+/// <param name="TextSpans">The parts of <paramref name="Text"/> in bold or italic; null or none for plain text.</param>
 public sealed record DiagramShapeModel(
     int Id,
     DiagramShapeKind Kind,
@@ -38,4 +39,5 @@ public sealed record DiagramShapeModel(
     DiagramLock Locks = DiagramLock.None,
     string? Image = null,
     int? BottomCornerRadius = null,
-    IReadOnlyList<int>? InnerGroupIds = null);
+    IReadOnlyList<int>? InnerGroupIds = null,
+    IReadOnlyList<DiagramTextSpanModel>? TextSpans = null);

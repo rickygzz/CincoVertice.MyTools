@@ -49,7 +49,8 @@ public static class DiagramJson
                 shape.Locks == DiagramLock.None ? null : shape.Locks,
                 shape.Image,
                 shape.BottomCornerRadius,
-                shape.InnerGroupIds is { Count: > 0 } inner ? [.. inner] : null))],
+                shape.InnerGroupIds is { Count: > 0 } inner ? [.. inner] : null,
+                SpanFile.From(shape.TextSpans)))],
             [.. diagram.Connectors.Select(connector => new ConnectorFile(
                 connector.Id,
                 connector.FromShapeId,
@@ -63,7 +64,8 @@ public static class DiagramJson
                 connector.Bends?.Select(bend => new PointFile(bend.X, bend.Y)).ToList(),
                 connector.FromPoint is Point from ? new PointFile(from.X, from.Y) : null,
                 connector.ToPoint is Point to ? new PointFile(to.X, to.Y) : null,
-                connector.Direction == DiagramLineDirection.Free ? null : connector.Direction))]);
+                connector.Direction == DiagramLineDirection.Free ? null : connector.Direction,
+                SpanFile.From(connector.LabelSpans)))]);
 
         return JsonSerializer.Serialize(file, _options);
     }
@@ -114,7 +116,12 @@ public static class DiagramJson
                         new Point(from.X, from.Y),
                         new Point(to.X, to.Y),
                         c.Heads,
-                        ToStyle(c.Style)) with { Label = c.Label ?? string.Empty, Direction = DirectionOf(c) };
+                        ToStyle(c.Style)) with
+                    {
+                        Label = c.Label ?? string.Empty,
+                        Direction = DirectionOf(c),
+                        LabelSpans = SpanFile.ToSpans(c.LabelSpans, c.Label ?? string.Empty),
+                    };
 
                     connectors.Add(line.Aligned());
                 }
@@ -134,7 +141,8 @@ public static class DiagramJson
                     ToStyle(c.Style),
                     c.FromSide,
                     c.ToSide,
-                    c.Bends is { Count: > 0 } bends ? [.. bends.Select(bend => new Point(bend.X, bend.Y))] : null));
+                    c.Bends is { Count: > 0 } bends ? [.. bends.Select(bend => new Point(bend.X, bend.Y))] : null,
+                    LabelSpans: SpanFile.ToSpans(c.LabelSpans, c.Label ?? string.Empty)));
             }
         }
 
@@ -146,13 +154,16 @@ public static class DiagramJson
     ///     a form's list of arrows, for one, throws on an index it doesn't have.
     /// </summary>
     private static bool HasOnlyKnownEntries(DiagramFile file) =>
-        (file.Shapes ?? []).All(shape => shape is not null && Enum.IsDefined(shape.Kind))
+        (file.Shapes ?? []).All(shape => shape is not null
+            && Enum.IsDefined(shape.Kind)
+            && (shape.TextSpans ?? []).All(span => span is not null))
         && (file.Connectors ?? []).All(connector => connector is not null
             && Enum.IsDefined(connector.Routing)
             && Enum.IsDefined(connector.Heads)
             && (connector.FromSide is not DiagramSide from || Enum.IsDefined(from))
             && (connector.ToSide is not DiagramSide to || Enum.IsDefined(to))
-            && (connector.Bends ?? []).All(bend => bend is not null));
+            && (connector.Bends ?? []).All(bend => bend is not null)
+            && (connector.LabelSpans ?? []).All(span => span is not null));
 
     /// <summary>A value no direction has, from a file written by hand, leaves the line free.</summary>
     private static DiagramLineDirection DirectionOf(ConnectorFile connector) =>
@@ -175,7 +186,8 @@ public static class DiagramJson
         shape.BottomCornerRadius is int bottom ? Math.Max(bottom, 0) : null,
 
         // Groups inside one only mean something in a group
-        shape.GroupId is not null && shape.InnerGroupIds is { Count: > 0 } inner ? [.. inner] : null);
+        shape.GroupId is not null && shape.InnerGroupIds is { Count: > 0 } inner ? [.. inner] : null,
+        SpanFile.ToSpans(shape.TextSpans, shape.Text ?? string.Empty));
 
     /// <summary>A style read from a file, with values out of range brought into range.</summary>
     internal static DiagramStyleModel ToStyle(StyleFile? style) => new(
@@ -238,7 +250,8 @@ public static class DiagramJson
         DiagramLock? Locks = null,
         string? Image = null,
         int? BottomCornerRadius = null,
-        List<int>? InnerGroupIds = null);
+        List<int>? InnerGroupIds = null,
+        List<SpanFile>? TextSpans = null);
 
     private sealed record ConnectorFile(
         int Id,
@@ -253,9 +266,24 @@ public static class DiagramJson
         List<PointFile>? Bends,
         PointFile? FromPoint = null,
         PointFile? ToPoint = null,
-        DiagramLineDirection? Direction = null);
+        DiagramLineDirection? Direction = null,
+        List<SpanFile>? LabelSpans = null);
 
     private sealed record PointFile(int X, int Y);
+
+    /// <summary>A part of a text in bold or italic, as it's written in a file.</summary>
+    private sealed record SpanFile(int Start, int Length, DiagramTextFormat Format)
+    {
+        public static List<SpanFile>? From(IReadOnlyList<DiagramTextSpanModel>? spans) => spans is { Count: > 0 }
+            ? [.. spans.Select(span => new SpanFile(span.Start, span.Length, span.Format))]
+            : null;
+
+        /// <summary>Cut to the text and merged, since a file written by hand can have them any way.</summary>
+        public static IReadOnlyList<DiagramTextSpanModel>? ToSpans(List<SpanFile>? spans, string text) =>
+            DiagramRichText.OrNull(DiagramRichText.Valid(
+                text,
+                [.. (spans ?? []).Select(span => new DiagramTextSpanModel(span.Start, span.Length, span.Format))]));
+    }
 
     /// <summary>A style as it's written in a file.</summary>
     internal sealed record StyleFile(

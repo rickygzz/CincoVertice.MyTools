@@ -87,6 +87,91 @@ public class DiagramEditorFormTests
     }
 
     [Fact]
+    public void Renderer_ABoldPart_HasMoreInk_ThanTheSameTextPlain()
+    {
+        // Arrange
+        DiagramStyleModel style = _style with { FontSize = 30, FontFamily = "Roboto" };
+        DiagramModel Diagram(IReadOnlyList<DiagramTextSpanModel>? spans) => new(
+            [
+                new DiagramShapeModel(
+                    1,
+                    DiagramShapeKind.Text,
+                    new Rectangle(10, 20, 280, 160),
+                    "Hello world",
+                    style,
+                    TextSpans: spans),
+            ],
+            []);
+
+        // Act
+        using Bitmap plain = Render(Scene(Diagram(null)));
+        using Bitmap bold = Render(Scene(Diagram([new DiagramTextSpanModel(0, 5, DiagramTextFormat.Bold)])));
+        using Bitmap italic = Render(Scene(Diagram([new DiagramTextSpanModel(0, 11, DiagramTextFormat.Italic)])));
+
+        // Assert: the letters are black, anti-aliased at their edges
+        int Ink(Bitmap image) => CountOf(image, Color.Black);
+        Assert.True(Ink(bold) > Ink(plain) * 1.1, $"bold {Ink(bold)}, plain {Ink(plain)}");
+        Assert.True(Ink(italic) > 0);
+        Assert.NotEqual(Ink(plain), Ink(italic));
+    }
+
+    [Fact]
+    public void TextBox_ShowsTheBoldParts_AndGivesThemBack_AndCtrlBTogglesWhatsSelected()
+    {
+        // Arrange
+        using var form = new DiagramEditorForm
+        {
+            StartPosition = FormStartPosition.Manual,
+            Location = new Point(-3000, 100),
+            ShowInTaskbar = false,
+        };
+        IDiagramEditorView view = form;
+        var bold = new DiagramTextSpanModel(0, 4, DiagramTextFormat.Bold);
+        var italic = new DiagramTextSpanModel(5, 3, DiagramTextFormat.Italic);
+        form.Show();
+
+        // Act
+        view.BeginTextEdit(
+            new Rectangle(10, 10, 200, 60),
+            new DiagramRichTextModel("Step\none", [bold, italic]),
+            16,
+            "Roboto",
+            Color.Black);
+
+        // Assert
+        Assert.Equal(new DiagramRichTextModel("Step\none", [bold, italic]).Text, form.TypedText().Text);
+        Assert.Equal([bold, italic], form.TypedText().Spans);
+
+        // Act: "ep" and "o" selected and made bold, then italic all over, then italic off again
+        var box = (RichTextBox)typeof(DiagramEditorForm)
+            .GetField("TextInputBox", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(form)!;
+        box.Select(2, 4);
+        form.ToggleSelectedFormat(DiagramTextFormat.Bold);
+
+        // Assert: "Step\no" bold; "o" keeps its italic
+        const DiagramTextFormat boldItalic = DiagramTextFormat.Bold | DiagramTextFormat.Italic;
+        Assert.Equal(
+            [
+                new DiagramTextSpanModel(0, 5, DiagramTextFormat.Bold),
+                new(5, 1, boldItalic),
+                new(6, 2, DiagramTextFormat.Italic),
+            ],
+            form.TypedText().Spans);
+
+        // Act / Assert: all of "Step" was bold, so Ctrl+B again takes it off
+        box.Select(0, 4);
+        form.ToggleSelectedFormat(DiagramTextFormat.Bold);
+        Assert.Equal(
+            [
+                new DiagramTextSpanModel(4, 1, DiagramTextFormat.Bold),
+                new(5, 1, boldItalic),
+                new(6, 2, DiagramTextFormat.Italic),
+            ],
+            form.TypedText().Spans);
+    }
+
+    [Fact]
     public void TextOutline_LeavesTheLettersSolid()
     {
         // Arrange: Roboto's letters are made of pieces that overlap, like the bar and the stems of an H

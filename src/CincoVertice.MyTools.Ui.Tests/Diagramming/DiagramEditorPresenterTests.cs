@@ -2118,6 +2118,113 @@ public class DiagramEditorPresenterTests
     }
 
     [Fact]
+    public void TextCommitted_WithBoldParts_KeepsThem_AndTheNextEditStartsFromThem()
+    {
+        // Arrange
+        AddShape(100, 100);
+        var bold = new DiagramTextSpanModel(0, 4, DiagramTextFormat.Bold);
+
+        // Act: typed with a line break Windows' way and spaces at the end, which are left out
+        _view.DoubleClick(150, 125);
+        _view.CommitText(new DiagramRichTextModel("Step\r\none  ", [bold, new(5, 6, DiagramTextFormat.Italic)]));
+        _view.DoubleClick(150, 125);
+
+        // Assert
+        DiagramShapeModel shape = Diagram.Shapes[0];
+        Assert.Equal("Step\none", shape.Text);
+        Assert.Equal([bold, new DiagramTextSpanModel(4, 4, DiagramTextFormat.Italic)], shape.TextSpans!);
+        Assert.Equal("Step\none", _view.TextStarted!.Text);
+        Assert.Equal(shape.TextSpans, _view.TextStarted.Spans);
+    }
+
+    [Fact]
+    public void TextCommitted_Plain_KeepsNoSpans_AndALabelKeepsItsOwn()
+    {
+        // Arrange
+        AddShape(100, 100);
+        (_, _, _) = AddSelectedConnector();
+        DiagramConnectorModel connector = Diagram.Connectors[0];
+        _view.DoubleClick(150, 125);
+        _view.CommitText("plain");
+
+        // Act
+        _view.Command(DiagramCommand.SelectAll);
+        ClickEmpty();
+        _view.EditText(string.Empty);
+
+        // Assert
+        Assert.Null(Diagram.Shapes[0].TextSpans);
+        Assert.Null(connector.LabelSpans);
+    }
+
+    [Fact]
+    public void TextEdited_InTheProperties_KeepsTheBoldPartsWhereTheyWere()
+    {
+        // Arrange: "cat" bold
+        AddShape(100, 100);
+        _view.DoubleClick(150, 125);
+        _view.CommitText(new DiagramRichTextModel("big cat", [new(4, 3, DiagramTextFormat.Bold)]));
+        _view.Click(150, 125);
+
+        // Act
+        _view.EditText("a big cat");
+
+        // Assert
+        Assert.Equal([new DiagramTextSpanModel(6, 3, DiagramTextFormat.Bold)], Diagram.Shapes[0].TextSpans!);
+    }
+
+    [Fact]
+    public void Bold_MakesTheWholeTextOfWhatsSelectedBold_ThenNoLonger_EachOneStep()
+    {
+        // Arrange: one shape with a text in part italic, one with no text, and a label
+        AddShape(100, 100);
+        _view.DoubleClick(150, 125);
+        _view.CommitText(new DiagramRichTextModel("go home", [new(3, 4, DiagramTextFormat.Italic)]));
+        AddShape(400, 100);
+        _view.Command(DiagramCommand.SelectAll);
+
+        // Act
+        _view.Command(DiagramCommand.Bold);
+
+        // Assert: italic stays where it was
+        Assert.Equal(
+            [
+                new DiagramTextSpanModel(0, 3, DiagramTextFormat.Bold),
+                new(3, 4, DiagramTextFormat.Bold | DiagramTextFormat.Italic),
+            ],
+            Diagram.Shapes[0].TextSpans!);
+        Assert.Null(Diagram.Shapes[1].TextSpans);
+
+        // Act / Assert: again, all of it is bold already, so none is
+        _view.Command(DiagramCommand.Bold);
+        Assert.Equal([new DiagramTextSpanModel(3, 4, DiagramTextFormat.Italic)], Diagram.Shapes[0].TextSpans!);
+        _view.Command(DiagramCommand.Undo);
+        Assert.Equal(2, Diagram.Shapes[0].TextSpans!.Count);
+    }
+
+    [Fact]
+    public void Italic_OnALabel_AndOnNothingWithText_DoesNothingToUndo()
+    {
+        // Arrange
+        (_, _, _) = AddSelectedConnector();
+        _view.EditText("yes");
+        int steps = _view.CanUndo ? 1 : 0;
+
+        // Act
+        _view.Command(DiagramCommand.Italic);
+
+        // Assert
+        Assert.Equal([new DiagramTextSpanModel(0, 3, DiagramTextFormat.Italic)], Diagram.Connectors[0].LabelSpans!);
+
+        // Act / Assert: a shape with no text
+        AddShape(600, 100);
+        DiagramModel before = Diagram;
+        _view.Command(DiagramCommand.Italic);
+        Assert.Same(before, Diagram);
+        Assert.Equal(1, steps);
+    }
+
+    [Fact]
     public void TextEdited_ChangesTheShapesText_OrTheConnectorsLabel()
     {
         // Arrange
@@ -5000,7 +5107,7 @@ public class DiagramEditorPresenterTests
 
         public event EventHandler<string>? TextEdited;
 
-        public event EventHandler<string>? TextCommitted;
+        public event EventHandler<DiagramRichTextModel>? TextCommitted;
 
         public event EventHandler<CancelEventArgs>? Closing;
 
@@ -5201,7 +5308,9 @@ public class DiagramEditorPresenterTests
         public void SelectLineDirection(DiagramLineDirection direction) =>
             LineDirectionSelected?.Invoke(this, direction);
 
-        public void CommitText(string text) => TextCommitted?.Invoke(this, text);
+        public void CommitText(string text) => TextCommitted?.Invoke(this, DiagramRichTextModel.Plain(text));
+
+        public void CommitText(DiagramRichTextModel text) => TextCommitted?.Invoke(this, text);
 
         public void EditBounds(int x, int y, int width, int height) =>
             BoundsEdited?.Invoke(this, new Rectangle(x, y, width, height));
@@ -5254,8 +5363,15 @@ public class DiagramEditorPresenterTests
 
         public void ShowCursor(DiagramCursor cursor) => Cursor = cursor;
 
-        public void BeginTextEdit(Rectangle bounds, string text, int fontSize, string fontFamily, Color color) =>
-            (TextBounds, TextFontSize, TextFontFamily) = (bounds, fontSize, fontFamily);
+        public DiagramRichTextModel? TextStarted { get; private set; }
+
+        public void BeginTextEdit(
+            Rectangle bounds,
+            DiagramRichTextModel text,
+            int fontSize,
+            string fontFamily,
+            Color color) =>
+            (TextBounds, TextStarted, TextFontSize, TextFontFamily) = (bounds, text, fontSize, fontFamily);
 
         public Color? AskedColorFrom { get; private set; }
 

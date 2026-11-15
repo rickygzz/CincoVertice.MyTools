@@ -11,10 +11,15 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 /// <param name="LineHeight">From the top of a line to the top of the next.</param>
 /// <param name="Bounds">Around all the lines; an estimate, since it depends on the font's real widths.</param>
 /// <param name="Alignment">Which part of each line is at <paramref name="X"/>.</param>
+/// <param name="Runs">
+///     Each line in pieces written the same way, for a text with parts in bold or italic; null for plain text, which
+///     is drawn a line at a time.
+/// </param>
 public sealed record DiagramTextBlockModel(
     IReadOnlyList<string> Lines,
     float X,
     float Top,
     float LineHeight,
     RectangleF Bounds,
-    DiagramTextAlignment Alignment = DiagramTextAlignment.Center);
+    DiagramTextAlignment Alignment = DiagramTextAlignment.Center,
+    IReadOnlyList<IReadOnlyList<DiagramTextRunModel>>? Runs = null);

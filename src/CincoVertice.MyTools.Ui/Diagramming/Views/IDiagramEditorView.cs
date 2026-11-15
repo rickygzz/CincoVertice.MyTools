@@ -82,8 +82,11 @@ public interface IDiagramEditorView
     /// <summary>Raised with the text of the selected shape, or the label of the selected connector.</summary>
     event EventHandler<string>? TextEdited;
 
-    /// <summary>Raised when the user ends a text begun by <see cref="BeginTextEdit"/>, not when they cancel it.</summary>
-    event EventHandler<string>? TextCommitted;
+    /// <summary>
+    ///     Raised with what was typed, and the parts of it in bold or italic, when the user ends a text begun by
+    ///     <see cref="BeginTextEdit"/>; not when they cancel it.
+    /// </summary>
+    event EventHandler<DiagramRichTextModel>? TextCommitted;
 
     /// <summary>Raised with true when the user shows the properties panel, and false when they hide it.</summary>
     event EventHandler<bool>? PropertiesPanelToggled;
@@ -176,13 +179,16 @@ public interface IDiagramEditorView
     /// <summary>Shows how the last search went, e.g. "2 of 5" or "Not found"; empty when there's none.</summary>
     void ShowFindResult(string result);
 
-    /// <summary>Lets the user type over a part of the canvas; ends with <see cref="TextCommitted"/>.</summary>
+    /// <summary>
+    ///     Lets the user type over a part of the canvas, and make parts of it bold or italic; ends with
+    ///     <see cref="TextCommitted"/>.
+    /// </summary>
     /// <param name="bounds">Where, in canvas pixels.</param>
-    /// <param name="text">The text to start from, selected.</param>
+    /// <param name="text">The text to start from, with its parts in bold or italic, selected.</param>
     /// <param name="fontSize">In canvas pixels.</param>
     /// <param name="fontFamily">The name of the font.</param>
     /// <param name="color">The color of the text.</param>
-    void BeginTextEdit(Rectangle bounds, string text, int fontSize, string fontFamily, Color color);
+    void BeginTextEdit(Rectangle bounds, DiagramRichTextModel text, int fontSize, string fontFamily, Color color);
 
     /// <summary>Lets the user pick any color.</summary>
     /// <returns>The color; null when the user cancels.</returns>

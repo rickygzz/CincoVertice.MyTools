@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Diagnostics;
 using CincoVertice.MyTools.Ui.Diagramming.Models;
+using CincoVertice.MyTools.Ui.Diagramming.Services;
 using CincoVertice.MyTools.Ui.Diagramming.Views;
 using CincoVertice.MyTools.Ui.Win.Behaviors;
 using CincoVertice.MyTools.Ui.Win.Diagramming.Services;
@@ -154,7 +155,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
 
     public event EventHandler<string>? TextEdited;
 
-    public event EventHandler<string>? TextCommitted;
+    public event EventHandler<DiagramRichTextModel>? TextCommitted;
 
     public event EventHandler<bool>? PropertiesPanelToggled;
 
@@ -448,7 +449,12 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         FindResultLabel.Text = result;
     }
 
-    public void BeginTextEdit(Rectangle bounds, string text, int fontSize, string fontFamily, Color color)
+    public void BeginTextEdit(
+        Rectangle bounds,
+        DiagramRichTextModel text,
+        int fontSize,
+        string fontFamily,
+        Color color)
     {
         Font? oldFont = _textFont;
 
@@ -459,7 +465,8 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
 
         // A light text on a light box couldn't be read while typing
         TextInputBox.BackColor = color.GetBrightness() > 0.7f ? Color.FromArgb(64, 64, 64) : Color.White;
-        TextInputBox.Text = text.ReplaceLineEndings(Environment.NewLine);
+        TextInputBox.Text = text.Text.ReplaceLineEndings("\n");
+        ShowFormats(text);
 
         // A small shape still gets a box large enough to type in
         TextInputBox.Bounds = new Rectangle(
@@ -467,8 +474,79 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
             new Size(Math.Max(bounds.Width, fontSize * 6), Math.Max(bounds.Height, fontSize * 2)));
         TextInputBox.Visible = true;
         TextInputBox.SelectAll();
+        TextInputBox.SelectionAlignment = HorizontalAlignment.Center;
         TextInputBox.Focus();
         _isEditingText = true;
+    }
+
+    /// <summary>The text box's parts in bold or italic, as the text has them.</summary>
+    private void ShowFormats(DiagramRichTextModel text)
+    {
+        TextInputBox.SelectAll();
+        TextInputBox.SelectionFont = TextInputBox.Font;
+
+        foreach (DiagramTextSpanModel span in DiagramRichText.Valid(TextInputBox.Text, text.Spans))
+        {
+            using Font font = DiagramTextRuns.FontOf(_textFont!, span.Format);
+
+            TextInputBox.Select(span.Start, span.Length);
+            TextInputBox.SelectionFont = font;
+        }
+    }
+
+    /// <summary>What's typed, with the parts of it in bold or italic, read a character at a time.</summary>
+    internal DiagramRichTextModel TypedText()
+    {
+        string text = TextInputBox.Text;
+        var formats = new DiagramTextFormat[text.Length];
+        (int start, int length) = (TextInputBox.SelectionStart, TextInputBox.SelectionLength);
+
+        for (int i = 0; i < text.Length; i++)
+        {
+            TextInputBox.Select(i, 1);
+            formats[i] = FormatOf(TextInputBox.SelectionFont);
+        }
+
+        TextInputBox.Select(start, length);
+
+        return new DiagramRichTextModel(text, DiagramRichText.SpansOf(formats));
+    }
+
+    private static DiagramTextFormat FormatOf(Font? font) =>
+        (font?.Bold == true ? DiagramTextFormat.Bold : DiagramTextFormat.None)
+        | (font?.Italic == true ? DiagramTextFormat.Italic : DiagramTextFormat.None);
+
+    /// <summary>
+    ///     Makes what's selected in the text box bold or italic, or no longer, as Ctrl+B and Ctrl+I do in a word
+    ///     processor: on, unless all of it has it already. With nothing selected, it's for what's typed next.
+    /// </summary>
+    internal void ToggleSelectedFormat(DiagramTextFormat format)
+    {
+        (int start, int length) = (TextInputBox.SelectionStart, TextInputBox.SelectionLength);
+        bool isOn = (FormatOf(TextInputBox.SelectionFont) & format) == 0 || TextInputBox.SelectionFont is null;
+
+        if (length == 0)
+        {
+            DiagramTextFormat typed = FormatOf(TextInputBox.SelectionFont);
+            using Font font = DiagramTextRuns.FontOf(_textFont!, isOn ? typed | format : typed & ~format);
+
+            TextInputBox.SelectionFont = font;
+
+            return;
+        }
+
+        // A character at a time, so each keeps what else it is: making a part bold leaves its italic as it was
+        for (int i = start; i < start + length; i++)
+        {
+            TextInputBox.Select(i, 1);
+
+            DiagramTextFormat old = FormatOf(TextInputBox.SelectionFont);
+            using Font font = DiagramTextRuns.FontOf(_textFont!, isOn ? old | format : old & ~format);
+
+            TextInputBox.SelectionFont = font;
+        }
+
+        TextInputBox.Select(start, length);
     }
 
     public Color? AskColor(Color current)
@@ -1099,7 +1177,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
 
         // Cleared first: hiding the focused box raises Leave, which commits again
         _isEditingText = false;
-        string text = TextInputBox.Text;
+        DiagramRichTextModel text = TypedText();
         TextInputBox.Visible = false;
         Canvas.Focus();
 
@@ -1366,12 +1444,46 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
 
     private void TextInputBox_KeyDown(object? sender, KeyEventArgs e)
     {
-        // Enter ends the text; Shift+Enter starts a new line
-        if (e.KeyCode == Keys.Enter && !e.Shift)
+        switch (e.KeyData)
         {
-            e.SuppressKeyPress = true;
-            CommitText();
+            // Enter ends the text
+            case Keys.Enter:
+                CommitText();
+                break;
+
+            // A new line; the box itself would put a line break a diagram's text doesn't know
+            case Keys.Shift | Keys.Enter:
+                TextInputBox.SelectedText = "\n";
+                break;
+            case Keys.Control | Keys.B:
+                ToggleSelectedFormat(DiagramTextFormat.Bold);
+                break;
+            case Keys.Control | Keys.I:
+                ToggleSelectedFormat(DiagramTextFormat.Italic);
+                break;
+
+            // Only the text, in the box's font: a copied text's fonts, sizes and colors aren't the diagram's
+            case Keys.Control | Keys.V or Keys.Shift | Keys.Insert:
+                if (Clipboard.ContainsText())
+                {
+                    TextInputBox.SelectedText = Clipboard.GetText().ReplaceLineEndings("\n");
+                }
+
+                break;
+
+            // The box's own formats a diagram's text doesn't have: underline, alignment and line spacing
+            case Keys.Control | Keys.U or Keys.Control | Keys.L or Keys.Control | Keys.E or Keys.Control | Keys.R
+                or Keys.Control | Keys.J or Keys.Control | Keys.D1 or Keys.Control | Keys.D2
+                or Keys.Control | Keys.D5 or Keys.Control | Keys.Shift | Keys.A
+                or Keys.Control | Keys.Shift | Keys.L or Keys.Control | Keys.Oemplus
+                or Keys.Control | Keys.Shift | Keys.Oemplus:
+                break;
+            default:
+                return;
         }
+
+        e.Handled = true;
+        e.SuppressKeyPress = true;
     }
 
     private void TextInputBox_Leave(object? sender, EventArgs e)
@@ -1495,6 +1607,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
             (Keys.Control, Keys.I) => DiagramCommand.InsertImage,
             (Keys.Control | Keys.Shift, Keys.C) => DiagramCommand.CopyStyle,
             (Keys.Control | Keys.Shift, Keys.P) => DiagramCommand.CopyPicture,
+            (Keys.Control, Keys.B) => DiagramCommand.Bold,
             (Keys.Control | Keys.Shift, Keys.V) => DiagramCommand.PasteStyle,
             (Keys.Control, Keys.A) => DiagramCommand.SelectAll,
             (Keys.Control, Keys.G) => DiagramCommand.Group,

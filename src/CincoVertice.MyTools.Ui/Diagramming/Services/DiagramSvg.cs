@@ -170,11 +170,7 @@ public static class DiagramSvg
 
         if (connector.Label.Length > 0)
         {
-            DiagramTextBlockModel block = DiagramTextLayout.LayoutAt(
-                connector.Label,
-                path.LabelCenter,
-                connector.Style.FontSize,
-                connector.Style.TextAlignment);
+            DiagramTextBlockModel block = DiagramTextLayout.OfLabel(connector, path.LabelCenter);
 
             // So the line doesn't run through the words
             group.Add(new XElement(
@@ -274,9 +270,30 @@ public static class DiagramSvg
                 _svg + "tspan",
                 new XAttribute("x", Number(block.X)),
                 new XAttribute("y", Number(baseline)),
-                WithoutInvalidCharacters(block.Lines[i])));
+                // Starting with text, even empty, so the file's indenting doesn't go inside the line: its spaces
+                // would show, since the text keeps them
+                block.Runs is { } runs
+                    ? runs[i].Select(RunContent).Prepend(new XText(string.Empty))
+                    : WithoutInvalidCharacters(block.Lines[i])));
         }
 
         return text;
+    }
+
+    /// <summary>A piece of a line in bold or italic in its own tspan, which flows on from the one before it.</summary>
+    private static object RunContent(DiagramTextRunModel run)
+    {
+        string characters = WithoutInvalidCharacters(run.Text);
+
+        if (run.Format == DiagramTextFormat.None)
+        {
+            return characters;
+        }
+
+        return new XElement(
+            _svg + "tspan",
+            run.Format.HasFlag(DiagramTextFormat.Bold) ? new XAttribute("font-weight", "bold") : null,
+            run.Format.HasFlag(DiagramTextFormat.Italic) ? new XAttribute("font-style", "italic") : null,
+            characters);
     }
 }

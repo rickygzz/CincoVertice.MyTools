@@ -42,6 +42,37 @@ public class GdiTextOutlinerTests
         Assert.InRange(bounds.Bottom, block.Top, block.Top + block.LineHeight);
     }
 
+    [Theory]
+    [InlineData(DiagramTextAlignment.Left)]
+    [InlineData(DiagramTextAlignment.Center)]
+    [InlineData(DiagramTextAlignment.Right)]
+    public void Outline_ABoldPart_IsWider_AndTheLineIsStillWhereItsAlignmentSays(DiagramTextAlignment alignment)
+    {
+        // Arrange: the same text, then with "Hello" bold
+        DiagramTextBlockModel plain =
+            DiagramTextLayout.LayoutAt("Hello world", new PointF(200, 100), _style.FontSize, alignment);
+        DiagramTextBlockModel bold = DiagramTextLayout.LayoutAt(
+            "Hello world",
+            new PointF(200, 100),
+            _style.FontSize,
+            alignment,
+            [new DiagramTextSpanModel(0, 5, DiagramTextFormat.Bold)]);
+
+        // Act
+        RectangleF plainBounds = BoundsOf(Assert.Single(_outliner.Outline(plain, _style)));
+        RectangleF boldBounds = BoundsOf(Assert.Single(_outliner.Outline(bold, _style)));
+
+        // Assert: within a letter's edge, both start, end or have their middle at the same place
+        Assert.True(boldBounds.Width > plainBounds.Width + 1);
+        float Edge(RectangleF bounds) => alignment switch
+        {
+            DiagramTextAlignment.Left => bounds.Left,
+            DiagramTextAlignment.Right => bounds.Right,
+            _ => bounds.X + bounds.Width / 2,
+        };
+        Assert.InRange(Edge(boldBounds), Edge(plainBounds) - 3, Edge(plainBounds) + 3);
+    }
+
     [Fact]
     public void Outline_OnlySpaces_GivesNothing()
     {

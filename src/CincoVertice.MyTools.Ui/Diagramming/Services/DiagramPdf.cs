@@ -164,11 +164,7 @@ public static class DiagramPdf
 
         if (connector.Label.Length > 0)
         {
-            DiagramTextBlockModel block = DiagramTextLayout.LayoutAt(
-                connector.Label,
-                path.LabelCenter,
-                style.FontSize,
-                style.TextAlignment);
+            DiagramTextBlockModel block = DiagramTextLayout.OfLabel(connector, path.LabelCenter);
             RectangleF back = block.Bounds;
 
             // So the line doesn't run through the words

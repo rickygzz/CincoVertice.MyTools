@@ -509,6 +509,81 @@ public sealed class DiagramSvgTests : IDisposable
     }
 
     [Fact]
+    public void Json_BoldAndItalicParts_AreKept_AndOnlyWhenThereAreSome()
+    {
+        // Arrange: "Start" bold in the shape, "yes" italic in the label
+        DiagramModel diagram = Sample() with
+        {
+            Shapes =
+            [
+                Sample().Shapes[0] with { TextSpans = [new DiagramTextSpanModel(0, 5, DiagramTextFormat.Bold)] },
+                Sample().Shapes[1],
+            ],
+            Connectors =
+            [
+                Sample().Connectors[0] with
+                {
+                    LabelSpans = [new DiagramTextSpanModel(0, 3, DiagramTextFormat.Italic)],
+                },
+            ],
+        };
+
+        // Act
+        string json = DiagramJson.Write(diagram);
+        DiagramModel read = DiagramJson.Read(json);
+
+        // Assert
+        Assert.Contains("\"textSpans\":[{\"start\":0,\"length\":5,\"format\":\"Bold\"}]", json);
+        Assert.Single(Regex.Matches(json, "\"textSpans\""));
+        Assert.Equal([new DiagramTextSpanModel(0, 5, DiagramTextFormat.Bold)], read.Shapes[0].TextSpans!);
+        Assert.Null(read.Shapes[1].TextSpans);
+        Assert.Equal([new DiagramTextSpanModel(0, 3, DiagramTextFormat.Italic)], read.Connectors[0].LabelSpans!);
+    }
+
+    [Fact]
+    public void Json_BoldPartsOutOfTheText_AreCutToIt()
+    {
+        // Arrange
+        const string json = """
+            { "format": "mytools-diagram", "shapes": [
+                { "id": 1, "kind": "Ellipse", "x": 0, "y": 0, "width": 9, "height": 9, "text": "abc",
+                  "textSpans": [ { "start": 2, "length": 99, "format": "Bold" }, { "start": 7, "length": 1, "format": "Italic" } ] } ] }
+            """;
+
+        // Act / Assert
+        Assert.Equal(
+            [new DiagramTextSpanModel(2, 1, DiagramTextFormat.Bold)],
+            DiagramJson.Read(json).Shapes[0].TextSpans!);
+    }
+
+    [Fact]
+    public void Write_BoldAndItalicParts_AreTspansInTheirLine()
+    {
+        // Arrange: "Start" bold and italic, the rest as it was
+        DiagramModel diagram = Sample() with
+        {
+            Shapes =
+            [
+                Sample().Shapes[0] with
+                {
+                    TextSpans = [new DiagramTextSpanModel(0, 5, DiagramTextFormat.Bold | DiagramTextFormat.Italic)],
+                },
+            ],
+            Connectors = [],
+        };
+
+        // Act
+        XElement line = XDocument.Parse(DiagramSvg.Write(diagram)).Descendants(_svg + "tspan").First();
+
+        // Assert: the first line is "Start" alone, at 18 pixels in a shape 100 wide
+        XElement bold = Assert.Single(line.Elements(_svg + "tspan"));
+        Assert.Equal(
+            ("Start", "bold", "italic"),
+            (bold.Value, (string?)bold.Attribute("font-weight"), (string?)bold.Attribute("font-style")));
+        Assert.Equal("Start", line.Value);
+    }
+
+    [Fact]
     public void Json_GroupsInsideNoGroup_AreLeftOut()
     {
         // Arrange

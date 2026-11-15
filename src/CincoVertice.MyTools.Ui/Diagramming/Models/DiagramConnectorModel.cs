@@ -22,6 +22,7 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 /// <param name="FromPoint">Where a line on its own starts, in diagram pixels; null for a connector.</param>
 /// <param name="ToPoint">Where a line on its own ends, in diagram pixels; null for a connector.</param>
 /// <param name="Direction">Which way a line on its own may point; a connector doesn't use it.</param>
+/// <param name="LabelSpans">The parts of <paramref name="Label"/> in bold or italic; null for plain text.</param>
 public sealed record DiagramConnectorModel(
     int Id,
     int? FromShapeId,
@@ -35,7 +36,8 @@ public sealed record DiagramConnectorModel(
     IReadOnlyList<Point>? Bends = null,
     Point? FromPoint = null,
     Point? ToPoint = null,
-    DiagramLineDirection Direction = DiagramLineDirection.Free)
+    DiagramLineDirection Direction = DiagramLineDirection.Free,
+    IReadOnlyList<DiagramTextSpanModel>? LabelSpans = null)
 {
     /// <summary>True for a line on its own, between two points, rather than between two shapes.</summary>
     public bool IsLine => FromPoint is not null && ToPoint is not null;
