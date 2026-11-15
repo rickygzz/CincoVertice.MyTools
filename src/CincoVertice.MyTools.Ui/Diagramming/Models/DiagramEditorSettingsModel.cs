@@ -1,4 +1,6 @@
-﻿namespace CincoVertice.MyTools.Ui.Diagramming.Models;
+﻿using System.Drawing;
+
+namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 
 /// <summary>
 ///     What the diagram editor remembers between windows and runs. Nothing about any one diagram.
@@ -10,6 +12,8 @@
 /// <param name="Window">How large the window was; null when it isn't known yet.</param>
 /// <param name="IsImagesPanelVisible">True when the images panel is shown.</param>
 /// <param name="IsLayersPanelVisible">True when the layers panel is shown.</param>
+/// <param name="Theme">The theme chosen last, which new diagrams get; null for the default one.</param>
+/// <param name="RecentColors">Colors used last that no theme offers, newest first; null for none.</param>
 public sealed record DiagramEditorSettingsModel(
     DiagramStyleModel Style,
     DiagramRouting Routing,
@@ -17,4 +21,6 @@ public sealed record DiagramEditorSettingsModel(
     bool IsPropertiesPanelVisible = true,
     DiagramWindowSizeModel? Window = null,
     bool IsImagesPanelVisible = true,
-    bool IsLayersPanelVisible = false);
+    bool IsLayersPanelVisible = false,
+    string? Theme = null,
+    IReadOnlyList<Color>? RecentColors = null);

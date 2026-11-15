@@ -5,9 +5,11 @@
 /// </summary>
 /// <param name="Shapes">The shapes; later ones are drawn over earlier ones.</param>
 /// <param name="Connectors">The connectors, drawn over the shapes.</param>
+/// <param name="Theme">The name of its color theme; null for the default one, as in a file from before themes.</param>
 public sealed record DiagramModel(
     IReadOnlyList<DiagramShapeModel> Shapes,
-    IReadOnlyList<DiagramConnectorModel> Connectors)
+    IReadOnlyList<DiagramConnectorModel> Connectors,
+    string? Theme = null)
 {
     public static DiagramModel Empty { get; } = new([], []);
 

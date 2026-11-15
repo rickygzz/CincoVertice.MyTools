@@ -3,6 +3,8 @@ using CincoVertice.MyTools.Ui.Diagramming.Interfaces;
 using CincoVertice.MyTools.Ui.Diagramming.Models;
 using CincoVertice.MyTools.Ui.Diagramming.Presenters;
 using CincoVertice.MyTools.Ui.Help.Services;
+using CincoVertice.MyTools.Ui.Win.Behaviors;
+using CincoVertice.MyTools.Ui.Win.ColorPicker.Services;
 using CincoVertice.MyTools.Ui.Win.Diagramming.Services;
 using CincoVertice.MyTools.Ui.Win.Help.Services;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
@@ -21,6 +23,7 @@ public sealed class OpenDiagramEditorAction : IAppAction
     private readonly IDiagramPngExporter _pngExporter;
     private readonly IDiagramImageCatalog _imageCatalog;
     private readonly IDiagramRecoveryStore _recoveryStore;
+    private readonly ScreenColorPicker _screenColorPicker;
     private readonly RobotoFontInstaller _fontInstaller;
     private readonly HelpWindowService _help;
 
@@ -31,6 +34,7 @@ public sealed class OpenDiagramEditorAction : IAppAction
         IDiagramPngExporter pngExporter,
         IDiagramImageCatalog imageCatalog,
         IDiagramRecoveryStore recoveryStore,
+        ScreenColorPicker screenColorPicker,
         RobotoFontInstaller fontInstaller,
         HelpWindowService help)
     {
@@ -40,6 +44,7 @@ public sealed class OpenDiagramEditorAction : IAppAction
         _pngExporter = pngExporter;
         _imageCatalog = imageCatalog;
         _recoveryStore = recoveryStore;
+        _screenColorPicker = screenColorPicker;
         _fontInstaller = fontInstaller;
         _help = help;
     }
@@ -105,11 +110,13 @@ public sealed class OpenDiagramEditorAction : IAppAction
             + "Yes: open each in a window, to save it.\nNo: throw the changes away.\nCancel: ask again next time.";
     }
 
-    private static DialogResult AskToRecover(IReadOnlyList<DiagramRecoveryModel> left) => MessageBox.Show(
-        RecoverQuestion(left, CultureInfo.CurrentCulture),
-        "Diagram editor",
-        MessageBoxButtons.YesNoCancel,
-        MessageBoxIcon.Question);
+    // On the screen the pointer is on, in front: the editor isn't open yet to own it
+    private static DialogResult AskToRecover(IReadOnlyList<DiagramRecoveryModel> left) =>
+        CursorScreenMessageBox.Show(
+            RecoverQuestion(left, CultureInfo.CurrentCulture),
+            "Diagram editor",
+            MessageBoxButtons.YesNoCancel,
+            MessageBoxIcon.Question);
 
     /// <summary>A new window, with an empty diagram or the one recovered.</summary>
     private void Open(DiagramRecoveryModel? recovery)
@@ -124,7 +131,8 @@ public sealed class OpenDiagramEditorAction : IAppAction
             _pdfExporter,
             _pngExporter,
             _imageCatalog,
-            _recoveryStore);
+            _recoveryStore,
+            _screenColorPicker);
 
         presenter.Start();
 

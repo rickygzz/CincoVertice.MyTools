@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel;
 using System.Diagnostics;
+using CincoVertice.MyTools.Ui.ColorPicker.Services;
 using CincoVertice.MyTools.Ui.Diagramming.Models;
 using CincoVertice.MyTools.Ui.Diagramming.Services;
 using CincoVertice.MyTools.Ui.Diagramming.Views;
@@ -37,6 +38,9 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
 
     // Sizes the images panel's items, whose pictures are drawn by the form: it holds no image
     private readonly ImageList _thumbnails = new() { ColorDepth = ColorDepth.Depth32Bit };
+
+    // Each color menu's Theme submenu, filled with the themes when the palette is shown
+    private readonly List<ToolStripMenuItem> _themeMenus = [];
 
     // The color buttons' images: the current colors, replaced when they change
     private readonly Dictionary<ToolStripDropDownButton, Image> _swatches = [];
@@ -89,6 +93,8 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
             ((ToolStripDropDownMenu)button.DropDown).ShowImageMargin = false;
         }
 
+        AddColorMenuItems();
+
         string[] routings = ["Elbow", "Straight"];
         string[] arrows = ["Arrow at end", "Arrow at start", "Arrows at both", "No arrows"];
 
@@ -140,6 +146,10 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     public event EventHandler<DiagramColorChoiceModel>? ColorSelected;
 
     public event EventHandler<DiagramColorTarget>? MoreColorsRequested;
+
+    public event EventHandler<DiagramColorTarget>? ScreenColorRequested;
+
+    public event EventHandler<string>? ThemeSelected;
 
     public event EventHandler<int>? LineWidthSelected;
 
@@ -225,13 +235,120 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         }
     }
 
-    public void ShowPalette(IReadOnlyList<Color> colors)
+    public void ShowPalette(DiagramPaletteModel palette)
     {
-        FillPalette.Colors = colors;
-        TitleFillPalette.Colors = colors;
-        LinePalette.Colors = colors;
-        TextPalette.Colors = colors;
-        TextOutlinePalette.Colors = colors;
+        foreach ((_, ThemeColorPaletteControl control, _) in ColorMenus())
+        {
+            control.Palette = palette;
+        }
+
+        foreach (ToolStripMenuItem themeMenu in _themeMenus)
+        {
+            List<ToolStripItem> old = [.. themeMenu.DropDownItems.Cast<ToolStripItem>()];
+
+            themeMenu.DropDownItems.Clear();
+
+            foreach (ToolStripItem item in old)
+            {
+                item.Dispose();
+            }
+
+            foreach (string theme in palette.Themes)
+            {
+                var item = new ToolStripMenuItem(theme) { Checked = theme == palette.Theme };
+
+                item.Click += (_, _) =>
+                {
+                    Canvas.Focus();
+                    ThemeSelected?.Invoke(this, theme);
+                };
+                themeMenu.DropDownItems.Add(item);
+            }
+
+            themeMenu.Text = $"Theme: {palette.Theme}";
+        }
+    }
+
+    public bool AskApplyTheme(string theme)
+    {
+        DialogResult answer = MessageBox.Show(
+            this,
+            $"Give the colors already in the diagram the {theme} theme's colors?\n\n"
+            + "Each color picked from the old theme takes the new theme's color at the same place; other colors stay. "
+            + $"Either way, what you draw next gets the {theme} theme's colors, and Undo takes it all back.",
+            WindowTitle,
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question);
+
+        return answer == DialogResult.Yes;
+    }
+
+    /// <summary>Each color menu, with its palette and what its colors are for.</summary>
+    private (ToolStripDropDownButton Menu, ThemeColorPaletteControl Palette, DiagramColorTarget Target)[] ColorMenus() =>
+    [
+        (FillDropDownButton, FillPalette, DiagramColorTarget.Fill),
+        (TitleFillDropDownButton, TitleFillPalette, DiagramColorTarget.TitleFill),
+        (LineDropDownButton, LinePalette, DiagramColorTarget.Line),
+        (TextColorDropDownButton, TextPalette, DiagramColorTarget.Text),
+        (TextOutlineDropDownButton, TextOutlinePalette, DiagramColorTarget.TextOutline),
+    ];
+
+    /// <summary>
+    ///     Adds to every color menu, after More colors: Pick from the screen, a box to type a color's hex code, and the
+    ///     Theme submenu. Made here, with their handlers, since all five menus get the same, each for its own colors.
+    /// </summary>
+    private void AddColorMenuItems()
+    {
+        foreach ((ToolStripDropDownButton menu, _, DiagramColorTarget target) in ColorMenus())
+        {
+            var pick = new ToolStripMenuItem("Pick from the screen...")
+            {
+                ToolTipText = "Freeze the screen and click a pixel, as the color picker (Ctrl+Alt+P) does",
+            };
+            var hex = new ToolStripTextBox
+            {
+                AutoSize = false,
+                Width = LogicalToDeviceUnits(150),
+                ToolTipText = "Type a color as #RRGGBB or #RGB, then Enter",
+            };
+            var themes = new ToolStripMenuItem("Theme")
+            {
+                ToolTipText = "The diagram's color theme: the colors offered first, and what new shapes get",
+            };
+
+            hex.TextBox.PlaceholderText = "#RRGGBB, then Enter";
+            pick.Click += (_, _) => ScreenColorRequested?.Invoke(this, target);
+            hex.KeyDown += (_, e) => HexBox_KeyDown(menu, hex, target, e);
+            _themeMenus.Add(themes);
+            menu.DropDownItems.AddRange([pick, hex, new ToolStripSeparator(), themes]);
+        }
+    }
+
+    /// <summary>Enter uses the color typed, and closes the menu; something that isn't a color only beeps.</summary>
+    private void HexBox_KeyDown(
+        ToolStripDropDownButton menu,
+        ToolStripTextBox box,
+        DiagramColorTarget target,
+        KeyEventArgs e)
+    {
+        if (e.KeyCode != Keys.Enter)
+        {
+            return;
+        }
+
+        e.SuppressKeyPress = true;
+
+        if (!ColorText.TryParseHex(box.Text, out Color color))
+        {
+            System.Media.SystemSounds.Beep.Play();
+
+            return;
+        }
+
+        box.Text = string.Empty;
+        menu.DropDown.Close();
+        Canvas.Focus();
+        ColorSelected?.Invoke(this, new DiagramColorChoiceModel(target, color));
     }
 
     public void ShowSizes(IReadOnlyList<int> lineWidths, IReadOnlyList<int> fontSizes, IReadOnlyList<int> textOutlineWidths)

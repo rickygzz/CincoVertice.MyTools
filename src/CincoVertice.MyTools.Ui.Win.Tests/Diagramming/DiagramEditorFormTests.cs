@@ -2,6 +2,8 @@
 using System.Globalization;
 using System.Reflection;
 using System.Windows.Forms;
+using CincoVertice.MyTools.Ui.ColorPicker.Interfaces;
+using CincoVertice.MyTools.Ui.ColorPicker.Models;
 using CincoVertice.MyTools.Ui.Diagramming.Interfaces;
 using CincoVertice.MyTools.Ui.Diagramming.Models;
 using CincoVertice.MyTools.Ui.Diagramming.Presenters;
@@ -999,7 +1001,8 @@ public class DiagramEditorFormTests
         new NoExporter(),
         new PngDiagramExporter(),
         new NoCatalog(),
-        new NoRecovery());
+        new NoRecovery(),
+        new NoPicker());
 
     [Theory]
     [InlineData(CloseReason.WindowsShutDown)]
@@ -1042,6 +1045,11 @@ public class DiagramEditorFormTests
         Assert.Contains("these diagrams", question);
         Assert.Contains($"• flow.svg, {time}\n• Untitled, {time}", question);
         Assert.Contains("Cancel: ask again next time.", question);
+    }
+
+    private sealed class NoPicker : IScreenColorPicker
+    {
+        public Task<PickedColorModel?> PickAsync() => Task.FromResult<PickedColorModel?>(null);
     }
 
     private sealed class NoRecovery : IDiagramRecoveryStore

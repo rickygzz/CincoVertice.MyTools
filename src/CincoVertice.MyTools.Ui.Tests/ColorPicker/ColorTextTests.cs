@@ -23,4 +23,27 @@ public class ColorTextTests
         Assert.Equal(hsl, ColorText.Hsl(color));
         Assert.Equal(hsv, ColorText.Hsv(color));
     }
+
+    [Theory]
+    [InlineData("#1E90FF", 30, 144, 255)]
+    [InlineData(" 1e90ff ", 30, 144, 255)]
+    [InlineData("#19F", 17, 153, 255)]
+    public void TryParseHex_ReadsSixOrThreeDigits_WithOrWithoutHash(string text, int r, int g, int b)
+    {
+        // Act / Assert
+        Assert.True(ColorText.TryParseHex(text, out Color color));
+        Assert.Equal(Color.FromArgb(255, r, g, b), color);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(null)]
+    [InlineData("#12345")]
+    [InlineData("#GG0000")]
+    [InlineData("blue")]
+    public void TryParseHex_AnythingElse_IsntAColor(string? text)
+    {
+        // Act / Assert
+        Assert.False(ColorText.TryParseHex(text, out _));
+    }
 }

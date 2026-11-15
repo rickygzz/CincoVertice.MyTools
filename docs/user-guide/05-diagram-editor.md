@@ -103,6 +103,22 @@ The **Edit** menu has **Undo** (Ctrl+Z), **Redo** (Ctrl+Y), **Copy as picture** 
 
 A toolbar change goes to everything selected, and to what you draw next.
 
+**Colors.** Every color menu (Fill, Line, Text, Edge, and the Fill, Title fill, Border, Text color and Text edge buttons of the Properties tab) offers, as Office does:
+
+- *Theme colors:* the diagram theme's ten colors across the top (two backgrounds, two text colors and six accents), each with five lighter and darker versions under it. Hover over a square to see what it is and its code, such as `Accent 1 · #4472C4` or `Accent 1, lighter 40%`.
+- *Standard colors:* ten colors that are the same in every theme: dark red, red, orange, yellow, light green, green, light blue, blue, dark blue and purple.
+- *Used lately:* the last ten colors you used that the menu doesn't offer otherwise, from **More colors...**, typed or picked from the screen, newest first. They're remembered for the next time.
+- **More colors...** opens Windows' color dialog; **Pick from the screen...** freezes the screen as the color picker (Ctrl+Alt+P) does, and the pixel you click is the color; the box under it takes a color's code, such as `#1E90FF` or `#19F`: type it and press Enter.
+- The color in use has a black frame.
+
+**Themes.** **Theme** at the bottom of every color menu lists the themes: Office (the one a diagram has at first), Azure, Pastel, Grayscale, Vivid, Earth and Ocean. Choosing one:
+
+- gives the diagram the theme, which is saved with it, so the menus offer its colors whenever it's opened;
+- makes what you draw next take the theme's colors: accent 1, lighter 80%, inside; accent 1, darker 25%, for the border and lines; text 1 for the text;
+- when the diagram has colors from its old theme, asks "Give the colors already in the diagram the ... theme's colors?". **Yes** gives each color picked from the old theme's grid the new theme's color at the same place (accent 2, lighter 40%, stays accent 2, lighter 40%); standard colors and colors picked otherwise stay. **No** leaves the diagram's colors as they are.
+
+Either way it's one step to undo. New diagrams get the theme chosen last.
+
 **Text edge.** An edge is a line drawn around the letters of a text, to make it stand out on any background. It is off at first. Turn it off with **No edge** in the Edge color menu, or with the width "No edge"; its color then shows as none, and is kept for when you turn it on again. Picking an edge color while it is off turns it on at 2 px.
 
 **Copy a style.** Select a shape or connector and choose **Edit > Copy style** (or press **Ctrl+Shift+C**). Then select one or more others and choose **Edit > Paste style** (**Ctrl+Shift+V**). Both are also on the menu you get by right-clicking a shape or connector: a right-click on something not selected selects just it first, and one on the selection keeps it all. Paste style is grayed out there until you copy a style. Pasted objects get the copied fill, border, border width, dashes, text color, font, text size and text edge, as one step to undo. What you draw next gets that style too. A style copied from a connector leaves a shape's fill as it is, since a connector has none. Routing and arrows are not copied. The copied style stays until you copy another, in that window only.

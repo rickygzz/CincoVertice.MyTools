@@ -42,6 +42,12 @@ public interface IDiagramEditorView
     /// <summary>Raised when the user wants a color that isn't in the palette.</summary>
     event EventHandler<DiagramColorTarget>? MoreColorsRequested;
 
+    /// <summary>Raised when the user wants to pick a color from the screen, for what it's for.</summary>
+    event EventHandler<DiagramColorTarget>? ScreenColorRequested;
+
+    /// <summary>Raised with the name of the theme the user chose for the diagram.</summary>
+    event EventHandler<string>? ThemeSelected;
+
     event EventHandler<int>? LineWidthSelected;
 
     event EventHandler<bool>? DashedSelected;
@@ -144,8 +150,11 @@ public interface IDiagramEditorView
 
     void ShowTool(DiagramTool tool);
 
-    /// <summary>Shows the colors to choose from. Called once, before the first <see cref="ShowStyle"/>.</summary>
-    void ShowPalette(IReadOnlyList<Color> colors);
+    /// <summary>
+    ///     Shows what the color menus offer: the theme's colors, the standard ones and those used lately. Called before
+    ///     the first <see cref="ShowStyle"/>, then whenever the theme or the colors used lately change.
+    /// </summary>
+    void ShowPalette(DiagramPaletteModel palette);
 
     /// <summary>Shows the choices for line widths, font sizes and text edges, in pixels. Called once.</summary>
     void ShowSizes(IReadOnlyList<int> lineWidths, IReadOnlyList<int> fontSizes, IReadOnlyList<int> textOutlineWidths);
@@ -221,6 +230,10 @@ public interface IDiagramEditorView
     /// <param name="fontFamily">The name of the font.</param>
     /// <param name="color">The color of the text.</param>
     void BeginTextEdit(Rectangle bounds, DiagramRichTextModel text, int fontSize, string fontFamily, Color color);
+
+    /// <summary>Asks whether to give the colors already in the diagram the new theme's colors.</summary>
+    /// <param name="theme">The name of the theme chosen.</param>
+    bool AskApplyTheme(string theme);
 
     /// <summary>Lets the user pick any color.</summary>
     /// <returns>The color; null when the user cancels.</returns>

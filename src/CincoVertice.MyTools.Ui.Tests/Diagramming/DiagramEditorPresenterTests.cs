@@ -1,5 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Drawing;
+using CincoVertice.MyTools.Ui.ColorPicker.Interfaces;
+using CincoVertice.MyTools.Ui.ColorPicker.Models;
 using CincoVertice.MyTools.Ui.Diagramming.Interfaces;
 using CincoVertice.MyTools.Ui.Diagramming.Models;
 using CincoVertice.MyTools.Ui.Diagramming.Presenters;
@@ -18,12 +20,13 @@ public class DiagramEditorPresenterTests
     private readonly FakePngExporter _pngExporter = new();
     private readonly FakeImageCatalog _catalog = new();
     private readonly FakeRecoveryStore _recovery = new();
+    private readonly FakeScreenColorPicker _picker = new();
     private readonly DiagramEditorPresenter _presenter;
 
     public DiagramEditorPresenterTests()
     {
         _presenter =
-            new DiagramEditorPresenter(_view, _store, _settings, _exporter, _pngExporter, _catalog, _recovery);
+            new DiagramEditorPresenter(_view, _store, _settings, _exporter, _pngExporter, _catalog, _recovery, _picker);
         _presenter.Start();
     }
 
@@ -132,7 +135,7 @@ public class DiagramEditorPresenterTests
     [Fact]
     public void Start_ShowsTheChoicesAndAnEmptyDiagram()
     {
-        Assert.NotEmpty(_view.Palette);
+        Assert.NotEmpty(_view.Palette!.ThemeColors);
         Assert.Equal(DiagramTool.Select, _view.ShownTool);
         Assert.Empty(_view.Scene!.Diagram.Shapes);
         Assert.Equal(DiagramEditorPresenter.UntitledName, _view.DocumentName);
@@ -2381,7 +2384,8 @@ public class DiagramEditorPresenterTests
                 _exporter,
                 _pngExporter,
                 _catalog,
-                _recovery);
+                _recovery,
+                _picker);
 
         presenter.Start();
 
@@ -2565,7 +2569,7 @@ public class DiagramEditorPresenterTests
             Window: window));
         var view = new FakeView();
 
-        new DiagramEditorPresenter(view, _store, store, _exporter, _pngExporter, _catalog, _recovery).Start();
+        new DiagramEditorPresenter(view, _store, store, _exporter, _pngExporter, _catalog, _recovery, _picker).Start();
 
         // Act
         view.SelectLineWidth(5);
@@ -4599,6 +4603,124 @@ public class DiagramEditorPresenterTests
     }
 
     [Fact]
+    public void Palette_IsTheThemesGrid_TheStandardColors_AndNoRecentOnes_WithEveryTheme()
+    {
+        // Assert: a diagram from before themes is in the default one
+        DiagramPaletteModel palette = _view.Palette!;
+        Assert.Equal("Office", palette.Theme);
+        Assert.Equal(DiagramThemes.All.Select(theme => theme.Name), palette.Themes);
+        Assert.Equal(DiagramThemes.Grid(DiagramThemes.Of("Office")), palette.ThemeColors);
+        Assert.Equal(DiagramThemes.StandardColors, palette.StandardColors);
+        Assert.Empty(palette.RecentColors);
+    }
+
+    [Fact]
+    public void Theme_ChosenWithThemeColorsInTheDiagram_AsksToApplyThem_AndYesRecolorsIt_InOneStep()
+    {
+        // Arrange: a shape in the default colors, white inside and text 1 lighter 25% for its border
+        AddShape(100, 100);
+        DiagramModel before = Diagram;
+        _view.ApplyThemeAnswer = true;
+
+        // Act
+        _view.SelectTheme("Ocean");
+
+        // Assert
+        IReadOnlyList<DiagramSwatchModel> ocean = DiagramThemes.Grid(DiagramThemes.Of("Ocean"));
+        Assert.Equal(["Ocean"], _view.ApplyThemeQuestions);
+        Assert.Equal("Ocean", Diagram.Theme);
+        Assert.Equal(ocean[31].Color, Diagram.Shapes[0].Style.Line);
+        Assert.Equal("Ocean", _view.Palette!.Theme);
+
+        // Act / Assert: one step back, with the old theme and colors
+        _view.Command(DiagramCommand.Undo);
+        Assert.Same(before, Diagram);
+        Assert.Equal("Office", _view.Palette!.Theme);
+    }
+
+    [Fact]
+    public void Theme_AnsweredNo_KeepsTheColors_ButTheDiagramHasIt_AndWhatsDrawnNextGetsItsColors()
+    {
+        // Arrange
+        DiagramShapeModel shape = AddShape(100, 100);
+        _view.ApplyThemeAnswer = false;
+
+        // Act
+        _view.SelectTheme("Earth");
+        ClickEmpty();
+        DiagramShapeModel next = AddShape(400, 100);
+
+        // Assert
+        Assert.Equal(shape.Style, Diagram.Shapes[0].Style);
+        Assert.Equal("Earth", Diagram.Theme);
+        IReadOnlyList<DiagramSwatchModel> earth = DiagramThemes.Grid(DiagramThemes.Of("Earth"));
+        Assert.Equal(
+            (earth[14].Color, earth[44].Color, earth[1].Color),
+            (next.Style.Fill, next.Style.Line, next.Style.TextColor));
+    }
+
+    [Fact]
+    public void Theme_OfADiagramWithoutItsColors_IsntAsked_AndIsKept_ForTheFileAndForNewDiagrams()
+    {
+        // Act: an empty diagram, then a new one
+        _view.SelectTheme("Pastel");
+
+        // Assert
+        Assert.Empty(_view.ApplyThemeQuestions);
+        Assert.Equal("Pastel", Diagram.Theme);
+        Assert.Equal("Pastel", DiagramJson.Read(DiagramJson.Write(Diagram)).Theme);
+        Assert.Equal("Pastel", _settings.Saved[^1].Theme);
+        (FakeView view, DiagramEditorPresenter presenter) = NewEditor(_settings.Saved[^1]);
+        Assert.Equal("Pastel", presenter.Diagram.Theme);
+        Assert.Equal("Pastel", view.Palette!.Theme);
+    }
+
+    [Fact]
+    public void RecentColors_AreColorsTheMenusDontOffer_NewestFirst_TenAtMost_AndKept()
+    {
+        // Arrange
+        AddShape(100, 100);
+        Color own = Color.FromArgb(255, 1, 2, 3);
+
+        // Act: a theme color, then eleven of their own, then the first again
+        _view.SelectColor(DiagramColorTarget.Fill, DiagramThemes.Grid(DiagramThemes.Of("Office"))[24].Color);
+        for (int i = 0; i < 11; i++)
+        {
+            _view.SelectColor(DiagramColorTarget.Line, Color.FromArgb(255, 10, 20, i));
+        }
+
+        _view.SelectColor(DiagramColorTarget.Text, own);
+
+        // Assert
+        IReadOnlyList<DiagramSwatchModel> recent = _view.Palette!.RecentColors;
+        Assert.Equal(DiagramEditorPresenter.MaxRecentColors, recent.Count);
+        Assert.Equal(own, recent[0].Color);
+        Assert.Equal(Color.FromArgb(255, 10, 20, 10), recent[1].Color);
+        Assert.DoesNotContain(recent, swatch => swatch.Color == Color.FromArgb(255, 10, 20, 0));
+        Assert.Equal(recent.Select(swatch => swatch.Color), _settings.Saved[^1].RecentColors!);
+    }
+
+    [Fact]
+    public void ScreenColor_Picked_IsUsedForWhatItWasFor_AndIsRecent_AndCancelledDoesNothing()
+    {
+        // Arrange
+        AddShape(100, 100);
+        DiagramModel before = Diagram;
+
+        // Act / Assert: cancelled
+        _view.RequestScreenColor(DiagramColorTarget.Fill);
+        Assert.Same(before, Diagram);
+
+        // Act
+        _picker.ToPick = Color.FromArgb(255, 200, 40, 40);
+        _view.RequestScreenColor(DiagramColorTarget.Fill);
+
+        // Assert
+        Assert.Equal(Color.FromArgb(255, 200, 40, 40), Diagram.Shapes[0].Style.Fill);
+        Assert.Equal(Color.FromArgb(255, 200, 40, 40), _view.Palette!.RecentColors[0].Color);
+    }
+
+    [Fact]
     public void Layers_AreShownFrontFirst_TheConnectorsBeforeTheShapes_WithTheirKindAndText()
     {
         // Act
@@ -5417,6 +5539,14 @@ public class DiagramEditorPresenterTests
         public void Leave(DiagramRecoveryModel recovery) => Copies[recovery.Id] = recovery;
     }
 
+    private sealed class FakeScreenColorPicker : IScreenColorPicker
+    {
+        public Color? ToPick { get; set; }
+
+        public Task<PickedColorModel?> PickAsync() => Task.FromResult(
+            ToPick is Color color ? new PickedColorModel(color, ColorTextFormat.Hex) : null);
+    }
+
     private sealed class FakePngExporter : IDiagramPngExporter
     {
         public (string Path, DiagramModel Diagram, int Scale)? Exported { get; private set; }
@@ -5478,6 +5608,25 @@ public class DiagramEditorPresenterTests
         public event EventHandler<DiagramColorChoiceModel>? ColorSelected;
 
         public event EventHandler<DiagramColorTarget>? MoreColorsRequested;
+
+        public event EventHandler<DiagramColorTarget>? ScreenColorRequested;
+
+        public event EventHandler<string>? ThemeSelected;
+
+        public bool ApplyThemeAnswer { get; set; }
+
+        public List<string> ApplyThemeQuestions { get; } = [];
+
+        public void SelectTheme(string theme) => ThemeSelected?.Invoke(this, theme);
+
+        public void RequestScreenColor(DiagramColorTarget target) => ScreenColorRequested?.Invoke(this, target);
+
+        public bool AskApplyTheme(string theme)
+        {
+            ApplyThemeQuestions.Add(theme);
+
+            return ApplyThemeAnswer;
+        }
 
         public event EventHandler<int>? LineWidthSelected;
 
@@ -5639,7 +5788,9 @@ public class DiagramEditorPresenterTests
 
         public DiagramTool ShownTool { get; private set; }
 
-        public IReadOnlyList<Color> Palette { get; private set; } = [];
+        public DiagramPaletteModel? Palette { get; private set; }
+
+        public int PaletteCount { get; private set; }
 
         public DiagramStyleModel? ShownStyle { get; private set; }
 
@@ -5787,7 +5938,11 @@ public class DiagramEditorPresenterTests
 
         public void ShowTool(DiagramTool tool) => ShownTool = tool;
 
-        public void ShowPalette(IReadOnlyList<Color> colors) => Palette = colors;
+        public void ShowPalette(DiagramPaletteModel palette)
+        {
+            Palette = palette;
+            PaletteCount++;
+        }
 
         public void ShowSizes(IReadOnlyList<int> lineWidths, IReadOnlyList<int> fontSizes, IReadOnlyList<int> textOutlineWidths)
         {

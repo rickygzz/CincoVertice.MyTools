@@ -34,5 +34,31 @@ public static class ColorText
         return $"hsv({Round(hue) % 360}, {Round(saturation * 100)}%, {Round(value * 100)}%)";
     }
 
+    /// <summary>
+    ///     A color typed as CSS writes it in hex: #1E90FF, or #19F for #1199FF; the # can be left out, and spaces
+    ///     around it don't count.
+    /// </summary>
+    /// <returns>False for anything else.</returns>
+    public static bool TryParseHex(string? text, out Color color)
+    {
+        color = Color.Empty;
+
+        string digits = (text ?? string.Empty).Trim().TrimStart('#');
+
+        if (digits.Length == 3)
+        {
+            digits = string.Concat(digits.Select(digit => $"{digit}{digit}"));
+        }
+
+        if (digits.Length != 6 || !digits.All(Uri.IsHexDigit))
+        {
+            return false;
+        }
+
+        color = Color.FromArgb(255, Color.FromArgb(Convert.ToInt32(digits, 16)));
+
+        return true;
+    }
+
     private static int Round(double value) => (int)Math.Round(value, MidpointRounding.AwayFromZero);
 }

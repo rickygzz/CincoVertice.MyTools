@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Drawing;
 using System.Globalization;
+using CincoVertice.MyTools.Ui.ColorPicker.Interfaces;
 using CincoVertice.MyTools.Ui.Diagramming.Interfaces;
 using CincoVertice.MyTools.Ui.Diagramming.Models;
 using CincoVertice.MyTools.Ui.Diagramming.Services;
@@ -25,6 +26,10 @@ public sealed class DiagramEditorPresenter
     /// <summary>The name of a diagram that was never saved.</summary>
     public const string UntitledName = "Untitled";
 
+    /// <summary>How many colors used lately the color menus show.</summary>
+    public const int MaxRecentColors = 10;
+
+    private const string RecentColorName = "Used lately";
     private const float MinZoom = 0.25f;
     private const float MaxZoom = 4;
     private const float WheelZoomFactor = 1.1f;
@@ -65,6 +70,10 @@ public sealed class DiagramEditorPresenter
     private readonly IDiagramImageCatalog _imageCatalog;
     private readonly IDiagramEditorSettingsStore _settingsStore;
     private readonly IDiagramRecoveryStore _recoveryStore;
+    private readonly IScreenColorPicker _screenColorPicker;
+
+    // Colors used lately that the menus don't offer otherwise, newest first, kept in the settings
+    private readonly List<Color> _recentColors = [];
     private readonly Stack<DiagramModel> _undo = new();
     private readonly Stack<DiagramModel> _redo = new();
     private readonly HashSet<int> _selectedShapes = [];
@@ -137,6 +146,10 @@ public sealed class DiagramEditorPresenter
 
     // What was looked for last, and which of what has it was found last
     private string _findText = string.Empty;
+
+    // The theme chosen last, which a new diagram gets; and what the color menus show, so they're told only of changes
+    private string? _themeForNew;
+    private string? _shownPalette;
     private int _findIndex = -1;
 
     // This window's copy of its unsaved changes, and what the copy has, so it's written only when that changes
@@ -155,6 +168,7 @@ public sealed class DiagramEditorPresenter
     /// <param name="pdfExporter">Writes the diagram as a PDF file.</param>
     /// <param name="pngExporter">Writes the diagram as a PNG picture.</param>
     /// <param name="imageCatalog">Keeps the images inserted, and those the user adds, to insert again.</param>
+    /// <param name="screenColorPicker">Lets the user pick a color from the screen for a color menu.</param>
     /// <param name="recoveryStore">
     ///     Keeps a copy of the diagram while it has changes that weren't saved, to get them back after the app or
     ///     Windows ends.
@@ -166,9 +180,11 @@ public sealed class DiagramEditorPresenter
         IDiagramPdfExporter pdfExporter,
         IDiagramPngExporter pngExporter,
         IDiagramImageCatalog imageCatalog,
-        IDiagramRecoveryStore recoveryStore)
+        IDiagramRecoveryStore recoveryStore,
+        IScreenColorPicker screenColorPicker)
     {
         _recoveryStore = recoveryStore;
+        _screenColorPicker = screenColorPicker;
         _recoveryId = recoveryStore.NewId();
         _imageCatalog = imageCatalog;
         _view = view;
@@ -178,6 +194,10 @@ public sealed class DiagramEditorPresenter
         _pngExporter = pngExporter;
 
         Apply(settingsStore.Load());
+
+        // A new diagram has the theme chosen last
+        _diagram = DiagramModel.Empty with { Theme = _themeForNew };
+        _savedDiagram = _diagram;
 
         _view.PointerPressed += OnPointerPressed;
         _view.PointerMoved += OnPointerMoved;
@@ -191,6 +211,8 @@ public sealed class DiagramEditorPresenter
         _view.NudgeRequested += OnNudgeRequested;
         _view.ColorSelected += OnColorSelected;
         _view.MoreColorsRequested += OnMoreColorsRequested;
+        _view.ScreenColorRequested += OnScreenColorRequested;
+        _view.ThemeSelected += OnThemeSelected;
         _view.LineWidthSelected += OnLineWidthSelected;
         _view.DashedSelected += OnDashedSelected;
         _view.FontSizeSelected += OnFontSizeSelected;
@@ -241,7 +263,7 @@ public sealed class DiagramEditorPresenter
     /// <summary>Shows the choices and the empty diagram.</summary>
     public void Start()
     {
-        _view.ShowPalette(SnipEditorPresenter.Palette);
+        ShowPalette();
         _view.ShowSizes(LineWidths, FontSizes, SnipEditorPresenter.TextOutlineWidths);
         _view.ShowPropertiesPanel(_isPropertiesPanelVisible);
         _view.ShowImagesPanel(_isImagesPanelVisible);
@@ -285,6 +307,9 @@ public sealed class DiagramEditorPresenter
             _heads = saved.Heads;
         }
 
+        _themeForNew = saved.Theme;
+        _recentColors.AddRange((saved.RecentColors ?? []).Where(color => !color.IsEmpty).Take(MaxRecentColors));
+
         if (saved.Window is { Size: { Width: > 0, Height: > 0 } })
         {
             _windowSize = saved.Window;
@@ -300,7 +325,9 @@ public sealed class DiagramEditorPresenter
             _isPropertiesPanelVisible,
             _windowSize,
             _isImagesPanelVisible,
-            _isLayersPanelVisible));
+            _isLayersPanelVisible,
+            _themeForNew,
+            [.. _recentColors]));
     }
 
     private void OnPropertiesPanelToggled(object? sender, bool isVisible)
@@ -1992,7 +2019,7 @@ public sealed class DiagramEditorPresenter
     {
         if (ConfirmLeave())
         {
-            Replace(DiagramModel.Empty, null);
+            Replace(DiagramModel.Empty with { Theme = _themeForNew }, null);
         }
     }
 
@@ -2567,6 +2594,92 @@ public sealed class DiagramEditorPresenter
         }
     }
 
+    /// <summary>The diagram's theme; the default one for a diagram that names none.</summary>
+    private DiagramThemeModel Theme => DiagramThemes.Of(_diagram.Theme);
+
+    /// <summary>What the color menus offer, when the theme or the colors used lately changed.</summary>
+    private void ShowPalette()
+    {
+        DiagramThemeModel theme = Theme;
+        string shown = theme.Name + ":" + string.Join(",", _recentColors.Select(color => color.ToArgb()));
+
+        if (shown == _shownPalette)
+        {
+            return;
+        }
+
+        _shownPalette = shown;
+        _view.ShowPalette(new DiagramPaletteModel(
+            theme.Name,
+            [.. DiagramThemes.All.Select(other => other.Name)],
+            DiagramThemes.Grid(theme),
+            DiagramThemes.StandardColors,
+            [.. _recentColors.Select(color => new DiagramSwatchModel(color, RecentColorName))]));
+    }
+
+    /// <summary>
+    ///     Gives the diagram another theme, and what's drawn next its colors. When the diagram has colors of the old
+    ///     theme, asks whether they take the new theme's: either way, one step to undo.
+    /// </summary>
+    private void OnThemeSelected(object? sender, string name)
+    {
+        DiagramThemeModel from = Theme;
+        DiagramThemeModel to = DiagramThemes.Of(name);
+
+        if (_drag is not null || to.Name == from.Name)
+        {
+            return;
+        }
+
+        DiagramModel themed = _diagram with { Theme = to.Name };
+        DiagramModel recolored = DiagramThemes.Recolored(themed, from, to);
+        bool hasThemeColors = !recolored.Shapes.SequenceEqual(themed.Shapes)
+            || !recolored.Connectors.SequenceEqual(themed.Connectors);
+
+        if (hasThemeColors && _view.AskApplyTheme(to.Name))
+        {
+            themed = recolored;
+        }
+
+        _style = DiagramThemes.DefaultsOf(to, _style);
+        _themeForNew = to.Name;
+        SaveSettings();
+        Commit(themed);
+        ShowSelectedStyle();
+    }
+
+    /// <summary>Picks a color from the screen, as the color picker does, and uses it as if chosen from a menu.</summary>
+    private async void OnScreenColorRequested(object? sender, DiagramColorTarget target)
+    {
+        if (_drag is null && await _screenColorPicker.PickAsync() is { } picked)
+        {
+            OnColorSelected(sender, new DiagramColorChoiceModel(target, picked.Color));
+        }
+    }
+
+    /// <summary>
+    ///     A color the menus don't offer, e.g. from More colors, typed or picked from the screen, goes first among the
+    ///     colors used lately.
+    /// </summary>
+    private void RememberColor(Color color)
+    {
+        if (color.IsEmpty || color.A == 0 || DiagramThemes.Offers(Theme, color))
+        {
+            return;
+        }
+
+        _recentColors.RemoveAll(other => other.ToArgb() == color.ToArgb());
+        _recentColors.Insert(0, color);
+
+        if (_recentColors.Count > MaxRecentColors)
+        {
+            _recentColors.RemoveRange(MaxRecentColors, _recentColors.Count - MaxRecentColors);
+        }
+
+        SaveSettings();
+        ShowPalette();
+    }
+
     private void OnColorSelected(object? sender, DiagramColorChoiceModel choice)
     {
         // The no fill choice is Color.Empty, which stays empty, and a title fill of none, transparent, stays so
@@ -2583,6 +2696,7 @@ public sealed class DiagramEditorPresenter
             DiagramColorTarget.TextOutline => WithTextOutlineColor(style, color),
             _ => style with { TextColor = color },
         });
+        RememberColor(color);
     }
 
     /// <summary>
@@ -2968,7 +3082,9 @@ public sealed class DiagramEditorPresenter
 
         _undo.Push(_diagram);
         _redo.Clear();
-        _diagram = diagram;
+
+        // A change made from the shapes and connectors keeps the theme; nothing takes a theme away
+        _diagram = diagram.Theme is null ? diagram with { Theme = _diagram.Theme } : diagram;
         Refresh();
     }
 
@@ -3329,6 +3445,7 @@ public sealed class DiagramEditorPresenter
         ShowProperties(shown);
         ShowStatus(shown);
         ShowLayers();
+        ShowPalette();
         _view.ShowUndoRedo(_undo.Count > 0, _redo.Count > 0);
         _view.ShowDocument(Name, HasChanges);
         _view.ShowZoom((int)Math.Round(_viewport.Zoom * 100));

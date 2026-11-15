@@ -67,7 +67,8 @@ public static class DiagramJson
                 connector.ToPoint is Point to ? new PointFile(to.X, to.Y) : null,
                 connector.Direction == DiagramLineDirection.Free ? null : connector.Direction,
                 SpanFile.From(connector.LabelSpans),
-                NameOrNull(connector.Name)))]);
+                NameOrNull(connector.Name)))],
+            NameOrNull(diagram.Theme));
 
         return JsonSerializer.Serialize(file, _options);
     }
@@ -150,7 +151,7 @@ public static class DiagramJson
             }
         }
 
-        return new DiagramModel(shapes, connectors);
+        return new DiagramModel(shapes, connectors, NameOrNull(file.Theme));
     }
 
     /// <summary>
@@ -242,7 +243,8 @@ public static class DiagramJson
         string? Format,
         int Version,
         List<ShapeFile>? Shapes,
-        List<ConnectorFile>? Connectors);
+        List<ConnectorFile>? Connectors,
+        string? Theme = null);
 
     private sealed record ShapeFile(
         int Id,

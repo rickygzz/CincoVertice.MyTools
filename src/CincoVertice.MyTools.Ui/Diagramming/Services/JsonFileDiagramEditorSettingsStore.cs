@@ -2,6 +2,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using CincoVertice.Common.Utils.Helpers;
+using CincoVertice.MyTools.Ui.ColorPicker.Services;
 using CincoVertice.MyTools.Ui.Diagramming.Interfaces;
 using CincoVertice.MyTools.Ui.Diagramming.Models;
 
@@ -55,7 +56,9 @@ public sealed class JsonFileDiagramEditorSettingsStore : IDiagramEditorSettingsS
                     ? new DiagramWindowSizeModel(new Size(window.Width, window.Height), window.Maximized)
                     : null,
                 file.ImagesPanel,
-                file.LayersPanel);
+                file.LayersPanel,
+                file.Theme,
+                file.RecentColors?.Select(ParseColor).OfType<Color>().ToList());
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
@@ -73,7 +76,9 @@ public sealed class JsonFileDiagramEditorSettingsStore : IDiagramEditorSettingsS
             settings.IsPropertiesPanelVisible,
             window is null ? null : new WindowFile(window.Size.Width, window.Size.Height, window.IsMaximized),
             settings.IsImagesPanelVisible,
-            settings.IsLayersPanelVisible);
+            settings.IsLayersPanelVisible,
+            settings.Theme,
+            settings.RecentColors?.Select(ColorText.Hex).ToList());
 
         try
         {
@@ -94,7 +99,11 @@ public sealed class JsonFileDiagramEditorSettingsStore : IDiagramEditorSettingsS
         bool PropertiesPanel = true,
         WindowFile? Window = null,
         bool ImagesPanel = true,
-        bool LayersPanel = false);
+        bool LayersPanel = false,
+        string? Theme = null,
+        List<string>? RecentColors = null);
+
+    private static Color? ParseColor(string? text) => ColorText.TryParseHex(text, out Color color) ? color : null;
 
     private sealed record WindowFile(int Width, int Height, bool Maximized);
 }
