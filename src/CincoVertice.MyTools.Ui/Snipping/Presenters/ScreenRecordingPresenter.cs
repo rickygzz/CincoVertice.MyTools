@@ -24,6 +24,7 @@ public sealed class ScreenRecordingPresenter
     private string _temporaryPath = string.Empty;
     private bool _isCountingDown;
     private bool _isPaused;
+    private Task? _starting;
 
     public ScreenRecordingPresenter(
         IRecordingView view,
@@ -76,15 +77,27 @@ public sealed class ScreenRecordingPresenter
 
         try
         {
-            await _recorder.StartAsync(area, _temporaryPath, settings);
+            _starting = _recorder.StartAsync(area, _temporaryPath, settings);
+            await _starting;
         }
         catch (InvalidOperationException ex)
         {
+            // A stop already waiting for startup owns cleanup and reporting.
+            if (!IsRecording)
+            {
+                return false;
+            }
+
             IsRecording = false;
             _files.Discard(_temporaryPath);
             _view.ShowProblem(ex.Message);
             _view.CloseView();
 
+            return false;
+        }
+
+        if (!IsRecording)
+        {
             return false;
         }
 
@@ -115,6 +128,11 @@ public sealed class ScreenRecordingPresenter
 
         try
         {
+            if (_starting is not null)
+            {
+                await _starting;
+            }
+
             await _recorder.StopAsync();
         }
         catch (InvalidOperationException ex)
@@ -145,8 +163,8 @@ public sealed class ScreenRecordingPresenter
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
-            _view.ShowProblem($"Could not save {path}: {ex.Message}");
-            _files.Discard(_temporaryPath);
+            _view.ShowProblem($"The recording is kept at {_temporaryPath}. Copy it to a safe folder to keep it."
+                + $" Could not save {path}: {ex.Message}");
         }
 
         _view.CloseView();
@@ -156,7 +174,7 @@ public sealed class ScreenRecordingPresenter
 
     private void OnPauseRequested(object? sender, EventArgs e)
     {
-        if (!IsRecording || _isCountingDown)
+        if (!IsRecording || _isCountingDown || _starting is not { IsCompletedSuccessfully: true })
         {
             return;
         }

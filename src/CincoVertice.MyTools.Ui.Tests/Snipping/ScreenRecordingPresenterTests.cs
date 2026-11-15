@@ -200,7 +200,7 @@ public class ScreenRecordingPresenterTests
     }
 
     [Fact]
-    public async Task Stop_WhenTheVideoCantBeSaved_SaysWhy_AndDeletesIt()
+    public async Task Stop_WhenTheVideoCantBeSaved_SaysWhy_AndKeepsTheRecording()
     {
         // Arrange
         await _presenter.StartAsync(_area, _noCountdown);
@@ -211,9 +211,43 @@ public class ScreenRecordingPresenterTests
         await _presenter.StopAsync();
 
         // Assert
-        Assert.Equal(@"Could not save C:\Locked\demo.mp4: Access denied.", _view.Problem);
-        Assert.Equal(["temp1.mp4"], _files.Discarded);
+        Assert.Contains(@"Could not save C:\Locked\demo.mp4: Access denied.", _view.Problem);
+        Assert.Contains("kept at temp1.mp4", _view.Problem);
+        Assert.Empty(_files.Discarded);
         Assert.Null(_view.Saved);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Stop_DuringStartup_WaitsForIt_AndDoesNotReportRecording(bool fails)
+    {
+        var ready = new TaskCompletionSource();
+        _recorder.StartDelay = ready.Task;
+        Task<bool> starting = _presenter.StartAsync(_area, _noCountdown);
+
+        _view.RequestPause();
+        Assert.Empty(_recorder.Calls);
+        Task stopping = _presenter.StopAsync();
+        Assert.False(stopping.IsCompleted);
+        Assert.Equal(0, _recorder.Stops);
+
+        if (fails)
+        {
+            ready.SetException(new InvalidOperationException("Startup failed."));
+        }
+        else
+        {
+            ready.SetResult();
+        }
+
+        Assert.False(await starting);
+        await stopping;
+        Assert.False(_presenter.IsRecording);
+        Assert.True(_view.IsClosed);
+        Assert.Equal(fails ? 0 : 1, _recorder.Stops);
+        Assert.Equal(["temp1.mp4"], _files.Discarded);
+        Assert.Equal(fails ? "Startup failed." : null, _view.Problem);
     }
 
     /// <summary>A clock whose timers fire when the test says, all at once.</summary>
@@ -260,6 +294,7 @@ public class ScreenRecordingPresenterTests
         public TimeSpan Elapsed { get; set; }
 
         public string? StartProblem { get; set; }
+        public Task StartDelay { get; set; } = Task.CompletedTask;
 
         public (Rectangle Area, string Path, RecordingSettingsModel Settings)? Started { get; private set; }
 
@@ -278,7 +313,7 @@ public class ScreenRecordingPresenterTests
 
             Started = (area, path, settings);
 
-            return Task.CompletedTask;
+            return StartDelay;
         }
 
         public void Pause() => Calls.Add("pause");

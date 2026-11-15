@@ -1,5 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 using System.Text;
+using CincoVertice.Common.Utils.Helpers;
 using CincoVertice.MyTools.Ui.Snipping.Interfaces;
 using CincoVertice.MyTools.Ui.Snipping.Models;
 using Windows.Graphics.Imaging;
@@ -31,7 +32,7 @@ public sealed class RecordingFileStore : IRecordingFileStore
 
         try
         {
-            await WriteGifAsync(temporaryPath, path, settings);
+            await AtomicFile.WriteAsync(path, outputPath => WriteGifAsync(temporaryPath, outputPath, settings));
         }
         catch (COMException ex)
         {
