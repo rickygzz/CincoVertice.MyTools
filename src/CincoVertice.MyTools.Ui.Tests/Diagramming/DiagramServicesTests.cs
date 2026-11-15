@@ -83,6 +83,36 @@ public class DiagramServicesTests
         Assert.Equal(new PointF(60, 30), DiagramRouter.BorderPoint(Shape(1, 0, 0), new PointF(60, 30)));
     }
 
+    [Theory]
+    [InlineData(50, 20, 0.25f)]
+    [InlineData(130, 50, 0.75f)]
+    [InlineData(-40, -40, 0f)]
+    [InlineData(400, 400, 1f)]
+    public void PartAlong_IsHowFarAlongTheNearestPointIs(float x, float y, float expected)
+    {
+        // Arrange: 100 across, then 100 down: 200 long
+        PointF[] line = [new(0, 0), new(100, 0), new(100, 100)];
+
+        // Act / Assert
+        Assert.Equal(expected, DiagramRouter.PartAlong(line, new PointF(x, y)), 3);
+    }
+
+    [Fact]
+    public void LabelCenter_IsWhereTheLabelWasSlid_OrHalfway()
+    {
+        // Arrange: from the right of the first to the left of the second
+        DiagramModel diagram = new([Shape(1, 0, 0), Shape(2, 300, 0)], [Connector()]);
+        DiagramConnectorModel slid = diagram.Connectors[0] with { LabelPosition = 0 };
+
+        // Act
+        DiagramConnectorPathModel halfway = DiagramRouter.PathOf(diagram.Connectors[0], diagram)!;
+        DiagramConnectorPathModel atStart = DiagramRouter.PathOf(slid, diagram)!;
+
+        // Assert
+        Assert.Equal(halfway.Points[0], atStart.LabelCenter);
+        Assert.True(halfway.LabelCenter.X > atStart.LabelCenter.X + 50);
+    }
+
     [Fact]
     public void Connector_FollowsItsShapes()
     {

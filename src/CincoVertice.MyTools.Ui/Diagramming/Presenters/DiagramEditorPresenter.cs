@@ -967,6 +967,19 @@ public sealed class DiagramEditorPresenter
             return;
         }
 
+        // A label slides along its line; it's on the line, so before a piece of it is dragged
+        if (_tool == DiagramTool.Select && !pointer.Shift && !pointer.Control && LabelAt(point) is { } labeled)
+        {
+            ClearSelection();
+            _selectedConnectors.Add(labeled.Id);
+            SelectionChanged();
+            _drag = new LabelDrag(labeled.Id, point);
+            ShowCursor(DiagramCursor.Move);
+            Refresh();
+
+            return;
+        }
+
         // With Shift or Ctrl, a press on a selected connector takes it off the selection instead
         if (!pointer.Shift && !pointer.Control && SegmentDragAt(point) is { } segmentDrag)
         {
@@ -1161,6 +1174,9 @@ public sealed class DiagramEditorPresenter
                 break;
             case ConnectDrag connect:
                 DragConnect(connect, point);
+                break;
+            case LabelDrag label:
+                DragLabel(label, point);
                 break;
             case ReconnectDrag reconnect:
                 DragReconnect(reconnect, point);
@@ -1682,6 +1698,9 @@ public sealed class DiagramEditorPresenter
                 && preview is not null
                 && !preview.Connectors.SequenceEqual(_diagram.Connectors):
                 Commit(preview);
+                break;
+            case LabelDrag when preview is not null:
+                Commit(preview, onlyIfChanged: true);
                 break;
             case SegmentDrag segment when preview is not null && RouteChanged(segment, preview):
                 Commit(preview);
@@ -3556,6 +3575,43 @@ public sealed class DiagramEditorPresenter
 
     private int CanvasFontSize(int fontSize) => Math.Max(1, (int)Math.Round(fontSize * _viewport.Zoom));
 
+    /// <summary>The connector or line on top whose label has the point; null for none.</summary>
+    private DiagramConnectorModel? LabelAt(Point point)
+    {
+        DiagramModel visible = _diagram.Visible();
+
+        return visible.Connectors.LastOrDefault(connector => connector.Label.Length > 0
+            && DiagramHitTester.IsClickable(connector)
+            && DiagramRouter.PathOf(connector, visible) is { } path
+            && DiagramTextLayout.OfLabel(connector, path.LabelCenter).Bounds.Contains(point));
+    }
+
+    /// <summary>
+    ///     Slides the label to where on its line is nearest the mouse; a press that hasn't moved yet is still a click,
+    ///     which leaves it where it was.
+    /// </summary>
+    private void DragLabel(LabelDrag drag, Point point)
+    {
+        if (IsStillAClick(drag.Start, point)
+            || _diagram.Connectors.FirstOrDefault(connector => connector.Id == drag.ConnectorId) is not { } connector
+            || DiagramRouter.RouteFor(connector, _diagram) is not { } route)
+        {
+            return;
+        }
+
+        // Along the whole route, as the label is placed, not the line drawn, which stops short of a head
+        float part = MathF.Round(DiagramRouter.PartAlong(route, point), 3);
+
+        _preview = _diagram with
+        {
+            Connectors =
+            [
+                .. _diagram.Connectors.Select(other =>
+                    other.Id == drag.ConnectorId ? other with { LabelPosition = part } : other),
+            ],
+        };
+    }
+
     private DiagramCursor HoverCursor(Point point)
     {
         if (_tool != DiagramTool.Select
@@ -3563,6 +3619,11 @@ public sealed class DiagramEditorPresenter
             || ConnectorEndUnder(point).End is not null)
         {
             return DiagramCursor.Cross;
+        }
+
+        if (LabelAt(point) is not null)
+        {
+            return DiagramCursor.Move;
         }
 
         if (SegmentDragAt(point) is { } segment)
@@ -3987,6 +4048,9 @@ public sealed class DiagramEditorPresenter
     private sealed record CreateDrag(DiagramShapeKind Kind, Point Start) : Drag;
 
     private sealed record ConnectDrag(int FromShapeId, DiagramSide? FromSide) : Drag;
+
+    /// <summary>A connector's or a line's label slid along it.</summary>
+    private sealed record LabelDrag(int ConnectorId, Point Start) : Drag;
 
     private sealed record ReconnectDrag(Point Start, int ConnectorId, DiagramConnectorEnd End) : Drag;
 

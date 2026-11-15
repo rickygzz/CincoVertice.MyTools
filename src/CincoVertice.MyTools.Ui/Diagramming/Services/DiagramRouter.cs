@@ -22,7 +22,7 @@ public static class DiagramRouter
             return null;
         }
 
-        PointF labelCenter = PointAlong(route, 0.5f);
+        PointF labelCenter = PointAlong(route, Math.Clamp(connector.LabelPosition ?? 0.5f, 0, 1));
         float headLength = 8 + 2 * connector.Style.LineWidth;
 
         // On a single piece, the first head would otherwise take the direction the second one needs
@@ -509,6 +509,51 @@ public static class DiagramRouter
         }
 
         return nearest;
+    }
+
+    /// <summary>
+    ///     How far along the line its point nearest to the one given is, from 0 at its start to 1 at its end: where a
+    ///     label dragged there goes.
+    /// </summary>
+    public static float PartAlong(IReadOnlyList<PointF> line, PointF point)
+    {
+        float total = LengthOf(line);
+
+        if (total <= 0)
+        {
+            return 0.5f;
+        }
+
+        float before = 0;
+        float nearestDistance = float.MaxValue;
+        float nearestAlong = 0;
+
+        for (int i = 1; i < line.Count; i++)
+        {
+            PointF from = line[i - 1];
+            PointF to = line[i];
+            float length = Distance(from, to);
+
+            if (length > 0)
+            {
+                float along = Math.Clamp(
+                    ((point.X - from.X) * (to.X - from.X) + (point.Y - from.Y) * (to.Y - from.Y)) / (length * length),
+                    0,
+                    1);
+                var nearest = new PointF(from.X + (to.X - from.X) * along, from.Y + (to.Y - from.Y) * along);
+                float distance = Distance(nearest, point);
+
+                if (distance < nearestDistance)
+                {
+                    nearestDistance = distance;
+                    nearestAlong = before + along * length;
+                }
+            }
+
+            before += length;
+        }
+
+        return nearestAlong / total;
     }
 
     private static PointF PointAlong(IReadOnlyList<PointF> route, float part)

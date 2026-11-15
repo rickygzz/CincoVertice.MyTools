@@ -2789,6 +2789,63 @@ public class DiagramEditorPresenterTests
     }
 
     [Fact]
+    public void Label_Dragged_SlidesAlongItsLine_ToWhereIsNearestTheMouse_InOneStep()
+    {
+        // Arrange: a level connector from 200 to about 400, at 125, with its label in the middle
+        (_, _, _) = AddSelectedConnector();
+        _view.EditText("yes");
+        ClickEmpty();
+        DiagramModel before = Diagram;
+        PointF Center() => DiagramRouter.PathOf(Diagram.Connectors[0], Diagram)!.LabelCenter;
+        PointF middle = Center();
+
+        // Act: from the label to a point below the line, a quarter of the way along
+        _view.Drag((int)middle.X, (int)middle.Y, 250, 170);
+
+        // Assert: on the line, under the mouse; selected; one step to undo
+        Assert.Equal(new PointF(250, middle.Y), Center());
+        Assert.InRange(Diagram.Connectors[0].LabelPosition!.Value, 0.2f, 0.3f);
+        Assert.Equal([Diagram.Connectors[0].Id], _presenter.SelectedConnectorIds);
+        _view.Command(DiagramCommand.Undo);
+        Assert.Same(before, Diagram);
+    }
+
+    [Fact]
+    public void Label_Clicked_OnlySelectsItsConnector_AndADoubleClickStillEditsIt()
+    {
+        // Arrange
+        (_, _, _) = AddSelectedConnector();
+        _view.EditText("yes");
+        ClickEmpty();
+        DiagramModel before = Diagram;
+        PointF middle = DiagramRouter.PathOf(Diagram.Connectors[0], Diagram)!.LabelCenter;
+
+        // Act
+        _view.DoubleClick((int)middle.X, (int)middle.Y);
+
+        // Assert
+        Assert.Same(before, Diagram);
+        Assert.Equal([Diagram.Connectors[0].Id], _presenter.SelectedConnectorIds);
+        Assert.Equal("yes", _view.TextStarted!.Text);
+    }
+
+    [Fact]
+    public void Label_Dragged_PastTheEnd_StaysAtTheEnd()
+    {
+        // Arrange
+        (_, _, _) = AddSelectedConnector();
+        _view.EditText("yes");
+        ClickEmpty();
+        PointF middle = DiagramRouter.PathOf(Diagram.Connectors[0], Diagram)!.LabelCenter;
+
+        // Act: far to the left of the line's start
+        _view.Drag((int)middle.X, (int)middle.Y, -500, 125);
+
+        // Assert
+        Assert.Equal(0, Diagram.Connectors[0].LabelPosition);
+    }
+
+    [Fact]
     public void Text_DoubleClickOnAConnector_EditsItsLabel()
     {
         // Arrange

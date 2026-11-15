@@ -71,7 +71,8 @@ public static class DiagramJson
                 SpanFile.From(connector.LabelSpans),
                 NameOrNull(connector.Name),
                 connector.IsHidden ? true : null,
-                connector.IsLocked ? true : null))],
+                connector.IsLocked ? true : null,
+                connector.LabelPosition))],
             NameOrNull(diagram.Theme));
 
         return JsonSerializer.Serialize(file, _options);
@@ -131,6 +132,7 @@ public static class DiagramJson
                         Name = NameOrNull(c.Name),
                         IsHidden = c.Hidden == true,
                         IsLocked = c.Locked == true,
+                        LabelPosition = LabelPositionOf(c.LabelPosition),
                     };
 
                     connectors.Add(line.Aligned());
@@ -155,7 +157,8 @@ public static class DiagramJson
                     LabelSpans: SpanFile.ToSpans(c.LabelSpans, c.Label ?? string.Empty),
                     Name: NameOrNull(c.Name),
                     IsHidden: c.Hidden == true,
-                    IsLocked: c.Locked == true));
+                    IsLocked: c.Locked == true,
+                    LabelPosition: LabelPositionOf(c.LabelPosition)));
             }
         }
 
@@ -177,6 +180,10 @@ public static class DiagramJson
             && (connector.ToSide is not DiagramSide to || Enum.IsDefined(to))
             && (connector.Bends ?? []).All(bend => bend is not null)
             && (connector.LabelSpans ?? []).All(span => span is not null));
+
+    /// <summary>A label's place from a file written by hand, brought onto its line.</summary>
+    private static float? LabelPositionOf(float? position) =>
+        position is float value && float.IsFinite(value) ? Math.Clamp(value, 0, 1) : null;
 
     /// <summary>A name of only spaces is none.</summary>
     private static string? NameOrNull(string? name) => string.IsNullOrWhiteSpace(name) ? null : name.Trim();
@@ -293,7 +300,8 @@ public static class DiagramJson
         List<SpanFile>? LabelSpans = null,
         string? Name = null,
         bool? Hidden = null,
-        bool? Locked = null);
+        bool? Locked = null,
+        float? LabelPosition = null);
 
     private sealed record PointFile(int X, int Y);
 

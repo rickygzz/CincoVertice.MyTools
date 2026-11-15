@@ -9,7 +9,7 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 /// <param name="Line">The same line to draw, with its corners rounded.</param>
 /// <param name="StartHead">The triangle at the start; null for none.</param>
 /// <param name="EndHead">The triangle at the end; null for none.</param>
-/// <param name="LabelCenter">Halfway along the line.</param>
+/// <param name="LabelCenter">Where the label goes on the line: halfway, or where it was slid to.</param>
 public sealed record DiagramConnectorPathModel(
     IReadOnlyList<PointF> Points,
     DiagramFigureModel Line,

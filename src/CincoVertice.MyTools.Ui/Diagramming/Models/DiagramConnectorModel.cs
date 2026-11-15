@@ -26,6 +26,9 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 /// <param name="Name">What the user calls it, shown in the layers panel; null for none.</param>
 /// <param name="IsHidden">True when it isn't drawn, on the canvas or in a file, nor picked by a click.</param>
 /// <param name="IsLocked">True when clicks on the canvas go through it, so it can't be picked there.</param>
+/// <param name="LabelPosition">
+///     Where its label is along it, from 0 at its start to 1 at its end; null for halfway, as before it could be moved.
+/// </param>
 public sealed record DiagramConnectorModel(
     int Id,
     int? FromShapeId,
@@ -43,7 +46,8 @@ public sealed record DiagramConnectorModel(
     IReadOnlyList<DiagramTextSpanModel>? LabelSpans = null,
     string? Name = null,
     bool IsHidden = false,
-    bool IsLocked = false)
+    bool IsLocked = false,
+    float? LabelPosition = null)
 {
     /// <summary>True for a line on its own, between two points, rather than between two shapes.</summary>
     public bool IsLine => FromPoint is not null && ToPoint is not null;

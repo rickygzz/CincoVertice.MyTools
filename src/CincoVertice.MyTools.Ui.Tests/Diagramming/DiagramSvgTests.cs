@@ -755,6 +755,31 @@ public sealed class DiagramSvgTests : IDisposable
     }
 
     [Fact]
+    public void Json_ALabelsPosition_IsKept_OnlyWhenItWasMoved_AndBroughtOntoItsLine()
+    {
+        // Arrange
+        DiagramModel diagram = Sample() with
+        {
+            Connectors = [Sample().Connectors[0] with { LabelPosition = 0.25f }],
+        };
+        const string outOfRange = """
+            { "format": "mytools-diagram", "shapes": [
+                { "id": 1, "kind": "Ellipse", "x": 0, "y": 0, "width": 9, "height": 9 },
+                { "id": 2, "kind": "Ellipse", "x": 90, "y": 0, "width": 9, "height": 9 } ],
+              "connectors": [ { "id": 3, "fromShapeId": 1, "toShapeId": 2, "label": "x", "labelPosition": 7 } ] }
+            """;
+
+        // Act
+        string json = DiagramJson.Write(diagram);
+
+        // Assert
+        Assert.Contains("\"labelPosition\":0.25", json);
+        Assert.Equal(0.25f, DiagramJson.Read(json).Connectors[0].LabelPosition);
+        Assert.DoesNotContain("labelPosition", DiagramJson.Write(Sample()));
+        Assert.Equal(1f, DiagramJson.Read(outOfRange).Connectors[0].LabelPosition);
+    }
+
+    [Fact]
     public void Json_ALinesDirection_IsKept_AndFreeIsntWritten()
     {
         // Arrange
