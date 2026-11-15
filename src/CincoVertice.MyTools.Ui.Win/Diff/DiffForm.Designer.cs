@@ -33,6 +33,7 @@ partial class DiffForm
         Toolbar = new ToolStrip();
         LeftFileButton = new ToolStripButton();
         RightFileButton = new ToolStripButton();
+        SaveButton = new ToolStripButton();
         FileSeparator = new ToolStripSeparator();
         PasteLeftButton = new ToolStripButton();
         PasteRightButton = new ToolStripButton();
@@ -53,6 +54,7 @@ partial class DiffForm
         SummaryLabel = new ToolStripStatusLabel();
         PositionLabel = new ToolStripStatusLabel();
         OpenDialog = new OpenFileDialog();
+        SaveDialog = new SaveFileDialog();
         Toolbar.SuspendLayout();
         HeaderTable.SuspendLayout();
         StatusBar.SuspendLayout();
@@ -61,7 +63,7 @@ partial class DiffForm
         // Toolbar
         //
         Toolbar.GripStyle = ToolStripGripStyle.Hidden;
-        Toolbar.Items.AddRange(new ToolStripItem[] { LeftFileButton, RightFileButton, FileSeparator, PasteLeftButton, PasteRightButton, PasteSeparator, SwapButton, ReloadButton, ReloadSeparator, PreviousButton, NextButton, NavigationSeparator, IgnoreWhitespaceButton, IgnoreCaseButton });
+        Toolbar.Items.AddRange(new ToolStripItem[] { LeftFileButton, RightFileButton, SaveButton, FileSeparator, PasteLeftButton, PasteRightButton, PasteSeparator, SwapButton, ReloadButton, ReloadSeparator, PreviousButton, NextButton, NavigationSeparator, IgnoreWhitespaceButton, IgnoreCaseButton });
         Toolbar.Location = new Point(0, 0);
         Toolbar.Name = "Toolbar";
         Toolbar.Size = new Size(1100, 25);
@@ -82,6 +84,14 @@ partial class DiffForm
         RightFileButton.Text = "Right file...";
         RightFileButton.ToolTipText = "Choose the file on the right";
         RightFileButton.Click += RightFileButton_Click;
+        //
+        // SaveButton
+        //
+        SaveButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
+        SaveButton.Name = "SaveButton";
+        SaveButton.Text = "Save";
+        SaveButton.ToolTipText = "Save the side being edited (Ctrl+S)";
+        SaveButton.Click += SaveButton_Click;
         //
         // FileSeparator
         //
@@ -208,6 +218,7 @@ partial class DiffForm
         DiffText.TabIndex = 2;
         DiffText.DragDrop += DiffText_DragDrop;
         DiffText.DragEnter += DiffText_DragEnter;
+        DiffText.TextEdited += DiffText_TextEdited;
         //
         // StatusBar
         //
@@ -232,6 +243,11 @@ partial class DiffForm
         OpenDialog.Filter = "All files (*.*)|*.*";
         OpenDialog.Multiselect = true;
         //
+        // SaveDialog
+        //
+        SaveDialog.Filter = "All files (*.*)|*.*";
+        SaveDialog.OverwritePrompt = true;
+        //
         // DiffForm
         //
         AutoScaleDimensions = new SizeF(7F, 15F);
@@ -246,6 +262,7 @@ partial class DiffForm
         StartPosition = FormStartPosition.Manual;
         Text = "Compare files";
         Activated += DiffForm_Activated;
+        FormClosing += DiffForm_FormClosing;
         Toolbar.ResumeLayout(false);
         Toolbar.PerformLayout();
         HeaderTable.ResumeLayout(false);
@@ -260,6 +277,7 @@ partial class DiffForm
     private ToolStrip Toolbar;
     private ToolStripButton LeftFileButton;
     private ToolStripButton RightFileButton;
+    private ToolStripButton SaveButton;
     private ToolStripSeparator FileSeparator;
     private ToolStripButton PasteLeftButton;
     private ToolStripButton PasteRightButton;
@@ -280,4 +298,5 @@ partial class DiffForm
     private ToolStripStatusLabel SummaryLabel;
     private ToolStripStatusLabel PositionLabel;
     private OpenFileDialog OpenDialog;
+    private SaveFileDialog SaveDialog;
 }

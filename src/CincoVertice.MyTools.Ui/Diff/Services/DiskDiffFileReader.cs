@@ -31,12 +31,15 @@ public sealed class DiskDiffFileReader : IDiffFileReader
 
         byte[] bytes = File.ReadAllBytes(path);
 
-        return new DiffFileModel(Decode(bytes), File.GetLastWriteTimeUtc(path));
+        (string text, Encoding encoding) = Decode(bytes);
+
+        return new DiffFileModel(text, File.GetLastWriteTimeUtc(path), encoding);
     }
 
     public DateTime? WrittenUtc(string path) => File.Exists(path) ? File.GetLastWriteTimeUtc(path) : null;
 
-    public static string Decode(byte[] bytes)
+    /// <returns>The text, and the encoding to write it back the same way.</returns>
+    public static (string Text, Encoding Encoding) Decode(byte[] bytes)
     {
         try
         {
@@ -45,11 +48,18 @@ public sealed class DiskDiffFileReader : IDiffFileReader
                 _strictUtf8,
                 detectEncodingFromByteOrderMarks: true);
 
-            return reader.ReadToEnd();
+            string text = reader.ReadToEnd();
+
+            // Without a byte order mark: written back without one, and never throwing on what can't be encoded
+            Encoding encoding = ReferenceEquals(reader.CurrentEncoding, _strictUtf8)
+                ? new UTF8Encoding(false)
+                : reader.CurrentEncoding;
+
+            return (text, encoding);
         }
         catch (DecoderFallbackException)
         {
-            return Encoding.Latin1.GetString(bytes);
+            return (Encoding.Latin1.GetString(bytes), Encoding.Latin1);
         }
     }
 }

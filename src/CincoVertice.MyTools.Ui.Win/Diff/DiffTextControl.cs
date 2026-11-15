@@ -2,17 +2,19 @@
 using System.Drawing.Drawing2D;
 using System.Text;
 using CincoVertice.MyTools.Ui.Diff.Models;
+using CincoVertice.MyTools.Ui.Diff.Services;
 
 namespace CincoVertice.MyTools.Ui.Win.Diff;
 
 /// <summary>
-///     Two texts compared, side by side, in rows that scroll together: each side has its line numbers, then its text,
-///     colored as the row is (removed red, added green, changed both, the words that changed darker), and a blank
-///     side where the other has a line. A strip at the right shows where the changes are in the whole text; a click on
-///     it goes there. It draws only the rows showing, so long files scroll as fast as short ones.
+///     Two texts compared and edited side by side, in rows that scroll together: each side has its line numbers, then
+///     its text, colored as the row is (removed red, added green, changed both, the words that changed darker), and a
+///     blank side where the other has a line. A strip at the right shows where the changes are in the whole text; a
+///     click on it goes there. It draws only the rows showing, so long files scroll as fast as short ones.
 ///     <para>
-///         A click selects a row on its side, Shift+click or a drag more rows; Ctrl+C copies their lines, Ctrl+A
-///         selects every row of the side. It only shows: the rows come from <see cref="SetRows"/>.
+///         Each side is a text being edited (<see cref="DiffEditBuffer"/>), with its caret and selection; a click puts
+///         the caret on a side. Every change raises <see cref="TextEdited"/>, for the rows to be compared again and
+///         given back through <see cref="SetRows"/>, at once, so the rows always show the texts as they are.
 ///     </para>
 /// </summary>
 public sealed class DiffTextControl : Control
@@ -22,6 +24,7 @@ public sealed class DiffTextControl : Control
     private const int DividerWidth = 4;
     private const int TextMargin = 4;
     private const int GutterPadding = 6;
+    private const int CaretWidth = 2;
 
     private static readonly Color _removedBack = Color.FromArgb(255, 235, 233);
     private static readonly Color _removedWord = Color.FromArgb(255, 193, 192);
@@ -32,7 +35,8 @@ public sealed class DiffTextControl : Control
     private static readonly Color _blankBack = Color.FromArgb(240, 240, 240);
     private static readonly Color _gutterBack = Color.FromArgb(246, 246, 246);
     private static readonly Color _gutterFore = Color.FromArgb(120, 120, 120);
-    private static readonly Color _selectedBack = Color.FromArgb(204, 228, 247);
+    private static readonly Color _selectionBack = Color.FromArgb(173, 214, 255);
+    private static readonly Color _otherSelectionBack = Color.FromArgb(218, 218, 218);
     private static readonly Color _dividerColor = Color.FromArgb(210, 210, 210);
     private static readonly Color _currentColor = Color.FromArgb(0, 120, 215);
     private static readonly Color _overviewBack = Color.FromArgb(250, 250, 250);
@@ -47,19 +51,26 @@ public sealed class DiffTextControl : Control
 
     private readonly VScrollBar _vertical = new() { Dock = DockStyle.Right, TabStop = false };
     private readonly HScrollBar _horizontal = new() { Dock = DockStyle.Bottom, TabStop = false };
+    private readonly DiffEditBuffer _leftBuffer = new();
+    private readonly DiffEditBuffer _rightBuffer = new();
+    private readonly System.Windows.Forms.Timer _blink = new() { Interval = 530 };
+    private readonly ContextMenuStrip _menu = new();
 
     private IReadOnlyList<DiffRowModel> _rows = [];
     private IReadOnlyList<DiffHunkModel> _hunks = [];
     private DiffHunkModel? _current;
+    private int[] _leftRowOf = [];
+    private int[] _rightRowOf = [];
     private int _maxColumns;
     private int _numberDigits = 1;
     private int _rowHeight = 16;
     private float _charWidth = 8;
 
-    // The rows selected, from the anchor to the caret, on one side; -1 for none
-    private DiffSide _selectionSide;
-    private int _anchor = -1;
-    private int _caret = -1;
+    // The side being edited; the row Next and Previous go from; the column Up and Down keep to
+    private DiffSide _side;
+    private int _navigationRow = -1;
+    private int _preferredColumn = -1;
+    private bool _isCaretOn = true;
     private bool _isSelecting;
     private bool _isDraggingOverview;
 
@@ -72,14 +83,25 @@ public sealed class DiffTextControl : Control
         BackColor = Color.White;
         ForeColor = Color.Black;
         Font = new Font("Consolas", 10);
+        Cursor = Cursors.IBeam;
         TabStop = true;
 
         Controls.Add(_vertical);
         Controls.Add(_horizontal);
+        _vertical.Cursor = Cursors.Default;
+        _horizontal.Cursor = Cursors.Default;
         _vertical.ValueChanged += (_, _) => Invalidate();
         _horizontal.ValueChanged += (_, _) => Invalidate();
+
+        // The control isn't made by the designer, so its own parts are wired here
+        _blink.Tick += (_, _) => Blink();
+        BuildMenu();
+        ContextMenuStrip = _menu;
         Measure();
     }
+
+    /// <summary>The user changed the text of a side; <see cref="LinesOf"/> has it.</summary>
+    public event EventHandler<DiffSide>? TextEdited;
 
     /// <summary>The width at its right that isn't text, the strip and the scroll bar, for headers to line up.</summary>
     [Browsable(false)]
@@ -94,16 +116,24 @@ public sealed class DiffTextControl : Control
         set => _vertical.Value = Math.Clamp(value, 0, MaxTopRow);
     }
 
-    /// <summary>The row the user is at: the one last clicked or moved to, if showing, else the first showing.</summary>
+    /// <summary>The row the user is at: the caret's, or the change gone to, if showing, else the top one.</summary>
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public int CurrentRow => _caret >= TopRow && _caret < TopRow + VisibleRows ? _caret : TopRow;
+    public int CurrentRow =>
+        _navigationRow >= TopRow && _navigationRow < TopRow + VisibleRows ? _navigationRow : TopRow;
+
+    /// <summary>The side the caret is on, which the keys type into.</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public DiffSide EditedSide => _side;
 
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public IReadOnlyList<DiffRowModel> Rows => _rows;
 
     internal int RowHeight => _rowHeight;
+
+    private DiffEditBuffer Buffer => BufferOf(_side);
 
     private int VisibleRows => Math.Max(1, TextArea.Height / _rowHeight);
 
@@ -121,6 +151,17 @@ public sealed class DiffTextControl : Control
 
     private int VisibleColumns => Math.Max(1, (int)((SideWidth - GutterWidth - TextMargin) / _charWidth));
 
+    private int MaxLeftColumn => Math.Max(0, _maxColumns + 2 - VisibleColumns);
+
+    public IReadOnlyList<string> LinesOf(DiffSide side) => BufferOf(side).Lines;
+
+    /// <summary>Puts a new text on a side, the caret at its start, with nothing to undo.</summary>
+    public void SetText(DiffSide side, IReadOnlyList<string> lines)
+    {
+        BufferOf(side).SetLines(lines);
+        Invalidate();
+    }
+
     /// <param name="keepPlace">Whether to stay at the rows showing, else go to the top.</param>
     public void SetRows(IReadOnlyList<DiffRowModel> rows, IReadOnlyList<DiffHunkModel> hunks, bool keepPlace)
     {
@@ -128,10 +169,10 @@ public sealed class DiffTextControl : Control
         _rows = rows;
         _hunks = hunks;
         _current = null;
-        _anchor = -1;
-        _caret = -1;
         _maxColumns = 0;
         int lastNumber = 1;
+        _leftRowOf = RowsOfLines(rows, DiffSide.Left, _leftBuffer.Lines.Count);
+        _rightRowOf = RowsOfLines(rows, DiffSide.Right, _rightBuffer.Lines.Count);
 
         foreach (DiffRowModel row in rows)
         {
@@ -139,7 +180,7 @@ public sealed class DiffTextControl : Control
             {
                 if (line is not null)
                 {
-                    _maxColumns = Math.Max(_maxColumns, ColumnsOf(line.Text)[^1]);
+                    _maxColumns = Math.Max(_maxColumns, WidthOf(line.Text));
                     lastNumber = Math.Max(lastNumber, line.Number);
                 }
             }
@@ -152,20 +193,24 @@ public sealed class DiffTextControl : Control
         if (!keepPlace)
         {
             _horizontal.Value = 0;
+            _navigationRow = -1;
         }
 
         Invalidate();
     }
 
-    /// <summary>Marks a change as the current one, and scrolls it into view, a few rows below the top.</summary>
+    /// <summary>
+    ///     Marks a change as the current one, and scrolls it into view, a few rows below the top; the caret goes to
+    ///     its first line on the side being edited.
+    /// </summary>
     public void ShowHunk(DiffHunkModel? hunk)
     {
         _current = hunk;
 
         if (hunk is not null)
         {
-            _caret = hunk.FirstRow;
-            _anchor = -1;
+            _navigationRow = hunk.FirstRow;
+            Buffer.MoveTo(new DiffPosition(LineAtRow(_side, hunk.FirstRow).Line, 0), extend: false);
             bool isShowing = hunk.FirstRow >= TopRow && hunk.EndRow <= TopRow + VisibleRows;
 
             if (!isShowing)
@@ -174,36 +219,19 @@ public sealed class DiffTextControl : Control
                     ? hunk.FirstRow
                     : hunk.FirstRow - Math.Min(3, VisibleRows / 4);
             }
+
+            _horizontal.Value = 0;
+            RestartBlink();
         }
 
         Invalidate();
     }
 
-    /// <returns>The side a point of the control is on, for a drop.</returns>
+    /// <returns>The side a point of the control is on, for a drop or a click.</returns>
     public DiffSide SideAt(Point point) => point.X < SideWidth + DividerWidth / 2 ? DiffSide.Left : DiffSide.Right;
 
-    /// <returns>The lines of the rows selected, on their side, blank rows left out; empty for none.</returns>
-    public string SelectedText()
-    {
-        if (_anchor < 0 || _caret < 0)
-        {
-            return string.Empty;
-        }
-
-        int first = Math.Min(_anchor, _caret);
-        int last = Math.Max(_anchor, _caret);
-        var text = new StringBuilder();
-
-        for (int row = Math.Max(0, first); row <= last && row < _rows.Count; row++)
-        {
-            if (_rows[row].On(_selectionSide) is { } line)
-            {
-                text.Append(line.Text).Append(Environment.NewLine);
-            }
-        }
-
-        return text.ToString();
-    }
+    /// <returns>The text selected on the side being edited, with Windows line breaks; empty for none.</returns>
+    public string SelectedText() => Buffer.SelectedText;
 
     /// <returns>
     ///     The column each character of a line starts at, tabs going to the next multiple of <see cref="TabSize"/>,
@@ -223,6 +251,19 @@ public sealed class DiffTextControl : Control
         columns[text.Length] = column;
 
         return columns;
+    }
+
+    /// <returns>The line's width in columns, as <see cref="ColumnsOf"/> counts them.</returns>
+    public static int WidthOf(string text)
+    {
+        int column = 0;
+
+        foreach (char c in text)
+        {
+            column += c == '\t' ? TabSize - column % TabSize : 1;
+        }
+
+        return column;
     }
 
     /// <returns>The line as drawn: tabs as spaces, one character per column.</returns>
@@ -250,8 +291,213 @@ public sealed class DiffTextControl : Control
         return expanded.ToString();
     }
 
-    protected override bool IsInputKey(Keys keyData) =>
-        (keyData & Keys.KeyCode) is Keys.Up or Keys.Down or Keys.Left or Keys.Right || base.IsInputKey(keyData);
+    internal DiffEditBuffer BufferOf(DiffSide side) => side == DiffSide.Left ? _leftBuffer : _rightBuffer;
+
+    /// <summary>A press of the left button: on the strip, goes there; on a side, puts the caret there.</summary>
+    /// <param name="extend">Shift: the selection grows to it.</param>
+    /// <param name="isDouble">A double click: selects the word.</param>
+    internal void Press(Point point, bool extend, bool isDouble = false)
+    {
+        if (point.X >= TextArea.Right && point.X < TextArea.Right + OverviewWidth)
+        {
+            _isDraggingOverview = true;
+            ScrollToOverview(point.Y);
+
+            return;
+        }
+
+        if (point.Y >= TextArea.Height)
+        {
+            return;
+        }
+
+        DiffSide side = SideAt(point);
+        extend &= side == _side;
+        _side = side;
+        DiffPosition position = PositionAt(point);
+
+        if (isDouble)
+        {
+            Buffer.SelectWord(position);
+        }
+        else
+        {
+            Buffer.MoveTo(position, extend);
+            _isSelecting = true;
+        }
+
+        _preferredColumn = -1;
+        CaretMoved(scroll: false);
+    }
+
+    internal void DragTo(Point point)
+    {
+        if (_isDraggingOverview)
+        {
+            ScrollToOverview(point.Y);
+
+            return;
+        }
+
+        if (!_isSelecting)
+        {
+            return;
+        }
+
+        // Beyond the top or bottom, the rows scroll on
+        if (point.Y < 0)
+        {
+            TopRow--;
+        }
+        else if (point.Y >= TextArea.Height)
+        {
+            TopRow++;
+        }
+
+        Buffer.MoveTo(PositionAt(point with { X = Math.Max(point.X, TextLeftOf(_side)) }, _side), extend: true);
+        CaretMoved(scroll: false);
+    }
+
+    internal void Release()
+    {
+        _isSelecting = false;
+        _isDraggingOverview = false;
+    }
+
+    /// <summary>Handles a key as typing would, for the keyboard and for tests.</summary>
+    /// <returns>Whether the key did something here.</returns>
+    internal bool HandleKey(Keys keyData)
+    {
+        Keys key = keyData & Keys.KeyCode;
+        bool shift = (keyData & Keys.Shift) != 0;
+        bool control = (keyData & Keys.Control) != 0;
+
+        if ((keyData & Keys.Alt) != 0)
+        {
+            return false;
+        }
+
+        switch (key)
+        {
+            case Keys.Z when control && shift:
+            case Keys.Y when control:
+                Edit(buffer => buffer.Redo());
+                return true;
+            case Keys.Z when control:
+                Edit(buffer => buffer.Undo());
+                return true;
+            case Keys.C when control:
+            case Keys.Insert when control:
+                Copy();
+                return true;
+            case Keys.X when control:
+            case Keys.Delete when shift:
+                Cut();
+                return true;
+            case Keys.V when control:
+            case Keys.Insert when shift:
+                Paste();
+                return true;
+            case Keys.A when control:
+                Buffer.SelectAll();
+                CaretMoved(scroll: false);
+                return true;
+            case Keys.Back:
+                Edit(buffer => buffer.DeleteBackward(control));
+                return true;
+            case Keys.Delete:
+                Edit(buffer => buffer.DeleteForward(control));
+                return true;
+            case Keys.Enter:
+                Edit(buffer => buffer.Insert("\n" + IndentOf(buffer)));
+                return true;
+            case Keys.Tab when !control:
+                Edit(buffer => buffer.Insert("\t"));
+                return true;
+            case Keys.Escape:
+                Buffer.MoveTo(Buffer.Caret, extend: false);
+                CaretMoved(scroll: true);
+                return true;
+            case Keys.F6:
+                SwitchSide();
+                return true;
+            case Keys.Left:
+                MoveHorizontally(shift, control ? Buffer.WordLeft : Buffer.CharLeft, Buffer.SelectionStart);
+                return true;
+            case Keys.Right:
+                MoveHorizontally(shift, control ? Buffer.WordRight : Buffer.CharRight, Buffer.SelectionEnd);
+                return true;
+            case Keys.Up when control:
+                TopRow--;
+                return true;
+            case Keys.Down when control:
+                TopRow++;
+                return true;
+            case Keys.Up:
+                MoveVertically(-1, shift);
+                return true;
+            case Keys.Down:
+                MoveVertically(1, shift);
+                return true;
+            case Keys.PageUp:
+                MoveVertically(-VisibleRows, shift);
+                return true;
+            case Keys.PageDown:
+                MoveVertically(VisibleRows, shift);
+                return true;
+            case Keys.Home when control:
+                MoveTo(default, shift);
+                return true;
+            case Keys.End when control:
+                MoveTo(Buffer.End, shift);
+                return true;
+            case Keys.Home:
+                MoveTo(Buffer.Caret with { Column = HomeOf(Buffer) }, shift);
+                return true;
+            case Keys.End:
+                MoveTo(Buffer.Caret with { Column = Buffer.Lines[Buffer.Caret.Line].Length }, shift);
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /// <summary>Types a character, for the keyboard and for tests.</summary>
+    internal void Type(char c)
+    {
+        Edit(buffer => buffer.Insert(c.ToString()));
+    }
+
+    protected override bool IsInputKey(Keys keyData)
+    {
+        Keys key = keyData & Keys.KeyCode;
+
+        return key is Keys.Up or Keys.Down or Keys.Left or Keys.Right or Keys.Tab or Keys.Enter or Keys.Escape
+            || base.IsInputKey(keyData);
+    }
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        base.OnKeyDown(e);
+
+        if (!e.Handled && HandleKey(e.KeyData))
+        {
+            e.Handled = true;
+            e.SuppressKeyPress = true;
+        }
+    }
+
+    protected override void OnKeyPress(KeyPressEventArgs e)
+    {
+        base.OnKeyPress(e);
+
+        // Control characters are the keys handled above, or Ctrl+letters
+        if (!e.Handled && e.KeyChar >= ' ' && e.KeyChar != (char)127)
+        {
+            Type(e.KeyChar);
+            e.Handled = true;
+        }
+    }
 
     protected override void OnFontChanged(EventArgs e)
     {
@@ -270,12 +516,13 @@ public sealed class DiffTextControl : Control
     protected override void OnGotFocus(EventArgs e)
     {
         base.OnGotFocus(e);
-        Invalidate();
+        RestartBlink();
     }
 
     protected override void OnLostFocus(EventArgs e)
     {
         base.OnLostFocus(e);
+        _blink.Stop();
         Invalidate();
     }
 
@@ -286,7 +533,7 @@ public sealed class DiffTextControl : Control
 
         if ((ModifierKeys & Keys.Shift) != 0)
         {
-            ScrollColumns(-lines * 2);
+            _horizontal.Value = Math.Clamp(_horizontal.Value - lines * 2, 0, MaxLeftColumn);
         }
         else
         {
@@ -301,13 +548,30 @@ public sealed class DiffTextControl : Control
 
         if (e.Button == MouseButtons.Left)
         {
-            Press(e.Location, (ModifierKeys & Keys.Shift) != 0);
+            Press(e.Location, (ModifierKeys & Keys.Shift) != 0, e.Clicks == 2);
+        }
+        else if (e.Button == MouseButtons.Right && e.Y < TextArea.Height && e.X < TextArea.Right)
+        {
+            // The menu works on the side clicked; a click outside the selection moves the caret there
+            DiffSide side = SideAt(e.Location);
+            DiffPosition position = PositionAt(e.Location, side);
+            DiffEditBuffer buffer = BufferOf(side);
+            bool inSelection = side == _side && buffer.HasSelection
+                && position >= buffer.SelectionStart && position <= buffer.SelectionEnd;
+
+            if (!inSelection)
+            {
+                _side = side;
+                buffer.MoveTo(position, extend: false);
+                CaretMoved(scroll: false);
+            }
         }
     }
 
     protected override void OnMouseMove(MouseEventArgs e)
     {
         base.OnMouseMove(e);
+        Cursor = e.X >= TextArea.Right ? Cursors.Default : Cursors.IBeam;
         DragTo(e.Location);
     }
 
@@ -315,131 +579,6 @@ public sealed class DiffTextControl : Control
     {
         base.OnMouseUp(e);
         Release();
-    }
-
-    /// <summary>A press of the left button: on the strip, goes there; on a row, selects it, or up to it.</summary>
-    internal void Press(Point point, bool extend)
-    {
-        if (point.X >= TextArea.Right && point.X < TextArea.Right + OverviewWidth)
-        {
-            _isDraggingOverview = true;
-            ScrollToOverview(point.Y);
-
-            return;
-        }
-
-        int row = RowAt(point.Y);
-
-        if (row < 0)
-        {
-            return;
-        }
-
-        DiffSide side = SideAt(point);
-
-        if (!extend || _caret < 0 || side != _selectionSide)
-        {
-            _anchor = row;
-            _selectionSide = side;
-        }
-        else if (_anchor < 0)
-        {
-            _anchor = _caret;
-        }
-
-        _caret = row;
-        _isSelecting = true;
-        Invalidate();
-    }
-
-    internal void DragTo(Point point)
-    {
-        if (_isDraggingOverview)
-        {
-            ScrollToOverview(point.Y);
-
-            return;
-        }
-
-        if (!_isSelecting || _rows.Count == 0)
-        {
-            return;
-        }
-
-        // Beyond the top or bottom, the rows scroll on
-        if (point.Y < 0)
-        {
-            TopRow--;
-        }
-        else if (point.Y >= TextArea.Height)
-        {
-            TopRow++;
-        }
-
-        int y = Math.Clamp(point.Y, 0, Math.Max(0, TextArea.Height - 1));
-        int row = Math.Clamp(TopRow + y / _rowHeight, 0, _rows.Count - 1);
-
-        if (row != _caret)
-        {
-            _caret = row;
-            Invalidate();
-        }
-    }
-
-    internal void Release()
-    {
-        _isSelecting = false;
-        _isDraggingOverview = false;
-    }
-
-    protected override void OnKeyDown(KeyEventArgs e)
-    {
-        base.OnKeyDown(e);
-        bool shift = e.Shift;
-
-        switch (e.KeyCode)
-        {
-            case Keys.C when e.Control:
-            case Keys.Insert when e.Control:
-                Copy();
-                break;
-            case Keys.A when e.Control:
-                _anchor = 0;
-                _caret = _rows.Count - 1;
-                Invalidate();
-                break;
-            case Keys.Up:
-                MoveCaret(-1, shift);
-                break;
-            case Keys.Down:
-                MoveCaret(1, shift);
-                break;
-            case Keys.PageUp:
-                MoveCaret(-VisibleRows, shift);
-                break;
-            case Keys.PageDown:
-                MoveCaret(VisibleRows, shift);
-                break;
-            case Keys.Home when e.Control:
-                MoveCaret(-_rows.Count, shift);
-                break;
-            case Keys.End when e.Control:
-                MoveCaret(_rows.Count, shift);
-                break;
-            case Keys.Home:
-                _horizontal.Value = 0;
-                break;
-            case Keys.Left:
-                ScrollColumns(-4);
-                break;
-            case Keys.Right:
-                ScrollColumns(4);
-                break;
-            default:
-                return;
-        }
-
-        e.Handled = true;
     }
 
     protected override void OnPaint(PaintEventArgs e)
@@ -465,8 +604,88 @@ public sealed class DiffTextControl : Control
         }
 
         PaintCurrent(graphics, area);
+        PaintCaret(graphics, _side == DiffSide.Left ? left : right);
         PaintOverview(graphics, new Rectangle(area.Right, 0, OverviewWidth, area.Height));
     }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _blink.Dispose();
+            _menu.Dispose();
+        }
+
+        base.Dispose(disposing);
+    }
+
+    // The row each line of a side is in
+    private static int[] RowsOfLines(IReadOnlyList<DiffRowModel> rows, DiffSide side, int lineCount)
+    {
+        var rowOf = new int[lineCount];
+        Array.Fill(rowOf, -1);
+
+        for (int row = 0; row < rows.Count; row++)
+        {
+            if (rows[row].On(side) is { } line && line.Number - 1 < lineCount)
+            {
+                rowOf[line.Number - 1] = row;
+            }
+        }
+
+        return rowOf;
+    }
+
+    // The leading spaces of the caret's line, which a new line starts with
+    private static string IndentOf(DiffEditBuffer buffer)
+    {
+        string line = buffer.Lines[buffer.SelectionStart.Line];
+        int length = 0;
+
+        while (length < line.Length && length < buffer.SelectionStart.Column && line[length] is ' ' or '\t')
+        {
+            length++;
+        }
+
+        return line[..length];
+    }
+
+    // Home goes to the first character that isn't a space, then to the line's start
+    private static int HomeOf(DiffEditBuffer buffer)
+    {
+        string line = buffer.Lines[buffer.Caret.Line];
+        int first = 0;
+
+        while (first < line.Length && char.IsWhiteSpace(line[first]))
+        {
+            first++;
+        }
+
+        return buffer.Caret.Column == first ? 0 : first;
+    }
+
+    private void BuildMenu()
+    {
+        ToolStripMenuItem undo = MenuItem("&Undo", "Ctrl+Z", () => Edit(buffer => buffer.Undo()));
+        ToolStripMenuItem redo = MenuItem("&Redo", "Ctrl+Y", () => Edit(buffer => buffer.Redo()));
+        ToolStripMenuItem cut = MenuItem("Cu&t", "Ctrl+X", Cut);
+        ToolStripMenuItem copy = MenuItem("&Copy", "Ctrl+C", Copy);
+        ToolStripMenuItem paste = MenuItem("&Paste", "Ctrl+V", Paste);
+        ToolStripMenuItem selectAll = MenuItem("Select &all", "Ctrl+A", () => HandleKey(Keys.Control | Keys.A));
+        _menu.Items.AddRange(
+            [undo, redo, new ToolStripSeparator(), cut, copy, paste, new ToolStripSeparator(), selectAll]);
+        _menu.Opening += (_, _) =>
+        {
+            undo.Enabled = Buffer.CanUndo;
+            redo.Enabled = Buffer.CanRedo;
+            cut.Enabled = Buffer.HasSelection;
+            copy.Enabled = Buffer.HasSelection;
+            paste.Enabled = Clipboard.ContainsText();
+        };
+    }
+
+    private static ToolStripMenuItem MenuItem(string text, string shortcut, Action click) =>
+        new(text, null, (_, _) => click()) { ShortcutKeyDisplayString = shortcut };
 
     private void Measure()
     {
@@ -487,22 +706,225 @@ public sealed class DiffTextControl : Control
         _horizontal.Minimum = 0;
         _horizontal.LargeChange = VisibleColumns;
         _horizontal.SmallChange = 1;
-        _horizontal.Maximum = Math.Max(0, _maxColumns);
-        _horizontal.Enabled = _maxColumns > VisibleColumns;
-        _horizontal.Value = Math.Clamp(_horizontal.Value, 0, Math.Max(0, _maxColumns - VisibleColumns + 1));
+        _horizontal.Maximum = Math.Max(0, _maxColumns + 1);
+        _horizontal.Enabled = MaxLeftColumn > 0;
+        _horizontal.Value = Math.Clamp(_horizontal.Value, 0, MaxLeftColumn);
     }
 
-    private int RowAt(int y)
+    private int RowOfLine(DiffSide side, int line)
     {
-        int row = TopRow + y / _rowHeight;
+        int[] rowOf = side == DiffSide.Left ? _leftRowOf : _rightRowOf;
 
-        return y >= 0 && y < TextArea.Height && row < _rows.Count ? row : -1;
+        // A line not in the rows yet, as on a side still empty: as far down as it is in its text
+        return line < rowOf.Length && rowOf[line] >= 0 ? rowOf[line] : line;
     }
 
-    private void ScrollColumns(int columns)
+    /// <returns>The line of a side at a row; at a blank row, the next line below, or the end.</returns>
+    private (int Line, bool IsInRow) LineAtRow(DiffSide side, int row)
     {
-        int max = Math.Max(0, _maxColumns - VisibleColumns + 1);
-        _horizontal.Value = Math.Clamp(_horizontal.Value + columns, 0, max);
+        DiffEditBuffer buffer = BufferOf(side);
+
+        if (_rows.Count == 0)
+        {
+            return (Math.Clamp(row, 0, buffer.Lines.Count - 1), true);
+        }
+
+        row = Math.Clamp(row, 0, _rows.Count - 1);
+
+        if (_rows[row].On(side) is { } line)
+        {
+            return (Math.Min(line.Number - 1, buffer.Lines.Count - 1), true);
+        }
+
+        for (int below = row + 1; below < _rows.Count; below++)
+        {
+            if (_rows[below].On(side) is { } next)
+            {
+                return (Math.Min(next.Number - 1, buffer.Lines.Count - 1), false);
+            }
+        }
+
+        return (buffer.Lines.Count - 1, false);
+    }
+
+    private DiffPosition PositionAt(Point point) => PositionAt(point, SideAt(point));
+
+    private DiffPosition PositionAt(Point point, DiffSide side)
+    {
+        DiffEditBuffer buffer = BufferOf(side);
+        int row = TopRow + Math.Clamp(point.Y, 0, Math.Max(0, TextArea.Height - 1)) / _rowHeight;
+
+        if (_rows.Count > 0 && row >= _rows.Count)
+        {
+            return buffer.End;
+        }
+
+        (int line, bool isInRow) = LineAtRow(side, row);
+
+        if (!isInRow)
+        {
+            return new DiffPosition(line, 0);
+        }
+
+        // The character boundary nearest the point
+        string text = buffer.Lines[line];
+        int[] columns = ColumnsOf(text);
+        float column = (point.X - TextLeftOf(side)) / _charWidth + _horizontal.Value;
+
+        for (int i = 0; i < text.Length; i++)
+        {
+            if ((columns[i] + columns[i + 1]) / 2f > column)
+            {
+                return new DiffPosition(line, i);
+            }
+        }
+
+        return new DiffPosition(line, text.Length);
+    }
+
+    private int TextLeftOf(DiffSide side) =>
+        (side == DiffSide.Left ? 0 : SideWidth + DividerWidth) + GutterWidth + TextMargin;
+
+    private void Edit(Func<DiffEditBuffer, bool> edit) => Edit(buffer => { edit(buffer); });
+
+    private void Edit(Action<DiffEditBuffer> edit)
+    {
+        DiffEditBuffer buffer = Buffer;
+        int version = buffer.Version;
+        edit(buffer);
+
+        // The rows come back compared again, before the caret is brought into view
+        if (buffer.Version != version)
+        {
+            TextEdited?.Invoke(this, _side);
+        }
+
+        _preferredColumn = -1;
+        CaretMoved(scroll: true);
+    }
+
+    private void Copy()
+    {
+        string text = Buffer.SelectedText;
+
+        if (text.Length > 0)
+        {
+            Clipboard.SetText(text);
+        }
+    }
+
+    private void Cut()
+    {
+        if (Buffer.HasSelection)
+        {
+            Copy();
+            Edit(buffer => buffer.DeleteForward(word: false));
+        }
+    }
+
+    private void Paste()
+    {
+        if (Clipboard.ContainsText())
+        {
+            string text = Clipboard.GetText();
+            Edit(buffer => buffer.Insert(text));
+        }
+    }
+
+    private void SwitchSide()
+    {
+        int row = RowOfLine(_side, Buffer.Caret.Line);
+        _side = _side == DiffSide.Left ? DiffSide.Right : DiffSide.Left;
+        Buffer.MoveTo(new DiffPosition(LineAtRow(_side, row).Line, 0), extend: false);
+        CaretMoved(scroll: true);
+    }
+
+    private void MoveTo(DiffPosition position, bool extend)
+    {
+        Buffer.MoveTo(position, extend);
+        _preferredColumn = -1;
+        CaretMoved(scroll: true);
+    }
+
+    // Left or Right: by a character or a word; without Shift, a selection just ends at its side
+    private void MoveHorizontally(bool extend, Func<DiffPosition, DiffPosition> step, DiffPosition selectionSide)
+    {
+        MoveTo(Buffer.HasSelection && !extend ? selectionSide : step(Buffer.Caret), extend);
+    }
+
+    // Up, Down, Page Up, Page Down: by lines of the side, keeping to the column where it started
+    private void MoveVertically(int lines, bool extend)
+    {
+        DiffEditBuffer buffer = Buffer;
+        DiffPosition caret = buffer.Caret;
+
+        if (_preferredColumn < 0)
+        {
+            _preferredColumn = ColumnsOf(buffer.Lines[caret.Line])[caret.Column];
+        }
+
+        int line = Math.Clamp(caret.Line + lines, 0, buffer.Lines.Count - 1);
+        string text = buffer.Lines[line];
+        int[] columns = ColumnsOf(text);
+        int column = 0;
+
+        while (column < text.Length && columns[column + 1] <= _preferredColumn)
+        {
+            column++;
+        }
+
+        buffer.MoveTo(new DiffPosition(line, column), extend);
+        CaretMoved(scroll: true);
+    }
+
+    private void CaretMoved(bool scroll)
+    {
+        DiffPosition caret = Buffer.Caret;
+        _navigationRow = RowOfLine(_side, caret.Line);
+
+        if (scroll)
+        {
+            if (_navigationRow < TopRow)
+            {
+                TopRow = _navigationRow;
+            }
+            else if (_navigationRow >= TopRow + VisibleRows)
+            {
+                TopRow = _navigationRow - VisibleRows + 1;
+            }
+
+            int column = ColumnsOf(Buffer.Lines[caret.Line])[caret.Column];
+
+            if (column < _horizontal.Value)
+            {
+                _horizontal.Value = Math.Clamp(column - 4, 0, MaxLeftColumn);
+            }
+            else if (column >= _horizontal.Value + VisibleColumns)
+            {
+                _horizontal.Value = Math.Clamp(column - VisibleColumns + 4, 0, MaxLeftColumn);
+            }
+        }
+
+        RestartBlink();
+    }
+
+    private void RestartBlink()
+    {
+        _isCaretOn = true;
+        _blink.Stop();
+
+        if (Focused)
+        {
+            _blink.Start();
+        }
+
+        Invalidate();
+    }
+
+    private void Blink()
+    {
+        _isCaretOn = !_isCaretOn;
+        Invalidate();
     }
 
     private void ScrollToOverview(int y)
@@ -514,59 +936,6 @@ public sealed class DiffTextControl : Control
 
         int row = (int)((long)Math.Clamp(y, 0, TextArea.Height) * _rows.Count / TextArea.Height);
         TopRow = row - VisibleRows / 2;
-    }
-
-    private void MoveCaret(int rows, bool extend)
-    {
-        if (_rows.Count == 0)
-        {
-            return;
-        }
-
-        int from = _caret < 0 ? TopRow : _caret;
-
-        if (extend && _anchor < 0)
-        {
-            _anchor = from;
-        }
-
-        _caret = Math.Clamp(from + rows, 0, _rows.Count - 1);
-
-        if (!extend)
-        {
-            _anchor = _caret;
-        }
-
-        if (_caret < TopRow)
-        {
-            TopRow = _caret;
-        }
-        else if (_caret >= TopRow + VisibleRows)
-        {
-            TopRow = _caret - VisibleRows + 1;
-        }
-
-        Invalidate();
-    }
-
-    private void Copy()
-    {
-        string text = SelectedText();
-
-        if (text.Length > 0)
-        {
-            Clipboard.SetText(text);
-        }
-    }
-
-    private bool IsSelected(int row, DiffSide side)
-    {
-        if (side != _selectionSide || _anchor < 0 || _caret < 0)
-        {
-            return false;
-        }
-
-        return row >= Math.Min(_anchor, _caret) && row <= Math.Max(_anchor, _caret);
     }
 
     private void PaintLine(Graphics graphics, Rectangle side, int y, int rowIndex, DiffSide which)
@@ -581,22 +950,16 @@ public sealed class DiffTextControl : Control
             : isLeft ? _removedBack
             : _addedBack;
 
-        if (IsSelected(rowIndex, which))
-        {
-            back = _selectedBack;
-        }
-
-        var rowBounds = new Rectangle(side.X, y, side.Width, _rowHeight);
         using (var backBrush = new SolidBrush(back))
         {
-            graphics.FillRectangle(backBrush, rowBounds);
+            graphics.FillRectangle(backBrush, side.X, y, side.Width, _rowHeight);
         }
 
         // Line number and +/-, in the gutter
         var gutter = new Rectangle(side.X, y, GutterWidth, _rowHeight);
-        Color gutterBack = !isChange ? _gutterBack : isLeft ? _removedGutter : _addedGutter;
+        Color gutterBack = line is null ? _blankBack : !isChange ? _gutterBack : isLeft ? _removedGutter : _addedGutter;
 
-        using (var gutterBrush = new SolidBrush(line is null ? _blankBack : gutterBack))
+        using (var gutterBrush = new SolidBrush(gutterBack))
         {
             graphics.FillRectangle(gutterBrush, gutter);
         }
@@ -640,6 +1003,7 @@ public sealed class DiffTextControl : Control
             }
         }
 
+        PaintSelection(graphics, text, y, which, line.Number - 1, columns);
         string expanded = Expanded(line.Text);
 
         if (firstColumn < expanded.Length)
@@ -655,6 +1019,58 @@ public sealed class DiffTextControl : Control
         }
 
         graphics.Restore(state);
+    }
+
+    // The part of a line selected, with a bit past its end when the selection goes on to the next line
+    private void PaintSelection(Graphics graphics, Rectangle text, int y, DiffSide side, int line, int[] columns)
+    {
+        DiffEditBuffer buffer = BufferOf(side);
+
+        if (!buffer.HasSelection || line < buffer.SelectionStart.Line || line > buffer.SelectionEnd.Line)
+        {
+            return;
+        }
+
+        int length = columns.Length - 1;
+        int start = line == buffer.SelectionStart.Line ? Math.Min(buffer.SelectionStart.Column, length) : 0;
+        int end = line == buffer.SelectionEnd.Line ? Math.Min(buffer.SelectionEnd.Column, length) : length;
+        float from = text.X + (columns[start] - _horizontal.Value) * _charWidth;
+        float to = text.X + (columns[end] - _horizontal.Value) * _charWidth;
+
+        if (line < buffer.SelectionEnd.Line)
+        {
+            to += _charWidth / 2;
+        }
+
+        using var brush = new SolidBrush(side == _side && Focused ? _selectionBack : _otherSelectionBack);
+        graphics.FillRectangle(brush, from, y, Math.Max(0, to - from), _rowHeight);
+    }
+
+    private void PaintCaret(Graphics graphics, Rectangle side)
+    {
+        if (!Focused || !_isCaretOn)
+        {
+            return;
+        }
+
+        DiffPosition caret = Buffer.Caret;
+        int row = RowOfLine(_side, caret.Line);
+
+        if (row < TopRow || row >= TopRow + VisibleRows + 1)
+        {
+            return;
+        }
+
+        int column = ColumnsOf(Buffer.Lines[caret.Line])[caret.Column] - _horizontal.Value;
+        int x = side.X + GutterWidth + TextMargin + (int)(column * _charWidth);
+
+        if (x < side.X + GutterWidth || x > side.Right)
+        {
+            return;
+        }
+
+        using var brush = new SolidBrush(ForeColor);
+        graphics.FillRectangle(brush, x - CaretWidth / 2, (row - TopRow) * _rowHeight, CaretWidth, _rowHeight);
     }
 
     // A line above and below the current change, across both sides

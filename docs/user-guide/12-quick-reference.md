@@ -84,7 +84,9 @@ All other actions have no default hotkey. Add them in `hotkeys.cfg`.
 | F7 / Shift+F7 | Next / previous change |
 | F5 | Read the files again |
 | Ctrl+O | Choose the left file, or two files |
-| Ctrl+C / Ctrl+A | Copy the lines selected / select every line of a side |
+| Ctrl+S | Save the side with the caret |
+| F6 | Move the caret to the other side |
+| Ctrl+Z / Ctrl+Y | Undo / redo on that side |
 
 ---
 

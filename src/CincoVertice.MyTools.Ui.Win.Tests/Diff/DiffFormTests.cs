@@ -27,7 +27,7 @@ public sealed class DiffFormTests : IDisposable
         string left = Write("old.cs", "int a = 1;\r\nint b = 2;\r\n");
         string right = Write("new.cs", "int a = 1;\nint b = 3;\nint c = 4;\n");
         using var form = new DiffForm();
-        var presenter = new DiffPresenter(form, new DiskDiffFileReader());
+        var presenter = new DiffPresenter(form, new DiskDiffFileReader(), new DiskDiffFileWriter());
 
         // Act
         presenter.Open(left, right);

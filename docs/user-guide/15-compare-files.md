@@ -1,6 +1,6 @@
 # Compare Files
 
-**Compare files** shows two text files side by side, line by line, with what differs between them colored. Use it to see what changed between two versions of a file, a config before and after, or two texts copied from anywhere.
+**Compare files** shows two text files side by side, line by line, with what differs between them colored, and lets you edit either side, seeing the differences change as you type. Use it to see what changed between two versions of a file, a config before and after, or two texts copied from anywhere, and to fix one to match the other.
 
 Open it from the tray menu: **Compare files...**. Each time opens a new window, so several comparisons can be open at once. To open it with a hotkey, bind `CompareFiles` in `hotkeys.cfg` (see [Hotkeys](02-hotkeys.md)).
 
@@ -13,6 +13,7 @@ Each side shows a file or a text:
 | Choose a file for a side | **Left file...** (Ctrl+O) or **Right file...**. Pick two files in the dialog to put them on both sides at once, the first on the left. |
 | Drop files | Drag a file from Explorer onto the left or right half of the window. Drop two files to compare them. |
 | Compare text you copied | Copy it, then **Paste left** or **Paste right**. A side can be a file and the other a pasted text. |
+| Type a text | Click an empty side and type, or paste with Ctrl+V. |
 | Swap the sides | **Swap**: the left goes to the right, the right to the left. |
 
 The path of each side's file shows above it, and the window's title gives both names.
@@ -42,7 +43,7 @@ Line endings never count: a file with Windows line endings (CRLF) and the same f
 
 ## Going from change to change
 
-**Next change** (F7) and **Previous change** (Shift+F7) go from one change to the next, marking the current one with a blue line above and below it. They go from the line you last clicked, if it's showing, or else from the top of what's showing. A new comparison starts at its first change.
+**Next change** (F7) and **Previous change** (Shift+F7) go from one change to the next, marking the current one with a blue line above and below it. They go from the caret's line, if it's showing, or else from the top of what's showing, and put the caret at the change. A new comparison starts at its first change.
 
 ## Ignoring whitespace and case
 
@@ -53,22 +54,39 @@ Turning either on or off compares again, staying where you are.
 
 ## When a file changes
 
-When you come back to the window after a file changed, for example after saving it in another editor, it is read and compared again, staying where you are. **Reload** (F5) reads both files again yourself, such as for a file on a network drive. Pasted text stays as it was.
+When you come back to the window after a file changed, for example after saving it in another editor, it is read and compared again, staying where you are. If you changed that file here too, you're asked first whether to read it again and lose your changes; if not, you aren't asked again until it changes again. **Reload** (F5) reads both files again yourself, such as for a file on a network drive, asking the same way. Pasted text stays as it was.
 
-## Selecting and copying
+## Editing
 
-Click a line to select it, on its side; Shift+click or drag to select more. **Ctrl+C** copies the selected lines of that side, without the blank rows. **Ctrl+A** selects every line of the side you last clicked.
+Both sides are editors. Click a side to put the caret there, and type: the two sides are compared again at every change, so the colors, the strip and the status bar always show the texts as they are now. **F6** moves the caret to the other side, at the same row. The path of a file changed and not saved ends with `*`, as does its name in the title.
 
 | Key | Effect |
 |---|---|
-| Up / Down, Page Up / Page Down | Move the selection |
-| Ctrl+Home / Ctrl+End | The first / last line |
-| Left / Right, Shift+wheel | Scroll sideways |
-| Home | Back to the start of the lines |
+| Arrows, Home / End, Page Up / Page Down | Move the caret; with Shift, select. Home goes to the first character that isn't a space, then to the start of the line. |
+| Ctrl+Left / Ctrl+Right | A word left / right |
+| Ctrl+Home / Ctrl+End | The start / end of the text |
+| Ctrl+Up / Ctrl+Down, wheel | Scroll, without moving the caret; Shift+wheel scrolls sideways |
+| Enter | A new line, as indented as the one before |
+| Backspace / Delete | The character before / after; with Ctrl, the word |
+| Ctrl+Z / Ctrl+Y or Ctrl+Shift+Z | Undo / redo, on the side with the caret. Typing a run of characters is one step. |
+| Ctrl+X / Ctrl+C / Ctrl+V | Cut / copy / paste |
+| Ctrl+A | Select the whole side |
+| Double-click | Select a word |
+| Esc | Clear the selection |
+
+The right-click menu has the same: Undo, Redo, Cut, Copy, Paste and Select all.
+
+A click on a blank row of a side, where only the other side has a line, puts the caret at the start of that side's next line.
+
+## Saving
+
+**Save** (Ctrl+S) saves the side with the caret to its file, written as it was read: the same encoding, with its byte order mark or without, the same line breaks (those of its first line, for a file that mixed them) and a line break at the end only if it had one. Text that was pasted or typed is saved where you choose.
+
+Closing the window with a file changed and not saved asks whether to save it. Pasted or typed text isn't asked for: save it first if you want to keep it.
 
 ## Limits
 
-- **It shows, it doesn't edit.** Change the files in your editor; the comparison follows when you come back to the window.
+- **A plain text editor.** No syntax colors, and no search or replace: for those, edit in your own editor, and the comparison follows when you come back to the window.
 - **Two files, not folders.** Dropping a folder shows a message.
 - **Very long lines.** A changed line with more than 4000 words is marked whole rather than word by word.
 

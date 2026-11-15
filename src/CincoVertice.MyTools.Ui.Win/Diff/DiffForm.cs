@@ -1,12 +1,15 @@
-﻿using CincoVertice.MyTools.Ui.Diff.Models;
+﻿using System.ComponentModel;
+using CincoVertice.MyTools.Ui.Diff.Models;
 using CincoVertice.MyTools.Ui.Diff.Presenters;
 using CincoVertice.MyTools.Ui.Diff.Views;
 
 namespace CincoVertice.MyTools.Ui.Win.Diff;
 
 /// <summary>
-///     Compare files view: the toolbar, what each side shows, the rows side by side (<see cref="DiffTextControl"/>) and
-///     a status bar. Files can be dropped on either side. <see cref="DiffPresenter"/> decides everything shown.
+///     Compare files view: the toolbar, what each side shows, both sides side by side to read and edit
+///     (<see cref="DiffTextControl"/>) and a status bar. Files can be dropped on either side.
+///     <see cref="DiffPresenter"/> decides everything shown; the control keeps the text being edited, as a text box
+///     would.
 /// </summary>
 public partial class DiffForm : Form, IDiffView
 {
@@ -22,11 +25,17 @@ public partial class DiffForm : Form, IDiffView
 
     public event EventHandler<DiffPasteModel>? TextPasted;
 
+    public event EventHandler<DiffEditModel>? TextEdited;
+
+    public event EventHandler<DiffSide>? SaveRequested;
+
     public event EventHandler? SwapRequested;
 
     public event EventHandler? ReloadRequested;
 
     public event EventHandler? WindowActivated;
+
+    public event EventHandler<CancelEventArgs>? CloseRequested;
 
     public event EventHandler<DiffOptionsModel>? OptionsChanged;
 
@@ -43,6 +52,11 @@ public partial class DiffForm : Form, IDiffView
     {
         LeftTitleLabel.Text = left;
         RightTitleLabel.Text = right;
+    }
+
+    public void ShowText(DiffSide side, IReadOnlyList<string> lines)
+    {
+        DiffText.SetText(side, lines);
     }
 
     public void ShowDiff(DiffResultModel result, bool keepPlace)
@@ -72,6 +86,42 @@ public partial class DiffForm : Form, IDiffView
         MessageBox.Show(this, message, DiffPresenter.Title, MessageBoxButtons.OK, MessageBoxIcon.Warning);
     }
 
+    public string? AskSavePath(DiffSide side)
+    {
+        SaveDialog.Title = side == DiffSide.Left ? "Save the left side as" : "Save the right side as";
+
+        return SaveDialog.ShowDialog(this) == DialogResult.OK ? SaveDialog.FileName : null;
+    }
+
+    public DiffSaveChoice AskSaveChanges(IReadOnlyList<string> names)
+    {
+        DialogResult answer = MessageBox.Show(
+            this,
+            $"Save the changes to {string.Join(" and ", names)}?",
+            DiffPresenter.Title,
+            MessageBoxButtons.YesNoCancel,
+            MessageBoxIcon.Question);
+
+        return answer switch
+        {
+            DialogResult.Yes => DiffSaveChoice.Save,
+            DialogResult.No => DiffSaveChoice.DontSave,
+            _ => DiffSaveChoice.Cancel,
+        };
+    }
+
+    public bool AskReload(string name)
+    {
+        DialogResult answer = MessageBox.Show(
+            this,
+            $"{name} changed on disk. Read it again, losing the changes made to it here?",
+            DiffPresenter.Title,
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question);
+
+        return answer == DialogResult.Yes;
+    }
+
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
         switch (keyData)
@@ -87,6 +137,9 @@ public partial class DiffForm : Form, IDiffView
                 return true;
             case Keys.Control | Keys.O:
                 ChooseFiles(DiffSide.Left);
+                return true;
+            case Keys.Control | Keys.S:
+                SaveRequested?.Invoke(this, DiffText.EditedSide);
                 return true;
             default:
                 return base.ProcessCmdKey(ref msg, keyData);
@@ -119,6 +172,8 @@ public partial class DiffForm : Form, IDiffView
 
     private void PasteRightButton_Click(object? sender, EventArgs e) => Paste(DiffSide.Right);
 
+    private void SaveButton_Click(object? sender, EventArgs e) => SaveRequested?.Invoke(this, DiffText.EditedSide);
+
     private void SwapButton_Click(object? sender, EventArgs e) => SwapRequested?.Invoke(this, EventArgs.Empty);
 
     private void ReloadButton_Click(object? sender, EventArgs e) => ReloadRequested?.Invoke(this, EventArgs.Empty);
@@ -135,6 +190,22 @@ public partial class DiffForm : Form, IDiffView
             new DiffOptionsModel(IgnoreWhitespaceButton.Checked, IgnoreCaseButton.Checked));
 
     private void DiffForm_Activated(object? sender, EventArgs e) => WindowActivated?.Invoke(this, EventArgs.Empty);
+
+    private void DiffForm_FormClosing(object? sender, FormClosingEventArgs e)
+    {
+        if (e.CloseReason != CloseReason.UserClosing)
+        {
+            return;
+        }
+
+        var closing = new CancelEventArgs();
+        CloseRequested?.Invoke(this, closing);
+        e.Cancel = closing.Cancel;
+    }
+
+    // A copy: the control's lines change as the user goes on typing
+    private void DiffText_TextEdited(object? sender, DiffSide side) =>
+        TextEdited?.Invoke(this, new DiffEditModel(side, [.. DiffText.LinesOf(side)]));
 
     private void DiffText_DragEnter(object? sender, DragEventArgs e)
     {

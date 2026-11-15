@@ -38,7 +38,7 @@ public sealed class CompareFilesAction : IAppAction
     public void Open(string? leftPath, string? rightPath)
     {
         var form = new DiffForm { Icon = _appIcon.Current };
-        var presenter = new DiffPresenter(form, new DiskDiffFileReader());
+        var presenter = new DiffPresenter(form, new DiskDiffFileReader(), new DiskDiffFileWriter());
         _help.OpenOnF1(form, () => HelpTopics.CompareFiles);
         presenter.Open(leftPath, rightPath);
         form.CenterOnCursorScreen();

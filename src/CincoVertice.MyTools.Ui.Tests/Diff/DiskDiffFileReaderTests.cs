@@ -1,4 +1,5 @@
-﻿using CincoVertice.MyTools.Ui.Diff.Models;
+﻿using System.Text;
+using CincoVertice.MyTools.Ui.Diff.Models;
 using CincoVertice.MyTools.Ui.Diff.Services;
 using Xunit;
 
@@ -23,16 +24,21 @@ public sealed class DiskDiffFileReaderTests : IDisposable
     public void Decode_ReadsUtf8_AndOtherFilesAsLatin1()
     {
         // Act
-        string utf8 = DiskDiffFileReader.Decode([0xEF, 0xBB, 0xBF, 0x63, 0x61, 0x66, 0xC3, 0xA9]);
-        string noBom = DiskDiffFileReader.Decode([0x63, 0x61, 0x66, 0xC3, 0xA9]);
-        string latin1 = DiskDiffFileReader.Decode([0x63, 0x61, 0x66, 0xE9]);
-        string utf16 = DiskDiffFileReader.Decode([0xFF, 0xFE, 0x63, 0x00, 0xE9, 0x00]);
+        (string utf8, Encoding withBom) =
+            DiskDiffFileReader.Decode([0xEF, 0xBB, 0xBF, 0x63, 0x61, 0x66, 0xC3, 0xA9]);
+        (string noBom, Encoding withoutBom) = DiskDiffFileReader.Decode([0x63, 0x61, 0x66, 0xC3, 0xA9]);
+        (string latin1, Encoding older) = DiskDiffFileReader.Decode([0x63, 0x61, 0x66, 0xE9]);
+        (string utf16, Encoding unicode) = DiskDiffFileReader.Decode([0xFF, 0xFE, 0x63, 0x00, 0xE9, 0x00]);
 
-        // Assert
+        // Assert: each written back as it was
         Assert.Equal("café", utf8);
+        Assert.NotEmpty(withBom.GetPreamble());
         Assert.Equal("café", noBom);
+        Assert.Empty(withoutBom.GetPreamble());
         Assert.Equal("café", latin1);
+        Assert.Same(Encoding.Latin1, older);
         Assert.Equal("cé", utf16);
+        Assert.Equal(Encoding.Unicode.CodePage, unicode.CodePage);
     }
 
     [Fact]

@@ -12,11 +12,15 @@ public static class TextDiffer
     /// <summary>Lines with more words than this are marked whole when changed, rather than word by word.</summary>
     public const int MaxWordsCompared = 4000;
 
-    public static DiffResultModel Compare(string left, string right, DiffOptionsModel options)
-    {
-        string[] leftLines = SplitLines(left);
-        string[] rightLines = SplitLines(right);
+    public static DiffResultModel Compare(string left, string right, DiffOptionsModel options) =>
+        Compare(SplitLines(left), SplitLines(right), options);
 
+    /// <summary>Compares lines already split, such as those being edited.</summary>
+    public static DiffResultModel Compare(
+        IReadOnlyList<string> leftLines,
+        IReadOnlyList<string> rightLines,
+        DiffOptionsModel options)
+    {
         // Each different line gets a number, lines equal as the options say the same one
         var ids = new Dictionary<string, int>(StringComparer.Ordinal);
         int[] a = [.. leftLines.Select(line => IdOf(Normalized(line, options), ids))];

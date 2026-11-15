@@ -1,6 +1,9 @@
-﻿using CincoVertice.MyTools.Ui.Diff.Interfaces;
+﻿using System.ComponentModel;
+using System.Text;
+using CincoVertice.MyTools.Ui.Diff.Interfaces;
 using CincoVertice.MyTools.Ui.Diff.Models;
 using CincoVertice.MyTools.Ui.Diff.Presenters;
+using CincoVertice.MyTools.Ui.Diff.Services;
 using CincoVertice.MyTools.Ui.Diff.Views;
 using Xunit;
 
@@ -19,17 +22,18 @@ public class DiffPresenterTests
     {
         _files.Write(Left, "a\nb\nc\nd\ne\nf");
         _files.Write(Right, "a\nB\nc\nd\nE\nf\ng");
-        _presenter = new DiffPresenter(_view, _files);
+        _presenter = new DiffPresenter(_view, _files, _files);
     }
 
     [Fact]
-    public void Open_TwoFiles_ComparesThem_AndGoesToTheFirstChange()
+    public void Open_TwoFiles_ShowsThemToEdit_ComparesThem_AndGoesToTheFirstChange()
     {
         // Act
         _presenter.Open(Left, Right);
 
         // Assert
         Assert.Equal((Left, Right), _view.Sides);
+        Assert.Equal(["a", "b", "c", "d", "e", "f"], _view.Texts[DiffSide.Left]);
         Assert.Equal("old.txt vs new.txt - Compare files", _view.Title);
         Assert.Equal(3, _view.Result!.Hunks.Count);
         Assert.Equal(new DiffHunkModel(1, 1), _view.Change);
@@ -51,7 +55,7 @@ public class DiffPresenterTests
     }
 
     [Fact]
-    public void OneFileChosen_GoesOnItsSide_AndAsksForTheOther()
+    public void OneSide_ShowsItsLinesAlone_AndAsksForTheOther()
     {
         // Arrange
         _presenter.Open();
@@ -61,7 +65,9 @@ public class DiffPresenterTests
 
         // Assert
         Assert.Equal((DiffPresenter.NoSource, Right), _view.Sides);
-        Assert.Equal("Now choose the left side.", _view.Status.Summary);
+        Assert.Equal("Now choose the left side, or paste or type it.", _view.Status.Summary);
+        Assert.Equal(7, _view.Result!.Rows.Count);
+        Assert.All(_view.Result.Rows, row => Assert.Null(row.Left));
     }
 
     [Fact]
@@ -102,6 +108,70 @@ public class DiffPresenterTests
     }
 
     [Fact]
+    public void AnEdit_ComparesAgain_InPlace_AndMarksTheFileUnsaved()
+    {
+        // Arrange
+        _presenter.Open(Left, Right);
+
+        // Act
+        _view.Edit(DiffSide.Left, ["a", "B", "c", "d", "E", "f", "g"]);
+
+        // Assert
+        Assert.False(_view.Result!.HasChanges);
+        Assert.True(_view.KeptPlace);
+        Assert.Equal(("C:\\work\\old.txt *", Right), _view.Sides);
+        Assert.Equal("old.txt* vs new.txt - Compare files", _view.Title);
+        Assert.Equal("They're the same.", _view.Status.Summary);
+    }
+
+    [Fact]
+    public void Typing_OnAnEmptySide_MakesItAText()
+    {
+        // Arrange
+        _presenter.Open(Left, null);
+
+        // Act
+        _view.Edit(DiffSide.Right, ["a", "b"]);
+
+        // Assert
+        Assert.Equal((Left, DiffPresenter.PastedText), _view.Sides);
+        Assert.Equal(4, _view.Result!.Removed);
+    }
+
+    [Fact]
+    public void Save_WritesTheFile_AsItWasRead()
+    {
+        // Arrange
+        _files.Write(Left, "one\r\ntwo\r\n", Encoding.UTF8);
+        _presenter.Open(Left, Right);
+        _view.Edit(DiffSide.Left, ["one", "2"]);
+
+        // Act
+        _view.Save(DiffSide.Left);
+
+        // Assert
+        Assert.Equal("one\r\n2\r\n", _files.TextOf(Left));
+        Assert.Same(Encoding.UTF8, _files.EncodingOf(Left));
+        Assert.Equal((Left, Right), _view.Sides);
+    }
+
+    [Fact]
+    public void Save_PastedText_AsksWhere()
+    {
+        // Arrange
+        _presenter.Open(Left, null);
+        _view.Paste(new DiffPasteModel(DiffSide.Right, "x\ny"));
+        _view.SavePath = @"C:\work\pasted.txt";
+
+        // Act
+        _view.Save(DiffSide.Right);
+
+        // Assert
+        Assert.Equal("x\ny", _files.TextOf(@"C:\work\pasted.txt"));
+        Assert.Equal((Left, @"C:\work\pasted.txt"), _view.Sides);
+    }
+
+    [Fact]
     public void PastedText_TakesASidesPlace()
     {
         // Arrange
@@ -112,6 +182,7 @@ public class DiffPresenterTests
 
         // Assert
         Assert.Equal((Left, DiffPresenter.PastedText), _view.Sides);
+        Assert.Equal(["a", "b", "c", "d", "e", "f"], _view.Texts[DiffSide.Right]);
         Assert.Equal("They're the same.", _view.Status.Summary);
         Assert.Equal("old.txt vs Pasted text - Compare files", _view.Title);
     }
@@ -137,6 +208,7 @@ public class DiffPresenterTests
 
         // Assert
         Assert.Equal((Right, Left), _view.Sides);
+        Assert.Equal(7, _view.Texts[DiffSide.Left].Count);
         Assert.Equal(DiffRowKind.Removed, _view.Result!.Rows[^1].Kind);
     }
 
@@ -168,7 +240,26 @@ public class DiffPresenterTests
 
         // Assert
         Assert.False(_view.Result!.HasChanges);
-        Assert.True(_view.KeptPlace);
+        Assert.Equal(6, _view.Texts[DiffSide.Right].Count);
+        Assert.Empty(_view.ReloadsAsked);
+    }
+
+    [Fact]
+    public void AFileEditedHere_AndWrittenMeanwhile_IsReadAgainOnlyIfTheUserAgrees()
+    {
+        // Arrange
+        _presenter.Open(Left, Right);
+        _view.Edit(DiffSide.Right, ["mine"]);
+        _files.Write(Right, "theirs");
+        _view.ReloadAnswer = false;
+
+        // Act
+        _view.Activate();
+        _view.Activate();
+
+        // Assert: asked once, and the edit stays
+        Assert.Equal(["new.txt"], _view.ReloadsAsked);
+        Assert.Equal(["mine"], _view.Texts[DiffSide.Right]);
     }
 
     [Fact]
@@ -197,6 +288,53 @@ public class DiffPresenterTests
 
         // Assert
         Assert.False(_view.Result!.HasChanges);
+    }
+
+    [Fact]
+    public void Closing_WithUnsavedChanges_Asks_AndCancelKeepsTheWindow()
+    {
+        // Arrange
+        _presenter.Open(Left, Right);
+        _view.Edit(DiffSide.Left, ["changed"]);
+        _view.SaveAnswer = DiffSaveChoice.Cancel;
+
+        // Act
+        bool cancelled = _view.Close();
+
+        // Assert
+        Assert.True(cancelled);
+        Assert.Equal(["old.txt"], _view.SavesAsked.Single());
+    }
+
+    [Fact]
+    public void Closing_AndSaving_WritesTheChanges()
+    {
+        // Arrange
+        _presenter.Open(Left, Right);
+        _view.Edit(DiffSide.Left, ["changed"]);
+        _view.SaveAnswer = DiffSaveChoice.Save;
+
+        // Act
+        bool cancelled = _view.Close();
+
+        // Assert
+        Assert.False(cancelled);
+        Assert.Equal("changed", _files.TextOf(Left));
+    }
+
+    [Fact]
+    public void Closing_WithOnlyPastedTextChanged_DoesNotAsk()
+    {
+        // Arrange
+        _presenter.Open(Left, null);
+        _view.Edit(DiffSide.Right, ["typed"]);
+
+        // Act
+        bool cancelled = _view.Close();
+
+        // Assert
+        Assert.False(cancelled);
+        Assert.Empty(_view.SavesAsked);
     }
 
     [Fact]
@@ -230,32 +368,53 @@ public class DiffPresenterTests
     [Theory]
     [InlineData("a\r\nb", "a\nb", false, "The lines are the same: only the line endings differ.")]
     [InlineData("a b", "ab", true, "No differences, ignoring whitespace.")]
+    [InlineData("a\nb", "a\nb", false, "They're the same.")]
     public void Summary_SaysWhyTheSameDiffers(string left, string right, bool ignoreWhitespace, string summary)
     {
         // Arrange
         var options = new DiffOptionsModel(IgnoreWhitespace: ignoreWhitespace);
-        DiffResultModel result = Ui.Diff.Services.TextDiffer.Compare(left, right, options);
+        DiffResultModel result = TextDiffer.Compare(left, right, options);
 
-        // Act / Assert
-        Assert.Equal(summary, DiffPresenter.Summary(result, left, right, options));
+        // Act
+        string actual = DiffPresenter.Summary(result, FileOf(left), FileOf(right), options);
+
+        // Assert
+        Assert.Equal(summary, actual);
     }
 
-    private sealed class FakeFiles : IDiffFileReader
+    private static DiffSourceModel FileOf(string text) => new(
+        TextDiffer.SplitLines(text),
+        @"C:\a.txt",
+        null,
+        DiffTextFormatModel.Of(text, Encoding.UTF8));
+
+    private sealed class FakeFiles : IDiffFileReader, IDiffFileWriter
     {
         private readonly Dictionary<string, DiffFileModel> _files = [];
         private DateTime _now = new(2026, 11, 15, 9, 0, 0, DateTimeKind.Utc);
 
-        public void Write(string path, string text)
+        public void Write(string path, string text, Encoding? encoding = null)
         {
             _now = _now.AddSeconds(1);
-            _files[path] = new DiffFileModel(text, _now);
+            _files[path] = new DiffFileModel(text, _now, encoding ?? new UTF8Encoding(false));
         }
+
+        public string TextOf(string path) => _files[path].Text;
+
+        public Encoding EncodingOf(string path) => _files[path].Encoding;
 
         public DiffFileModel Read(string path) =>
             _files.TryGetValue(path, out DiffFileModel? file) ? file : throw new IOException("Not found.");
 
         public DateTime? WrittenUtc(string path) =>
             _files.TryGetValue(path, out DiffFileModel? file) ? file.WrittenUtc : null;
+
+        DateTime IDiffFileWriter.Write(string path, string text, Encoding encoding)
+        {
+            Write(path, text, encoding);
+
+            return _now;
+        }
     }
 
     private sealed class FakeDiffView : IDiffView
@@ -264,11 +423,17 @@ public class DiffPresenterTests
 
         public event EventHandler<DiffPasteModel>? TextPasted;
 
+        public event EventHandler<DiffEditModel>? TextEdited;
+
+        public event EventHandler<DiffSide>? SaveRequested;
+
         public event EventHandler? SwapRequested;
 
         public event EventHandler? ReloadRequested;
 
         public event EventHandler? WindowActivated;
+
+        public event EventHandler<CancelEventArgs>? CloseRequested;
 
         public event EventHandler<DiffOptionsModel>? OptionsChanged;
 
@@ -279,6 +444,8 @@ public class DiffPresenterTests
         public string? Title { get; private set; }
 
         public (string Left, string Right) Sides { get; private set; }
+
+        public Dictionary<DiffSide, IReadOnlyList<string>> Texts { get; } = [];
 
         public DiffResultModel? Result { get; private set; }
 
@@ -292,9 +459,21 @@ public class DiffPresenterTests
 
         public List<string> Problems { get; } = [];
 
+        public string? SavePath { get; set; }
+
+        public DiffSaveChoice SaveAnswer { get; set; } = DiffSaveChoice.DontSave;
+
+        public List<IReadOnlyList<string>> SavesAsked { get; } = [];
+
+        public bool ReloadAnswer { get; set; } = true;
+
+        public List<string> ReloadsAsked { get; } = [];
+
         public void ShowTitle(string title) => Title = title;
 
         public void ShowSides(string left, string right) => Sides = (left, right);
+
+        public void ShowText(DiffSide side, IReadOnlyList<string> lines) => Texts[side] = lines;
 
         public void ShowDiff(DiffResultModel result, bool keepPlace)
         {
@@ -310,15 +489,47 @@ public class DiffPresenterTests
 
         public void ShowProblem(string message) => Problems.Add(message);
 
+        public string? AskSavePath(DiffSide side) => SavePath;
+
+        public DiffSaveChoice AskSaveChanges(IReadOnlyList<string> names)
+        {
+            SavesAsked.Add(names);
+
+            return SaveAnswer;
+        }
+
+        public bool AskReload(string name)
+        {
+            ReloadsAsked.Add(name);
+
+            return ReloadAnswer;
+        }
+
         public void ChooseFiles(DiffFilesModel files) => FilesChosen?.Invoke(this, files);
 
         public void Paste(DiffPasteModel paste) => TextPasted?.Invoke(this, paste);
+
+        public void Edit(DiffSide side, IReadOnlyList<string> lines)
+        {
+            Texts[side] = lines;
+            TextEdited?.Invoke(this, new DiffEditModel(side, lines));
+        }
+
+        public void Save(DiffSide side) => SaveRequested?.Invoke(this, side);
 
         public void Swap() => SwapRequested?.Invoke(this, EventArgs.Empty);
 
         public void Reload() => ReloadRequested?.Invoke(this, EventArgs.Empty);
 
         public void Activate() => WindowActivated?.Invoke(this, EventArgs.Empty);
+
+        public bool Close()
+        {
+            var e = new CancelEventArgs();
+            CloseRequested?.Invoke(this, e);
+
+            return e.Cancel;
+        }
 
         public void SetOptions(DiffOptionsModel options) => OptionsChanged?.Invoke(this, options);
 
