@@ -7,10 +7,11 @@ using CincoVertice.MyTools.Ui.Zones.Views;
 namespace CincoVertice.MyTools.Ui.Zones.Presenters;
 
 /// <summary>
-///     Window zones: while the user drags a window holding Shift, shows the zones of every monitor, its own layout or
-///     the default one, with the one under the mouse highlighted, and when they let go there, moves the window into
-///     that zone. Without Shift, dragging is as usual. The layouts are read during each drag, the first time Shift is
-///     held, so a change applies at the next one.
+///     Window zones: while the user drags a window, a press of Shift, or a click of the right mouse button, shows the
+///     zones of every monitor, its own layout or the default one, with the one under the mouse highlighted; they stay
+///     until the next press, so Shift needn't be held. Letting go of the window over a zone moves it into that zone.
+///     Esc cancels the drag: the window goes back, into no zone. A window being resized shows none. The layouts are
+///     read during each drag, the first time the zones show, so a change applies at the next one.
 /// </summary>
 public sealed class ZoneDragPresenter
 {
@@ -26,6 +27,13 @@ public sealed class ZoneDragPresenter
 
     private bool _isShown;
     private int? _highlighted;
+
+    // Whether the user asked for the zones in this drag, which each press of Shift or the right button turns over;
+    // what was down at the last move, to tell a press; and whether Esc cancelled the drag
+    private bool _areZonesAsked;
+    private bool _wasShiftDown;
+    private bool _wasRightButtonDown;
+    private bool _isCancelled;
 
     public ZoneDragPresenter(
         IWindowDragSource drags,
@@ -51,16 +59,40 @@ public sealed class ZoneDragPresenter
         Hide();
         _window = window;
         _zones = null;
+        _areZonesAsked = false;
+        _wasShiftDown = false;
+        _wasRightButtonDown = false;
+        _isCancelled = false;
     }
 
     private void OnDragMoved(object? sender, ZoneDragPointerModel pointer)
     {
-        if (_window == 0)
+        if (_window == 0 || _isCancelled)
         {
             return;
         }
 
-        if (!pointer.ShowZones)
+        // Windows puts the window back on Esc; it mustn't then go into a zone
+        if (pointer.IsEscapeDown)
+        {
+            _isCancelled = true;
+            Hide();
+
+            return;
+        }
+
+        bool isPressed = (pointer.IsShiftDown && !_wasShiftDown)
+            || (pointer.IsRightButtonDown && !_wasRightButtonDown);
+
+        _wasShiftDown = pointer.IsShiftDown;
+        _wasRightButtonDown = pointer.IsRightButtonDown;
+
+        if (isPressed)
+        {
+            _areZonesAsked = !_areZonesAsked;
+        }
+
+        if (!_areZonesAsked || pointer.IsResizing)
         {
             Hide();
 
@@ -81,7 +113,7 @@ public sealed class ZoneDragPresenter
     private void OnDragEnded(object? sender, EventArgs e)
     {
         nint window = _window;
-        int? zone = _isShown ? _highlighted : null;
+        int? zone = _isShown && !_isCancelled ? _highlighted : null;
 
         Hide();
         _window = 0;

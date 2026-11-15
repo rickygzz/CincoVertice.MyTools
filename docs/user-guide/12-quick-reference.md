@@ -20,7 +20,7 @@ All other actions have no default hotkey. Add them in `hotkeys.cfg`.
 
 | Key | Effect |
 |---|---|
-| Shift while dragging a window | Shows the zones; drop the window on one to put it there. See [Window Zones](13-window-zones.md). |
+| Shift, or a right click, while dragging a window | Shows the zones, which stay until the next press; drop the window on one to put it there. See [Window Zones](13-window-zones.md). |
 
 ## Calculator
 

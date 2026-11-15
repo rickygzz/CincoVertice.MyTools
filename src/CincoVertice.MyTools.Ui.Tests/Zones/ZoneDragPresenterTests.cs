@@ -80,31 +80,95 @@ public class ZoneDragPresenterTests
     }
 
     [Fact]
-    public void LettingGoShift_BeforeTheEnd_HidesTheZones_AndMovesNothing()
+    public void LettingGoShift_KeepsTheZones_SoTheWindowStillGoesIntoOne()
+    {
+        // Act: Shift pressed, then let go of before the mouse
+        _drags.Start(Window);
+        _drags.Move(600, 300, shift: true);
+        _drags.Move(620, 300, shift: false);
+        _drags.Move(1700, 300, shift: false);
+        _drags.End();
+
+        // Assert
+        Assert.Equal((Window, _zones[3]), Assert.Single(_desktop.Moves));
+    }
+
+    [Fact]
+    public void ShiftHeld_IsOnePress_AndAnotherPressHidesTheZones_ThenAThirdShowsThemAgain_WithoutReadingThemAgain()
+    {
+        // Act: held over three moves, let go, pressed again
+        _drags.Start(Window);
+        _drags.Move(600, 300, shift: true);
+        _drags.Move(610, 300, shift: true);
+        _drags.Move(620, 300, shift: true);
+        _drags.Move(630, 300, shift: false);
+        _drags.Move(640, 300, shift: true);
+        int shownBeforeHiding = _overlay.Shown.Count;
+        int hides = _overlay.Hides;
+        _drags.Move(650, 300, shift: false);
+        _drags.Move(660, 300, shift: true);
+
+        // Assert
+        Assert.Equal(1, shownBeforeHiding);
+        Assert.Equal(1, hides);
+        Assert.Equal(2, _overlay.Shown.Count);
+        Assert.Equal(1, _desktop.Loads);
+    }
+
+    [Fact]
+    public void ShiftPressedTwice_LeavesNoZones_SoTheWindowDropsWhereItIs()
     {
         // Act
         _drags.Start(Window);
         _drags.Move(600, 300, shift: true);
-        _drags.Move(620, 300, shift: false);
+        _drags.Move(610, 300, shift: false);
+        _drags.Move(620, 300, shift: true);
         _drags.End();
 
         // Assert
+        Assert.Empty(_desktop.Moves);
+    }
+
+    [Fact]
+    public void ARightClick_ShowsTheZones_AsShiftDoes()
+    {
+        // Act: the right button pressed and let go while dragging
+        _drags.Start(Window);
+        _drags.Move(600, 300, shift: false, rightButton: true);
+        _drags.Move(1700, 300, shift: false);
+        _drags.End();
+
+        // Assert
+        Assert.Equal((Window, _zones[3]), Assert.Single(_desktop.Moves));
+    }
+
+    [Fact]
+    public void Escape_CancelsTheDrag_HidingTheZones_AndMovingNothing_EvenWithShiftAgain()
+    {
+        // Act
+        _drags.Start(Window);
+        _drags.Move(600, 300, shift: true);
+        _drags.Move(610, 300, shift: false, escape: true);
+        _drags.Move(620, 300, shift: true);
+        _drags.End();
+
+        // Assert
+        Assert.Single(_overlay.Shown);
         Assert.Equal(1, _overlay.Hides);
         Assert.Empty(_desktop.Moves);
     }
 
     [Fact]
-    public void ShiftAgain_ShowsTheZonesAgain_WithoutReadingThemAgain()
+    public void AWindowBeingResized_ShowsNoZones_EvenWithShift()
     {
         // Act
         _drags.Start(Window);
-        _drags.Move(600, 300, shift: true);
-        _drags.Move(620, 300, shift: false);
-        _drags.Move(640, 300, shift: true);
+        _drags.Move(600, 300, shift: true, resizing: true);
+        _drags.End();
 
         // Assert
-        Assert.Equal(2, _overlay.Shown.Count);
-        Assert.Equal(1, _desktop.Loads);
+        Assert.Empty(_overlay.Shown);
+        Assert.Empty(_desktop.Moves);
     }
 
     [Fact]
@@ -185,8 +249,14 @@ public class ZoneDragPresenterTests
 
         public void Start(nint window) => DragStarted?.Invoke(this, window);
 
-        public void Move(int x, int y, bool shift) =>
-            DragMoved?.Invoke(this, new ZoneDragPointerModel(new Point(x, y), shift));
+        public void Move(
+            int x,
+            int y,
+            bool shift,
+            bool resizing = false,
+            bool rightButton = false,
+            bool escape = false) =>
+            DragMoved?.Invoke(this, new ZoneDragPointerModel(new Point(x, y), shift, resizing, rightButton, escape));
 
         public void End() => DragEnded?.Invoke(this, EventArgs.Empty);
     }

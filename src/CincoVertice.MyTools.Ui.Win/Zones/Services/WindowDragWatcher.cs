@@ -9,8 +9,10 @@ namespace CincoVertice.MyTools.Ui.Win.Zones.Services;
 
 /// <summary>
 ///     Tells when the user drags a window of another program, from Windows' window events, and while they do, where
-///     the mouse is and whether Shift is down, a few times a second. A window being resized, not moved, never shows the
-///     zones. Start it on the UI thread: the events come through its message loop.
+///     the mouse is and whether Shift, the right mouse button and Esc are down, a few times a second. Start it on the UI
+///     thread: the events come through its message loop.
+///     A drag is a resize once the window's size has changed twice: moving a maximized or snapped window changes it
+///     once, when Windows gives it back its own size, and a resize changes it with every move of the mouse.
 /// </summary>
 public sealed class WindowDragWatcher : IWindowDragSource, IDisposable
 {
@@ -23,9 +25,10 @@ public sealed class WindowDragWatcher : IWindowDragSource, IDisposable
 
     private WinEventHook? _hook;
 
-    // The window being dragged, 0 for none, and its size when the drag started
+    // The window being dragged, 0 for none, its size at the last tick, and how many times that size changed
     private nint _window;
-    private Size _startSize;
+    private Size _lastSize;
+    private int _sizeChanges;
 
     public WindowDragWatcher()
     {
@@ -61,9 +64,10 @@ public sealed class WindowDragWatcher : IWindowDragSource, IDisposable
             // In the same pixels as on each tick
             using (DpiAwarenessScope.PerMonitorV2())
             {
-                _startSize = SizeOf(window);
+                _lastSize = SizeOf(window);
             }
 
+            _sizeChanges = 0;
             DragStarted?.Invoke(this, window);
             _timer.Start();
         }
@@ -78,20 +82,33 @@ public sealed class WindowDragWatcher : IWindowDragSource, IDisposable
     private void Timer_Tick(object? sender, EventArgs e)
     {
         Point cursor;
-        bool isResizing;
 
         // Physical pixels on every monitor, as the zones are
         using (DpiAwarenessScope.PerMonitorV2())
         {
             User32.GetCursorPos(out POINT point);
             cursor = new Point(point.X, point.Y);
-            isResizing = SizeOf(_window) != _startSize;
+
+            Size size = SizeOf(_window);
+
+            if (size != _lastSize)
+            {
+                _sizeChanges++;
+                _lastSize = size;
+            }
         }
 
-        bool isShiftDown = (User32.GetAsyncKeyState(KeyCode.VK_SHIFT) & KeyDown) != 0;
-
-        DragMoved?.Invoke(this, new ZoneDragPointerModel(cursor, isShiftDown && !isResizing));
+        DragMoved?.Invoke(
+            this,
+            new ZoneDragPointerModel(
+                cursor,
+                IsDown(KeyCode.VK_SHIFT),
+                IsResizing: _sizeChanges >= 2,
+                IsRightButtonDown: IsDown(KeyCode.VK_RBUTTON),
+                IsEscapeDown: IsDown(KeyCode.VK_ESCAPE)));
     }
+
+    private static bool IsDown(KeyCode key) => (User32.GetAsyncKeyState(key) & KeyDown) != 0;
 
     private static Size SizeOf(nint window)
     {

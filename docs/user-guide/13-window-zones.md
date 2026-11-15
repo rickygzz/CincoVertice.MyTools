@@ -1,14 +1,16 @@
 # Window Zones
 
-Window zones divide each monitor into areas (zones) that windows snap into. Hold **Shift** while you drag a window, drop it on a zone, and the window fills that zone. You can also move the active window to a zone with a hotkey or from a script.
+Window zones divide each monitor into areas (zones) that windows snap into. Press **Shift** while you drag a window, drop it on a zone, and the window fills that zone. You can also move the active window to a zone with a hotkey or from a script.
 
 ## Dragging a window into a zone
 
 1. Start dragging a window by its title bar, as usual.
-2. Hold **Shift**. The zones of every monitor appear over the screen, numbered from 1. The zone under the mouse is shown in blue.
-3. Let go of the mouse over a zone. The window moves into it, sized to fill it. Release Shift when you like.
+2. Press **Shift**, or click the **right mouse button**, while you drag. The zones of every monitor appear over the screen, numbered from 1, and the zone under the mouse is shown in blue. They stay while you go on dragging: you can let go of Shift.
+3. Let go of the mouse over a zone. The window moves into it, sized to fill it.
 
-Without Shift, dragging works as usual and no zones appear. If you let go of Shift before the mouse, the zones go away and the window stays where you dropped it. Pressing Shift while you **resize** a window by its edge shows no zones.
+Pressing Shift, or right-clicking, again hides the zones, and a window let go of then stays where you dropped it; once more shows them again. **Esc** cancels the drag as usual: the window goes back where it was, into no zone. Without Shift or a right click, dragging works as usual and no zones appear.
+
+A maximized window, or one Windows snapped to a side, can be dragged into a zone too: Windows gives it back its own size as you start dragging it. Pressing Shift while you **resize** a window by its edge shows no zones.
 
 A maximized window is restored first, then put in the zone. The zone is the part of the window you see: Windows 10 and 11 put an invisible border of a few pixels around windows for resizing, and that border goes outside the zone, so windows in zones next to each other meet with no gap but the one you set.
 
