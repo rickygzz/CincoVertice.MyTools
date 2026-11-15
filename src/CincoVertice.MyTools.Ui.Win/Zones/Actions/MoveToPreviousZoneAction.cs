@@ -18,7 +18,7 @@ public sealed class MoveToPreviousZoneAction : IAppAction
 
     public string Name => "MoveToPreviousZone";
 
-    public string? DefaultShortcut => null;
+    public string? DefaultShortcut => "Ctrl+Alt+Win+Left";
 
     public Task ExecuteAsync()
     {

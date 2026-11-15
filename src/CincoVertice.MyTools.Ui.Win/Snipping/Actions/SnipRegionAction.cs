@@ -19,7 +19,7 @@ public sealed class SnipRegionAction : IAppAction
 
     public string Name => "SnipRegion";
 
-    public string? DefaultShortcut => "Ctrl+Alt+Shift+S";
+    public string? DefaultShortcut => null;
 
     public async Task ExecuteAsync()
     {
