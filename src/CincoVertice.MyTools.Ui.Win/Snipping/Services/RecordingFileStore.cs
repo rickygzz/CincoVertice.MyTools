@@ -62,29 +62,10 @@ public sealed class RecordingFileStore : IRecordingFileStore
         composition.Clips.Add(clip);
 
         // The frames to keep, and their size: no wider than the settings allow, as tall as that keeps them
-        TimeSpan step = TimeSpan.FromTicks(TimeSpan.TicksPerSecond / settings.GifFramesPerSecond);
-        List<TimeSpan> times = [];
-
-        for (TimeSpan time = TimeSpan.Zero; time < clip.OriginalDuration; time += step)
-        {
-            times.Add(time);
-        }
-
-        if (times.Count == 0)
-        {
-            times.Add(TimeSpan.Zero);
-        }
-
         Windows.Media.MediaProperties.VideoEncodingProperties properties = clip.GetVideoEncodingProperties();
         double scale = Math.Min(1, (double)settings.GifMaxWidth / properties.Width);
         int width = Math.Max(1, (int)(properties.Width * scale));
         int height = Math.Max(1, (int)(properties.Height * scale));
-
-        IReadOnlyList<ImageStream> frames = await composition.GetThumbnailsAsync(
-            times.ToArray(),
-            width,
-            height,
-            VideoFramePrecision.NearestFrame);
 
         File.Create(gifPath).Dispose();
         StorageFile gif = await StorageFile.GetFileFromPathAsync(Path.GetFullPath(gifPath));
@@ -100,39 +81,69 @@ public sealed class RecordingFileStore : IRecordingFileStore
             new("/appext/data", new BitmapTypedValue(new byte[] { 3, 1, 0, 0, 0 }, UInt8Array)),
         });
 
-        // In hundredths of a second, as GIFs keep it
-        ushort delay = (ushort)(100 / settings.GifFramesPerSecond);
-
         // The encoder writes a frame's pixels only when it goes to the next frame, or at the end: each is kept till
         // then
         SoftwareBitmap? previous = null;
 
         try
         {
-            for (int i = 0; i < frames.Count; i++)
-            {
-                if (i > 0)
+            await GifFrameSequence.WriteAsync<ImageStream>(
+                GifFrames(clip.OriginalDuration, settings.GifFramesPerSecond),
+                async times => await composition.GetThumbnailsAsync(times, width, height, VideoFramePrecision.NearestFrame),
+                async (frame, delay) =>
                 {
-                    await encoder.GoToNextFrameAsync();
-                    previous?.Dispose();
-                }
+                    if (previous is not null)
+                    {
+                        await encoder.GoToNextFrameAsync();
+                        previous.Dispose();
+                        previous = null;
+                    }
 
-                using ImageStream frame = frames[i];
-                BitmapDecoder decoder = await BitmapDecoder.CreateAsync(frame);
-                previous = await decoder.GetSoftwareBitmapAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
+                    BitmapDecoder decoder = await BitmapDecoder.CreateAsync(frame);
+                    previous = await decoder.GetSoftwareBitmapAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
 
-                encoder.SetSoftwareBitmap(previous);
-                await encoder.BitmapProperties.SetPropertiesAsync(new KeyValuePair<string, BitmapTypedValue>[]
-                {
-                    new("/grctlext/Delay", new BitmapTypedValue(delay, Windows.Foundation.PropertyType.UInt16)),
+                    encoder.SetSoftwareBitmap(previous);
+                    await encoder.BitmapProperties.SetPropertiesAsync(new KeyValuePair<string, BitmapTypedValue>[]
+                    {
+                        new("/grctlext/Delay", new BitmapTypedValue(delay, Windows.Foundation.PropertyType.UInt16)),
+                    });
                 });
-            }
 
             await encoder.FlushAsync();
         }
         finally
         {
             previous?.Dispose();
+        }
+    }
+
+    /// <summary>
+    ///     Samples on the video's timeline. GIF delays are differences between rounded boundaries, so rounding never
+    ///     accumulates, including for frame rates such as 15 and for the last, shorter frame.
+    /// </summary>
+    internal static IEnumerable<(TimeSpan Time, ushort Delay)> GifFrames(TimeSpan duration, int framesPerSecond)
+    {
+        const long ticksPerHundredth = TimeSpan.TicksPerSecond / 100;
+
+        if (framesPerSecond is < 2 or > 20)
+        {
+            throw new ArgumentOutOfRangeException(nameof(framesPerSecond));
+        }
+
+        for (long index = 0; ; index++)
+        {
+            long start = index * TimeSpan.TicksPerSecond / framesPerSecond;
+
+            if (index > 0 && start >= duration.Ticks)
+            {
+                yield break;
+            }
+
+            long end = Math.Min((index + 1) * TimeSpan.TicksPerSecond / framesPerSecond, duration.Ticks);
+            long roundedStart = (start + ticksPerHundredth / 2) / ticksPerHundredth;
+            long roundedEnd = (end + ticksPerHundredth / 2) / ticksPerHundredth;
+
+            yield return (TimeSpan.FromTicks(start), (ushort)Math.Max(1, roundedEnd - roundedStart));
         }
     }
 }

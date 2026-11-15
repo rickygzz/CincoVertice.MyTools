@@ -222,7 +222,10 @@ public static partial class DiagramSvgImage
         {
             string fromSheets = string.Join(
                 ";",
-                rules.Where(rule => rule.Selector.Matches(element)).Select(rule => rule.Declarations));
+                rules.Where(rule => rule.Selector.Matches(element))
+                    // Stable ordering keeps source order for equally specific selectors.
+                    .OrderBy(rule => rule.Selector.Specificity)
+                    .Select(rule => rule.Declarations));
 
             if (fromSheets.Length > 0)
             {
@@ -307,6 +310,9 @@ public static partial class DiagramSvgImage
     /// <summary>An element name, classes and an id, each of which an element must have.</summary>
     private sealed record Selector(string? Name, IReadOnlyList<string> Classes, string? Id)
     {
+        public (int Ids, int Classes, int Elements) Specificity =>
+            (Id is null ? 0 : 1, Classes.Count, Name is null ? 0 : 1);
+
         /// <returns>Null for a selector that isn't simple, such as <c>g path</c> or <c>a:hover</c>.</returns>
         public static Selector? TryParse(string text)
         {

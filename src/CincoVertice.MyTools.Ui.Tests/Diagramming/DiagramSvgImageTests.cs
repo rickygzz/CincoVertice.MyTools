@@ -33,9 +33,46 @@ public sealed class DiagramSvgImageTests
         Assert.Empty(root.Descendants(_svg + "style"));
         Assert.Equal("fill:#e8121d", (string?)root.Descendants(_svg + "rect").Single().Attribute("style"));
         Assert.Equal(
-            "fill:#e8121d;opacity: 0.5;opacity: 0.5;stroke:#000;fill:#fff",
+            "fill:#e8121d;opacity: 0.5;stroke:#000;opacity: 0.5;fill:#fff",
             (string?)root.Descendants(_svg + "path").Single().Attribute("style"));
         Assert.Null(root.Descendants(_svg + "circle").Single().Attribute("style"));
+    }
+
+    [Theory]
+    [InlineData("#icon{fill:red}.shape{fill:blue}", "fill:blue;fill:red")]
+    [InlineData(".shape{fill:red}rect{fill:blue}", "fill:blue;fill:red")]
+    [InlineData("rect.shape{fill:red}.shape{fill:blue}", "fill:blue;fill:red")]
+    [InlineData(".shape.other{fill:red}rect.shape{fill:blue}", "fill:blue;fill:red")]
+    [InlineData(".shape{fill:red}.other{fill:blue}", "fill:red;fill:blue")]
+    public void Prepare_OrdersRulesBySpecificity_ThenSourceOrder(string rules, string expected)
+    {
+        string markup = $"""
+            <svg xmlns="http://www.w3.org/2000/svg"><style>{rules}</style>
+              <rect id="icon" class="shape other" width="10" height="10"/>
+            </svg>
+            """;
+
+        XElement root = Prepared(markup);
+
+        Assert.Equal(expected, (string?)root.Element(_svg + "rect")!.Attribute("style"));
+        Assert.Equal(root.ToString(), Prepared(root.ToString()).ToString());
+    }
+
+    [Fact]
+    public void Prepare_KeepsSourceOrderAcrossStyleSheets_AndInlineStyleHasPrecedence()
+    {
+        const string markup = """
+            <svg xmlns="http://www.w3.org/2000/svg">
+              <style>.shape{fill:red} #icon{stroke:black}</style>
+              <style>.shape{fill:blue}</style>
+              <rect id="icon" class="shape" style="fill:green;stroke:white"/>
+            </svg>
+            """;
+
+        XElement root = Prepared(markup);
+
+        Assert.Equal("fill:red;fill:blue;stroke:black;fill:green;stroke:white",
+            (string?)root.Element(_svg + "rect")!.Attribute("style"));
     }
 
     [Fact]

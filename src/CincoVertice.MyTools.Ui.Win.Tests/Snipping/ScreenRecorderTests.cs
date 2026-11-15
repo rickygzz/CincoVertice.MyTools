@@ -174,8 +174,10 @@ public sealed class ScreenRecorderTests : IDisposable
         Assert.InRange(length.TotalSeconds, 1.7, 2.5);
     }
 
-    [Fact]
-    public async Task SavingAsAGif_KeepsItsFramesPerSecond_AtItsMostWidth_PlayingOverAndOver()
+    [Theory]
+    [InlineData(5)]
+    [InlineData(15)]
+    public async Task SavingAsAGif_KeepsItsFramesPerSecond_AtItsMostWidth_PlayingOverAndOver(int fps)
     {
         // Arrange: a 2 second video, 400 wide
         using Form form = ShowWhite(new Point(300, 220), new Size(400, 200));
@@ -183,20 +185,23 @@ public sealed class ScreenRecorderTests : IDisposable
         await recorder.StartAsync(form.Bounds, _path, _plain);
         await Pump(TimeSpan.FromSeconds(2));
         await recorder.StopAsync();
+        TimeSpan duration = await LengthOf(_path);
         string gif = Path.ChangeExtension(_path, ".gif");
-        var settings = _plain with { GifFramesPerSecond = 5, GifMaxWidth = 200 };
+        var settings = _plain with { GifFramesPerSecond = fps, GifMaxWidth = 200 };
 
         try
         {
             // Act
             await new RecordingFileStore().KeepAsync(_path, gif, settings);
 
-            // Assert: about 10 frames of 20 hundredths, half the size, and the video gone
+            // Assert: the whole duration, including rates whose delays need alternating rounded values
             using var image = Image.FromFile(gif);
             int frames = image.GetFrameCount(System.Drawing.Imaging.FrameDimension.Time);
-            Assert.InRange(frames, 8, 12);
+            Assert.InRange(frames, (int)(duration.TotalSeconds * fps), (int)(duration.TotalSeconds * fps) + 1);
             Assert.Equal(new Size(200, 100), image.Size);
-            Assert.Equal(20, BitConverter.ToInt32(image.GetPropertyItem(0x5100)!.Value!, 0));
+            byte[] delays = image.GetPropertyItem(0x5100)!.Value!;
+            int hundredths = Enumerable.Range(0, frames).Sum(index => BitConverter.ToInt32(delays, index * 4));
+            Assert.InRange(Math.Abs(hundredths / 100d - duration.TotalSeconds), 0, 0.010001);
             Assert.Equal(0, BitConverter.ToInt16(image.GetPropertyItem(0x5101)!.Value!, 0));
             Assert.False(File.Exists(_path));
         }
