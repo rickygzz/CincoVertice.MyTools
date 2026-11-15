@@ -251,6 +251,7 @@ public sealed class DiagramEditorPresenter
         _view.CatalogImageDropped += OnCatalogImageDropped;
         _view.ImagesFolderRequested += OnImagesFolderRequested;
         _view.FindRequested += OnFindRequested;
+        _view.BringIntoViewRequested += OnBringIntoViewRequested;
         _view.AutosaveDue += OnAutosaveDue;
         _view.WindowActivated += OnWindowActivated;
         _view.WindowClosed += OnWindowClosed;
@@ -3772,6 +3773,35 @@ public sealed class DiagramEditorPresenter
         (int)Math.Floor(points.Min(point => point.Y)),
         (int)Math.Ceiling(points.Max(point => point.X)),
         (int)Math.Ceiling(points.Max(point => point.Y)));
+
+    /// <summary>
+    ///     Moves the view, at the same zoom, so what's selected, or else the whole diagram as it's drawn, is at the top
+    ///     left of the canvas, with the margin a file has around it, or in its middle. Nothing to undo: only the view
+    ///     changes.
+    /// </summary>
+    private void OnBringIntoViewRequested(object? sender, DiagramBringIntoViewModel request)
+    {
+        if (_drag is not null)
+        {
+            return;
+        }
+
+        // A connector selected alone isn't in the fragment, which is then empty: the whole diagram it is
+        DiagramModel selected = SelectedFragment();
+        bool hasSelection = selected.Shapes.Count > 0 || selected.Connectors.Count > 0;
+        Rectangle box = DiagramArea.Of(hasSelection ? selected : _diagram);
+        float zoom = _viewport.Zoom;
+
+        _viewport = _viewport with
+        {
+            Pan = request.Placement == DiagramPlacement.Center
+                ? new Point(
+                    (request.CanvasSize.Width / 2) - (int)Math.Round((box.X + box.Width / 2f) * zoom),
+                    (request.CanvasSize.Height / 2) - (int)Math.Round((box.Y + box.Height / 2f) * zoom))
+                : new Point(-(int)Math.Round(box.X * zoom), -(int)Math.Round(box.Y * zoom)),
+        };
+        Refresh();
+    }
 
     /// <summary>Moves the view so the box is in the middle of the canvas, unless it's all in view already.</summary>
     private void BringIntoView(Rectangle box, Size canvasSize)

@@ -149,6 +149,10 @@ partial class DiagramEditorForm
         LayersListView = new ListView();
         LayersHintLabel = new Label();
         ZoomLabel = new ToolStripLabel();
+        ViewDropDownButton = new ToolStripDropDownButton();
+        TopLeftMenuItem = new ToolStripMenuItem();
+        CenterMenuItem = new ToolStripMenuItem();
+        ZoomResetMenuItem = new ToolStripMenuItem();
         Canvas = new DiagramCanvasControl();
         TextInputBox = new RichTextBox();
         PropertiesPanel = new Panel();
@@ -381,7 +385,7 @@ partial class DiagramEditorForm
         // StyleStrip
         //
         StyleStrip.GripStyle = ToolStripGripStyle.Hidden;
-        StyleStrip.Items.AddRange(new ToolStripItem[] { FileDropDownButton, EditDropDownButton, FileSeparator, FillDropDownButton, LineDropDownButton, LineWidthComboBox, DashedButton, TextColorDropDownButton, FontSizeComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, StyleSeparator, RoutingComboBox, ArrowHeadsComboBox, ResetRouteButton, ConnectorsSeparator, FrontButton, BackButton, AlignDropDownButton, ZoomLabel, PanelsButton });
+        StyleStrip.Items.AddRange(new ToolStripItem[] { FileDropDownButton, EditDropDownButton, FileSeparator, FillDropDownButton, LineDropDownButton, LineWidthComboBox, DashedButton, TextColorDropDownButton, FontSizeComboBox, TextOutlineDropDownButton, TextOutlineWidthComboBox, StyleSeparator, RoutingComboBox, ArrowHeadsComboBox, ResetRouteButton, ConnectorsSeparator, FrontButton, BackButton, AlignDropDownButton, ZoomLabel, ViewDropDownButton, PanelsButton });
         StyleStrip.Name = "StyleStrip";
         StyleStrip.Padding = new Padding(4, 2, 4, 2);
         StyleStrip.TabIndex = 1;
@@ -1716,6 +1720,40 @@ partial class DiagramEditorForm
         DirectionPropertyBox.TabIndex = 17;
         DirectionPropertyBox.SelectedIndexChanged += DirectionPropertyBox_SelectedIndexChanged;
         //
+        // ViewDropDownButton
+        //
+        ViewDropDownButton.Alignment = ToolStripItemAlignment.Right;
+        ViewDropDownButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
+        ViewDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { TopLeftMenuItem, CenterMenuItem, ZoomResetMenuItem });
+        ViewDropDownButton.Name = "ViewDropDownButton";
+        ViewDropDownButton.Overflow = ToolStripItemOverflow.Never;
+        ViewDropDownButton.Text = "View";
+        ViewDropDownButton.ToolTipText = "Bring the diagram, or what's selected, into the window";
+        //
+        // TopLeftMenuItem
+        //
+        TopLeftMenuItem.Name = "TopLeftMenuItem";
+        TopLeftMenuItem.ShortcutKeyDisplayString = "Home";
+        TopLeftMenuItem.Text = "Go to the top left";
+        TopLeftMenuItem.ToolTipText = "Put the top left corner of what's selected, or of the whole diagram, at the window's";
+        TopLeftMenuItem.Click += TopLeftMenuItem_Click;
+        //
+        // CenterMenuItem
+        //
+        CenterMenuItem.Name = "CenterMenuItem";
+        CenterMenuItem.ShortcutKeyDisplayString = "Shift+Home";
+        CenterMenuItem.Text = "Center";
+        CenterMenuItem.ToolTipText = "Put what's selected, or the whole diagram, in the middle of the window";
+        CenterMenuItem.Click += CenterMenuItem_Click;
+        //
+        // ZoomResetMenuItem
+        //
+        ZoomResetMenuItem.Name = "ZoomResetMenuItem";
+        ZoomResetMenuItem.ShortcutKeyDisplayString = "Ctrl+0";
+        ZoomResetMenuItem.Tag = "ZoomReset";
+        ZoomResetMenuItem.Text = "Zoom to 100%";
+        ZoomResetMenuItem.Click += CommandButton_Click;
+        //
         // ZoomLabel
         //
         ZoomLabel.Alignment = ToolStripItemAlignment.Right;
@@ -1911,6 +1949,10 @@ partial class DiagramEditorForm
     private ToolStripButton BackButton;
     private ToolStripButton PanelsButton;
     private ToolStripLabel ZoomLabel;
+    private ToolStripDropDownButton ViewDropDownButton;
+    private ToolStripMenuItem TopLeftMenuItem;
+    private ToolStripMenuItem CenterMenuItem;
+    private ToolStripMenuItem ZoomResetMenuItem;
     private DiagramCanvasControl Canvas;
     private RichTextBox TextInputBox;
     private Panel PropertiesPanel;

@@ -91,6 +91,7 @@ New text uses [Roboto](https://fonts.google.com/specimen/Roboto), which comes wi
   - *Hide and lock:* each row ends with a lock and an eye. Click the **eye** to hide it: it isn't drawn, on the canvas or in the SVG, PDF and PNG files, and neither are the connectors to a hidden shape; its row is grayed and its eye crossed out. Click it again to show it. Click the **lock** to lock it: it's drawn, but clicks on the canvas go through it, to what's behind, and selection boxes and Ctrl+A leave it out, so a background, a container or a large picture doesn't get picked by mistake. A locked one can still be selected by its row, to change it in the Properties tab. Each is one step to undo, and both are saved with the diagram. (The lock here isn't the Properties tab's locks, which keep a shape's place or size.)
   - *Put in front or behind:* drag rows up or down; a line shows where they'll go. Dropped above a row, they're in front of it. Shapes stay behind the connectors and lines: a shape dropped among those goes in front of all the shapes. Each drag is one step to undo. **Front** and **Back** on the toolbar still bring the selection to the very front or back.
   - **Delete** in the panel deletes what's selected. The editor remembers whether the panel is shown.
+- **Bring the diagram into view:** press **Home**, or choose **View > Go to the top left** at the top right, to put the top left corner of what's selected, or of the whole diagram, at the window's top left, with a margin. **Shift+Home**, or **View > Center**, puts it in the middle of the window instead. The zoom stays as it is; **View > Zoom to 100%** (Ctrl+0) resets it. Only the view moves: there's nothing to undo, and the diagram has no changes to save.
 - **Find:** press **Ctrl+F**, or click the **Find** box at the bottom right, and type. The first shape whose text has what you type, or connector whose label has it, in any case, is selected; they go top to bottom, then left to right. **Enter** or **F3** goes to the next one, and **Shift+Enter** or **Shift+F3** to the one before; after the last, it starts again from the first. Beside the box, "2 of 5" says which one it is, or "Not found". One out of view is brought to the middle of the canvas. **Esc** goes back to the canvas.
 - **The status bar**, under the canvas, shows where the mouse is on the diagram, as `x, y` in diagram pixels, and what's selected, such as `2 shapes, 1 line: 240 × 120 at 40, 80`: its width and height, then its left and top. It follows a drag as it goes, so you can move or resize something to an exact size.
 
@@ -100,7 +101,7 @@ At the right of the canvas, one panel holds three tabs: **Images** (the images t
 
 ## Style and properties
 
-The toolbar offers the **File** menu (see [Saving and opening](#saving-and-opening)), the **Edit** menu, Fill (with "No fill"), Line, line width, Dashed, Text color, text size, Edge color (with "No edge") and width, routing ("Elbow" or "Straight", tooltip "How connectors go between shapes"), arrows ("Arrow at end", "Arrow at start", "Arrows at both", "No arrows"), "Reset line" (tooltip "Let the selected connectors work out their own path again"), Front, Back, Align, and at the right Panels.
+The toolbar offers the **File** menu (see [Saving and opening](#saving-and-opening)), the **Edit** menu, Fill (with "No fill"), Line, line width, Dashed, Text color, text size, Edge color (with "No edge") and width, routing ("Elbow" or "Straight", tooltip "How connectors go between shapes"), arrows ("Arrow at end", "Arrow at start", "Arrows at both", "No arrows"), "Reset line" (tooltip "Let the selected connectors work out their own path again"), Front, Back, Align, and at the right View and Panels.
 
 The **Edit** menu has **Undo** (Ctrl+Z), **Redo** (Ctrl+Y), **Copy as picture** (Ctrl+Shift+P), **Copy style** (Ctrl+Shift+C), **Bold** (Ctrl+B), **Italic**, **Paste style** (Ctrl+Shift+V), **Group** (Ctrl+G) and **Ungroup** (Ctrl+Shift+G). Undo and Redo are grayed out when there is nothing to undo or redo.
 
@@ -160,6 +161,7 @@ The **Properties** tab of the side panel has these fields: Name (when one shape,
 | Ctrl+G / Ctrl+Shift+G | Group / ungroup |
 | Ctrl+] / Ctrl+[ | Bring to front / send to back |
 | Ctrl++ / Ctrl+- / Ctrl+0 | Zoom in / zoom out / reset zoom |
+| Home / Shift+Home | Bring what's selected, or the whole diagram, to the window's top left / middle |
 | Delete or Backspace | Delete the selection |
 | Arrow keys | Move the selection 10 px (with Shift, 1 px) |
 | F4 | Show or hide the side panel |

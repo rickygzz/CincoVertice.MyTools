@@ -139,6 +139,9 @@ public interface IDiagramEditorView
     /// <summary>Raised when the user looks for a text, as it's typed and to go to the next or previous one.</summary>
     event EventHandler<DiagramFindModel>? FindRequested;
 
+    /// <summary>Raised when the user wants the diagram, or what's selected, at the top left or in the middle.</summary>
+    event EventHandler<DiagramBringIntoViewModel>? BringIntoViewRequested;
+
     /// <summary>Raised every few seconds while the window is open, to keep a copy of unsaved changes.</summary>
     event EventHandler? AutosaveDue;
 

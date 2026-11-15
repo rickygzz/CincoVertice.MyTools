@@ -5347,6 +5347,62 @@ public class DiagramEditorPresenterTests
         Assert.Equal(string.Empty, _view.FindResult);
     }
 
+    [Theory]
+    [InlineData(1f)]
+    [InlineData(2f)]
+    public void BringIntoView_TopLeft_PutsTheDiagramsTopLeftAtTheCanvas_WithTheFilesMargin_AtAnyZoom(float zoom)
+    {
+        // Arrange: far from the view, and zoomed
+        AddShape(3000, 2000);
+        AddShape(3300, 2400);
+        ClickEmpty();
+        _view.Wheel(400, 300, MathF.Log(zoom) / MathF.Log(1.1f), control: true);
+        float shown = _view.Scene!.Viewport.Zoom;
+        DiagramModel before = Diagram;
+
+        // Act
+        _view.BringIntoView(DiagramPlacement.TopLeft);
+
+        // Assert: the first shape's corner 20 diagram pixels from the canvas' corner, the zoom as it was
+        DiagramViewportModel viewport = _view.Scene!.Viewport;
+        int margin = (int)Math.Round(20 * shown);
+        Assert.Equal(shown, viewport.Zoom);
+        Point corner = viewport.ToCanvas(new Point(3000, 2000));
+        Assert.InRange(corner.X, margin - 1, margin + 1);
+        Assert.InRange(corner.Y, margin - 1, margin + 1);
+        Assert.Same(before, Diagram);
+    }
+
+    [Fact]
+    public void BringIntoView_Center_PutsTheDiagramsMiddle_InTheCanvasMiddle()
+    {
+        // Arrange: from 3000, 2000 to 3400, 2450
+        AddShape(3000, 2000);
+        AddShape(3300, 2400);
+        ClickEmpty();
+
+        // Act: an 800 by 600 canvas
+        _view.BringIntoView(DiagramPlacement.Center);
+
+        // Assert
+        Assert.Equal(new Point(400, 300), _view.Scene!.Viewport.ToCanvas(new Point(3200, 2225)));
+    }
+
+    [Fact]
+    public void BringIntoView_WithSomethingSelected_BringsOnlyThat()
+    {
+        // Arrange: the second shape stays selected
+        AddShape(0, 0);
+        DiagramShapeModel selected = AddShape(3000, 2000);
+
+        // Act
+        _view.BringIntoView(DiagramPlacement.Center);
+
+        // Assert: its middle in the canvas' middle
+        Assert.Equal([selected.Id], _presenter.SelectedShapeIds);
+        Assert.Equal(new Point(400, 300), _view.Scene!.Viewport.ToCanvas(new Point(3050, 2025)));
+    }
+
     [Fact]
     public void Find_SomethingOutOfView_BringsItIntoTheMiddle()
     {
@@ -5803,6 +5859,11 @@ public class DiagramEditorPresenterTests
         public event EventHandler? ImagesFolderRequested;
 
         public event EventHandler<DiagramFindModel>? FindRequested;
+
+        public event EventHandler<DiagramBringIntoViewModel>? BringIntoViewRequested;
+
+        public void BringIntoView(DiagramPlacement placement, int width = 800, int height = 600) =>
+            BringIntoViewRequested?.Invoke(this, new DiagramBringIntoViewModel(placement, new Size(width, height)));
 
         public event EventHandler? AutosaveDue;
 

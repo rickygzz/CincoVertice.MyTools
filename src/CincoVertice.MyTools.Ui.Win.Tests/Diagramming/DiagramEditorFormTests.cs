@@ -781,6 +781,27 @@ public class DiagramEditorFormTests
     }
 
     [Fact]
+    public void ViewMenu_AsksForTheTopLeft_OrTheMiddle_OfTheCanvasAsLargeAsItIs_TakingTheTextFirst()
+    {
+        // Arrange
+        List<string> events = [];
+        using DiagramEditorForm form = ShowFormEditingProperties(events, "TextPropertyBox", "new");
+        IDiagramEditorView view = form;
+        Control canvas = form.Controls.Find("Canvas", true).Single();
+        view.BringIntoViewRequested += (_, request) => events.Add($"{request.Placement} {request.CanvasSize}");
+
+        // Act
+        ClickToolbarButton(form, "TopLeftMenuItem");
+        ClickToolbarButton(form, "CenterMenuItem");
+        ClickToolbarButton(form, "ZoomResetMenuItem");
+
+        // Assert
+        Assert.Equal(
+            ["text new", $"TopLeft {canvas.ClientSize}", $"Center {canvas.ClientSize}", "ZoomReset"],
+            events);
+    }
+
+    [Fact]
     public void ImagesPanel_LinksToTheOfficialIcons_OfAzureAndAws()
     {
         // Arrange
