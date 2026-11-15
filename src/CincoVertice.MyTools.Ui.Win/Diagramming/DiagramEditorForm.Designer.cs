@@ -222,6 +222,8 @@ partial class DiagramEditorForm
         BoldMenuItem = new ToolStripMenuItem();
         ItalicMenuItem = new ToolStripMenuItem();
         TextFormatSeparator = new ToolStripSeparator();
+        CenterContextMenuItem = new ToolStripMenuItem();
+        CenterContextSeparator = new ToolStripSeparator();
         CopyPictureContextMenuItem = new ToolStripMenuItem();
         CopyPictureContextSeparator = new ToolStripSeparator();
         StatusBar = new StatusStrip();
@@ -550,7 +552,7 @@ partial class DiagramEditorForm
         //
         // SelectionMenu
         //
-        SelectionMenu.Items.AddRange(new ToolStripItem[] { CopyPictureContextMenuItem, CopyPictureContextSeparator, CopyStyleContextMenuItem, PasteStyleContextMenuItem, GroupContextSeparator, GroupContextMenuItem, UngroupContextMenuItem, AlignContextSeparator, AlignContextMenuItem });
+        SelectionMenu.Items.AddRange(new ToolStripItem[] { CenterContextMenuItem, CenterContextSeparator, CopyPictureContextMenuItem, CopyPictureContextSeparator, CopyStyleContextMenuItem, PasteStyleContextMenuItem, GroupContextSeparator, GroupContextMenuItem, UngroupContextMenuItem, AlignContextSeparator, AlignContextMenuItem });
         SelectionMenu.Name = "SelectionMenu";
         //
         // CopyStyleContextMenuItem
@@ -707,6 +709,18 @@ partial class DiagramEditorForm
         // TextFormatSeparator
         //
         TextFormatSeparator.Name = "TextFormatSeparator";
+        //
+        // CenterContextMenuItem
+        //
+        CenterContextMenuItem.Name = "CenterContextMenuItem";
+        CenterContextMenuItem.ShortcutKeyDisplayString = "Shift+Home";
+        CenterContextMenuItem.Text = "Center in view";
+        CenterContextMenuItem.ToolTipText = "Put what's selected in the middle of the window";
+        CenterContextMenuItem.Click += CenterMenuItem_Click;
+        //
+        // CenterContextSeparator
+        //
+        CenterContextSeparator.Name = "CenterContextSeparator";
         //
         // CopyPictureContextMenuItem
         //
@@ -2033,6 +2047,8 @@ partial class DiagramEditorForm
     private ToolStripMenuItem BoldMenuItem;
     private ToolStripMenuItem ItalicMenuItem;
     private ToolStripSeparator TextFormatSeparator;
+    private ToolStripMenuItem CenterContextMenuItem;
+    private ToolStripSeparator CenterContextSeparator;
     private ToolStripMenuItem CopyPictureContextMenuItem;
     private ToolStripSeparator CopyPictureContextSeparator;
     private StatusStrip StatusBar;
