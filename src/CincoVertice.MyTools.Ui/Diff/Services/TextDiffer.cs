@@ -12,6 +12,9 @@ public static class TextDiffer
     /// <summary>Lines with more words than this are marked whole when changed, rather than word by word.</summary>
     public const int MaxWordsCompared = 4000;
 
+    /// <summary>Changed parts longer than this are marked by words, never compared character by character.</summary>
+    public const int MaxCharactersCompared = 2000;
+
     public static DiffResultModel Compare(string left, string right, DiffOptionsModel options) =>
         Compare(SplitLines(left), SplitLines(right), options);
 
@@ -131,8 +134,9 @@ public static class TextDiffer
     }
 
     /// <summary>
-    ///     The words of two lines that differ: runs of letters, digits and _, runs of spaces, and each other character.
-    ///     Ignoring whitespace, spaces never count.
+    ///     What differs in two lines: the words that differ (runs of letters, digits and _, runs of spaces, and each
+    ///     other character), and inside changed words that are mostly the same, only the characters that differ, so
+    ///     "abc" to "abcd" marks the d. Ignoring whitespace, spaces never count.
     /// </summary>
     public static (IReadOnlyList<DiffRange> Left, IReadOnlyList<DiffRange> Right) ChangedWords(
         string left,
@@ -152,7 +156,7 @@ public static class TextDiffer
         int[] b = [.. rightWords.Select(word => IdOf(Normalized(Text(right, word), options), ids))];
         (bool[] removed, bool[] added) = MyersDiff.Compare(a, b);
 
-        return (Merged(left, leftWords, removed), Merged(right, rightWords, added));
+        return Refined(left, leftWords, removed, right, rightWords, added, options);
     }
 
     private static string Text(string line, DiffRange range) => line.Substring(range.Start, range.Length);
@@ -239,27 +243,159 @@ public static class TextDiffer
     private static IReadOnlyList<DiffRange> Whole(string line) =>
         line.Length == 0 ? [] : [new DiffRange(0, line.Length)];
 
-    // The changed words next to each other, or with only spaces between, as one range
-    private static List<DiffRange> Merged(string line, List<DiffRange> words, bool[] changed)
+    // Each changed block of words, between words common to both: its characters, when they're mostly the same
+    private static (IReadOnlyList<DiffRange> Left, IReadOnlyList<DiffRange> Right) Refined(
+        string left,
+        List<DiffRange> leftWords,
+        bool[] removed,
+        string right,
+        List<DiffRange> rightWords,
+        bool[] added,
+        DiffOptionsModel options)
     {
-        var ranges = new List<DiffRange>();
+        var leftChanged = new bool[left.Length];
+        var rightChanged = new bool[right.Length];
+        int i = 0;
+        int j = 0;
 
-        for (int i = 0; i < words.Count; i++)
+        while (i < leftWords.Count || j < rightWords.Count)
         {
-            if (!changed[i])
+            if (i < leftWords.Count && j < rightWords.Count && !removed[i] && !added[j])
             {
+                i++;
+                j++;
+
                 continue;
             }
 
-            DiffRange word = words[i];
+            int fromLeft = i;
+            int fromRight = j;
 
-            if (ranges.Count > 0 && IsBlank(line, ranges[^1].End, word.Start))
+            while (i < leftWords.Count && removed[i])
             {
-                ranges[^1] = new DiffRange(ranges[^1].Start, word.End - ranges[^1].Start);
+                i++;
+            }
+
+            while (j < rightWords.Count && added[j])
+            {
+                j++;
+            }
+
+            DiffRange? leftSpan = SpanOf(leftWords, fromLeft, i);
+            DiffRange? rightSpan = SpanOf(rightWords, fromRight, j);
+
+            if (leftSpan is not { } l || rightSpan is not { } r
+                || !MarkCharacters(left, l, leftChanged, right, r, rightChanged, options))
+            {
+                MarkWords(leftWords, fromLeft, i, leftChanged);
+                MarkWords(rightWords, fromRight, j, rightChanged);
+            }
+        }
+
+        return (Ranges(left, leftChanged), Ranges(right, rightChanged));
+    }
+
+    private static DiffRange? SpanOf(List<DiffRange> words, int from, int to) =>
+        from < to ? new DiffRange(words[from].Start, words[to - 1].End - words[from].Start) : null;
+
+    private static void MarkWords(List<DiffRange> words, int from, int to, bool[] changed)
+    {
+        for (int i = from; i < to; i++)
+        {
+            Array.Fill(changed, true, words[i].Start, words[i].Length);
+        }
+    }
+
+    /// <returns>
+    ///     Whether the two parts share at least half the characters of the shorter one, and so had their differing
+    ///     characters marked; otherwise they were replaced, rather than edited, and their words are marked whole.
+    /// </returns>
+    private static bool MarkCharacters(
+        string left,
+        DiffRange leftSpan,
+        bool[] leftChanged,
+        string right,
+        DiffRange rightSpan,
+        bool[] rightChanged,
+        DiffOptionsModel options)
+    {
+        if (leftSpan.Length > MaxCharactersCompared || rightSpan.Length > MaxCharactersCompared)
+        {
+            return false;
+        }
+
+        List<int> leftIndexes = Compared(left, leftSpan, options);
+        List<int> rightIndexes = Compared(right, rightSpan, options);
+        int[] a = [.. leftIndexes.Select(index => CharId(left[index], options))];
+        int[] b = [.. rightIndexes.Select(index => CharId(right[index], options))];
+        (bool[] removed, bool[] added) = MyersDiff.Compare(a, b);
+        int common = removed.Count(isRemoved => !isRemoved);
+
+        if (common * 2 < Math.Min(a.Length, b.Length) || common == 0)
+        {
+            return false;
+        }
+
+        for (int k = 0; k < a.Length; k++)
+        {
+            leftChanged[leftIndexes[k]] |= removed[k];
+        }
+
+        for (int k = 0; k < b.Length; k++)
+        {
+            rightChanged[rightIndexes[k]] |= added[k];
+        }
+
+        return true;
+    }
+
+    // The characters of a part that count, as places in the line: ignoring whitespace, spaces don't
+    private static List<int> Compared(string line, DiffRange span, DiffOptionsModel options)
+    {
+        var indexes = new List<int>(span.Length);
+
+        for (int i = span.Start; i < span.End; i++)
+        {
+            if (!options.IgnoreWhitespace || !char.IsWhiteSpace(line[i]))
+            {
+                indexes.Add(i);
+            }
+        }
+
+        return indexes;
+    }
+
+    private static int CharId(char c, DiffOptionsModel options) => options.IgnoreCase ? char.ToUpperInvariant(c) : c;
+
+    // The characters marked, as ranges; ranges with only spaces between are one
+    private static List<DiffRange> Ranges(string line, bool[] changed)
+    {
+        var ranges = new List<DiffRange>();
+        int i = 0;
+
+        while (i < changed.Length)
+        {
+            if (!changed[i])
+            {
+                i++;
+
+                continue;
+            }
+
+            int start = i;
+
+            while (i < changed.Length && changed[i])
+            {
+                i++;
+            }
+
+            if (ranges.Count > 0 && IsBlank(line, ranges[^1].End, start))
+            {
+                ranges[^1] = new DiffRange(ranges[^1].Start, i - ranges[^1].Start);
             }
             else
             {
-                ranges.Add(word);
+                ranges.Add(new DiffRange(start, i - start));
             }
         }
 

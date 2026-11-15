@@ -89,6 +89,38 @@ public class TextDifferTests
         Assert.Equal([new DiffRange(12, 4), new DiffRange(19, 1)], right);
     }
 
+    [Theory]
+    [InlineData("abc", "abcd", "", "3+1")]
+    [InlineData("colour", "color", "4+1", "")]
+    [InlineData("Hello world", "Hallo world", "1+1", "1+1")]
+    [InlineData("x = total;", "x = totals;", "", "9+1")]
+    public void ChangedWords_MostlyTheSame_MarksOnlyTheCharactersThatDiffer(
+        string left,
+        string right,
+        string leftMarked,
+        string rightMarked)
+    {
+        // Act
+        (IReadOnlyList<DiffRange> leftRanges, IReadOnlyList<DiffRange> rightRanges) =
+            TextDiffer.ChangedWords(left, right, _exact);
+
+        // Assert
+        Assert.Equal(leftMarked, string.Join(" ", leftRanges.Select(range => $"{range.Start}+{range.Length}")));
+        Assert.Equal(rightMarked, string.Join(" ", rightRanges.Select(range => $"{range.Start}+{range.Length}")));
+    }
+
+    [Fact]
+    public void ChangedWords_Replaced_AreMarkedWhole()
+    {
+        // Act: "name" and "id" share nothing, "price" and "cost" only a c
+        (IReadOnlyList<DiffRange> left, IReadOnlyList<DiffRange> right) =
+            TextDiffer.ChangedWords("get(name, price)", "get(id, cost)", _exact);
+
+        // Assert
+        Assert.Equal([new DiffRange(4, 4), new DiffRange(10, 5)], left);
+        Assert.Equal([new DiffRange(4, 2), new DiffRange(8, 4)], right);
+    }
+
     [Fact]
     public void ChangedWords_NextToEachOther_AreOneRange()
     {

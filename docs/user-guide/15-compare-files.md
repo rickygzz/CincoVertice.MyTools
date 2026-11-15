@@ -33,7 +33,7 @@ The two sides are shown in rows that scroll together, so each line is next to th
 
 Each side has its line numbers at the left, as in the file, with `-` before a removed or changed line and `+` before an added or changed one. Tabs are shown as spaces, to the next multiple of 4.
 
-Where lines were removed and others added in their place, they are shown as changed, in pairs: the first removed next to the first added, and so on. The rest are shown removed or added. Inside a changed pair, a word counts as a run of letters, digits and `_`, a run of spaces, or any other single character, so a change of `price` to `cost` marks those words only.
+Where lines were removed and others added in their place, they are shown as changed, in pairs: the first removed next to the first added, and so on. The rest are shown removed or added. Inside a changed pair, a word counts as a run of letters, digits and `_`, a run of spaces, or any other single character, so a change of `price` to `cost` marks those words only. Where a changed word is mostly the same, only the characters that differ are marked: `abc` changed to `abcd` marks just the `d`, and `colour` to `color` just the `u` on the left. A word replaced by one quite different, such as `price` by `cost`, is marked whole.
 
 The narrow strip at the right shows the whole text from top to bottom, with each change in green (only added), red (only removed) or yellow (changed). The gray part is what's showing. Click or drag in the strip to go there.
 
