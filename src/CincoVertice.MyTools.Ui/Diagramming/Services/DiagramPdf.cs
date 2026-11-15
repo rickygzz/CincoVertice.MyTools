@@ -32,6 +32,7 @@ public static class DiagramPdf
         IDiagramTextOutliner textOutliner,
         IDiagramImageRasterizer? imageRasterizer = null)
     {
+        diagram = diagram.Visible();
         List<DiagramRasterModel> images = [];
         Rectangle area = DiagramArea.Of(diagram);
         var content = new StringBuilder();

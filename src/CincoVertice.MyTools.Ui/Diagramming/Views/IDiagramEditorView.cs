@@ -48,6 +48,9 @@ public interface IDiagramEditorView
     /// <summary>Raised with the name of the theme the user chose for the diagram.</summary>
     event EventHandler<string>? ThemeSelected;
 
+    /// <summary>Raised with what the user chose in the File menu's Recent: a diagram, or unsaved changes.</summary>
+    event EventHandler<DiagramRecentModel>? RecentChosen;
+
     event EventHandler<int>? LineWidthSelected;
 
     event EventHandler<bool>? DashedSelected;
@@ -114,6 +117,12 @@ public interface IDiagramEditorView
 
     /// <summary>Raised when the user drags rows of the layers panel up or down, in front of or behind others.</summary>
     event EventHandler<DiagramLayerMoveModel>? LayersMoved;
+
+    /// <summary>Raised with the shape or connector whose eye the user clicked in the layers panel.</summary>
+    event EventHandler<int>? LayerHiddenToggled;
+
+    /// <summary>Raised with the shape or connector whose lock the user clicked in the layers panel.</summary>
+    event EventHandler<int>? LayerLockedToggled;
 
     /// <summary>Raised with what the images panel should show only the images of; empty for all.</summary>
     event EventHandler<string>? ImageSearchChanged;
@@ -234,6 +243,9 @@ public interface IDiagramEditorView
     /// <summary>Asks whether to give the colors already in the diagram the new theme's colors.</summary>
     /// <param name="theme">The name of the theme chosen.</param>
     bool AskApplyTheme(string theme);
+
+    /// <summary>Shows the File menu's Recent: unsaved changes to get back, then the diagrams opened lately.</summary>
+    void ShowRecent(IReadOnlyList<DiagramRecentModel> items);
 
     /// <summary>Lets the user pick any color.</summary>
     /// <returns>The color; null when the user cancels.</returns>

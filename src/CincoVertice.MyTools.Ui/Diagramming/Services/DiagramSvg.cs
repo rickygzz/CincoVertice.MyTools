@@ -21,7 +21,9 @@ public static class DiagramSvg
 
     public static string Write(DiagramModel diagram)
     {
-        Rectangle area = DiagramArea.Of(diagram);
+        // The file keeps the whole diagram, and shows only what's visible
+        DiagramModel visible = diagram.Visible();
+        Rectangle area = DiagramArea.Of(visible);
         var root = new XElement(
             _svg + "svg",
             new XAttribute("viewBox", $"{area.X} {area.Y} {area.Width} {area.Height}"),
@@ -29,19 +31,19 @@ public static class DiagramSvg
             new XAttribute("height", area.Height),
             new XElement(_svg + "metadata", new XAttribute("id", MetadataId), DiagramJson.Write(diagram)));
 
-        if (diagram.Shapes.Any(shape => shape.Image is not null))
+        if (visible.Shapes.Any(shape => shape.Image is not null))
         {
             root.Add(new XAttribute(XNamespace.Xmlns + "xlink", _xlink));
         }
 
-        foreach (DiagramShapeModel shape in diagram.Shapes)
+        foreach (DiagramShapeModel shape in visible.Shapes)
         {
             root.Add(ShapeElement(shape));
         }
 
-        foreach (DiagramConnectorModel connector in diagram.Connectors)
+        foreach (DiagramConnectorModel connector in visible.Connectors)
         {
-            if (DiagramRouter.PathOf(connector, diagram) is { } path)
+            if (DiagramRouter.PathOf(connector, visible) is { } path)
             {
                 root.Add(ConnectorElement(connector, path));
             }

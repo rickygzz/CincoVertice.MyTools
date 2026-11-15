@@ -34,6 +34,8 @@
     <Content Include="Snipping\Licenses\Vortice-MIT.txt" Link="licenses\Vortice-MIT.txt" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
     <!-- The user guide, which the help window reads; next to the exe, where the release zip has it too -->
     <Content Include="..\..\docs\user-guide\**\*" Link="docs\user-guide\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <!-- The diagram editor's shape libraries, a folder per library, which its images panel offers -->
+    <Content Include="Diagramming\Library\**\*.svg" Link="library\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
   </ItemGroup>
 
   <ItemGroup>

@@ -152,7 +152,7 @@ public static class UiWinSetupExtensions
         services.AddSingleton<IDiagramTextOutliner, GdiTextOutliner>();
         services.AddSingleton<IDiagramImageRasterizer, Direct2DImageRasterizer>();
         services.AddSingleton<IDiagramImageCatalog>(_ =>
-            new FolderDiagramImageCatalog(OpenDiagramEditorAction.ImagesFolder));
+            new FolderDiagramImageCatalog(OpenDiagramEditorAction.ImagesFolder, OpenDiagramEditorAction.LibraryFolder));
         services.AddSingleton<IDiagramPdfExporter, PdfDiagramExporter>();
         services.AddSingleton<IDiagramPngExporter, PngDiagramExporter>();
         services.AddSingleton<IDiagramEditorSettingsStore>(_ =>

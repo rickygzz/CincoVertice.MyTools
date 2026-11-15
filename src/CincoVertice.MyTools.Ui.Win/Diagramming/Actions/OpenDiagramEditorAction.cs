@@ -56,6 +56,9 @@ public sealed class OpenDiagramEditorAction : IAppAction
     /// <summary>Where the images inserted are kept, to insert again: config\images.</summary>
     public static string ImagesFolder { get; } = Path.Combine(AppContext.BaseDirectory, "config", "images");
 
+    /// <summary>The shape libraries that come with the app, a folder per library, next to the exe.</summary>
+    public static string LibraryFolder { get; } = Path.Combine(AppContext.BaseDirectory, "library");
+
     /// <summary>Where each window keeps a copy of its unsaved changes: config\recovery.</summary>
     public static string RecoveryFolder { get; } = Path.Combine(AppContext.BaseDirectory, "config", "recovery");
 

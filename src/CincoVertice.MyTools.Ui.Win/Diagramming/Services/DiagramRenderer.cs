@@ -49,6 +49,8 @@ public static class DiagramRenderer
         IReadOnlySet<int> selectedConnectorIds,
         float zoom)
     {
+        diagram = diagram.Visible();
+
         foreach (DiagramShapeModel shape in diagram.Shapes)
         {
             DrawShape(graphics, shape);

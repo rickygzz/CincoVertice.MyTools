@@ -21,6 +21,7 @@ partial class DiagramEditorForm
             // On no toolbar, so nothing else disposes it: the properties panel shows its menu
             TitleFillDropDownButton.Dispose();
             _textFont?.Dispose();
+            _layerIconFont?.Dispose();
 
             foreach (Image image in _images.Concat(_swatches.Values))
             {
@@ -87,6 +88,7 @@ partial class DiagramEditorForm
         FileDropDownButton = new ToolStripDropDownButton();
         NewMenuItem = new ToolStripMenuItem();
         OpenMenuItem = new ToolStripMenuItem();
+        RecentMenuItem = new ToolStripMenuItem();
         SaveMenuItem = new ToolStripMenuItem();
         SaveAsMenuItem = new ToolStripMenuItem();
         ExportPdfMenuItem = new ToolStripMenuItem();
@@ -159,6 +161,7 @@ partial class DiagramEditorForm
         ImagesEmptyLabel = new Label();
         ImageSearchBox = new TextBox();
         ImagesFolderButton = new Button();
+        OfficialIconsLinkLabel = new LinkLabel();
         PropertiesTable = new TableLayoutPanel();
         PropertiesTitleLabel = new Label();
         NameLabel = new Label();
@@ -585,7 +588,7 @@ partial class DiagramEditorForm
         // FileDropDownButton
         //
         FileDropDownButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
-        FileDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { NewMenuItem, OpenMenuItem, SaveMenuItem, SaveAsMenuItem, ExportPdfMenuItem, ExportPngMenuItem, ExitSeparator, ExitMenuItem });
+        FileDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { NewMenuItem, OpenMenuItem, RecentMenuItem, SaveMenuItem, SaveAsMenuItem, ExportPdfMenuItem, ExportPngMenuItem, ExitSeparator, ExitMenuItem });
         FileDropDownButton.Name = "FileDropDownButton";
         FileDropDownButton.Text = "File";
         FileDropDownButton.ToolTipText = "New, open, save, export and close";
@@ -598,6 +601,12 @@ partial class DiagramEditorForm
         NewMenuItem.Text = "New";
         NewMenuItem.ToolTipText = "Start an empty diagram";
         NewMenuItem.Click += CommandButton_Click;
+        //
+        // RecentMenuItem
+        //
+        RecentMenuItem.Name = "RecentMenuItem";
+        RecentMenuItem.Text = "Recent";
+        RecentMenuItem.ToolTipText = "Diagrams opened or saved lately, and unsaved changes to get back";
         //
         // OpenMenuItem
         //
@@ -1107,6 +1116,7 @@ partial class DiagramEditorForm
         LayersListView.DrawItem += LayersListView_DrawItem;
         LayersListView.ItemDrag += LayersListView_ItemDrag;
         LayersListView.KeyDown += LayersListView_KeyDown;
+        LayersListView.MouseUp += LayersListView_MouseUp;
         LayersListView.SelectedIndexChanged += LayersListView_SelectedIndexChanged;
         LayersListView.Enter += LayersListView_FocusChanged;
         LayersListView.Leave += LayersListView_FocusChanged;
@@ -1117,8 +1127,8 @@ partial class DiagramEditorForm
         LayersHintLabel.Dock = DockStyle.Bottom;
         LayersHintLabel.ForeColor = SystemColors.GrayText;
         LayersHintLabel.Name = "LayersHintLabel";
-        LayersHintLabel.Size = new Size(200, 48);
-        LayersHintLabel.Text = "Front first. Drag to put in front or behind. Double-click or F2 to rename.";
+        LayersHintLabel.Size = new Size(200, 64);
+        LayersHintLabel.Text = "Front first. Drag to put in front or behind. Double-click or F2 to rename. The eye hides, the lock lets clicks through.";
         //
         // ImagesPanel
         //
@@ -1126,6 +1136,7 @@ partial class DiagramEditorForm
         ImagesPanel.Controls.Add(ImagesEmptyLabel);
         ImagesPanel.Controls.Add(ImageSearchBox);
         ImagesPanel.Controls.Add(ImagesFolderButton);
+        ImagesPanel.Controls.Add(OfficialIconsLinkLabel);
         ImagesPanel.Dock = DockStyle.Fill;
         ImagesPanel.Name = "ImagesPanel";
         ImagesPanel.Padding = new Padding(4);
@@ -1170,6 +1181,17 @@ partial class DiagramEditorForm
         ImagesFolderButton.Text = "Open the images folder";
         ImagesFolderButton.UseVisualStyleBackColor = true;
         ImagesFolderButton.Click += ImagesFolderButton_Click;
+        //
+        // OfficialIconsLinkLabel
+        //
+        OfficialIconsLinkLabel.Dock = DockStyle.Bottom;
+        OfficialIconsLinkLabel.Name = "OfficialIconsLinkLabel";
+        OfficialIconsLinkLabel.Padding = new Padding(0, 4, 0, 0);
+        OfficialIconsLinkLabel.Size = new Size(220, 40);
+        OfficialIconsLinkLabel.TabIndex = 3;
+        OfficialIconsLinkLabel.TabStop = true;
+        OfficialIconsLinkLabel.Text = "Official icons to download, then copy into the folder: Azure, AWS";
+        OfficialIconsLinkLabel.LinkClicked += OfficialIconsLinkLabel_LinkClicked;
         //
         // PropertiesPanel
         //
@@ -1839,6 +1861,7 @@ partial class DiagramEditorForm
     private ToolStripDropDownButton FileDropDownButton;
     private ToolStripMenuItem NewMenuItem;
     private ToolStripMenuItem OpenMenuItem;
+    private ToolStripMenuItem RecentMenuItem;
     private ToolStripMenuItem SaveMenuItem;
     private ToolStripMenuItem SaveAsMenuItem;
     private ToolStripMenuItem ExportPdfMenuItem;
@@ -1896,6 +1919,7 @@ partial class DiagramEditorForm
     private Label ImagesEmptyLabel;
     private TextBox ImageSearchBox;
     private Button ImagesFolderButton;
+    private LinkLabel OfficialIconsLinkLabel;
     private TableLayoutPanel PropertiesTable;
     private Label PropertiesTitleLabel;
     private Label NameLabel;

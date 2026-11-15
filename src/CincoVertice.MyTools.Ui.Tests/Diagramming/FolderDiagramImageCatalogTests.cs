@@ -1,4 +1,5 @@
-﻿using CincoVertice.MyTools.Ui.Diagramming.Models;
+﻿using System.Runtime.CompilerServices;
+using CincoVertice.MyTools.Ui.Diagramming.Models;
 using CincoVertice.MyTools.Ui.Diagramming.Services;
 using Xunit;
 
@@ -171,5 +172,70 @@ public sealed class FolderDiagramImageCatalogTests : IDisposable
     {
         // Act / Assert
         Assert.Equal(expected, FolderDiagramImageCatalog.NameOf(fileName));
+    }
+
+    [Fact]
+    public void Libraries_AreOffered_AfterTheUsersImages_InTheirOwnGroups_AndNothingIsWrittenThere()
+    {
+        // Arrange: one image of the user's, and a library of two
+        string library = Path.Combine(_folder, "..", Path.GetFileName(_folder) + "_library");
+        Directory.CreateDirectory(Path.Combine(library, "Network"));
+        File.WriteAllText(Path.Combine(library, "Network", "Server.svg"), Icon);
+        File.WriteAllText(Path.Combine(library, "Network", "Load-balancer.svg"), Other);
+        File.WriteAllText(Path.Combine(library, "Network", "Broken.svg"), "not markup");
+        CopyIn("mine.svg", Icon);
+        var catalog = new FolderDiagramImageCatalog(_folder, library);
+
+        try
+        {
+            // Act
+            IReadOnlyList<DiagramCatalogImageModel> images = catalog.Images();
+            catalog.MarkUsed("library:Network/Server.svg");
+
+            // Assert: by name in the library; the one that isn't an image left out
+            Assert.Equal(
+                [("mine.svg", "Inserted"), ("library:Network/Load-balancer.svg", "Library: Network"),
+                    ("library:Network/Server.svg", "Library: Network")],
+                images.Select(image => (image.Path, image.Group)));
+            Assert.Equal("Load balancer", images[1].Name);
+            Assert.Equal("library:Network/Server.svg", catalog.Recent()[0]);
+            Assert.Equal(3, Directory.GetFiles(Path.Combine(library, "Network")).Length);
+        }
+        finally
+        {
+            Directory.Delete(library, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Libraries_TheAppsOwn_AreAllImages()
+    {
+        // Arrange: the libraries that come with the app, as the Ui.Win project has them
+        string library = AppLibraryFolder();
+
+        // Act
+        IReadOnlyList<DiagramCatalogImageModel> images = new FolderDiagramImageCatalog(_folder, library).Images();
+
+        // Assert: every file is an image, in one of the four libraries
+        Assert.Equal(Directory.GetFiles(library, "*.svg", SearchOption.AllDirectories).Length, images.Count);
+        Assert.Equal(
+            ["Library: Cloud", "Library: Flowchart", "Library: Network", "Library: UML"],
+            images.Select(image => image.Group).Distinct());
+    }
+
+    // Next to this project, wherever the tests were built
+    private static string AppLibraryFolder([CallerFilePath] string source = "")
+    {
+        for (DirectoryInfo? folder = new FileInfo(source).Directory; folder is not null; folder = folder.Parent)
+        {
+            string library = Path.Combine(folder.FullName, "CincoVertice.MyTools.Ui.Win", "Diagramming", "Library");
+
+            if (Directory.Exists(library))
+            {
+                return library;
+            }
+        }
+
+        throw new DirectoryNotFoundException("The diagram libraries aren't in any folder above the tests.");
     }
 }

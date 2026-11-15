@@ -51,7 +51,9 @@ public static class DiagramJson
                 shape.BottomCornerRadius,
                 shape.InnerGroupIds is { Count: > 0 } inner ? [.. inner] : null,
                 SpanFile.From(shape.TextSpans),
-                NameOrNull(shape.Name)))],
+                NameOrNull(shape.Name),
+                shape.IsHidden ? true : null,
+                shape.IsLocked ? true : null))],
             [.. diagram.Connectors.Select(connector => new ConnectorFile(
                 connector.Id,
                 connector.FromShapeId,
@@ -67,7 +69,9 @@ public static class DiagramJson
                 connector.ToPoint is Point to ? new PointFile(to.X, to.Y) : null,
                 connector.Direction == DiagramLineDirection.Free ? null : connector.Direction,
                 SpanFile.From(connector.LabelSpans),
-                NameOrNull(connector.Name)))],
+                NameOrNull(connector.Name),
+                connector.IsHidden ? true : null,
+                connector.IsLocked ? true : null))],
             NameOrNull(diagram.Theme));
 
         return JsonSerializer.Serialize(file, _options);
@@ -125,6 +129,8 @@ public static class DiagramJson
                         Direction = DirectionOf(c),
                         LabelSpans = SpanFile.ToSpans(c.LabelSpans, c.Label ?? string.Empty),
                         Name = NameOrNull(c.Name),
+                        IsHidden = c.Hidden == true,
+                        IsLocked = c.Locked == true,
                     };
 
                     connectors.Add(line.Aligned());
@@ -147,7 +153,9 @@ public static class DiagramJson
                     c.ToSide,
                     c.Bends is { Count: > 0 } bends ? [.. bends.Select(bend => new Point(bend.X, bend.Y))] : null,
                     LabelSpans: SpanFile.ToSpans(c.LabelSpans, c.Label ?? string.Empty),
-                    Name: NameOrNull(c.Name)));
+                    Name: NameOrNull(c.Name),
+                    IsHidden: c.Hidden == true,
+                    IsLocked: c.Locked == true));
             }
         }
 
@@ -196,7 +204,9 @@ public static class DiagramJson
         // Groups inside one only mean something in a group
         shape.GroupId is not null && shape.InnerGroupIds is { Count: > 0 } inner ? [.. inner] : null,
         SpanFile.ToSpans(shape.TextSpans, shape.Text ?? string.Empty),
-        NameOrNull(shape.Name));
+        NameOrNull(shape.Name),
+        shape.Hidden == true,
+        shape.Locked == true);
 
     /// <summary>A style read from a file, with values out of range brought into range.</summary>
     internal static DiagramStyleModel ToStyle(StyleFile? style) => new(
@@ -262,7 +272,9 @@ public static class DiagramJson
         int? BottomCornerRadius = null,
         List<int>? InnerGroupIds = null,
         List<SpanFile>? TextSpans = null,
-        string? Name = null);
+        string? Name = null,
+        bool? Hidden = null,
+        bool? Locked = null);
 
     private sealed record ConnectorFile(
         int Id,
@@ -279,7 +291,9 @@ public static class DiagramJson
         PointFile? ToPoint = null,
         DiagramLineDirection? Direction = null,
         List<SpanFile>? LabelSpans = null,
-        string? Name = null);
+        string? Name = null,
+        bool? Hidden = null,
+        bool? Locked = null);
 
     private sealed record PointFile(int X, int Y);
 

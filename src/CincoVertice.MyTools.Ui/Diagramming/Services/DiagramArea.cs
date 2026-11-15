@@ -14,6 +14,7 @@ public static class DiagramArea
     /// <returns>In diagram pixels; 100 by 100 at the origin for an empty diagram.</returns>
     public static Rectangle Of(DiagramModel diagram)
     {
+        diagram = diagram.Visible();
         List<RectangleF> parts = [.. diagram.Shapes.Select(BoundsWithText)];
 
         foreach (DiagramConnectorModel connector in diagram.Connectors)

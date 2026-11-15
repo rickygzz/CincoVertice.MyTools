@@ -29,6 +29,11 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 /// </param>
 /// <param name="TextSpans">The parts of <paramref name="Text"/> in bold or italic; null or none for plain text.</param>
 /// <param name="Name">What the user calls it, shown in the layers panel; null for none.</param>
+/// <param name="IsHidden">True when it isn't drawn, on the canvas or in a file, nor picked by a click.</param>
+/// <param name="IsLocked">
+///     True when clicks on the canvas go through it, so it can't be picked or moved there; unlike
+///     <paramref name="Locks"/>, which keep its place and size as it's moved.
+/// </param>
 public sealed record DiagramShapeModel(
     int Id,
     DiagramShapeKind Kind,
@@ -42,4 +47,6 @@ public sealed record DiagramShapeModel(
     int? BottomCornerRadius = null,
     IReadOnlyList<int>? InnerGroupIds = null,
     IReadOnlyList<DiagramTextSpanModel>? TextSpans = null,
-    string? Name = null);
+    string? Name = null,
+    bool IsHidden = false,
+    bool IsLocked = false);

@@ -27,6 +27,13 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     // What an image dragged from the images panel carries: its path in the catalog
     private const string CatalogImageFormat = "CincoVertice.MyTools.DiagramCatalogImage";
 
+    // Where the cloud makers offer their architecture icons, for the images panel's links
+    private static readonly (string Name, string Page)[] OfficialIconPages =
+    [
+        ("Azure", "https://learn.microsoft.com/azure/architecture/icons/"),
+        ("AWS", "https://aws.amazon.com/architecture/icons/"),
+    ];
+
     // What rows dragged in the layers panel carry: their ids, with commas between
     private const string LayersDragFormat = "CincoVertice.MyTools.DiagramLayers";
 
@@ -70,6 +77,16 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
 
     // True while a row of the layers panel is being renamed, so Esc is the rename's
     private bool _isRenamingLayer;
+
+    // The layers panel's eye and lock, from Windows' icon font: Segoe Fluent Icons on Windows 11, MDL2 before
+    private const string FluentIconFont = "Segoe Fluent Icons";
+    private const string Mdl2IconFont = "Segoe MDL2 Assets";
+    private const char LayerEyeGlyph = (char)0xE890;
+    private const char LayerHideGlyph = (char)0xED1A;
+    private const char LayerLockGlyph = (char)0xE72E;
+    private const char LayerUnlockGlyph = (char)0xE785;
+
+    private Font? _layerIconFont;
 
     // The row a drag in the layers panel would put the rows above; the number of rows for the bottom, -1 for none
     private int _layerDropIndex = -1;
@@ -118,6 +135,16 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
 
         FormExtensions.ActivateWhenShown(this);
         FindBox.TextBox.PlaceholderText = "Find (Ctrl+F)";
+
+        // Each name links to where its maker offers its icons; they're the maker's, so they aren't in the app
+        OfficialIconsLinkLabel.Links.Clear();
+
+        foreach ((string name, string page) in OfficialIconPages)
+        {
+            int start = OfficialIconsLinkLabel.Text.LastIndexOf(name, StringComparison.Ordinal);
+
+            OfficialIconsLinkLabel.Links.Add(start, name.Length, page);
+        }
     }
 
     /// <summary>Whether the focus is in a panel or the find box, whose keys are their own.</summary>
@@ -150,6 +177,8 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     public event EventHandler<DiagramColorTarget>? ScreenColorRequested;
 
     public event EventHandler<string>? ThemeSelected;
+
+    public event EventHandler<DiagramRecentModel>? RecentChosen;
 
     public event EventHandler<int>? LineWidthSelected;
 
@@ -206,6 +235,10 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     public event EventHandler<DiagramLayerRenameModel>? LayerRenamed;
 
     public event EventHandler<DiagramLayerMoveModel>? LayersMoved;
+
+    public event EventHandler<int>? LayerHiddenToggled;
+
+    public event EventHandler<int>? LayerLockedToggled;
 
     public event EventHandler? AutosaveDue;
 
@@ -266,6 +299,41 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
             }
 
             themeMenu.Text = $"Theme: {palette.Theme}";
+        }
+    }
+
+    /// <summary>
+    ///     The Recent submenu, numbered for the keyboard; made here, as its items change with the diagrams opened.
+    /// </summary>
+    public void ShowRecent(IReadOnlyList<DiagramRecentModel> items)
+    {
+        List<ToolStripItem> old = [.. RecentMenuItem.DropDownItems.Cast<ToolStripItem>()];
+
+        RecentMenuItem.DropDownItems.Clear();
+
+        foreach (ToolStripItem item in old)
+        {
+            item.Dispose();
+        }
+
+        for (int i = 0; i < items.Count; i++)
+        {
+            DiagramRecentModel recent = items[i];
+            string number = i < 9 ? $"&{i + 1} " : string.Empty;
+            var item = new ToolStripMenuItem(number + recent.Text.Replace("&", "&&")) { ToolTipText = recent.Path };
+
+            item.Click += (_, _) =>
+            {
+                CommitText();
+                Canvas.Focus();
+                RecentChosen?.Invoke(this, recent);
+            };
+            RecentMenuItem.DropDownItems.Add(item);
+        }
+
+        if (items.Count == 0)
+        {
+            RecentMenuItem.DropDownItems.Add(new ToolStripMenuItem("No diagrams yet") { Enabled = false });
         }
     }
 
@@ -1338,7 +1406,12 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         Color back = !e.Item.Selected ? LayersListView.BackColor
             : isFocused ? SystemColors.Highlight
             : SystemColors.ControlLight;
-        Color fore = e.Item.Selected && isFocused ? SystemColors.HighlightText : LayersListView.ForeColor;
+        var layer = (DiagramLayerModel)e.Item.Tag!;
+        Color fore = e.Item.Selected && isFocused ? SystemColors.HighlightText
+            : layer.IsHidden ? SystemColors.GrayText
+            : LayersListView.ForeColor;
+        Color faint = e.Item.Selected && isFocused ? SystemColors.HighlightText : SystemColors.GrayText;
+        (Rectangle lockIcon, Rectangle eyeIcon) = LayerIconsOf(LayerRowOf(e.Item));
         int padding = LogicalToDeviceUnits(4);
 
         using (var brush = new SolidBrush(back))
@@ -1350,10 +1423,17 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
             e.Graphics,
             e.Item.Text,
             LayersListView.Font,
-            Rectangle.FromLTRB(row.Left + padding, row.Top, row.Right - padding, row.Bottom),
+            Rectangle.FromLTRB(row.Left + padding, row.Top, lockIcon.Left, row.Bottom),
             fore,
             TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis
                 | TextFormatFlags.NoPrefix);
+
+        // Faint while they're as at first: shown, not locked
+        char lockGlyph = layer.IsLocked ? LayerLockGlyph : LayerUnlockGlyph;
+        char eyeGlyph = layer.IsHidden ? LayerHideGlyph : LayerEyeGlyph;
+
+        DrawLayerIcon(e.Graphics, lockGlyph, lockIcon, layer.IsLocked ? fore : faint);
+        DrawLayerIcon(e.Graphics, eyeGlyph, eyeIcon, layer.IsHidden ? fore : faint);
 
         int lineY = _layerDropIndex == e.ItemIndex ? row.Top
             : _layerDropIndex == e.ItemIndex + 1 && e.ItemIndex == LayersListView.Items.Count - 1 ? row.Bottom - 2
@@ -1367,8 +1447,85 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         }
     }
 
+    /// <summary>A row's whole tile: in a tile view, an item's own bounds are only around its text.</summary>
+    private Rectangle LayerRowOf(ListViewItem item) => new(item.Bounds.Location, LayersListView.TileSize);
+
+    /// <summary>Where a row's lock and eye are: two squares at its right end, the eye last.</summary>
+    private static (Rectangle Lock, Rectangle Eye) LayerIconsOf(Rectangle row)
+    {
+        int side = row.Height;
+
+        return (
+            new Rectangle(row.Right - 2 * side, row.Top, side, side),
+            new Rectangle(row.Right - side, row.Top, side, side));
+    }
+
+    private void DrawLayerIcon(Graphics graphics, char glyph, Rectangle square, Color color)
+    {
+        _layerIconFont ??= new Font(
+            DiagramFonts.IsInstalled(FluentIconFont) ? FluentIconFont : Mdl2IconFont,
+            LayersListView.Font.Size,
+            FontStyle.Regular,
+            GraphicsUnit.Point);
+
+        TextRenderer.DrawText(
+            graphics,
+            glyph.ToString(),
+            _layerIconFont,
+            square,
+            color,
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+    }
+
+    /// <summary>
+    ///     A click on a row's eye shows or hides it; on its lock, locks or frees it; elsewhere on the row past its text,
+    ///     where the list itself sees no row, selects it. On the button's release, which the list raises wherever it is.
+    /// </summary>
+    private void LayersListView_MouseUp(object? sender, MouseEventArgs e)
+    {
+        // By the whole tile: GetItemAt finds an item only on its text
+        ListViewItem? item = LayersListView.Items.Cast<ListViewItem>()
+            .FirstOrDefault(each => LayerRowOf(each).Contains(e.Location));
+
+        if (e.Button != MouseButtons.Left || item is null)
+        {
+            return;
+        }
+
+        int id = ((DiagramLayerModel)item.Tag!).Id;
+        (Rectangle lockIcon, Rectangle eyeIcon) = LayerIconsOf(LayerRowOf(item));
+
+        if (eyeIcon.Contains(e.Location))
+        {
+            LayerHiddenToggled?.Invoke(this, id);
+        }
+        else if (lockIcon.Contains(e.Location))
+        {
+            LayerLockedToggled?.Invoke(this, id);
+        }
+        else if (!item.Selected)
+        {
+            if ((ModifierKeys & (Keys.Control | Keys.Shift)) == 0)
+            {
+                LayersListView.SelectedItems.Clear();
+            }
+
+            item.Selected = true;
+            item.Focused = true;
+        }
+    }
+
     private void ImageSearchBox_TextChanged(object? sender, EventArgs e) =>
         ImageSearchChanged?.Invoke(this, ImageSearchBox.Text);
+
+    /// <summary>Opens the page in the browser: nothing is sent, the user downloads the icons from there.</summary>
+    private void OfficialIconsLinkLabel_LinkClicked(object? sender, LinkLabelLinkClickedEventArgs e)
+    {
+        if (e.Link?.LinkData is string page)
+        {
+            OpenFolder(page);
+        }
+    }
 
     private void ImagesFolderButton_Click(object? sender, EventArgs e) =>
         ImagesFolderRequested?.Invoke(this, EventArgs.Empty);

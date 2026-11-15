@@ -13,6 +13,7 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 /// <param name="IsImagesPanelVisible">True when the images panel is shown.</param>
 /// <param name="IsLayersPanelVisible">True when the layers panel is shown.</param>
 /// <param name="Theme">The theme chosen last, which new diagrams get; null for the default one.</param>
+/// <param name="RecentFiles">The diagrams opened or saved lately, newest first; null for none.</param>
 /// <param name="RecentColors">Colors used last that no theme offers, newest first; null for none.</param>
 public sealed record DiagramEditorSettingsModel(
     DiagramStyleModel Style,
@@ -23,4 +24,5 @@ public sealed record DiagramEditorSettingsModel(
     bool IsImagesPanelVisible = true,
     bool IsLayersPanelVisible = false,
     string? Theme = null,
-    IReadOnlyList<Color>? RecentColors = null);
+    IReadOnlyList<Color>? RecentColors = null,
+    IReadOnlyList<string>? RecentFiles = null);

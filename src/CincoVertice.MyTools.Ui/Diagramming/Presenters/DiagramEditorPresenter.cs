@@ -29,6 +29,9 @@ public sealed class DiagramEditorPresenter
     /// <summary>How many colors used lately the color menus show.</summary>
     public const int MaxRecentColors = 10;
 
+    /// <summary>How many diagrams opened or saved lately the Recent menu lists.</summary>
+    public const int MaxRecentFiles = 10;
+
     private const string RecentColorName = "Used lately";
     private const float MinZoom = 0.25f;
     private const float MaxZoom = 4;
@@ -74,6 +77,9 @@ public sealed class DiagramEditorPresenter
 
     // Colors used lately that the menus don't offer otherwise, newest first, kept in the settings
     private readonly List<Color> _recentColors = [];
+
+    // Diagrams opened or saved lately, newest first, kept in the settings for every window
+    private List<string> _recentFiles = [];
     private readonly Stack<DiagramModel> _undo = new();
     private readonly Stack<DiagramModel> _redo = new();
     private readonly HashSet<int> _selectedShapes = [];
@@ -213,6 +219,7 @@ public sealed class DiagramEditorPresenter
         _view.MoreColorsRequested += OnMoreColorsRequested;
         _view.ScreenColorRequested += OnScreenColorRequested;
         _view.ThemeSelected += OnThemeSelected;
+        _view.RecentChosen += OnRecentChosen;
         _view.LineWidthSelected += OnLineWidthSelected;
         _view.DashedSelected += OnDashedSelected;
         _view.FontSizeSelected += OnFontSizeSelected;
@@ -237,6 +244,8 @@ public sealed class DiagramEditorPresenter
         _view.LayersSelected += OnLayersSelected;
         _view.LayerRenamed += OnLayerRenamed;
         _view.LayersMoved += OnLayersMoved;
+        _view.LayerHiddenToggled += OnLayerHiddenToggled;
+        _view.LayerLockedToggled += OnLayerLockedToggled;
         _view.ImageSearchChanged += OnImageSearchChanged;
         _view.CatalogImageChosen += OnCatalogImageChosen;
         _view.CatalogImageDropped += OnCatalogImageDropped;
@@ -264,6 +273,7 @@ public sealed class DiagramEditorPresenter
     public void Start()
     {
         ShowPalette();
+        ShowRecent();
         _view.ShowSizes(LineWidths, FontSizes, SnipEditorPresenter.TextOutlineWidths);
         _view.ShowPropertiesPanel(_isPropertiesPanelVisible);
         _view.ShowImagesPanel(_isImagesPanelVisible);
@@ -308,6 +318,7 @@ public sealed class DiagramEditorPresenter
         }
 
         _themeForNew = saved.Theme;
+        _recentFiles = [.. (saved.RecentFiles ?? []).Take(MaxRecentFiles)];
         _recentColors.AddRange((saved.RecentColors ?? []).Where(color => !color.IsEmpty).Take(MaxRecentColors));
 
         if (saved.Window is { Size: { Width: > 0, Height: > 0 } })
@@ -316,8 +327,16 @@ public sealed class DiagramEditorPresenter
         }
     }
 
-    private void SaveSettings()
+    /// <param name="withRecentFiles">
+    ///     True to write this window's recent diagrams; else the ones saved are kept, as another window may have
+    ///     changed them since.
+    /// </param>
+    private void SaveSettings(bool withRecentFiles = false)
     {
+        IReadOnlyList<string> recentFiles = withRecentFiles
+            ? _recentFiles
+            : _settingsStore.Load()?.RecentFiles ?? _recentFiles;
+
         _settingsStore.Save(new DiagramEditorSettingsModel(
             _style,
             _routing,
@@ -327,7 +346,8 @@ public sealed class DiagramEditorPresenter
             _isImagesPanelVisible,
             _isLayersPanelVisible,
             _themeForNew,
-            [.. _recentColors]));
+            [.. _recentColors],
+            [.. recentFiles]));
     }
 
     private void OnPropertiesPanelToggled(object? sender, bool isVisible)
@@ -388,13 +408,17 @@ public sealed class DiagramEditorPresenter
             connector.Id,
             LayerText(connector, diagram),
             connector.Name ?? string.Empty,
-            true)),
+            true,
+            IsHidden: connector.IsHidden,
+            IsLocked: connector.IsLocked)),
         .. diagram.Shapes.Reverse().Select(shape => new DiagramLayerModel(
             shape.Id,
             LayerText(shape),
             shape.Name ?? string.Empty,
             false,
-            shape.GroupId)),
+            shape.GroupId,
+            shape.IsHidden,
+            shape.IsLocked)),
     ];
 
     /// <summary>Its name, or else its kind and the start of its text, e.g. "Rectangle: Start".</summary>
@@ -452,10 +476,14 @@ public sealed class DiagramEditorPresenter
             return;
         }
 
+        // What's hidden can't be selected, even here; what's locked can, to change it
         ClearSelection();
-        _selectedShapes.UnionWith(_diagram.Shapes.Where(shape => ids.Contains(shape.Id)).Select(shape => shape.Id));
-        _selectedConnectors.UnionWith(
-            _diagram.Connectors.Where(connector => ids.Contains(connector.Id)).Select(connector => connector.Id));
+        _selectedShapes.UnionWith(_diagram.Shapes
+            .Where(shape => ids.Contains(shape.Id) && !shape.IsHidden)
+            .Select(shape => shape.Id));
+        _selectedConnectors.UnionWith(_diagram.Connectors
+            .Where(connector => ids.Contains(connector.Id) && !connector.IsHidden)
+            .Select(connector => connector.Id));
 
         // The panel shows it already
         _shownLayerSelection = [.. _selectedShapes, .. _selectedConnectors];
@@ -473,6 +501,56 @@ public sealed class DiagramEditorPresenter
     }
 
     private void OnLayerRenamed(object? sender, DiagramLayerRenameModel rename) => Rename(rename.Id, rename.Name);
+
+    /// <summary>Shows or hides a shape or connector; one hidden is no longer selected. One step to undo.</summary>
+    private void OnLayerHiddenToggled(object? sender, int id)
+    {
+        if (_drag is not null)
+        {
+            return;
+        }
+
+        Commit(_diagram with
+        {
+            Shapes =
+            [
+                .. _diagram.Shapes.Select(shape => shape.Id == id ? shape with { IsHidden = !shape.IsHidden } : shape),
+            ],
+            Connectors =
+            [
+                .. _diagram.Connectors.Select(connector =>
+                    connector.Id == id ? connector with { IsHidden = !connector.IsHidden } : connector),
+            ],
+        });
+
+        if (_selectedShapes.Remove(id) | _selectedConnectors.Remove(id))
+        {
+            SelectionChanged();
+            Refresh();
+        }
+    }
+
+    /// <summary>Locks or frees a shape or connector, which canvas clicks then go through. One undo step.</summary>
+    private void OnLayerLockedToggled(object? sender, int id)
+    {
+        if (_drag is not null)
+        {
+            return;
+        }
+
+        Commit(_diagram with
+        {
+            Shapes =
+            [
+                .. _diagram.Shapes.Select(shape => shape.Id == id ? shape with { IsLocked = !shape.IsLocked } : shape),
+            ],
+            Connectors =
+            [
+                .. _diagram.Connectors.Select(connector =>
+                    connector.Id == id ? connector with { IsLocked = !connector.IsLocked } : connector),
+            ],
+        });
+    }
 
     /// <summary>Names a shape or a connector; a name of only spaces is none: its kind and text show again.</summary>
     private void Rename(int id, string typed)
@@ -538,7 +616,14 @@ public sealed class DiagramEditorPresenter
     }
 
     /// <summary>Images copied into the catalog's folder show when the user comes back to the window.</summary>
-    private void OnWindowActivated(object? sender, EventArgs e) => ShowCatalog();
+    private void OnWindowActivated(object? sender, EventArgs e)
+    {
+        ShowCatalog();
+
+        // Another window may have opened or saved one since
+        _recentFiles = [.. (_settingsStore.Load()?.RecentFiles ?? _recentFiles).Take(MaxRecentFiles)];
+        ShowRecent();
+    }
 
     private void OnImagesFolderRequested(object? sender, EventArgs e)
     {
@@ -652,7 +737,78 @@ public sealed class DiagramEditorPresenter
         _savedDiagram = DiagramModel.Empty;
         _savedVersion = recovery.Version;
         _autosaved = (_diagram, true);
+
+        if (recovery.Path is string path)
+        {
+            RememberFile(path);
+        }
+
+        ShowRecent();
         Refresh();
+    }
+
+    /// <summary>Puts a diagram first among those opened lately, as the other windows saved them.</summary>
+    private void RememberFile(string path)
+    {
+        List<string> files = [.. _settingsStore.Load()?.RecentFiles ?? _recentFiles];
+
+        files.RemoveAll(other => string.Equals(other, path, StringComparison.OrdinalIgnoreCase));
+        files.Insert(0, path);
+        _recentFiles = [.. files.Take(MaxRecentFiles)];
+        SaveSettings(withRecentFiles: true);
+        ShowRecent();
+    }
+
+    /// <summary>
+    ///     Unsaved changes no window has, left when the app or Windows ended, then the diagrams opened or saved lately.
+    /// </summary>
+    private void ShowRecent()
+    {
+        IEnumerable<DiagramRecentModel> unsaved = _recoveryStore.Left().Select(recovery => new DiagramRecentModel(
+            string.Create(
+                CultureInfo.CurrentCulture,
+                $"Unsaved: {(recovery.Path is null ? UntitledName : Path.GetFileName(recovery.Path))}, "
+                + $"{recovery.SavedAt.ToLocalTime():g}"),
+            null,
+            recovery.Id));
+        IEnumerable<DiagramRecentModel> files = _recentFiles.Select(path => new DiagramRecentModel(
+            $"{Path.GetFileName(path)}  —  {Path.GetDirectoryName(path)}",
+            path,
+            null));
+
+        _view.ShowRecent([.. unsaved, .. files]);
+    }
+
+    /// <summary>
+    ///     Opens it here, after asking about this one's changes: a diagram from its file, or unsaved changes. One that
+    ///     can't be opened any more leaves the list.
+    /// </summary>
+    private void OnRecentChosen(object? sender, DiagramRecentModel item)
+    {
+        if (_drag is not null)
+        {
+            return;
+        }
+
+        if (item.RecoveryId is string id)
+        {
+            // Another window may have taken them since the menu was shown
+            if (_recoveryStore.Left().FirstOrDefault(recovery => recovery.Id == id) is { } recovery && ConfirmLeave())
+            {
+                Recover(recovery);
+            }
+
+            ShowRecent();
+
+            return;
+        }
+
+        if (item.Path is string path && ConfirmLeave() && !OpenFile(path) && _fileStore.VersionOf(path) is null)
+        {
+            _recentFiles = [.. (_settingsStore.Load()?.RecentFiles ?? _recentFiles).Where(other => other != path)];
+            SaveSettings(withRecentFiles: true);
+            ShowRecent();
+        }
     }
 
     private void OnAutosaveDue(object? sender, EventArgs e)
@@ -1531,10 +1687,11 @@ public sealed class DiagramEditorPresenter
                 break;
             case BandDrag when band is Rectangle box:
                 _selectedShapes.UnionWith(_diagram.Shapes
-                    .Where(shape => box.Contains(shape.Bounds))
+                    .Where(shape => DiagramHitTester.IsClickable(shape) && box.Contains(shape.Bounds))
                     .SelectMany(WithGroup));
                 _selectedConnectors.UnionWith(_diagram.Connectors
                     .Where(c => c is { FromPoint: Point from, ToPoint: Point to }
+                        && DiagramHitTester.IsClickable(c)
                         && box.Contains(from)
                         && box.Contains(to))
                     .Select(c => c.Id));
@@ -2025,27 +2182,40 @@ public sealed class DiagramEditorPresenter
 
     private void Open()
     {
-        if (!ConfirmLeave() || _view.AskOpenPath() is not string path)
+        if (ConfirmLeave() && _view.AskOpenPath() is string path)
         {
-            return;
+            OpenFile(path);
         }
+    }
 
+    /// <returns>False when it couldn't be opened, which the user is told.</returns>
+    private bool OpenFile(string path)
+    {
         try
         {
             Replace(_fileStore.Load(path), path);
             _savedVersion = _fileStore.VersionOf(path);
+            RememberFile(path);
+
+            return true;
         }
         catch (InvalidDataException ex)
         {
             // Not a diagram, but maybe an SVG image made elsewhere
-            if (!OpenAsImage(path))
+            if (OpenAsImage(path))
             {
-                _view.ShowError($"Could not open {Path.GetFileName(path)}: {ex.Message}");
+                return true;
             }
+
+            _view.ShowError($"Could not open {Path.GetFileName(path)}: {ex.Message}");
+
+            return false;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             _view.ShowError($"Could not open {Path.GetFileName(path)}: {ex.Message}");
+
+            return false;
         }
     }
 
@@ -2139,6 +2309,7 @@ public sealed class DiagramEditorPresenter
         _path = path;
         _savedVersion = _fileStore.VersionOf(path);
         _savedDiagram = _diagram;
+        RememberFile(path);
         Refresh();
 
         return true;
@@ -2485,8 +2656,10 @@ public sealed class DiagramEditorPresenter
 
     private void SelectAll()
     {
-        _selectedShapes.UnionWith(_diagram.Shapes.Select(shape => shape.Id));
-        _selectedConnectors.UnionWith(_diagram.Connectors.Select(connector => connector.Id));
+        // Not what's hidden or locked, which clicks go through too
+        _selectedShapes.UnionWith(_diagram.Shapes.Where(DiagramHitTester.IsClickable).Select(shape => shape.Id));
+        _selectedConnectors.UnionWith(
+            _diagram.Connectors.Where(DiagramHitTester.IsClickable).Select(connector => connector.Id));
         SelectionChanged();
         Refresh();
     }

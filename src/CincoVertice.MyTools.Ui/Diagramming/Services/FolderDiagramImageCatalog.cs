@@ -11,7 +11,8 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Services;
 /// <summary>
 ///     The image catalog in a folder: config\images next to the exe. Inserted images go in at its top, and the user may
 ///     add folders of their own, which are its groups. Which were used last is kept in recent.json there. Each file is
-///     read and prepared once, then again only when it changes.
+///     read and prepared once, then again only when it changes. The shape libraries that come with the app are read
+///     from a folder of their own, never written to: their paths start with library:, their groups with Library:.
 /// </summary>
 public sealed partial class FolderDiagramImageCatalog : IDiagramImageCatalog
 {
@@ -21,13 +22,25 @@ public sealed partial class FolderDiagramImageCatalog : IDiagramImageCatalog
     /// <summary>How many it remembers as used last.</summary>
     public const int MaxRecent = 50;
 
+    /// <summary>What a library image's path starts with, so it's never taken for a file of the user's.</summary>
+    public const string LibraryPathPrefix = "library:";
+
+    /// <summary>What a library's group starts with, e.g. "Library: Network".</summary>
+    public const string LibraryGroupPrefix = "Library: ";
+
     private const string RecentFileName = "recent.json";
 
     private readonly Dictionary<string, CachedFile> _files = new(StringComparer.OrdinalIgnoreCase);
 
-    public FolderDiagramImageCatalog(string folder)
+    // The libraries don't change while the app runs, so they're read once
+    private readonly Lazy<IReadOnlyList<DiagramCatalogImageModel>> _library;
+
+    /// <param name="folder">The user's folder: config\images.</param>
+    /// <param name="libraryFolder">The shape libraries, a folder per library; null for none.</param>
+    public FolderDiagramImageCatalog(string folder, string? libraryFolder = null)
     {
         Folder = Path.GetFullPath(folder);
+        _library = new(() => libraryFolder is null ? [] : ReadLibrary(libraryFolder));
     }
 
     public string Folder { get; }
@@ -45,7 +58,46 @@ public sealed partial class FolderDiagramImageCatalog : IDiagramImageCatalog
                 image => image.Group == InsertedGroup ? string.Empty : image.Group,
                 StringComparer.OrdinalIgnoreCase)
             .ThenBy(image => image.Name, StringComparer.OrdinalIgnoreCase),
+        .. _library.Value,
     ];
+
+    /// <summary>The images of the libraries, by library, then by name; those that aren't SVG images left out.</summary>
+    private static IReadOnlyList<DiagramCatalogImageModel> ReadLibrary(string libraryFolder)
+    {
+        if (!Directory.Exists(libraryFolder))
+        {
+            return [];
+        }
+
+        var options = new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true };
+        List<DiagramCatalogImageModel> images = [];
+
+        foreach (string fullPath in Directory.EnumerateFiles(libraryFolder, "*.svg", options))
+        {
+            string path = Path.GetRelativePath(libraryFolder, fullPath).Replace('\\', '/');
+            string library = Path.GetDirectoryName(path)?.Replace('\\', '/') ?? string.Empty;
+
+            try
+            {
+                images.Add(new DiagramCatalogImageModel(
+                    LibraryPathPrefix + path,
+                    NameOf(fullPath),
+                    LibraryGroupPrefix + (library.Length == 0 ? "Shapes" : library),
+                    DiagramSvgImage.Prepare(File.ReadAllText(fullPath))));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+            {
+                // Left out; the others are still offered
+            }
+        }
+
+        return
+        [
+            .. images
+                .OrderBy(image => image.Group, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(image => image.Name, StringComparer.OrdinalIgnoreCase),
+        ];
+    }
 
     public IReadOnlyList<string> Recent()
     {

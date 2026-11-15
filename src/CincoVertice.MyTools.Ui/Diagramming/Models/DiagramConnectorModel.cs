@@ -24,6 +24,8 @@ namespace CincoVertice.MyTools.Ui.Diagramming.Models;
 /// <param name="Direction">Which way a line on its own may point; a connector doesn't use it.</param>
 /// <param name="LabelSpans">The parts of <paramref name="Label"/> in bold or italic; null for plain text.</param>
 /// <param name="Name">What the user calls it, shown in the layers panel; null for none.</param>
+/// <param name="IsHidden">True when it isn't drawn, on the canvas or in a file, nor picked by a click.</param>
+/// <param name="IsLocked">True when clicks on the canvas go through it, so it can't be picked there.</param>
 public sealed record DiagramConnectorModel(
     int Id,
     int? FromShapeId,
@@ -39,7 +41,9 @@ public sealed record DiagramConnectorModel(
     Point? ToPoint = null,
     DiagramLineDirection Direction = DiagramLineDirection.Free,
     IReadOnlyList<DiagramTextSpanModel>? LabelSpans = null,
-    string? Name = null)
+    string? Name = null,
+    bool IsHidden = false,
+    bool IsLocked = false)
 {
     /// <summary>True for a line on its own, between two points, rather than between two shapes.</summary>
     public bool IsLine => FromPoint is not null && ToPoint is not null;

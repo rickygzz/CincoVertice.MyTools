@@ -584,6 +584,34 @@ public sealed class DiagramSvgTests : IDisposable
     }
 
     [Fact]
+    public void Write_AHiddenShape_IsntDrawn_NorItsConnectors_ButTheFileKeepsIt_HiddenAndLocked()
+    {
+        // Arrange: the second shape hidden, so the connector between them too; the first locked
+        DiagramModel diagram = Sample() with
+        {
+            Shapes =
+            [
+                Sample().Shapes[0] with { IsLocked = true },
+                Sample().Shapes[1] with { IsHidden = true },
+                Sample().Shapes[2],
+            ],
+        };
+
+        // Act
+        string svg = DiagramSvg.Write(diagram);
+        DiagramModel read = DiagramSvg.Read(svg);
+
+        // Assert: two shapes drawn, no connector; all of it read back
+        XElement root = XDocument.Parse(svg).Root!;
+        Assert.Equal(2, root.Elements(_svg + "g").Count());
+        Assert.Equal(3, read.Shapes.Count);
+        Assert.Single(read.Connectors);
+        Assert.Equal((true, false), (read.Shapes[0].IsLocked, read.Shapes[0].IsHidden));
+        Assert.Equal((false, true), (read.Shapes[1].IsLocked, read.Shapes[1].IsHidden));
+        Assert.DoesNotContain("\"hidden\"", DiagramJson.Write(Sample()));
+    }
+
+    [Fact]
     public void Json_GroupsInsideNoGroup_AreLeftOut()
     {
         // Arrange

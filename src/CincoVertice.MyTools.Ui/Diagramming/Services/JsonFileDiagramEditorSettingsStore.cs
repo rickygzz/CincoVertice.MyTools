@@ -58,7 +58,8 @@ public sealed class JsonFileDiagramEditorSettingsStore : IDiagramEditorSettingsS
                 file.ImagesPanel,
                 file.LayersPanel,
                 file.Theme,
-                file.RecentColors?.Select(ParseColor).OfType<Color>().ToList());
+                file.RecentColors?.Select(ParseColor).OfType<Color>().ToList(),
+                file.RecentFiles?.Where(path => !string.IsNullOrWhiteSpace(path)).ToList());
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
@@ -78,7 +79,8 @@ public sealed class JsonFileDiagramEditorSettingsStore : IDiagramEditorSettingsS
             settings.IsImagesPanelVisible,
             settings.IsLayersPanelVisible,
             settings.Theme,
-            settings.RecentColors?.Select(ColorText.Hex).ToList());
+            settings.RecentColors?.Select(ColorText.Hex).ToList(),
+            settings.RecentFiles?.ToList());
 
         try
         {
@@ -101,7 +103,8 @@ public sealed class JsonFileDiagramEditorSettingsStore : IDiagramEditorSettingsS
         bool ImagesPanel = true,
         bool LayersPanel = false,
         string? Theme = null,
-        List<string>? RecentColors = null);
+        List<string>? RecentColors = null,
+        List<string>? RecentFiles = null);
 
     private static Color? ParseColor(string? text) => ColorText.TryParseHex(text, out Color color) ? color : null;
 

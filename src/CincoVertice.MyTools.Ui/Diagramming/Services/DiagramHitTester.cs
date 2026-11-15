@@ -16,12 +16,19 @@ public static class DiagramHitTester
     ///     or its border, so a press inside it can select what's in it, or start a selection box.
     /// </returns>
     public static DiagramShapeModel? ShapeAt(DiagramModel diagram, Point point) =>
-        diagram.Shapes.LastOrDefault(shape => shape.Bounds.Contains(point)
+        diagram.Shapes.LastOrDefault(shape => IsClickable(shape)
+            && shape.Bounds.Contains(point)
             && (shape.Kind != DiagramShapeKind.Container || IsOnTitleOrBorder(shape, point)));
 
     /// <returns>The shape on top whose area has the point, a container's whole box included; null for none.</returns>
     public static DiagramShapeModel? ShapeUnder(DiagramModel diagram, Point point) =>
-        diagram.Shapes.LastOrDefault(shape => shape.Bounds.Contains(point));
+        diagram.Shapes.LastOrDefault(shape => IsClickable(shape) && shape.Bounds.Contains(point));
+
+    /// <summary>Hidden and locked shapes and connectors let clicks through, to what's behind them.</summary>
+    public static bool IsClickable(DiagramShapeModel shape) => !shape.IsHidden && !shape.IsLocked;
+
+    /// <inheritdoc cref="IsClickable(DiagramShapeModel)"/>
+    public static bool IsClickable(DiagramConnectorModel connector) => !connector.IsHidden && !connector.IsLocked;
 
     private static bool IsOnTitleOrBorder(DiagramShapeModel container, Point point) =>
         point.Y < DiagramFigures.ContainerTitle(container).Bottom
@@ -32,14 +39,18 @@ public static class DiagramHitTester
     /// <returns>The connector on top within the distance of the point; null when there's none.</returns>
     public static DiagramConnectorModel? ConnectorAt(DiagramModel diagram, Point point, float distance)
     {
-        return diagram.Connectors.LastOrDefault(connector =>
-            DiagramRouter.PathOf(connector, diagram) is { } path && IsNear(path.Points, point, distance));
+        DiagramModel visible = diagram.Visible();
+
+        return visible.Connectors.LastOrDefault(connector => IsClickable(connector)
+            && DiagramRouter.PathOf(connector, visible) is { } path
+            && IsNear(path.Points, point, distance));
     }
 
     /// <returns>The line on its own on top within the distance of the point; null when there's none.</returns>
     public static DiagramConnectorModel? LineAt(DiagramModel diagram, Point point, float distance)
     {
         return diagram.Connectors.LastOrDefault(connector => connector.IsLine
+            && IsClickable(connector)
             && DiagramRouter.PathOf(connector, diagram) is { } path
             && IsNear(path.Points, point, distance));
     }

@@ -13,6 +13,43 @@ public sealed record DiagramModel(
 {
     public static DiagramModel Empty { get; } = new([], []);
 
+    /// <summary>
+    ///     What's drawn: without what's hidden, nor the connectors of a hidden shape. The whole diagram is still what's
+    ///     kept and saved.
+    /// </summary>
+    public DiagramModel Visible()
+    {
+        if (!Shapes.Any(shape => shape.IsHidden) && !Connectors.Any(connector => connector.IsHidden))
+        {
+            return this;
+        }
+
+        HashSet<int> hidden = [.. Shapes.Where(shape => shape.IsHidden).Select(shape => shape.Id)];
+
+        return this with
+        {
+            Shapes = [.. Shapes.Where(shape => !shape.IsHidden)],
+            Connectors =
+            [
+                .. Connectors.Where(connector => !connector.IsHidden
+                    && !(connector.FromShapeId is int from && hidden.Contains(from))
+                    && !(connector.ToShapeId is int to && hidden.Contains(to))),
+            ],
+        };
+    }
+
+    /// <summary>What a click on the canvas can pick: what's drawn, without what's locked.</summary>
+    public DiagramModel Clickable()
+    {
+        DiagramModel visible = Visible();
+
+        return visible with
+        {
+            Shapes = [.. visible.Shapes.Where(shape => !shape.IsLocked)],
+            Connectors = [.. visible.Connectors.Where(connector => !connector.IsLocked)],
+        };
+    }
+
     /// <summary>An id that no shape or connector has.</summary>
     public int NextId => Shapes.Select(shape => shape.Id)
         .Concat(Connectors.Select(connector => connector.Id))

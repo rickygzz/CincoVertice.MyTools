@@ -726,6 +726,77 @@ public class DiagramEditorFormTests
     }
 
     [Fact]
+    public void LayersPanel_AClickOnARowsEyeOrLock_SaysWhichToHideOrLock()
+    {
+        // Arrange
+        List<string> events = [];
+        using DiagramEditorForm form = ShowFormEditingProperties([], "TextPropertyBox", "new");
+        IDiagramEditorView view = form;
+        var list = (ListView)typeof(DiagramEditorForm)
+            .GetField("LayersListView", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(form)!;
+        view.LayerHiddenToggled += (_, id) => events.Add($"hide {id}");
+        view.LayerLockedToggled += (_, id) => events.Add($"lock {id}");
+        view.ShowLayersPanel(true);
+        view.ShowLayers([new DiagramLayerModel(7, "Rectangle", string.Empty, false, IsLocked: true)]);
+        Rectangle row = new(list.Items[0].Bounds.Location, list.TileSize);
+        void ClickAt(int x) => typeof(DiagramEditorForm)
+            .GetMethod("LayersListView_MouseUp", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .Invoke(form, [list, new MouseEventArgs(MouseButtons.Left, 1, x, row.Top + row.Height / 2, 0)]);
+
+        // Act: the eye is the last square of the row, the lock the one before; the text is neither
+        ClickAt(row.Right - row.Height / 2);
+        ClickAt(row.Right - row.Height * 3 / 2);
+        ClickAt(row.Left + 5);
+
+        // Assert
+        Assert.Equal(["hide 7", "lock 7"], events);
+    }
+
+    [Fact]
+    public void FileMenu_Recent_ListsWhatItsGiven_NumberedForTheKeyboard_AndChoosingOneRaisesIt()
+    {
+        // Arrange
+        List<DiagramRecentModel> chosen = [];
+        using DiagramEditorForm form = ShowFormEditingProperties([], "TextPropertyBox", "new");
+        IDiagramEditorView view = form;
+        var recent = (ToolStripMenuItem)typeof(DiagramEditorForm)
+            .GetField("RecentMenuItem", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(form)!;
+        view.RecentChosen += (_, item) => chosen.Add(item);
+        var file = new DiagramRecentModel(@"R&D.svg  —  C:\Work", @"C:\Work\R&D.svg", null);
+
+        // Act: none, then two
+        view.ShowRecent([]);
+        bool isEmptyDisabled = !recent.DropDownItems[0].Enabled;
+        view.ShowRecent([new DiagramRecentModel("Unsaved: Untitled, 15/11/2026 9:00", null, "old"), file]);
+        recent.DropDownItems[1].PerformClick();
+
+        // Assert
+        Assert.True(isEmptyDisabled);
+        Assert.Equal(
+            ["&1 Unsaved: Untitled, 15/11/2026 9:00", @"&2 R&&D.svg  —  C:\Work"],
+            recent.DropDownItems.Cast<ToolStripItem>().Select(item => item.Text));
+        Assert.Equal([file], chosen);
+    }
+
+    [Fact]
+    public void ImagesPanel_LinksToTheOfficialIcons_OfAzureAndAws()
+    {
+        // Arrange
+        using var form = new DiagramEditorForm();
+        var link = (LinkLabel)form.Controls.Find("OfficialIconsLinkLabel", true).Single();
+
+        // Act / Assert: each name is a link to its maker's page
+        Assert.Equal(
+            ["https://learn.microsoft.com/azure/architecture/icons/", "https://aws.amazon.com/architecture/icons/"],
+            link.Links.Cast<LinkLabel.Link>().Select(each => (string)each.LinkData!));
+        Assert.Equal(
+            ["Azure", "AWS"],
+            link.Links.Cast<LinkLabel.Link>().Select(each => link.Text.Substring(each.Start, each.Length)));
+    }
+
+    [Fact]
     public void LayersPanel_ShowsTheRowsAndSelection_WithoutTakingThemForTheUsers_AndTheUsersAreRaised()
     {
         // Arrange

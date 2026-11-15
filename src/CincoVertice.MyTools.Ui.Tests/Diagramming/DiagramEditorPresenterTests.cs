@@ -4721,6 +4721,131 @@ public class DiagramEditorPresenterTests
     }
 
     [Fact]
+    public void LayerHidden_IsShownInItsRow_CantBeClickedOrSelected_AndIsOneStepToUndo()
+    {
+        // Arrange: the front one selected
+        (DiagramShapeModel back, DiagramShapeModel front, _) = AddLayers();
+        _view.SelectLayers(front.Id);
+
+        // Act
+        _view.ToggleHidden(front.Id);
+
+        // Assert: no longer selected, nor drawn, nor picked by a click or a row
+        Assert.True(Diagram.Shapes.Single(shape => shape.Id == front.Id).IsHidden);
+        Assert.True(_view.Layers!.Single(layer => layer.Id == front.Id).IsHidden);
+        Assert.Empty(_presenter.SelectedShapeIds);
+        Assert.DoesNotContain(Diagram.Visible().Shapes, shape => shape.Id == front.Id);
+        Assert.Empty(Diagram.Visible().Connectors);
+        _view.Click(450, 125);
+        Assert.Empty(_presenter.SelectedShapeIds);
+        _view.SelectLayers(front.Id, back.Id);
+        Assert.Equal([back.Id], _presenter.SelectedShapeIds);
+        _view.Command(DiagramCommand.SelectAll);
+        Assert.DoesNotContain(front.Id, _presenter.SelectedShapeIds);
+
+        // Act / Assert: back again
+        _view.Command(DiagramCommand.Undo);
+        Assert.False(Diagram.Shapes.Single(shape => shape.Id == front.Id).IsHidden);
+    }
+
+    [Fact]
+    public void LayerLocked_LetsClicksThroughToWhatsBehind_ButItsRowStillSelectsIt()
+    {
+        // Arrange: a small shape on a large one
+        DiagramShapeModel back = AddShape(100, 100, 300, 200);
+        DiagramShapeModel front = AddShape(150, 150, 60, 40);
+        _view.ToggleLayersPanel(true);
+
+        // Act
+        _view.ToggleLocked(front.Id);
+        ClickEmpty();
+        _view.Click(170, 170);
+
+        // Assert: the click picks the one behind; a selection box and Select all leave it out
+        Assert.True(_view.Layers!.Single(layer => layer.Id == front.Id).IsLocked);
+        Assert.Equal([back.Id], _presenter.SelectedShapeIds);
+        ClickEmpty();
+        _view.Drag(50, 50, 500, 500);
+        Assert.Equal([back.Id], _presenter.SelectedShapeIds);
+        _view.Command(DiagramCommand.SelectAll);
+        Assert.Equal([back.Id], _presenter.SelectedShapeIds);
+
+        // Its row selects it, to change it
+        _view.SelectLayers(front.Id);
+        Assert.Equal([front.Id], _presenter.SelectedShapeIds);
+        Assert.Contains(Diagram.Visible().Shapes, shape => shape.Id == front.Id);
+    }
+
+    [Fact]
+    public void Recent_OpenedAndSavedDiagrams_AreFirst_TenAtMost_AndKept()
+    {
+        // Act: twelve opened, then one saved as
+        for (int i = 1; i <= 12; i++)
+        {
+            _view.PathToOpen = $@"C:\Work\d{i}.svg";
+            _view.Command(DiagramCommand.Open);
+        }
+
+        AddShape(100, 100);
+        _view.PathToSave = @"C:\Work\saved.svg";
+        _view.Command(DiagramCommand.SaveAs);
+
+        // Assert
+        IReadOnlyList<string> files = _settings.Saved[^1].RecentFiles!;
+        Assert.Equal(DiagramEditorPresenter.MaxRecentFiles, files.Count);
+        Assert.Equal([@"C:\Work\saved.svg", @"C:\Work\d12.svg"], files.Take(2));
+        Assert.Equal(new DiagramRecentModel(@"saved.svg  —  C:\Work", @"C:\Work\saved.svg", null), _view.Recent[0]);
+    }
+
+    [Fact]
+    public void Recent_ListsUnsavedChangesFirst_AndChoosingThemRecoversThemHere()
+    {
+        // Arrange: unsaved changes left from before
+        var shape = new DiagramShapeModel(
+            1,
+            DiagramShapeKind.Rectangle,
+            new Rectangle(0, 0, 9, 9),
+            "kept",
+            new DiagramStyleModel(Color.White, Color.Black, 2, false, Color.Black, 14));
+        var left = new DiagramRecoveryModel(
+            "old",
+            null,
+            null,
+            new DiagramModel([shape], []),
+            new DateTime(2026, 11, 14, 9, 0, 0, DateTimeKind.Utc));
+        _recovery.Leave(left);
+        _view.ActivateWindow();
+
+        // Act
+        DiagramRecentModel item = _view.Recent[0];
+        _view.ChooseRecent(item);
+
+        // Assert
+        Assert.Equal("old", item.RecoveryId);
+        Assert.StartsWith("Unsaved: Untitled, ", item.Text);
+        Assert.Equal("kept", Assert.Single(Diagram.Shapes).Text);
+        Assert.DoesNotContain(_view.Recent, recent => recent.RecoveryId is not null);
+    }
+
+    [Fact]
+    public void Recent_AFileThatsGone_SaysSo_AndLeavesTheList()
+    {
+        // Arrange
+        _view.PathToOpen = @"C:\Work\gone.svg";
+        _view.Command(DiagramCommand.Open);
+        _store.LoadError = new FileNotFoundException("It isn't there.");
+        _store.Version = null;
+
+        // Act
+        _view.ChooseRecent(_view.Recent[0]);
+
+        // Assert
+        Assert.Contains("It isn't there.", _view.Error);
+        Assert.Empty(_view.Recent);
+        Assert.Empty(_settings.Saved[^1].RecentFiles!);
+    }
+
+    [Fact]
     public void Layers_AreShownFrontFirst_TheConnectorsBeforeTheShapes_WithTheirKindAndText()
     {
         // Act
@@ -5688,6 +5813,22 @@ public class DiagramEditorPresenterTests
         public event EventHandler<DiagramLayerRenameModel>? LayerRenamed;
 
         public event EventHandler<DiagramLayerMoveModel>? LayersMoved;
+
+        public event EventHandler<int>? LayerHiddenToggled;
+
+        public event EventHandler<int>? LayerLockedToggled;
+
+        public event EventHandler<DiagramRecentModel>? RecentChosen;
+
+        public IReadOnlyList<DiagramRecentModel> Recent { get; private set; } = [];
+
+        public void ToggleHidden(int id) => LayerHiddenToggled?.Invoke(this, id);
+
+        public void ToggleLocked(int id) => LayerLockedToggled?.Invoke(this, id);
+
+        public void ChooseRecent(DiagramRecentModel item) => RecentChosen?.Invoke(this, item);
+
+        public void ShowRecent(IReadOnlyList<DiagramRecentModel> items) => Recent = items;
 
         public bool? LayersPanelShown { get; private set; }
 
