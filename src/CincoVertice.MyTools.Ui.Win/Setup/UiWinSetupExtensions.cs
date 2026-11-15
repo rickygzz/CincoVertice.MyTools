@@ -21,6 +21,8 @@ using CincoVertice.MyTools.Ui.Shell.Services;
 using CincoVertice.MyTools.Ui.Shell.Views;
 using CincoVertice.MyTools.Ui.Snipping.Interfaces;
 using CincoVertice.MyTools.Ui.Snipping.Services;
+using CincoVertice.MyTools.Ui.Spotlight.Presenters;
+using CincoVertice.MyTools.Ui.Spotlight.Views;
 using CincoVertice.MyTools.Ui.Win.Calculator;
 using CincoVertice.MyTools.Ui.Win.Calculator.Actions;
 using CincoVertice.MyTools.Ui.Win.ColorPicker.Actions;
@@ -41,6 +43,9 @@ using CincoVertice.MyTools.Ui.Win.Shell.Services;
 using CincoVertice.MyTools.Ui.Win.Shell.Services.Config;
 using CincoVertice.MyTools.Ui.Win.Snipping.Actions;
 using CincoVertice.MyTools.Ui.Win.Snipping.Services;
+using CincoVertice.MyTools.Ui.Win.Spotlight;
+using CincoVertice.MyTools.Ui.Win.Spotlight.Actions;
+using CincoVertice.MyTools.Ui.Win.Spotlight.Services;
 using CincoVertice.MyTools.Ui.Win.Zones;
 using CincoVertice.MyTools.Ui.Win.Zones.Actions;
 using CincoVertice.MyTools.Ui.Win.Zones.Services;
@@ -181,6 +186,14 @@ public static class UiWinSetupExtensions
         services.AddSingleton<MoveToPreviousZoneAction>();
         services.AddSingleton<EditZonesAction>();
 
+        // The mouse spotlight, shown by tapping Left Ctrl twice or by its action
+        services.AddSingleton<SpotlightForm>();
+        services.AddSingleton<ISpotlightView>(sp => sp.GetRequiredService<SpotlightForm>());
+        services.AddSingleton(sp =>
+            new SpotlightPresenter(sp.GetRequiredService<ISpotlightView>(), TimeProvider.System));
+        services.AddSingleton<SpotlightWatcher>();
+        services.AddSingleton<ShowMouseSpotlightAction>();
+
         // The user guide, docs\user-guide next to the exe
         services.AddSingleton<IHelpPageStore>(_ => new HelpPageStore(HelpPageStore.DefaultFolder));
         services.AddSingleton<IHelpSettingsStore>(_ =>
@@ -207,6 +220,7 @@ public static class UiWinSetupExtensions
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<MoveToNextZoneAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<MoveToPreviousZoneAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<EditZonesAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ShowMouseSpotlightAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<OpenDiagramEditorAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ShowHelpAction>());
 

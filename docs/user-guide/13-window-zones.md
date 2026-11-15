@@ -140,4 +140,4 @@ See [Scripts](08b-script-functions.md#window).
 
 ---
 
-← Previous: [Quick Reference](12-quick-reference.md) | [Contents](README.md)
+← Previous: [Quick Reference](12-quick-reference.md) | [Contents](README.md) | Next: [Mouse Spotlight](14-mouse-spotlight.md) →

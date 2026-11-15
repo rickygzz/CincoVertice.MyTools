@@ -13,6 +13,7 @@
 | Ctrl+Alt+D | New diagram editor window |
 | Ctrl+Alt+M | Turn the mouse mover on or off |
 | Ctrl+Alt+K | Keep the computer awake, or stop |
+| Left Ctrl, twice | Show where the mouse is: see [Mouse Spotlight](14-mouse-spotlight.md) |
 
 All other actions have no default hotkey. Add them in `hotkeys.cfg`.
 

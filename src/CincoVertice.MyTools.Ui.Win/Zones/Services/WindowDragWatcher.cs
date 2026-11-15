@@ -1,5 +1,6 @@
 ﻿using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.Common.WinApi.Libs;
+using System.ComponentModel;
 using CincoVertice.Common.WinApi.Libs.Enums;
 using CincoVertice.Common.WinApi.Libs.Structs;
 using CincoVertice.MyTools.Ui.Zones.Interfaces;
@@ -24,6 +25,8 @@ public sealed class WindowDragWatcher : IWindowDragSource, IDisposable
     private readonly System.Windows.Forms.Timer _timer = new() { Interval = PollMilliseconds };
 
     private WinEventHook? _hook;
+    private InputHook? _input;
+    private bool _isEscapePressed;
 
     // The window being dragged, 0 for none, its size at the last tick, and how many times that size changed
     private nint _window;
@@ -52,6 +55,8 @@ public sealed class WindowDragWatcher : IWindowDragSource, IDisposable
     {
         _hook?.Dispose();
         _hook = null;
+        _input?.Dispose();
+        _input = null;
         _timer.Dispose();
     }
 
@@ -68,18 +73,51 @@ public sealed class WindowDragWatcher : IWindowDragSource, IDisposable
             }
 
             _sizeChanges = 0;
+            _isEscapePressed = false;
+            _input?.Dispose();
+            _input = null;
+
+            try
+            {
+                // Remember Esc before Windows consumes it and ends the drag, even between timer ticks.
+                _input = new InputHook();
+                _input.KeyDown += OnDragKeyDown;
+            }
+            catch (Win32Exception)
+            {
+                // Polling, including the final sample, still works when Windows refuses input hooks.
+            }
+
             DragStarted?.Invoke(this, window);
             _timer.Start();
         }
         else if (eventType == User32.EVENT_SYSTEM_MOVESIZEEND && window == _window)
         {
-            _timer.Stop();
-            _window = 0;
-            DragEnded?.Invoke(this, EventArgs.Empty);
+            FinishDrag(ReadPointer());
         }
     }
 
     private void Timer_Tick(object? sender, EventArgs e)
+    {
+        DragMoved?.Invoke(this, ReadPointer());
+    }
+
+    internal void OnDragKeyDown(object? sender, Keys key)
+    {
+        _isEscapePressed |= key == Keys.Escape;
+    }
+
+    internal void FinishDrag(ZoneDragPointerModel pointer)
+    {
+        _timer.Stop();
+        _input?.Dispose();
+        _input = null;
+        DragMoved?.Invoke(this, pointer with { IsEscapeDown = pointer.IsEscapeDown || _isEscapePressed });
+        _window = 0;
+        DragEnded?.Invoke(this, EventArgs.Empty);
+    }
+
+    private ZoneDragPointerModel ReadPointer()
     {
         Point cursor;
 
@@ -98,14 +136,12 @@ public sealed class WindowDragWatcher : IWindowDragSource, IDisposable
             }
         }
 
-        DragMoved?.Invoke(
-            this,
-            new ZoneDragPointerModel(
-                cursor,
-                IsDown(KeyCode.VK_SHIFT),
-                IsResizing: _sizeChanges >= 2,
-                IsRightButtonDown: IsDown(KeyCode.VK_RBUTTON),
-                IsEscapeDown: IsDown(KeyCode.VK_ESCAPE)));
+        return new ZoneDragPointerModel(
+            cursor,
+            IsDown(KeyCode.VK_SHIFT),
+            IsResizing: _sizeChanges >= 2,
+            IsRightButtonDown: IsDown(KeyCode.VK_RBUTTON),
+            IsEscapeDown: _isEscapePressed || IsDown(KeyCode.VK_ESCAPE));
     }
 
     private static bool IsDown(KeyCode key) => (User32.GetAsyncKeyState(key) & KeyDown) != 0;

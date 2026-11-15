@@ -53,6 +53,9 @@
     <Compile Update="Snipping\SnipOverlayForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="Spotlight\SpotlightForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Zones\ZoneCanvasControl.cs">
       <SubType>Component</SubType>
     </Compile>

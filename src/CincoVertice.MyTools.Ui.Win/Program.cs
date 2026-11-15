@@ -3,6 +3,7 @@ using CincoVertice.MyTools.Ui.Shell.Presenters;
 using CincoVertice.MyTools.Ui.Win.Setup;
 using CincoVertice.MyTools.Ui.Win.Shell;
 using CincoVertice.MyTools.Ui.Win.Shell.Services;
+using CincoVertice.MyTools.Ui.Win.Spotlight.Services;
 using CincoVertice.MyTools.Ui.Win.Zones.Services;
 using CincoVertice.MyTools.Ui.Zones.Presenters;
 using Microsoft.Extensions.DependencyInjection;
@@ -54,6 +55,9 @@ public static class Program
             // Window zones: the drags of other programs' windows come through this thread's message loop
             host.Services.GetRequiredService<ZoneDragPresenter>().Start();
             host.Services.GetRequiredService<WindowDragWatcher>().Start();
+
+            // The mouse spotlight: tapping Left Ctrl twice comes through this thread's messages too
+            host.Services.GetRequiredService<SpotlightWatcher>().Start();
 
             // Shows its setting; when that's on, looks for a newer version a while later. It never throws
             _ = host.Services.GetRequiredService<UpdatesPresenter>().Start();

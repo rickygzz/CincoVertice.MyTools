@@ -123,7 +123,9 @@ In the video:
 
 An MP4 is H.264, made with the encoder built into Windows, using the graphics card when it can; it plays in any video player and in browsers. A GIF is made from the video once you save it, at fewer frames a second and at most 800 pixels wide by default, and plays over and over; it's handy to paste into chats and documents, but its colors are fewer and its file larger. Neither has sound. Width and height are made even, which the encoder needs, so an area 1 pixel off loses that pixel. While it's recorded, the video is kept in your temporary folder.
 
-If Windows can't record, or the file can't be saved, a notification says why.
+If Windows can't record, or the file can't be saved, a notification says why. If saving fails, the original MP4 is
+kept in your temporary folder; the notification gives its path. Copy it to a safe folder to keep it. An existing GIF
+is replaced only after the new GIF has been written successfully.
 
 ### recording.cfg
 

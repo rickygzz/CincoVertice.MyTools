@@ -24,6 +24,7 @@
 | `MoveToPreviousZone` | none | Moves the active window to the zone before |
 | `EditZones` | none | Opens the window zones editor |
 | `ShowHelp` | none | Opens this user guide in the help window |
+| `ShowMouseSpotlight` | none | Shows the mouse spotlight, as tapping Left Ctrl twice does. See [Mouse Spotlight](14-mouse-spotlight.md). |
 | each script | none | Runs the script |
 
 Hotkeys work in the same way whichever window is active, including My Tools' own windows. Holding a hotkey down does not repeat it.
@@ -59,6 +60,7 @@ PickColor = Ctrl+Alt+P
 RecordScreen = Ctrl+Alt+R
 ShowCalculator = Ctrl+Alt+C
 # ShowHelp = Ctrl+Alt+
+# ShowMouseSpotlight = Ctrl+Alt+
 SnipAndEdit = Ctrl+Alt+S
 SnipRegion = Ctrl+Alt+Shift+S
 SnipText = Ctrl+Alt+T
