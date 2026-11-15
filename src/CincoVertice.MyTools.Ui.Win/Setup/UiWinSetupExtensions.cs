@@ -33,6 +33,7 @@ using CincoVertice.MyTools.Ui.Win.CodeReview.Services;
 using CincoVertice.MyTools.Ui.Win.ConfigEditor.Services;
 using CincoVertice.MyTools.Ui.Win.Diagramming.Actions;
 using CincoVertice.MyTools.Ui.Win.Diagramming.Services;
+using CincoVertice.MyTools.Ui.Win.Diff.Actions;
 using CincoVertice.MyTools.Ui.Win.Help.Actions;
 using CincoVertice.MyTools.Ui.Win.Help.Services;
 using CincoVertice.MyTools.Ui.Win.Scripting.Actions;
@@ -186,6 +187,9 @@ public static class UiWinSetupExtensions
         services.AddSingleton<MoveToPreviousZoneAction>();
         services.AddSingleton<EditZonesAction>();
 
+        // Compare files: a new window each time
+        services.AddSingleton<CompareFilesAction>();
+
         // The mouse spotlight, shown by tapping Left Ctrl twice or by its action
         services.AddSingleton<SpotlightForm>();
         services.AddSingleton<ISpotlightView>(sp => sp.GetRequiredService<SpotlightForm>());
@@ -221,6 +225,7 @@ public static class UiWinSetupExtensions
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<MoveToPreviousZoneAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<EditZonesAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ShowMouseSpotlightAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<CompareFilesAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<OpenDiagramEditorAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ShowHelpAction>());
 

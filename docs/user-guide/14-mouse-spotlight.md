@@ -29,4 +29,4 @@ Pressing the hotkey again shows the spotlight again, from the start; any other k
 
 ---
 
-← Previous: [Window Zones](13-window-zones.md) | [Contents](README.md)
+← Previous: [Window Zones](13-window-zones.md) | [Contents](README.md) | Next: [Compare Files](15-compare-files.md) →

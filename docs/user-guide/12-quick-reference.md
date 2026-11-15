@@ -77,6 +77,15 @@ All other actions have no default hotkey. Add them in `hotkeys.cfg`.
 | Ctrl+0 | Reset zoom |
 | Ctrl+wheel | Zoom |
 
+## Compare files
+
+| Key | Effect |
+|---|---|
+| F7 / Shift+F7 | Next / previous change |
+| F5 | Read the files again |
+| Ctrl+O | Choose the left file, or two files |
+| Ctrl+C / Ctrl+A | Copy the lines selected / select every line of a side |
+
 ---
 
 ← Previous: [Troubleshooting](11-troubleshooting.md) | [Contents](README.md) | Next: [Window Zones](13-window-zones.md) →

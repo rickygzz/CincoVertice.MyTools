@@ -29,6 +29,12 @@
     <Compile Update="Diagramming\ThemeColorPaletteControl.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Update="Diff\DiffForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Diff\DiffTextControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Update="Help\HelpForm.cs">
       <SubType>Form</SubType>
     </Compile>

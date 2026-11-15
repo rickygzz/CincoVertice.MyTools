@@ -10,6 +10,7 @@ using CincoVertice.MyTools.Ui.Shell.Views;
 using CincoVertice.MyTools.Ui.Win.Behaviors;
 using CincoVertice.MyTools.Ui.Win.CodeReview.Actions;
 using CincoVertice.MyTools.Ui.Win.Diagramming.Actions;
+using CincoVertice.MyTools.Ui.Win.Diff.Actions;
 using CincoVertice.MyTools.Ui.Win.Help.Actions;
 using CincoVertice.MyTools.Ui.Win.Scripting.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
@@ -68,6 +69,7 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
         OpenScriptsFolderAction openScriptsFolderAction,
         EditScriptsAction editScriptsAction,
         OpenDiagramEditorAction openDiagramEditorAction,
+        CompareFilesAction compareFilesAction,
         ShowHelpAction showHelpAction,
         FixerSelection fixerSelection)
     {
@@ -88,6 +90,7 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
         var open = AddItem(menu.Items, "&Open", ShowMainForm);
         open.Font = new Font(open.Font, FontStyle.Bold);
         AddAction(menu.Items, "&Diagram editor", openDiagramEditorAction);
+        AddAction(menu.Items, "&Compare files...", compareFilesAction);
         AddAction(menu.Items, "Check folder for &standard...", checkFolderAction);
         menu.Items.Add(CreateFixMenu(fixFolderAction, fixerSelection));
         menu.Items.Add(new ToolStripSeparator());

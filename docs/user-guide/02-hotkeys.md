@@ -14,6 +14,7 @@
 | `PickColor` | Ctrl+Alt+P | Copies the color of a pixel you click on the screen, as HEX (Ctrl+click: RGB), and shows it in the Color window |
 | `DiagramEditor` | Ctrl+Alt+D | Opens a new diagram editor window |
 | `CheckFolder` | none | Pick a folder, check the C# standard |
+| `CompareFiles` | none | Opens a new Compare files window. See [Compare Files](15-compare-files.md). |
 | `FixFolder` | none | Pick a folder, fix it in place, with the fixers ticked in the tray menu |
 | `EditHotkeys` | none | Opens `hotkeys.cfg` in the config editor |
 | `EditActivitySettings` | none | Opens `activity.cfg` in the config editor |
@@ -45,6 +46,7 @@ On a fresh install the app creates this file. Actions without a default shortcut
 #   PrTemplate = Ctrl+Alt+2, app2
 
 # CheckFolder = Ctrl+Alt+
+# CompareFiles = Ctrl+Alt+
 DiagramEditor = Ctrl+Alt+D
 # EditActivitySettings = Ctrl+Alt+
 # EditHotkeys = Ctrl+Alt+
