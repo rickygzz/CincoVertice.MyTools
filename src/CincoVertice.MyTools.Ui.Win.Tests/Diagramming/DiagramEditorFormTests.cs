@@ -120,7 +120,59 @@ public class DiagramEditorFormTests
     }
 
     [Fact]
+    public void TextBox_OpenedAgainWithTheSameFont_OrAnother_StillWorks()
+    {
+        // Arrange: the box keeps a font equal to its own, so freeing the old one would leave it a freed font
+        using var form = new DiagramEditorForm
+        {
+            StartPosition = FormStartPosition.Manual,
+            Location = new Point(-3000, 100),
+            ShowInTaskbar = false,
+        };
+        IDiagramEditorView view = form;
+        var bold = new DiagramTextSpanModel(0, 3, DiagramTextFormat.Bold);
+        form.Show();
+
+        // Act: a label, then another in the same font, then one in another
+        var box = new Rectangle(10, 10, 200, 60);
+        view.BeginTextEdit(box, new DiagramRichTextModel("yes", [bold]), 14, "Roboto", Color.Black);
+        view.BeginTextEdit(box, new DiagramRichTextModel("now", [bold]), 14, "Roboto", Color.Black);
+        DiagramRichTextModel second = form.TypedText();
+
+        view.BeginTextEdit(box, DiagramRichTextModel.Plain("big"), 20, "Roboto", Color.Black);
+
+        // Assert
+        Assert.Equal(new DiagramRichTextModel("now", [bold]).Spans, second.Spans);
+        Assert.Equal("big", form.TypedText().Text);
+        Assert.Empty(form.TypedText().Spans);
+    }
+
+    [Fact]
+    public void SwapFont_AnEqualFont_KeepsTheOneTheBoxHas_SoItsNeverLeftAFreedOne()
+    {
+        // Arrange: a box as the editor's, which keeps its own font when given an equal one
+        using var form = new Form { StartPosition = FormStartPosition.Manual, Location = new Point(-3000, 100) };
+        using var box = new RichTextBox();
+        form.Controls.Add(box);
+        form.Show();
+        Font first = DiagramEditorForm.SwapFont(box, null, DiagramFonts.Create("Roboto", 14));
+
+        // Act: the same again, then another size
+        Font same = DiagramEditorForm.SwapFont(box, first, DiagramFonts.Create("Roboto", 14));
+        box.SelectAll();
+        box.SelectionFont = box.Font;
+        Font larger = DiagramEditorForm.SwapFont(box, same, DiagramFonts.Create("Roboto", 20));
+
+        // Assert: what the box has is what it was given, never freed
+        Assert.Same(first, same);
+        Assert.Same(larger, box.Font);
+        box.SelectionFont = box.Font;
+        larger.Dispose();
+    }
+
+    [Fact]
     public void TextBox_ShowsTheBoldParts_AndGivesThemBack_AndCtrlBTogglesWhatsSelected()
+
     {
         // Arrange
         using var form = new DiagramEditorForm

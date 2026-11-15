@@ -228,6 +228,8 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
 
     public event EventHandler<DiagramFindModel>? FindRequested;
 
+    public event EventHandler<DiagramBringIntoViewModel>? BringIntoViewRequested;
+
     public event EventHandler<bool>? LayersPanelToggled;
 
     public event EventHandler<IReadOnlyList<int>>? LayersSelected;
@@ -752,17 +754,15 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         string fontFamily,
         Color color)
     {
-        Font? oldFont = _textFont;
+        Font font = SwapFont(TextInputBox, _textFont, DiagramFonts.Create(fontFamily, fontSize));
 
-        _textFont = DiagramFonts.Create(fontFamily, fontSize);
-        TextInputBox.Font = _textFont;
-        oldFont?.Dispose();
+        _textFont = font;
         TextInputBox.ForeColor = color;
 
         // A light text on a light box couldn't be read while typing
         TextInputBox.BackColor = color.GetBrightness() > 0.7f ? Color.FromArgb(64, 64, 64) : Color.White;
         TextInputBox.Text = text.Text.ReplaceLineEndings("\n");
-        ShowFormats(text);
+        ShowFormats(text, font);
 
         // A small shape still gets a box large enough to type in
         TextInputBox.Bounds = new Rectangle(
@@ -775,18 +775,41 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         _isEditingText = true;
     }
 
-    /// <summary>The text box's parts in bold or italic, as the text has them.</summary>
-    private void ShowFormats(DiagramRichTextModel text)
+    /// <summary>
+    ///     Gives a control a new font and frees the one given before. A control ignores a font equal to its own and keeps
+    ///     its own, so then the new one is freed instead: freeing the kept one would leave the control a freed font.
+    /// </summary>
+    /// <param name="control">The control.</param>
+    /// <param name="current">The font given to it before, which this frees; null for none.</param>
+    /// <param name="font">The new font, which this owns from now.</param>
+    /// <returns>The font the control has now, to free when another replaces it.</returns>
+    internal static Font SwapFont(Control control, Font? current, Font font)
+    {
+        if (current is not null && current.Equals(font))
+        {
+            font.Dispose();
+
+            return current;
+        }
+
+        control.Font = font;
+        current?.Dispose();
+
+        return font;
+    }
+
+    /// <summary>The text box's parts in bold or italic, as the text has them, in its font.</summary>
+    private void ShowFormats(DiagramRichTextModel text, Font font)
     {
         TextInputBox.SelectAll();
-        TextInputBox.SelectionFont = TextInputBox.Font;
+        TextInputBox.SelectionFont = font;
 
         foreach (DiagramTextSpanModel span in DiagramRichText.Valid(TextInputBox.Text, text.Spans))
         {
-            using Font font = DiagramTextRuns.FontOf(_textFont!, span.Format);
+            using Font spanFont = DiagramTextRuns.FontOf(font, span.Format);
 
             TextInputBox.Select(span.Start, span.Length);
-            TextInputBox.SelectionFont = font;
+            TextInputBox.SelectionFont = spanFont;
         }
     }
 
@@ -1881,6 +1904,18 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         e.SuppressKeyPress = true;
     }
 
+    private void TopLeftMenuItem_Click(object? sender, EventArgs e) => BringIntoView(DiagramPlacement.TopLeft);
+
+    private void CenterMenuItem_Click(object? sender, EventArgs e) => BringIntoView(DiagramPlacement.Center);
+
+    /// <summary>Takes the text being typed first, as a toolbar command does, then asks to move the view.</summary>
+    private void BringIntoView(DiagramPlacement placement)
+    {
+        CommitText();
+        Canvas.Focus();
+        BringIntoViewRequested?.Invoke(this, new DiagramBringIntoViewModel(placement, Canvas.ClientSize));
+    }
+
     private void Find(DiagramFindStep step)
     {
         FindRequested?.Invoke(this, new DiagramFindModel(FindBox.Text, step, Canvas.ClientSize));
@@ -2269,6 +2304,14 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
             (Keys.None, Keys.Delete or Keys.Back) => DiagramCommand.Delete,
             _ => null,
         };
+
+        // Home: the diagram, or what's selected, at the top left; with Shift, in the middle
+        if (e.KeyCode == Keys.Home && (e.Modifiers is Keys.None or Keys.Shift))
+        {
+            DiagramPlacement placement = e.Shift ? DiagramPlacement.Center : DiagramPlacement.TopLeft;
+
+            return () => BringIntoView(placement);
+        }
 
         if (command is DiagramCommand requested)
         {
