@@ -734,7 +734,83 @@ public sealed class DiagramEditorPresenter
             ? Point.Round(DiagramRouter.AnchorPoint(target, toSide))
             : point;
 
-        _draftConnector = (start, end);
+        // From a circle to empty space: the new shape it would make, already connected, shows where it goes
+        _preview = target is null && connect.FromSide is DiagramSide side
+            ? WithConnectedShape(from, side, point)
+            : null;
+        _draftConnector = _preview is null ? (start, end) : null;
+    }
+
+    /// <summary>
+    ///     The diagram with a copy of the shape, empty, at the point, and a connector to it from the side dragged
+    ///     from, entering it on the side that faces the shape; null when the point is still by the shape. Close to
+    ///     the shape's middle line, the copy lines up with it; else it goes on the grid.
+    /// </summary>
+    private DiagramModel? WithConnectedShape(DiagramShapeModel original, DiagramSide fromSide, Point point)
+    {
+        const int alignDistance = 20;
+
+        // Closer, it's a drag given up, or one that missed a shape, not a place for a new one
+        const int nearDistance = 40;
+        Rectangle source = original.Bounds;
+
+        if (Rectangle.Inflate(source, nearDistance, nearDistance).Contains(point))
+        {
+            return null;
+        }
+
+        // A container would hold nothing; a plain box of the usual size is what comes next
+        DiagramShapeModel copy = original.Kind == DiagramShapeKind.Container
+            ? new DiagramShapeModel(
+                0,
+                DiagramShapeKind.Rectangle,
+                new Rectangle(Point.Empty, _defaultShapeSize),
+                string.Empty,
+                _style)
+            : original with { Text = string.Empty, GroupId = null, InnerGroupIds = null };
+        Size size = copy.Bounds.Size;
+        Point middle = CenterOf(source);
+        int dx = point.X - middle.X;
+        int dy = point.Y - middle.Y;
+        DiagramSide toSide = Math.Abs(dx) >= Math.Abs(dy)
+            ? dx > 0 ? DiagramSide.Left : DiagramSide.Right
+            : dy > 0 ? DiagramSide.Top : DiagramSide.Bottom;
+
+        static int OnGrid(int value) =>
+            (int)Math.Round(value / (double)DiagramSnapper.GridSize) * DiagramSnapper.GridSize;
+
+        int x;
+        int y;
+
+        if (toSide is DiagramSide.Left or DiagramSide.Right)
+        {
+            x = OnGrid(toSide == DiagramSide.Left ? point.X : point.X - size.Width);
+            y = Math.Abs(dy) <= alignDistance ? middle.Y - (size.Height / 2) : OnGrid(point.Y - (size.Height / 2));
+        }
+        else
+        {
+            x = Math.Abs(dx) <= alignDistance ? middle.X - (size.Width / 2) : OnGrid(point.X - (size.Width / 2));
+            y = OnGrid(toSide == DiagramSide.Top ? point.Y : point.Y - size.Height);
+        }
+
+        int id = _diagram.NextId;
+        DiagramShapeModel shape = copy with { Id = id, Bounds = new Rectangle(new Point(x, y), size) };
+        var connector = new DiagramConnectorModel(
+            id + 1,
+            original.Id,
+            shape.Id,
+            _routing,
+            _heads,
+            string.Empty,
+            _style,
+            fromSide,
+            toSide);
+
+        return _diagram with
+        {
+            Shapes = [.. _diagram.Shapes, shape],
+            Connectors = [.. _diagram.Connectors, connector],
+        };
     }
 
     /// <summary>
@@ -1116,6 +1192,14 @@ public sealed class DiagramEditorPresenter
                 break;
             case ConnectDrag connect when target is int toShapeId:
                 ReleaseConnect(connect, toShapeId, targetSide);
+                break;
+
+            // From a circle to empty space: the new shape and its connector, one step to undo
+            case ConnectDrag when preview is not null:
+                Commit(preview);
+                ClearSelection();
+                _selectedShapes.Add(preview.Shapes[^1].Id);
+                SelectionChanged();
                 break;
 
             // Dropped on no shape, it stays as it was. Dropped where it already was is nothing to undo

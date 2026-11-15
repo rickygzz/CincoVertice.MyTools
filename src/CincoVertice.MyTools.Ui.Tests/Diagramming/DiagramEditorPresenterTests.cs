@@ -1011,6 +1011,94 @@ public class DiagramEditorPresenterTests
     }
 
     [Fact]
+    public void DragFromACircle_ToEmptySpace_AddsACopyThere_AlreadyConnected_InOneStep()
+    {
+        // Arrange: 100 by 50, its right circle at 214, 125
+        DiagramShapeModel a = AddShape(100, 100);
+        _view.DoubleClick(150, 125);
+        _view.CommitText("Start");
+        _view.SelectColor(DiagramColorTarget.Fill, Color.Yellow);
+        a = Diagram.Shapes[0];
+        ClickEmpty();
+
+        // Act: a little below its middle line, which it lines up with
+        _view.Hover(150, 125);
+        _view.Drag(214, 125, 403, 133);
+
+        // Assert: its kind, size and style, but not its text; entered from the left
+        DiagramShapeModel copy = Diagram.Shapes[^1];
+        Assert.Equal(2, Diagram.Shapes.Count);
+        Assert.Equal(
+            (a.Kind, new Rectangle(400, 100, 100, 50), a.Style, string.Empty),
+            (copy.Kind, copy.Bounds, copy.Style, copy.Text));
+        DiagramConnectorModel connector = Assert.Single(Diagram.Connectors);
+        Assert.Equal(
+            (a.Id, copy.Id, DiagramSide.Right, DiagramSide.Left),
+            (connector.FromShapeId, connector.ToShapeId, connector.FromSide, connector.ToSide));
+        Assert.Equal([copy.Id], _presenter.SelectedShapeIds);
+
+        // Act / Assert: one step to undo
+        _view.Command(DiagramCommand.Undo);
+        Assert.Single(Diagram.Shapes);
+        Assert.Empty(Diagram.Connectors);
+    }
+
+    [Fact]
+    public void DragFromACircle_ToEmptySpace_ShowsTheNewShape_WhileDragging()
+    {
+        // Arrange
+        AddShape(100, 100);
+        ClickEmpty();
+
+        // Act: from the bottom circle, down and off the middle line
+        _view.Hover(150, 125);
+        _view.Press(150, 164);
+        _view.Move(203, 303);
+
+        // Assert: on the grid, entered from the top; nothing is added yet
+        Assert.Equal(new Rectangle(150, 300, 100, 50), _view.Scene!.Diagram.Shapes[^1].Bounds);
+        Assert.Equal(DiagramSide.Top, _view.Scene.Diagram.Connectors[0].ToSide);
+        Assert.Null(_view.Scene.DraftConnector);
+        Assert.Single(Diagram.Shapes);
+    }
+
+    [Theory]
+    [InlineData(230, 125)]
+    [InlineData(120, 140)]
+    public void DragFromACircle_DroppedByItsShape_AddsNothing(int x, int y)
+    {
+        // Arrange
+        AddShape(100, 100);
+        ClickEmpty();
+
+        // Act
+        _view.Hover(150, 125);
+        _view.Drag(214, 125, x, y);
+
+        // Assert
+        Assert.Single(Diagram.Shapes);
+        Assert.Empty(Diagram.Connectors);
+    }
+
+    [Fact]
+    public void DragFromAContainersCircle_ToEmptySpace_AddsABoxOfTheUsualSize()
+    {
+        // Arrange
+        _view.Tool(DiagramTool.Container);
+        _view.Drag(100, 100, 400, 300);
+        ClickEmpty();
+
+        // Act: from its right circle, at 414, 200
+        _view.Hover(250, 110);
+        _view.Drag(414, 200, 600, 200);
+
+        // Assert
+        DiagramShapeModel added = Diagram.Shapes[^1];
+        Assert.Equal((DiagramShapeKind.Rectangle, new Size(120, 60)), (added.Kind, added.Bounds.Size));
+        Assert.Single(Diagram.Connectors);
+    }
+
+    [Fact]
     public void DragFromACircle_ShowsTheDraftFromThatSide_AndTheTargetsCircles()
     {
         // Arrange
@@ -1066,14 +1154,13 @@ public class DiagramEditorPresenterTests
 
     [Theory]
     [InlineData(150, 125)]
-    [InlineData(900, 900)]
-    public void DragFromACircle_NotEndingOnAnotherShape_AddsNothing(int x, int y)
+    public void DragFromACircle_BackOntoItsOwnShape_AddsNothing(int x, int y)
     {
         // Arrange
         AddShape(100, 100);
         ClickEmpty();
 
-        // Act: back onto its own shape, or onto nothing
+        // Act: onto empty space it adds a shape, see DragFromACircle_ToEmptySpace_
         _view.Drag(214, 125, x, y);
 
         // Assert
