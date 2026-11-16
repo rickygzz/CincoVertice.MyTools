@@ -32,6 +32,8 @@ partial class CalculatorForm
         CalculatorTextBox = new TextBox();
         ResultOutputControl = new CincoVertice.Common.Ui.Win.Controls.Rtf.ConsoleOutputControl();
         SuggestionsListBox = new ListBox();
+        HistoryButton = new Button();
+        HistoryToolTip = new ToolTip(components);
         SuspendLayout();
         // 
         // CalculatorTextBox
@@ -53,9 +55,27 @@ partial class CalculatorForm
         ResultOutputControl.Location = new Point(5, 47);
         ResultOutputControl.Name = "ResultOutputControl";
         ResultOutputControl.ReadOnly = true;
-        ResultOutputControl.Size = new Size(790, 38);
+        ResultOutputControl.Size = new Size(754, 38);
         ResultOutputControl.TabIndex = 1;
         ResultOutputControl.Text = "";
+        //
+        // HistoryButton
+        //
+        HistoryButton.BackColor = Color.FromArgb(64, 64, 64);
+        HistoryButton.FlatAppearance.BorderSize = 0;
+        HistoryButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(90, 90, 90);
+        HistoryButton.FlatStyle = FlatStyle.Flat;
+        HistoryButton.Font = new Font("Segoe MDL2 Assets", 10F);
+        HistoryButton.ForeColor = SystemColors.Info;
+        HistoryButton.Location = new Point(761, 47);
+        HistoryButton.Name = "HistoryButton";
+        HistoryButton.Size = new Size(34, 38);
+        HistoryButton.TabIndex = 3;
+        HistoryButton.TabStop = false;
+        HistoryButton.Text = "";
+        HistoryToolTip.SetToolTip(HistoryButton, "Show history (Ctrl+H)");
+        HistoryButton.UseVisualStyleBackColor = false;
+        HistoryButton.Click += HistoryButton_Click;
         //
         // SuggestionsListBox
         //
@@ -76,6 +96,7 @@ partial class CalculatorForm
         ClientSize = new Size(800, 90);
         ControlBox = false;
         Controls.Add(SuggestionsListBox);
+        Controls.Add(HistoryButton);
         Controls.Add(ResultOutputControl);
         Controls.Add(CalculatorTextBox);
         FormBorderStyle = FormBorderStyle.FixedToolWindow;
@@ -96,4 +117,6 @@ partial class CalculatorForm
     private TextBox CalculatorTextBox;
     private Common.Ui.Win.Controls.Rtf.ConsoleOutputControl ResultOutputControl;
     private ListBox SuggestionsListBox;
+    private Button HistoryButton;
+    private ToolTip HistoryToolTip;
 }

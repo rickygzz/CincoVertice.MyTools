@@ -41,6 +41,28 @@ public class CalculatorFormTests
     }
 
     [Fact]
+    public void TheHistoryButton_OpensAndClosesTheHistory_AndSaysWhichItWillDo()
+    {
+        // Arrange
+        using var form = new KeyedCalculatorForm();
+        _ = new CalculatorPresenter(form, new ExpressionCalculator());
+        form.Show();
+        var button = (Button)form.Controls.Find("HistoryButton", true).Single();
+        int height = form.ClientSize.Height;
+
+        // Act / Assert
+        Assert.Equal("Show history (Ctrl+H)", form.HistoryButtonToolTip);
+
+        button.PerformClick();
+        Assert.True(form.ClientSize.Height > height);
+        Assert.Equal("Hide history (Ctrl+H)", form.HistoryButtonToolTip);
+
+        button.PerformClick();
+        Assert.Equal(height, form.ClientSize.Height);
+        Assert.Equal("Show history (Ctrl+H)", form.HistoryButtonToolTip);
+    }
+
+    [Fact]
     public void Suggestions_TabWritesTheFirst_WhenNoneIsChosen()
     {
         // Arrange

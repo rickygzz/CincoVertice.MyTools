@@ -16,6 +16,10 @@ public partial class CalculatorForm : Form, ICalculatorView
     // How many times its normal height the output is while it shows the history
     private const int HistoryHeightFactor = 8;
 
+    // Segoe MDL2 Assets' chevrons: down opens the history, up closes it
+    private const string ShowHistoryGlyph = "";
+    private const string HideHistoryGlyph = "";
+
     // Rows the list of suggestions shows at once; it scrolls for more
     private const int MaxSuggestionRows = 8;
 
@@ -163,6 +167,8 @@ public partial class CalculatorForm : Form, ICalculatorView
             SetHistoryExtraHeight(ResultOutputControl.Height * (HistoryHeightFactor - 1));
         }
 
+        ShowHistoryButton(isOpen: true);
+
         ResultOutputControl.SetText(entries.Count == 0 ? emptyText : string.Empty, _operationFormat);
 
         for (int i = 0; i < entries.Count; i++)
@@ -183,6 +189,7 @@ public partial class CalculatorForm : Form, ICalculatorView
     public void HideHistory()
     {
         SetHistoryExtraHeight(0);
+        ShowHistoryButton(isOpen: false);
     }
 
     public void ShowError(string message, int selectionStart, int selectionLength)
@@ -250,6 +257,22 @@ public partial class CalculatorForm : Form, ICalculatorView
             // Otherwise a text box takes Ctrl+H as a backspace
             e.SuppressKeyPress = true;
         }
+    }
+
+    /// <summary>What the history button's tooltip says it does, for tests.</summary>
+    internal string HistoryButtonToolTip => HistoryToolTip.GetToolTip(HistoryButton) ?? string.Empty;
+
+    private void ShowHistoryButton(bool isOpen)
+    {
+        HistoryButton.Text = isOpen ? HideHistoryGlyph : ShowHistoryGlyph;
+        HistoryToolTip.SetToolTip(HistoryButton, isOpen ? "Hide history (Ctrl+H)" : "Show history (Ctrl+H)");
+    }
+
+    // As Ctrl+H; then back to typing
+    private void HistoryButton_Click(object? sender, EventArgs e)
+    {
+        ToggleHistoryRequested?.Invoke(this, EventArgs.Empty);
+        CalculatorTextBox.Focus();
     }
 
     private void SetHistoryExtraHeight(int extraHeight)
