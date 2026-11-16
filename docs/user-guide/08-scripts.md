@@ -90,6 +90,8 @@ This script is created with the app. It asks what to search for (starting with t
 #   dialog.confirm(question)  clipboard.gettext()  clipboard.settext(text)  keyboard.type(text)
 #   clipboard.clear()  clipboard.pasteastext()  window.title()  window.tozone(number)
 #   keyboard.press("Ctrl+V")  keyboard.press("Tab", 3)
+#   window.activate(title)  window.activateoropen(title, program)  file.read(path)  file.write(path, text)
+#   date.now()  date.format(format)  date.format(date, format)
 #   shell.open(address or file)  shell.run(program, arguments)  tray.notify(text)
 #   script.wait(ms)  script.stop()  system.waitidle(cpu %, disk %, quiet seconds, most minutes)
 #   global.set(name, value)  global.get(name, default)  (kept between runs, in config\global.vars)

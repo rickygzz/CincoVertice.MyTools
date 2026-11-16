@@ -7,10 +7,12 @@ Functions are grouped in modules: you call one as `module.function(...)`, as in 
 | [`dialog`](#dialog) | Asking and showing | `ask` `form` `message` `confirm` |
 | [`clipboard`](#clipboard) | The clipboard | `gettext` `settext` `clear` `paste` `pasteastext` |
 | [`keyboard`](#keyboard) | Typing and pressing keys | `type` `press` |
-| [`window`](#window) | The window you are in | `title` |
+| [`window`](#window) | Windows | `title` `tozone` `activate` `activateoropen` |
 | [`shell`](#shell) | Web pages, files and programs | `open` `run` |
 | [`tray`](#tray) | Notifications | `notify` |
 | [`system`](#system) | The computer | `waitidle` |
+| [`file`](#file) | Text files | `read` `write` |
+| [`date`](#date) | The date and time | `now` `format` |
 | [`script`](#script) | The running script | `wait` `stop` `argument` `include` |
 | [`global`](#global) | Values kept between runs | `set` `get` `has` `remove` `names` |
 | [`text`](#text) | Working with text | `length` `upper` `lower` `trim` `replace` `contains` `urlencode` |
@@ -139,6 +141,8 @@ Typing blocks the app until it finishes. Typing into a program that runs as admi
 |---|---|
 | `window.title()` | The title of the active window, the one you are working in, e.g. `"Inbox - Outlook"`. `""` when it has none. |
 | `window.tozone(number)` | Moves the active window to that zone of its monitor, from 1, as set in `zones.cfg`. Nothing. A number with no zone is an error. See [Window Zones](13-window-zones.md). |
+| `window.activate(title)` | Brings to the front the window whose title has `title` in it, ignoring case, as if you had clicked it: restored when minimized. When several have it, the one you used last. Only windows you can switch to count: not hidden ones, nor those on another virtual desktop. `true` when there was one, `false` when not. |
+| `window.activateoropen(title, program)`<br>`window.activateoropen(title, program, arguments)` | Brings the window to the front, as `window.activate` does; when there's none, starts `program` (as `shell.run` does) and waits up to 10 seconds for a window with `title` to show, then brings it to the front. `true` when a window is in front, `false` when the program showed none in time. |
 
 With a hotkey, the active window is the program you pressed it in. Read the title at the start of the script: while a dialog of the script is open, the dialog is the active window. From the tray menu, the active window is usually the taskbar, so the title is `""`.
 
@@ -151,6 +155,15 @@ if not text.contains(window.title(), "Visual Studio Code")
 end
 
 keyboard.press("Ctrl+Shift+P")
+```
+
+To go to a program with a hotkey, starting it when it isn't open:
+
+```mts
+# Bound in hotkeys.cfg, e.g. GoToNotepad = Ctrl+Alt+N
+if not window.activateoropen("Notepad", "notepad.exe")
+    tray.notify("Notepad didn't open")
+end
 ```
 
 ## shell
@@ -184,6 +197,53 @@ if system.waitidle(15, 20, 60, 20)
 else
     tray.notify("Slack not started: the computer stayed busy for 20 minutes")
 end
+```
+
+## file
+
+| Function | Returns |
+|---|---|
+| `file.read(path)` | The text of a file, read as its byte order mark says, else as UTF-8. A file that isn't there, or can't be read, is an error. |
+| `file.write(path, text)` | Writes the text to the file, as UTF-8, replacing what it had. Its folder must exist. Nothing. |
+
+A path that isn't full, such as `"notes.txt"` or `"data\\list.txt"`, is in the scripts folder (`config\scripts`). Variables such as `%USERPROFILE%` are filled in: `file.read("%USERPROFILE%\\Documents\\todo.txt")`. Remember to write `\\` for each `\` inside a text.
+
+`file.write` writes the whole file at once: if it fails halfway, the file keeps what it had. To add a line at the end, read the file first:
+
+```mts
+log = "log.txt"
+file.write(log, file.read(log) + date.now() + " started\n")
+```
+
+The first time, the file isn't there yet, so `file.read` stops the script with an error; create it once with `file.write(log, "")`.
+
+## date
+
+| Function | Returns |
+|---|---|
+| `date.now()` | The date and time now, as text: `"2026-11-15 14:30:05"`. Texts like this sort and compare in date order. |
+| `date.format(format)` | Now, written as `format` says. |
+| `date.format(date, format)` | `date`, written as `format` says. `date` is a text such as `date.now()` gives, or `"2026-11-15"`. A text that isn't a date is an error. |
+
+In the format, these letters stand for parts of the date; everything else is written as it is:
+
+| Letters | Part | Example |
+|---|---|---|
+| `yyyy` | Year | `2026` |
+| `MM` / `M` | Month, with or without a leading zero | `03` / `3` |
+| `MMM` / `MMMM` | Month name, short or long | `Nov` / `November` |
+| `dd` / `d` | Day | `05` / `5` |
+| `ddd` / `dddd` | Day of the week, short or long | `Sun` / `Sunday` |
+| `HH` / `H` | Hour, 0 to 23 | `14` |
+| `hh` / `h`, `tt` | Hour, 1 to 12, and AM or PM | `02`, `PM` |
+| `mm` | Minutes | `30` |
+| `ss` | Seconds | `05` |
+
+Month and day names are in the language Windows uses. To write one of these letters as itself, put it in single quotes: `date.format("'Week of' d MMMM")`.
+
+```mts
+keyboard.type("Notes, " + date.format("dddd d MMMM yyyy") + "\n")
+file.write("report " + date.format("yyyy-MM-dd") + ".txt", clipboard.gettext())
 ```
 
 ## script

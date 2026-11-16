@@ -1,7 +1,9 @@
 ﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Text;
 using CincoVertice.Common.Application.Scripting.Interfaces;
 using CincoVertice.Common.Application.Scripting.Models;
+using CincoVertice.Common.Utils.Helpers;
 using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.Common.WinApi.Hotkey;
 using CincoVertice.Common.WinApi.Libs;
@@ -177,6 +179,30 @@ public sealed class DesktopScriptHost : IScriptHost
     }
 
     public void Notify(string text) => _notifications.Show(_title, text);
+
+    public DateTime Now => DateTime.Now;
+
+    public bool ActivateWindow(string titlePart)
+    {
+        nint window = WindowHelper.FindWindowByTitle(titlePart);
+
+        return window != 0 && WindowHelper.BringToFront(window);
+    }
+
+    public string ReadFile(string path) => File.ReadAllText(FullPath(path));
+
+    public void WriteFile(string path, string text) =>
+        AtomicFile.WriteAllText(FullPath(path), text, new UTF8Encoding(false));
+
+    /// <summary>A script's file: %VARIABLES% expanded, and a path that isn't full taken in the scripts folder.</summary>
+    public static string FullPath(string path)
+    {
+        string expanded = Environment.ExpandEnvironmentVariables(path.Trim());
+
+        return Path.IsPathFullyQualified(expanded)
+            ? expanded
+            : Path.GetFullPath(Path.Combine(ScriptCatalog.FolderPath, expanded));
+    }
 
     /// <summary>
     ///     An invisible, top-most owner window in the foreground, so a message box shows above the application the
