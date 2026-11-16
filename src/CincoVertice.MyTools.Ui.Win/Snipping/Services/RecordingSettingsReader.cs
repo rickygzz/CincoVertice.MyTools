@@ -18,6 +18,7 @@ public static class RecordingSettingsReader
     public const string CountdownName = "Countdown";
     public const string ShowClicksName = "ShowClicks";
     public const string ShowKeysName = "ShowKeys";
+    public const string ShowMouseCursorName = "ShowMouseCursor";
     public const string FolderName = "Folder";
     public const string GifFramesPerSecondName = "GifFramesPerSecond";
     public const string GifMaxWidthName = "GifMaxWidth";
@@ -32,7 +33,7 @@ public static class RecordingSettingsReader
         [GifMaxWidthName] = (200, 1920),
     };
 
-    private static readonly string[] _switches = [ShowClicksName, ShowKeysName];
+    private static readonly string[] _switches = [ShowClicksName, ShowKeysName, ShowMouseCursorName];
 
     public static RecordingSettingsResultModel Read(string text)
     {
@@ -140,7 +141,8 @@ public static class RecordingSettingsReader
             switches.GetValueOrDefault(ShowKeysName, defaults.ShowKeys),
             folder,
             numbers.GetValueOrDefault(GifFramesPerSecondName, defaults.GifFramesPerSecond),
-            numbers.GetValueOrDefault(GifMaxWidthName, defaults.GifMaxWidth));
+            numbers.GetValueOrDefault(GifMaxWidthName, defaults.GifMaxWidth),
+            switches.GetValueOrDefault(ShowMouseCursorName, defaults.ShowMouseCursor));
 
         return new RecordingSettingsResultModel(settings, problems, lineProblems);
     }

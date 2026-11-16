@@ -10,6 +10,7 @@
 /// <param name="Folder">Where the save dialog starts; empty for the Videos folder.</param>
 /// <param name="GifFramesPerSecond">How many frames a second a GIF keeps of the video.</param>
 /// <param name="GifMaxWidth">How wide a GIF can be, in pixels; a wider video is made smaller.</param>
+/// <param name="ShowMouseCursor">True to draw the mouse pointer in the video, as it is on the screen.</param>
 public sealed record RecordingSettingsModel(
     int FramesPerSecond,
     RecordingQuality Quality,
@@ -19,7 +20,8 @@ public sealed record RecordingSettingsModel(
     bool ShowKeys,
     string Folder,
     int GifFramesPerSecond,
-    int GifMaxWidth)
+    int GifMaxWidth,
+    bool ShowMouseCursor = true)
 {
     public static RecordingSettingsModel Default { get; } =
         new(20, RecordingQuality.Medium, 0, 3, true, true, "", 10, 800);

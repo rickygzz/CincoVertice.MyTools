@@ -38,6 +38,7 @@ public static class ConfigSettingsHelp
         Number(RecordingSettingsReader.CountdownName, "Seconds counted down before it starts; 0 for none", 3, "0 to 10"),
         Switch(RecordingSettingsReader.ShowClicksName, "Show a ring where you click", true),
         Switch(RecordingSettingsReader.ShowKeysName, "Show the shortcuts you press", true),
+        Switch(RecordingSettingsReader.ShowMouseCursorName, "Show the mouse pointer in the video", true),
         new(
             RecordingSettingsReader.FolderName,
             "Where the save dialog starts; empty for Videos",

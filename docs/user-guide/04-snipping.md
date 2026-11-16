@@ -117,7 +117,7 @@ Press **Ctrl+Alt+R** (`RecordScreen`) and drag over the area to record, as for a
 
 In the video:
 
-- **The mouse pointer**, as it was on the screen. When a program hides it, as some do while you type, the video doesn't show it either.
+- **The mouse pointer**, as it was on the screen, unless `ShowMouseCursor = false` in recording.cfg. When a program hides it, as some do while you type, the video doesn't show it either.
 - **Clicks**: a ring that grows and fades where you click: yellow for the left button, blue for the right, green for the middle.
 - **Shortcuts**: those you press with Ctrl, Alt or Win, and keys such as Enter, Esc, Tab and F1 to F24, in the bottom left corner, as `Ctrl+Shift+P`. What you type is never shown, so a password or message you type doesn't end up in the video.
 
@@ -139,6 +139,7 @@ is replaced only after the new GIF has been written successfully.
 | `Countdown` | Seconds counted down before it starts | 0 to 10; 0 for none | 3 |
 | `ShowClicks` | Show a ring where you click | `true`, `false` | `true` |
 | `ShowKeys` | Show the shortcuts you press | `true`, `false` | `true` |
+| `ShowMouseCursor` | Show the mouse pointer in the video; `false` leaves it out, as for a recording of a slideshow | `true`, `false` | `true` |
 | `Folder` | Where the save dialog starts; `%USERPROFILE%`-style variables work | a folder that exists; empty for Videos | empty |
 | `GifFramesPerSecond` | Frames a second kept when you save as a GIF | 2 to 20 | 10 |
 | `GifMaxWidth` | A wider GIF is made smaller, in pixels | 200 to 1920 | 800 |

@@ -289,7 +289,10 @@ public sealed class ScreenRecorder : IScreenRecorder
             _overlay.Draw(graphics, _area, time);
 
             // A copy of the screen doesn't have the pointer: Windows draws it over the screen apart
-            CursorPainter.Draw(graphics, _area.Location);
+            if (_settings.ShowMouseCursor)
+            {
+                CursorPainter.Draw(graphics, _area.Location);
+            }
         }
 
         using (frame)

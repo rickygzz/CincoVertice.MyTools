@@ -58,6 +58,7 @@ public sealed class RecordingSettingsService
         sb.AppendLine("# ShowKeys: true to show the shortcuts you press, such as Ctrl+Shift+P, in a corner.");
         sb.AppendLine("#   Only shortcuts with Ctrl, Alt or Win, and keys such as Enter, Esc and F1: never what");
         sb.AppendLine("#   you type.");
+        sb.AppendLine("# ShowMouseCursor: true to show the mouse pointer in the video; false to leave it out.");
         sb.AppendLine("# Folder: where the save dialog starts; empty for your Videos folder.");
         sb.AppendLine("# GifFramesPerSecond: frames a second kept when you save as a GIF (2 to 20).");
         sb.AppendLine("# GifMaxWidth: a GIF wider than this is made smaller, in pixels (200 to 1920).");
@@ -68,6 +69,7 @@ public sealed class RecordingSettingsService
         sb.AppendLine($"{RecordingSettingsReader.CountdownName} = {defaults.CountdownSeconds}");
         sb.AppendLine($"{RecordingSettingsReader.ShowClicksName} = true");
         sb.AppendLine($"{RecordingSettingsReader.ShowKeysName} = true");
+        sb.AppendLine($"{RecordingSettingsReader.ShowMouseCursorName} = true");
         sb.AppendLine($"{RecordingSettingsReader.FolderName} =");
         sb.AppendLine($"{RecordingSettingsReader.GifFramesPerSecondName} = {defaults.GifFramesPerSecond}");
         sb.AppendLine($"{RecordingSettingsReader.GifMaxWidthName} = {defaults.GifMaxWidth}");

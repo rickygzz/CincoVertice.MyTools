@@ -137,12 +137,13 @@ public class RecordingPartsTests
         // Act
         RecordingSettingsResultModel result = RecordingSettingsReader.Read(
             "FramesPerSecond = 30\nquality = high\nMaxMinutes = 5 # short\nCountdown = 0\nShowClicks = false\n"
-            + $"ShowKeys = FALSE\nFolder = {folder}\nGifFramesPerSecond = 8\nGifMaxWidth = 640");
+            + $"ShowKeys = FALSE\nFolder = {folder}\nGifFramesPerSecond = 8\nGifMaxWidth = 640\n"
+            + "ShowMouseCursor = false");
 
         // Assert
         Assert.Empty(result.Problems);
         Assert.Equal(
-            new RecordingSettingsModel(30, RecordingQuality.High, 5, 0, false, false, folder, 8, 640),
+            new RecordingSettingsModel(30, RecordingQuality.High, 5, 0, false, false, folder, 8, 640, false),
             result.Settings);
     }
 
@@ -151,6 +152,7 @@ public class RecordingPartsTests
     [InlineData("Quality = Best", "Quality: must be Low, Medium or High; the default is used.")]
     [InlineData("Countdown = -1", "Countdown: must be a whole number from 0 to 10; the default is used.")]
     [InlineData("ShowKeys = yes", "ShowKeys: must be true or false; the default is used.")]
+    [InlineData("ShowMouseCursor = 1", "ShowMouseCursor: must be true or false; the default is used.")]
     [InlineData(
         @"Folder = Q:\No\Such\Folder",
         @"Folder: there's no folder 'Q:\No\Such\Folder'; the Videos folder is used.")]
