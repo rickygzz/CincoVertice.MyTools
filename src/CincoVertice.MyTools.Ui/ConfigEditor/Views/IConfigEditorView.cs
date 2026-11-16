@@ -27,8 +27,17 @@ public interface IConfigEditorView
     /// <summary>Raised when the user closes the window; cancel it to keep it open.</summary>
     event EventHandler<CancelEventArgs>? CloseRequested;
 
+    /// <summary>Raised as the user types a word, a "." or an "=", starts a line, or presses Ctrl+Space.</summary>
+    event EventHandler<SuggestionTrigger>? SuggestionsRequested;
+
+    /// <summary>Raised with the index of the suggestion the user chose.</summary>
+    event EventHandler<int>? SuggestionChosen;
+
     /// <summary>The text being edited, with \n for every new line.</summary>
     string CodeText { get; }
+
+    /// <summary>Where the caret is in <see cref="CodeText"/>.</summary>
+    int CaretPosition { get; }
 
     void ShowFiles(IReadOnlyList<EditableFileModel> files, EditableFileModel? selected);
 
@@ -46,6 +55,15 @@ public interface IConfigEditorView
     void ShowError(string message);
 
     void GoToLine(int line);
+
+    /// <summary>Shows the suggestions at the caret.</summary>
+    /// <param name="selectFirst">Whether Enter chooses the first; otherwise only one the user moved to.</param>
+    void ShowSuggestions(IReadOnlyList<CodeSuggestionModel> suggestions, bool selectFirst);
+
+    void HideSuggestions();
+
+    /// <summary>Writes text in place of a part of the code, as typing would, the caret after it.</summary>
+    void ReplaceText(int start, int length, string text);
 
     /// <returns>What to do with the changes to the named file.</returns>
     ConfigEditorSaveChoice AskSaveChanges(string name);

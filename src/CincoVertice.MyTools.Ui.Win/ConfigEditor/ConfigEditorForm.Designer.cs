@@ -38,6 +38,7 @@ partial class ConfigEditorForm
         FilesList = new ListBox();
         CodeEditor = new CincoVertice.Common.Ui.Win.Controls.Rtf.CodeTextControl();
         ProblemsList = new ListBox();
+        SuggestionsList = new ListBox();
         EditedTimer = new System.Windows.Forms.Timer(components);
         ToolStrip.SuspendLayout();
         ((System.ComponentModel.ISupportInitialize)MainSplit).BeginInit();
@@ -119,6 +120,10 @@ partial class ConfigEditorForm
         CodeEditor.TabIndex = 0;
         CodeEditor.Text = "";
         CodeEditor.TextChanged += CodeEditor_TextChanged;
+        CodeEditor.KeyDown += CodeEditor_KeyDown;
+        CodeEditor.KeyPress += CodeEditor_KeyPress;
+        CodeEditor.Leave += CodeEditor_Leave;
+        CodeEditor.MouseDown += CodeEditor_MouseDown;
         CodeEditor.ZoomChanged += CodeEditor_ZoomChanged;
         //
         // ProblemsList
@@ -131,6 +136,19 @@ partial class ConfigEditorForm
         ProblemsList.Visible = false;
         ProblemsList.SelectedIndexChanged += ProblemsList_SelectedIndexChanged;
         //
+        // SuggestionsList
+        //
+        SuggestionsList.DrawMode = DrawMode.OwnerDrawFixed;
+        SuggestionsList.IntegralHeight = false;
+        SuggestionsList.ItemHeight = 20;
+        SuggestionsList.Name = "SuggestionsList";
+        SuggestionsList.Size = new Size(520, 160);
+        SuggestionsList.TabIndex = 2;
+        SuggestionsList.TabStop = false;
+        SuggestionsList.Visible = false;
+        SuggestionsList.DrawItem += SuggestionsList_DrawItem;
+        SuggestionsList.MouseClick += SuggestionsList_MouseClick;
+        //
         // EditedTimer
         //
         EditedTimer.Interval = 200;
@@ -141,6 +159,7 @@ partial class ConfigEditorForm
         AutoScaleDimensions = new SizeF(7F, 15F);
         AutoScaleMode = AutoScaleMode.Font;
         ClientSize = new Size(884, 561);
+        Controls.Add(SuggestionsList);
         Controls.Add(MainSplit);
         Controls.Add(ToolStrip);
         MinimumSize = new Size(500, 300);
@@ -148,6 +167,7 @@ partial class ConfigEditorForm
         StartPosition = FormStartPosition.CenterScreen;
         Text = "Config editor";
         Activated += ConfigEditorForm_Activated;
+        Deactivate += ConfigEditorForm_Deactivate;
         FormClosing += ConfigEditorForm_FormClosing;
         ToolStrip.ResumeLayout(false);
         ToolStrip.PerformLayout();
@@ -169,5 +189,6 @@ partial class ConfigEditorForm
     private ListBox FilesList;
     private CincoVertice.Common.Ui.Win.Controls.Rtf.CodeTextControl CodeEditor;
     private ListBox ProblemsList;
+    private ListBox SuggestionsList;
     private System.Windows.Forms.Timer EditedTimer;
 }

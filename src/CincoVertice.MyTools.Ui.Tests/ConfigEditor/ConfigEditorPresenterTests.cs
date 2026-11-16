@@ -378,6 +378,82 @@ public class ConfigEditorPresenterTests
         Assert.Equal("mine", _view.CodeText);
     }
 
+    [Fact]
+    public void Suggestions_ShowWhatTheLanguageOffers_AtTheCaret()
+    {
+        // Arrange
+        _presenter.Open(_script.Path);
+        _view.CodeText = "clip";
+        _view.CaretPosition = 4;
+        _language.Suggestions = new CodeSuggestionsModel(0, 4, [new("clipboard", "Module", "clipboard.")]);
+
+        // Act
+        _view.RaiseSuggest(SuggestionTrigger.Typing);
+
+        // Assert
+        Assert.Equal(
+            (EditableFileKind.Script, 4, SuggestionTrigger.Typing),
+            Assert.Single(_language.SuggestionRequests));
+        Assert.Equal("clipboard", Assert.Single(_view.Suggestions!).Text);
+    }
+
+    [Fact]
+    public void ChoosingASuggestion_WritesItInPlaceOfWhatWasTyped_AndOffersWhatComesNext()
+    {
+        // Arrange
+        _presenter.Open(_script.Path);
+        _view.CodeText = "x = clip";
+        _view.CaretPosition = 8;
+        _language.Suggestions = new CodeSuggestionsModel(4, 4, [new("clipboard", "Module", "clipboard.")]);
+        _view.RaiseSuggest(SuggestionTrigger.Typing);
+
+        // Act
+        _view.RaiseChoose(0);
+
+        // Assert: after "clipboard." its functions are asked for at once
+        Assert.Equal("x = clipboard.", _view.CodeText);
+        Assert.Equal(2, _language.SuggestionRequests.Count);
+        Assert.Equal(14, _language.SuggestionRequests[1].Caret);
+    }
+
+    [Theory]
+    [InlineData(SuggestionTrigger.NewLine, false)]
+    [InlineData(SuggestionTrigger.Typing, true)]
+    [InlineData(SuggestionTrigger.Asked, true)]
+    public void Suggestions_OnANewLine_HaveNoneChosen_SoEnterMakesAnotherLine(
+        SuggestionTrigger trigger,
+        bool selectsFirst)
+    {
+        // Arrange
+        _presenter.Open(_hotkeys.Path);
+        _language.Suggestions = new CodeSuggestionsModel(0, 0, [new("ShowCalculator", "Calculator")]);
+
+        // Act
+        _view.RaiseSuggest(trigger);
+
+        // Assert
+        Assert.Equal(selectsFirst, _view.SelectsFirst);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Suggestions_OfNothing_OrOnlyWhatIsTyped_AreHidden(bool onlyTyped)
+    {
+        // Arrange
+        _presenter.Open(_script.Path);
+        _view.CodeText = "end";
+        _view.CaretPosition = 3;
+        _view.ShowSuggestions([new("old", "Keyword")], selectFirst: true);
+        _language.Suggestions = onlyTyped ? new CodeSuggestionsModel(0, 3, [new("end", "Keyword")]) : null;
+
+        // Act
+        _view.RaiseSuggest(SuggestionTrigger.Asked);
+
+        // Assert
+        Assert.Null(_view.Suggestions);
+    }
+
     private sealed class FakeView : IConfigEditorView
     {
         public event EventHandler<EditableFileModel>? FileSelected;
@@ -394,7 +470,15 @@ public class ConfigEditorPresenterTests
 
         public event EventHandler<CancelEventArgs>? CloseRequested;
 
+        public event EventHandler<SuggestionTrigger>? SuggestionsRequested;
+
+        public event EventHandler<int>? SuggestionChosen;
+
         public string CodeText { get; set; } = string.Empty;
+
+        public int CaretPosition { get; set; }
+
+        public IReadOnlyList<CodeSuggestionModel>? Suggestions { get; private set; }
 
         public IReadOnlyList<EditableFileModel> ShownFiles { get; private set; } = [];
 
@@ -457,6 +541,26 @@ public class ConfigEditorPresenterTests
         }
 
         public string? AskNewScriptName() => NewScriptName;
+
+        public void ShowSuggestions(IReadOnlyList<CodeSuggestionModel> suggestions, bool selectFirst)
+        {
+            Suggestions = suggestions;
+            SelectsFirst = selectFirst;
+        }
+
+        public bool SelectsFirst { get; private set; }
+
+        public void HideSuggestions() => Suggestions = null;
+
+        public void ReplaceText(int start, int length, string text)
+        {
+            CodeText = CodeText[..start] + text + CodeText[(start + length)..];
+            CaretPosition = start + text.Length;
+        }
+
+        public void RaiseSuggest(SuggestionTrigger trigger) => SuggestionsRequested?.Invoke(this, trigger);
+
+        public void RaiseChoose(int index) => SuggestionChosen?.Invoke(this, index);
 
         public void RaiseFileSelected(EditableFileModel file) => FileSelected?.Invoke(this, file);
 
@@ -557,5 +661,16 @@ public class ConfigEditorPresenterTests
         }
 
         public IReadOnlyList<EditableFileProblemModel> Check(EditableFileKind kind, string text) => Problems;
+
+        public CodeSuggestionsModel? Suggestions { get; set; }
+
+        public List<(EditableFileKind Kind, int Caret, SuggestionTrigger Trigger)> SuggestionRequests { get; } = [];
+
+        public CodeSuggestionsModel? Suggest(EditableFileKind kind, string text, int caret, SuggestionTrigger trigger)
+        {
+            SuggestionRequests.Add((kind, caret, trigger));
+
+            return Suggestions;
+        }
     }
 }

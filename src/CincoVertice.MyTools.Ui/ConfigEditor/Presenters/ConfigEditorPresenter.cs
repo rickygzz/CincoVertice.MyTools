@@ -24,6 +24,9 @@ public sealed class ConfigEditorPresenter
     private EditableFileContentModel? _saved;
     private IReadOnlyList<EditableFileProblemModel> _problems = [];
 
+    // What the suggestions showing would replace, and with what
+    private CodeSuggestionsModel? _suggestions;
+
     public ConfigEditorPresenter(
         IConfigEditorView view,
         IEditableFileCatalog catalog,
@@ -42,6 +45,8 @@ public sealed class ConfigEditorPresenter
         _view.ProblemSelected += View_ProblemSelected;
         _view.ViewActivated += View_ViewActivated;
         _view.CloseRequested += View_CloseRequested;
+        _view.SuggestionsRequested += View_SuggestionsRequested;
+        _view.SuggestionChosen += View_SuggestionChosen;
     }
 
     /// <summary>The file shown; null before one is.</summary>
@@ -203,6 +208,53 @@ public sealed class ConfigEditorPresenter
     }
 
     private void View_TextEdited(object? sender, EventArgs e) => Analyze();
+
+    private void View_SuggestionsRequested(object? sender, SuggestionTrigger trigger)
+    {
+        _suggestions = _file is null || _saved is null
+            ? null
+            : _language.Suggest(_file.Kind, _view.CodeText, _view.CaretPosition, trigger);
+
+        // Nothing to offer, or only what's typed already
+        if (_suggestions is not { Items.Count: > 0 } suggestions
+            || (suggestions.Items.Count == 1 && suggestions.Items[0].Insert == TypedOf(suggestions)))
+        {
+            _suggestions = null;
+            _view.HideSuggestions();
+
+            return;
+        }
+
+        // Offered on a new line, nothing is chosen until the user moves to it, so Enter can make another line
+        _view.ShowSuggestions(suggestions.Items, selectFirst: trigger != SuggestionTrigger.NewLine);
+    }
+
+    private void View_SuggestionChosen(object? sender, int index)
+    {
+        if (_suggestions is not { } suggestions || index < 0 || index >= suggestions.Items.Count)
+        {
+            return;
+        }
+
+        string insert = suggestions.Items[index].Insert;
+        _suggestions = null;
+        _view.HideSuggestions();
+        _view.ReplaceText(suggestions.Start, suggestions.Length, insert);
+
+        // What comes next is offered at once: a function after "module.", a key after "Ctrl+", a shortcut after " = "
+        if (insert.EndsWith('.') || insert.EndsWith('+') || insert.EndsWith(' '))
+        {
+            View_SuggestionsRequested(this, SuggestionTrigger.Typing);
+        }
+    }
+
+    private string TypedOf(CodeSuggestionsModel suggestions)
+    {
+        string text = _view.CodeText;
+        int end = Math.Min(text.Length, suggestions.Start + suggestions.Length);
+
+        return suggestions.Start <= end ? text[suggestions.Start..end] : string.Empty;
+    }
 
     private void View_SaveRequested(object? sender, EventArgs e) => Save();
 

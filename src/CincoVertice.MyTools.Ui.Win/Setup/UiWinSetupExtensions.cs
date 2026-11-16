@@ -51,6 +51,7 @@ using CincoVertice.MyTools.Ui.Win.Zones;
 using CincoVertice.MyTools.Ui.Win.Zones.Actions;
 using CincoVertice.MyTools.Ui.Win.Zones.Services;
 using CincoVertice.MyTools.Ui.Zones.Interfaces;
+using CincoVertice.MyTools.Ui.Zones.Models;
 using CincoVertice.MyTools.Ui.Zones.Presenters;
 using CincoVertice.MyTools.Ui.Zones.Services;
 using CincoVertice.MyTools.Ui.Zones.Views;
@@ -139,7 +140,16 @@ public static class UiWinSetupExtensions
             () => sp.GetRequiredService<AppActionCatalog>().GetActions().ToList(),
             ScriptCatalog.FolderPath));
         services.AddSingleton<IEditableFileLanguage>(sp => new EditableFileLanguage(
-            () => sp.GetRequiredService<AppActionCatalog>().GetActions().Select(action => action.Name).ToList()));
+            () => sp.GetRequiredService<AppActionCatalog>().GetActions().Select(action => action.Name).ToList(),
+            () => MostZones(sp.GetRequiredService<ZonesConfigService>().LoadResult().Layouts),
+            () =>
+            [
+                .. ScriptCatalog.GetScriptFiles(ScriptCatalog.FolderPath)
+                    .Where(ScriptCatalog.IsLibrary)
+                    .Select(Path.GetFileNameWithoutExtension)
+                    .OfType<string>(),
+            ],
+            () => [.. sp.GetRequiredService<IZoneDesktop>().GetMonitors().Select(monitor => monitor.Bounds)]));
         services.AddSingleton<ConfigEditorWindowService>();
         services.AddSingleton<ScreenSnipper>();
         services.AddSingleton<ITextRecognizer, WindowsTextRecognizer>();
@@ -270,4 +280,11 @@ public static class UiWinSetupExtensions
 
         return configurationBuilder;
     }
+
+    // The most zones a monitor's layout has, for MoveToZone's value
+    private static int MostZones(ZoneLayoutsModel layouts) =>
+        layouts.Monitors
+            .Select(monitor => monitor.Layout.Zones.Count)
+            .Append(layouts.DefaultLayout.Zones.Count)
+            .Max();
 }

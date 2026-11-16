@@ -76,6 +76,7 @@ All other actions have no default hotkey. Add them in `hotkeys.cfg`.
 | Ctrl+S | Save |
 | Ctrl+0 | Reset zoom |
 | Ctrl+wheel | Zoom |
+| Ctrl+Space | Suggestions; Enter or Tab writes the one chosen, Esc closes them |
 
 ## Compare files
 
