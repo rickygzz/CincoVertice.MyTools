@@ -12,6 +12,9 @@ This guide is for people who download and use the app. It covers every tool, the
 
 ## Contents
 
+Want a guided first try? Start with [eight short tutorials](16-tutorials.md): explain a screenshot, copy text from a
+picture, record a how-to, compare notes, draw a plan, arrange windows, calculate, or make a shortcut.
+
 - [Getting Started](01-getting-started.md)
   - [Quick Start](01-getting-started.md#quick-start)
   - [Core Concepts](01-getting-started.md#core-concepts)
@@ -38,3 +41,4 @@ This guide is for people who download and use the app. It covers every tool, the
 - [Window Zones](13-window-zones.md)
 - [Mouse Spotlight](14-mouse-spotlight.md)
 - [Compare Files](15-compare-files.md)
+- [Try MyTools: Eight Short Tutorials](16-tutorials.md)

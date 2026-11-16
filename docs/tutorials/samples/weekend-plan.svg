@@ -1,0 +1,49 @@
+<svg viewBox="40 10 770 425" width="770" height="425" xmlns="http://www.w3.org/2000/svg">
+  <metadata id="mytools-diagram">{"format":"mytools-diagram","version":1,"shapes":[{"id":1,"kind":"RoundedRectangle","x":60,"y":125,"width":190,"height":90,"text":"Pick a destination","style":{"fill":"#E0EFFF","line":"#2766AB","lineWidth":2,"dashed":false,"textColor":"#193555","fontSize":20,"fontFamily":"Roboto","textOutlineWidth":0,"textOutlineColor":"#FFFFFF"}},{"id":2,"kind":"RoundedRectangle","x":330,"y":125,"width":190,"height":90,"text":"Plan the journey","style":{"fill":"#E0EFFF","line":"#2766AB","lineWidth":2,"dashed":false,"textColor":"#193555","fontSize":20,"fontFamily":"Roboto","textOutlineWidth":0,"textOutlineColor":"#FFFFFF"}},{"id":3,"kind":"RoundedRectangle","x":600,"y":125,"width":190,"height":90,"text":"Book the tickets","style":{"fill":"#E2F5E8","line":"#2E8B57","lineWidth":2,"dashed":false,"textColor":"#193555","fontSize":20,"fontFamily":"Roboto","textOutlineWidth":0,"textOutlineColor":"#FFFFFF"}},{"id":4,"kind":"RoundedRectangle","x":330,"y":325,"width":190,"height":90,"text":"Share the plan","style":{"fill":"#E2F5E8","line":"#2E8B57","lineWidth":2,"dashed":false,"textColor":"#193555","fontSize":20,"fontFamily":"Roboto","textOutlineWidth":0,"textOutlineColor":"#FFFFFF"}},{"id":5,"kind":"Text","x":60,"y":30,"width":650,"height":60,"text":"A weekend away, planned together","style":{"line":"#2766AB","lineWidth":2,"dashed":false,"textColor":"#193555","fontSize":27,"fontFamily":"Roboto","textOutlineWidth":0,"textOutlineColor":"#FFFFFF","textAlignment":"Left"}}],"connectors":[{"id":6,"fromShapeId":1,"toShapeId":2,"routing":"Straight","heads":"End","label":"","style":{"fill":"#E0EFFF","line":"#2766AB","lineWidth":2,"dashed":false,"textColor":"#193555","fontSize":20,"fontFamily":"Roboto","textOutlineWidth":0,"textOutlineColor":"#FFFFFF"}},{"id":7,"fromShapeId":2,"toShapeId":3,"routing":"Straight","heads":"End","label":"","style":{"fill":"#E0EFFF","line":"#2766AB","lineWidth":2,"dashed":false,"textColor":"#193555","fontSize":20,"fontFamily":"Roboto","textOutlineWidth":0,"textOutlineColor":"#FFFFFF"}},{"id":8,"fromShapeId":3,"toShapeId":4,"routing":"Elbow","heads":"End","label":"Ready to go","style":{"fill":"#E0EFFF","line":"#2766AB","lineWidth":2,"dashed":false,"textColor":"#193555","fontSize":16,"fontFamily":"Roboto","textOutlineWidth":0,"textOutlineColor":"#FFFFFF"}}]}</metadata>
+  <g>
+    <path d="M72 125L238 125C244.63 125 250 130.37 250 137L250 203C250 209.63 244.63 215 238 215L72 215C65.37 215 60 209.63 60 203L60 137C60 130.37 65.37 125 72 125Z" fill="#E0EFFF" stroke="#2766AB" stroke-width="2" stroke-linejoin="round" />
+    <text text-anchor="middle" font-family="'Roboto', sans-serif" font-size="20" fill="#193555" xml:space="preserve">
+      <tspan x="155" y="163.75">Pick a</tspan>
+      <tspan x="155" y="188.75">destination</tspan>
+    </text>
+  </g>
+  <g>
+    <path d="M342 125L508 125C514.63 125 520 130.37 520 137L520 203C520 209.63 514.63 215 508 215L342 215C335.37 215 330 209.63 330 203L330 137C330 130.37 335.37 125 342 125Z" fill="#E0EFFF" stroke="#2766AB" stroke-width="2" stroke-linejoin="round" />
+    <text text-anchor="middle" font-family="'Roboto', sans-serif" font-size="20" fill="#193555" xml:space="preserve">
+      <tspan x="425" y="176.25">Plan the journey</tspan>
+    </text>
+  </g>
+  <g>
+    <path d="M612 125L778 125C784.63 125 790 130.37 790 137L790 203C790 209.63 784.63 215 778 215L612 215C605.37 215 600 209.63 600 203L600 137C600 130.37 605.37 125 612 125Z" fill="#E2F5E8" stroke="#2E8B57" stroke-width="2" stroke-linejoin="round" />
+    <text text-anchor="middle" font-family="'Roboto', sans-serif" font-size="20" fill="#193555" xml:space="preserve">
+      <tspan x="695" y="176.25">Book the tickets</tspan>
+    </text>
+  </g>
+  <g>
+    <path d="M342 325L508 325C514.63 325 520 330.37 520 337L520 403C520 409.63 514.63 415 508 415L342 415C335.37 415 330 409.63 330 403L330 337C330 330.37 335.37 325 342 325Z" fill="#E2F5E8" stroke="#2E8B57" stroke-width="2" stroke-linejoin="round" />
+    <text text-anchor="middle" font-family="'Roboto', sans-serif" font-size="20" fill="#193555" xml:space="preserve">
+      <tspan x="425" y="376.25">Share the plan</tspan>
+    </text>
+  </g>
+  <g>
+    <text text-anchor="start" font-family="'Roboto', sans-serif" font-size="27" fill="#193555" xml:space="preserve">
+      <tspan x="64" y="68.44">A weekend away, planned together</tspan>
+    </text>
+  </g>
+  <g>
+    <path d="M250 170L318 170" fill="none" stroke="#2766AB" stroke-width="2" stroke-linejoin="round" />
+    <polygon points="330,170 318,175.4 318,164.6" fill="#2766AB" />
+  </g>
+  <g>
+    <path d="M520 170L588 170" fill="none" stroke="#2766AB" stroke-width="2" stroke-linejoin="round" />
+    <polygon points="600,170 588,175.4 588,164.6" fill="#2766AB" />
+  </g>
+  <g>
+    <path d="M600 170L570 170C564.48 170 560 174.48 560 180L560 360C560 365.52 555.52 370 550 370L532 370" fill="none" stroke="#2766AB" stroke-width="2" stroke-linejoin="round" />
+    <polygon points="520,370 532,364.6 532,375.4" fill="#2766AB" />
+    <rect x="509.6" y="260" width="100.8" height="20" fill="#FFFFFF" />
+    <text text-anchor="middle" font-family="'Roboto', sans-serif" font-size="16" fill="#193555" xml:space="preserve">
+      <tspan x="560" y="275">Ready to go</tspan>
+    </text>
+  </g>
+</svg>
