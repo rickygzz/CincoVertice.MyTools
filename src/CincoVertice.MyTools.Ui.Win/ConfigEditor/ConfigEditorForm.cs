@@ -30,6 +30,15 @@ public partial class ConfigEditorForm : Form, IConfigEditorView
     {
         InitializeComponent();
         SuggestionsList.ItemHeight = SuggestionsList.Font.Height + LogicalToDeviceUnits(4);
+
+        // The editor asks what to show where the pointer rests, which the presenter knows
+        CodeEditor.HoverText = position =>
+        {
+            var hover = new CodeHoverModel(position);
+            HoverRequested?.Invoke(this, hover);
+
+            return hover.Text;
+        };
     }
 
     public event EventHandler<EditableFileModel>? FileSelected;
@@ -49,6 +58,8 @@ public partial class ConfigEditorForm : Form, IConfigEditorView
     public event EventHandler<SuggestionTrigger>? SuggestionsRequested;
 
     public event EventHandler<int>? SuggestionChosen;
+
+    public event EventHandler<CodeHoverModel>? HoverRequested;
 
     public string CodeText => CodeEditor.Text;
 

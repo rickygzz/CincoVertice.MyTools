@@ -1,4 +1,5 @@
-﻿using CincoVertice.Common.Ui.Rtf.Constants;
+﻿using System.ComponentModel;
+using CincoVertice.Common.Ui.Rtf.Constants;
 using CincoVertice.Common.Ui.Rtf.Models;
 using CincoVertice.Common.Ui.Rtf.Themes;
 using CincoVertice.MyTools.Ui.Calculator.Models;
@@ -61,6 +62,8 @@ public partial class CalculatorForm : Form, ICalculatorView
     public event EventHandler? EvaluateRequested;
 
     public event EventHandler? ToggleHistoryRequested;
+
+    public event EventHandler<HandledEventArgs>? CopyResultRequested;
 
     public event EventHandler? ExpressionChanged;
 
@@ -160,6 +163,12 @@ public partial class CalculatorForm : Form, ICalculatorView
         ResultOutputControl.Visible = true;
     }
 
+    public void CopyResult(string result)
+    {
+        Clipboard.SetText(result);
+        HistoryToolTip.Show("Copied", ResultOutputControl, 0, -LogicalToDeviceUnits(24), 1200);
+    }
+
     public void ShowHistory(IReadOnlyList<CalculatorHistoryEntryModel> entries, string emptyText)
     {
         if (_historyExtraHeight == 0)
@@ -248,6 +257,16 @@ public partial class CalculatorForm : Form, ICalculatorView
             EvaluateRequested?.Invoke(this, EventArgs.Empty);
             e.Handled = true;
             e.SuppressKeyPress = true;
+        }
+        // Ctrl+C copies the result, unless part of the expression is selected to copy
+        else if (e.KeyData == (Keys.Control | Keys.C)
+            && CalculatorTextBox.Focused
+            && CalculatorTextBox.SelectionLength == 0)
+        {
+            var copy = new HandledEventArgs();
+            CopyResultRequested?.Invoke(this, copy);
+            e.Handled = copy.Handled;
+            e.SuppressKeyPress = copy.Handled;
         }
         else if (e.KeyData == (Keys.Control | Keys.H))
         {

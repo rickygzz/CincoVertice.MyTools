@@ -88,6 +88,28 @@ public sealed class EditableFileLanguage : IEditableFileLanguage
         };
     }
 
+    public string? Describe(EditableFileKind kind, string text, int position)
+    {
+        string word = HoverHelp.WordAt(text, position);
+
+        if (word.Length == 0)
+        {
+            return null;
+        }
+
+        return kind switch
+        {
+            EditableFileKind.Hotkeys => HoverHelp.Named(word, Actions()),
+            EditableFileKind.StartupActions => HoverHelp.Named(word, Actions())
+                ?? HoverHelp.Setting(word, ConfigSettingsHelp.Startup([], 0)),
+            EditableFileKind.Script => HoverHelp.Script(word, ScriptFunctionHelp.Functions),
+            EditableFileKind.ActivitySettings => HoverHelp.Setting(word, ConfigSettingsHelp.Activity),
+            EditableFileKind.RecordingSettings => HoverHelp.Setting(word, ConfigSettingsHelp.Recording),
+            EditableFileKind.WindowZones => HoverHelp.Setting(word, ConfigSettingsHelp.Zones([])),
+            _ => null,
+        };
+    }
+
     // Sorted by name, each with what it does
     private List<CodeSuggestionModel> Actions() =>
         [.. _actionNames().Order(StringComparer.OrdinalIgnoreCase).Select(Describe)];

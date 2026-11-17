@@ -7,11 +7,11 @@ Functions are grouped in modules: you call one as `module.function(...)`, as in 
 | [`dialog`](#dialog) | Asking and showing | `ask` `form` `message` `confirm` |
 | [`clipboard`](#clipboard) | The clipboard | `gettext` `settext` `clear` `paste` `pasteastext` |
 | [`keyboard`](#keyboard) | Typing and pressing keys | `type` `press` |
-| [`window`](#window) | Windows | `title` `tozone` `activate` `activateoropen` |
+| [`window`](#window) | Windows | `title` `tozone` `activate` `activateoropen` `ontop` |
 | [`shell`](#shell) | Web pages, files and programs | `open` `run` |
 | [`tray`](#tray) | Notifications | `notify` |
 | [`system`](#system) | The computer | `waitidle` |
-| [`file`](#file) | Text files | `read` `write` |
+| [`file`](#file) | Text files | `read` `write` `append` `exists` |
 | [`date`](#date) | The date and time | `now` `format` |
 | [`script`](#script) | The running script | `wait` `stop` `argument` `include` |
 | [`global`](#global) | Values kept between runs | `set` `get` `has` `remove` `names` |
@@ -143,6 +143,7 @@ Typing blocks the app until it finishes. Typing into a program that runs as admi
 | `window.tozone(number)` | Moves the active window to that zone of its monitor, from 1, as set in `zones.cfg`. Nothing. A number with no zone is an error. See [Window Zones](13-window-zones.md). |
 | `window.activate(title)` | Brings to the front the window whose title has `title` in it, ignoring case, as if you had clicked it: restored when minimized. When several have it, the one you used last. Only windows you can switch to count: not hidden ones, nor those on another virtual desktop. `true` when there was one, `false` when not. |
 | `window.activateoropen(title, program)`<br>`window.activateoropen(title, program, arguments)` | Brings the window to the front, as `window.activate` does; when there's none, starts `program` (as `shell.run` does) and waits up to 10 seconds for a window with `title` to show, then brings it to the front. `true` when a window is in front, `false` when the program showed none in time. |
+| `window.ontop()`<br>`window.ontop(true)`<br>`window.ontop(false)` | Keeps the active window on top of the other windows (`true`), or no longer (`false`); with nothing, switches it, as the `ToggleAlwaysOnTop` hotkey does. `true` when it's on top afterwards. No active window is an error, as is a program run as administrator, which Windows doesn't let My Tools change. |
 
 With a hotkey, the active window is the program you pressed it in. Read the title at the start of the script: while a dialog of the script is open, the dialog is the active window. From the tray menu, the active window is usually the taskbar, so the title is `""`.
 
@@ -205,17 +206,24 @@ end
 |---|---|
 | `file.read(path)` | The text of a file, read as its byte order mark says, else as UTF-8. A file that isn't there, or can't be read, is an error. |
 | `file.write(path, text)` | Writes the text to the file, as UTF-8, replacing what it had. Its folder must exist. Nothing. |
+| `file.append(path, text)` | Adds the text at the end of the file, as UTF-8; a file that isn't there yet is created. Its folder must exist. Nothing. |
+| `file.exists(path)` | `true` when there's a file at the path, `false` when not (a folder isn't a file). |
 
 A path that isn't full, such as `"notes.txt"` or `"data\\list.txt"`, is in the scripts folder (`config\scripts`). Variables such as `%USERPROFILE%` are filled in: `file.read("%USERPROFILE%\\Documents\\todo.txt")`. Remember to write `\\` for each `\` inside a text.
 
-`file.write` writes the whole file at once: if it fails halfway, the file keeps what it had. To add a line at the end, read the file first:
+`file.write` writes the whole file at once: if it fails halfway, the file keeps what it had. To keep a log, add a line at a time with `file.append`; the first one creates the file:
 
 ```mts
-log = "log.txt"
-file.write(log, file.read(log) + date.now() + " started\n")
+file.append("log.txt", date.now() + " started\n")
 ```
 
-The first time, the file isn't there yet, so `file.read` stops the script with an error; create it once with `file.write(log, "")`.
+To read a file only when it's there:
+
+```mts
+if file.exists("todo.txt")
+    dialog.message(file.read("todo.txt"))
+end
+```
 
 ## date
 

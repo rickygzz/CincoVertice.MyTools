@@ -28,6 +28,7 @@ public static class ActionHelp
         ["MoveToNextZone"] = "Moves the active window to the next zone",
         ["MoveToPreviousZone"] = "Moves the active window to the zone before",
         ["EditZones"] = "Opens the window zones editor",
+        ["ToggleAlwaysOnTop"] = "Keeps the active window on top of the others, or no longer",
         ["ShowHelp"] = "Opens the user guide",
         ["ShowMouseSpotlight"] = "Shows the mouse spotlight, as tapping Left Ctrl twice does",
     };

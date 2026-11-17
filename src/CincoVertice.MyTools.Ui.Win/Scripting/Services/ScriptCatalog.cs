@@ -21,6 +21,7 @@ public static class ScriptCatalog
         #   clipboard.clear()  clipboard.pasteastext()  window.title()  window.tozone(number)
         #   keyboard.press("Ctrl+V")  keyboard.press("Tab", 3)
         #   window.activate(title)  window.activateoropen(title, program)  file.read(path)  file.write(path, text)
+        #   window.ontop()  file.append(path, text)  file.exists(path)
         #   date.now()  date.format(format)  date.format(date, format)
         #   shell.open(address or file)  shell.run(program, arguments)  tray.notify(text)
         #   script.wait(ms)  script.stop()  system.waitidle(cpu %, disk %, quiet seconds, most minutes)

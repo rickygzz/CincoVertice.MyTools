@@ -9,6 +9,7 @@ Press **Ctrl+Alt+C**. A small bar opens, centered on the screen where your mouse
 | **Enter** | Calculates. Your text stays as typed and the result appears below it. |
 | **Esc** | Hides the calculator |
 | **Ctrl+H** | Shows or hides the history; so does the arrow at the right of the result, which points down while the history is hidden and up while it shows |
+| **Ctrl+C** | With nothing selected in your text, copies the result, as shown; "Copied" appears for a moment. With text selected, copies that, as usual. |
 | **Up** / **Down** | Brings back the lines you entered before, the newest first; Down past the newest brings back what you were typing |
 | **Ctrl+Arrow** | Moves the window 10 pixels (with Shift, 120 pixels) |
 | Drag with the left mouse button | Moves the window |

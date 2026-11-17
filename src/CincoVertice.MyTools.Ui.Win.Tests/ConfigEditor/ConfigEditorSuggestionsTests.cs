@@ -122,6 +122,25 @@ public class ConfigEditorSuggestionsTests
         problems.Select(problem => problem.Message);
 
     [Fact]
+    public void Language_Describes_TheActions_Settings_AndFunctions_ThePointerRestsOn()
+    {
+        // Arrange
+        var language = new EditableFileLanguage(() => ["ShowCalculator"]);
+
+        // Act
+        string? action = language.Describe(EditableFileKind.Hotkeys, "ShowCalculator = Ctrl+Alt+C", 2);
+        string? setting = language.Describe(EditableFileKind.ActivitySettings, "Interval = 5000", 2);
+        string? function = language.Describe(EditableFileKind.Script, "x = clipboard.gettext()", 16);
+        string? shortcut = language.Describe(EditableFileKind.Hotkeys, "ShowCalculator = Ctrl+Alt+C", 18);
+
+        // Assert
+        Assert.Equal("ShowCalculator: Shows the calculator", action);
+        Assert.StartsWith("Interval: Milliseconds between checks", setting);
+        Assert.StartsWith("clipboard.gettext()", function);
+        Assert.Null(shortcut);
+    }
+
+    [Fact]
     public void Language_SuggestsActions_InHotkeys_AndFunctions_InScripts()
     {
         // Arrange

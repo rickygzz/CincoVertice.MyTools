@@ -1,4 +1,5 @@
-﻿using CincoVertice.MyTools.Ui.Calculator.Models;
+﻿using System.ComponentModel;
+using CincoVertice.MyTools.Ui.Calculator.Models;
 
 namespace CincoVertice.MyTools.Ui.Calculator.Views;
 
@@ -19,6 +20,9 @@ public interface ICalculatorView
     /// <summary>Raised with the index of the suggestion the user chose, in the list last shown.</summary>
     event EventHandler<int>? SuggestionChosen;
 
+    /// <summary>Ctrl+C with nothing selected: set Handled when the result was copied, else the key goes on.</summary>
+    event EventHandler<HandledEventArgs>? CopyResultRequested;
+
     /// <summary>The expression typed by the user.</summary>
     string Expression { get; }
 
@@ -38,6 +42,9 @@ public interface ICalculatorView
 
     /// <summary>Shows a calculated result.</summary>
     void ShowResult(string result);
+
+    /// <summary>Puts the result in the clipboard, and says so for a moment.</summary>
+    void CopyResult(string result);
 
     /// <summary>
     ///     Makes the output taller if it isn't yet, and shows these operations in it, each with its operation and

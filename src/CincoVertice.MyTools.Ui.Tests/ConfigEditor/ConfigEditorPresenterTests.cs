@@ -454,6 +454,22 @@ public class ConfigEditorPresenterTests
         Assert.Null(_view.Suggestions);
     }
 
+    [Fact]
+    public void ThePointerOnAName_ShowsWhatTheLanguageSaysOfIt_OnlyWithAFileOpen()
+    {
+        // Arrange
+        _language.Description = "ShowCalculator: Shows the calculator";
+        string? none = _view.Hover(0);
+        _presenter.Open(_hotkeys.Path);
+
+        // Act
+        string? shown = _view.Hover(0);
+
+        // Assert
+        Assert.Null(none);
+        Assert.Equal("ShowCalculator: Shows the calculator", shown);
+    }
+
     private sealed class FakeView : IConfigEditorView
     {
         public event EventHandler<EditableFileModel>? FileSelected;
@@ -473,6 +489,16 @@ public class ConfigEditorPresenterTests
         public event EventHandler<SuggestionTrigger>? SuggestionsRequested;
 
         public event EventHandler<int>? SuggestionChosen;
+
+        public event EventHandler<CodeHoverModel>? HoverRequested;
+
+        public string? Hover(int position)
+        {
+            var hover = new CodeHoverModel(position);
+            HoverRequested?.Invoke(this, hover);
+
+            return hover.Text;
+        }
 
         public string CodeText { get; set; } = string.Empty;
 
@@ -661,6 +687,11 @@ public class ConfigEditorPresenterTests
         }
 
         public IReadOnlyList<EditableFileProblemModel> Check(EditableFileKind kind, string text) => Problems;
+
+        public string? Description { get; set; }
+
+        public string? Describe(EditableFileKind kind, string text, int position) =>
+            position < text.Length ? Description : null;
 
         public CodeSuggestionsModel? Suggestions { get; set; }
 

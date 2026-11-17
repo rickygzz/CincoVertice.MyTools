@@ -47,6 +47,7 @@ public sealed class ConfigEditorPresenter
         _view.CloseRequested += View_CloseRequested;
         _view.SuggestionsRequested += View_SuggestionsRequested;
         _view.SuggestionChosen += View_SuggestionChosen;
+        _view.HoverRequested += View_HoverRequested;
     }
 
     /// <summary>The file shown; null before one is.</summary>
@@ -245,6 +246,14 @@ public sealed class ConfigEditorPresenter
         if (insert.EndsWith('.') || insert.EndsWith('+') || insert.EndsWith(' '))
         {
             View_SuggestionsRequested(this, SuggestionTrigger.Typing);
+        }
+    }
+
+    private void View_HoverRequested(object? sender, CodeHoverModel hover)
+    {
+        if (_file is not null && _saved is not null)
+        {
+            hover.Text = _language.Describe(_file.Kind, _view.CodeText, hover.Position);
         }
     }
 

@@ -40,6 +40,10 @@ In **`activity.cfg`**, **`recording.cfg`**, **`startup.cfg`** and **`zones.cfg`*
 - In `zones.cfg`, after `Monitor =`: the place and size of each monitor connected now, such as `1920, 0, 2560, 1440` "Monitor 2 (2560 x 1440), connected now", so you don't have to look them up.
 - In `startup.cfg`, after `Run = MoveToZone,`: the zone numbers.
 
+## Help on a name
+
+Rest the mouse pointer on a name to see what it is: in `hotkeys.cfg` and `startup.cfg` an action, such as "ShowCalculator: Shows the calculator"; in the other config files a setting, with what it allows and its default; in scripts a function, with how it's called and what it does, or a module, with its functions. A problem underlined there is shown first.
+
 ## Problems the editor shows
 
 A moment after each edit, the editor checks the file and lists problems as `Line N: <message>`. For `hotkeys.cfg`, `activity.cfg`, `startup.cfg` and `zones.cfg` this uses the same messages as described above, except the messages marked "tray list only" or "balloon only", which the editor never shows. For scripts, only the **first** syntax error is shown, with its line and column. Errors that can only be found when a script runs (such as an unknown function or a wrong argument type) are not shown.

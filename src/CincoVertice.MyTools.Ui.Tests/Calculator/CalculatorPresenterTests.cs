@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using System.ComponentModel;
+using System.Globalization;
 using CincoVertice.Common.Application.Calculator;
 using CincoVertice.MyTools.Ui.Calculator.Models;
 using CincoVertice.MyTools.Ui.Calculator.Presenters;
@@ -405,6 +406,28 @@ public class CalculatorPresenterTests
         Assert.Equal("4", _view.Result);
     }
 
+    [Fact]
+    public void CopyingWithNothingSelected_CopiesTheResultShowing_ButNotAnError()
+    {
+        // Arrange
+        bool beforeAny = _view.RequestCopy();
+        _view.Expression = "6 * 7";
+        _view.RequestEvaluate();
+
+        // Act
+        bool copied = _view.RequestCopy();
+        string? result = _view.Copied;
+        _view.Expression = "6 *";
+        _view.RequestEvaluate();
+        bool afterError = _view.RequestCopy();
+
+        // Assert: the key goes on to the text box when there's nothing to copy
+        Assert.False(beforeAny);
+        Assert.True(copied);
+        Assert.Equal("42", result);
+        Assert.False(afterError);
+    }
+
     private sealed class FakeCalculatorView : ICalculatorView
     {
         public event EventHandler? EvaluateRequested;
@@ -416,6 +439,20 @@ public class CalculatorPresenterTests
         public event EventHandler<int>? SuggestionChosen;
 
         public event EventHandler<int>? RecallRequested;
+
+        public event EventHandler<HandledEventArgs>? CopyResultRequested;
+
+        public string? Copied { get; private set; }
+
+        public void CopyResult(string result) => Copied = result;
+
+        public bool RequestCopy()
+        {
+            var copy = new HandledEventArgs();
+            CopyResultRequested?.Invoke(this, copy);
+
+            return copy.Handled;
+        }
 
         public void Recall(int direction) => RecallRequested?.Invoke(this, direction);
 

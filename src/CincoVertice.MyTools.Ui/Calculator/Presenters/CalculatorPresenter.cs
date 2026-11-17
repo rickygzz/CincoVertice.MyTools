@@ -1,4 +1,5 @@
-﻿using CincoVertice.Common.Application.Calculator;
+﻿using System.ComponentModel;
+using CincoVertice.Common.Application.Calculator;
 using CincoVertice.Common.Application.Calculator.Models;
 using CincoVertice.MyTools.Ui.Calculator.Models;
 using CincoVertice.MyTools.Ui.Calculator.Services;
@@ -45,6 +46,9 @@ public class CalculatorPresenter
     private Action _showCurrent;
     private bool _historyShown;
 
+    // The result showing, for Ctrl+C; null while an error shows, or before the first
+    private string? _result;
+
     /// <param name="view">The window.</param>
     /// <param name="calculator">Evaluates the expressions.</param>
     /// <param name="utcNow">The time now, for the UTC offsets the suggestions show; the clock's if null.</param>
@@ -60,6 +64,7 @@ public class CalculatorPresenter
         _view.ExpressionChanged += OnExpressionChanged;
         _view.SuggestionChosen += OnSuggestionChosen;
         _view.RecallRequested += OnRecallRequested;
+        _view.CopyResultRequested += OnCopyResultRequested;
     }
 
     public void Show()
@@ -101,6 +106,7 @@ public class CalculatorPresenter
             }
 
             AddToHistory(new CalculatorHistoryEntryModel(expression.Trim(), result));
+            _result = result;
             _showCurrent = () => _view.ShowResult(result);
 
             if (_historyShown)
@@ -118,6 +124,7 @@ public class CalculatorPresenter
             int start = Math.Min(ex.Position, expression.Length);
             int length = ex.Position < expression.Length ? 1 : 0;
 
+            _result = null;
             _showCurrent = () => _view.ShowError(ex.Message, start, length);
 
             // Drawn again so errors don't pile up below the history
@@ -127,6 +134,15 @@ public class CalculatorPresenter
             }
 
             _showCurrent();
+        }
+    }
+
+    private void OnCopyResultRequested(object? sender, HandledEventArgs e)
+    {
+        if (_result is { } result)
+        {
+            _view.CopyResult(result);
+            e.Handled = true;
         }
     }
 

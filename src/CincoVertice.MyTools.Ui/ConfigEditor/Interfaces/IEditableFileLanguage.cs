@@ -13,4 +13,8 @@ public interface IEditableFileLanguage
     /// <summary>What to offer at the caret, or null for nothing.</summary>
     /// <param name="trigger">What asked: typing offers only what was started, or the next part.</param>
     CodeSuggestionsModel? Suggest(EditableFileKind kind, string text, int caret, SuggestionTrigger trigger);
+
+    /// <summary>What to show when the pointer rests on a place of the text: what the name there is or does.</summary>
+    /// <returns>The text to show, or null for nothing.</returns>
+    string? Describe(EditableFileKind kind, string text, int position);
 }

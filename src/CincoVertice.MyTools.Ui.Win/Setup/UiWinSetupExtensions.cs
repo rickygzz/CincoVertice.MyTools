@@ -196,6 +196,7 @@ public static class UiWinSetupExtensions
         services.AddSingleton<MoveToNextZoneAction>();
         services.AddSingleton<MoveToPreviousZoneAction>();
         services.AddSingleton<EditZonesAction>();
+        services.AddSingleton<ToggleAlwaysOnTopAction>();
 
         // Compare files: a new window each time
         services.AddSingleton<CompareFilesAction>();
@@ -234,6 +235,7 @@ public static class UiWinSetupExtensions
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<MoveToNextZoneAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<MoveToPreviousZoneAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<EditZonesAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ToggleAlwaysOnTopAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ShowMouseSpotlightAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<CompareFilesAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<OpenDiagramEditorAction>());

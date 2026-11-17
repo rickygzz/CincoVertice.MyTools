@@ -33,6 +33,9 @@ public interface IConfigEditorView
     /// <summary>Raised with the index of the suggestion the user chose.</summary>
     event EventHandler<int>? SuggestionChosen;
 
+    /// <summary>Raised when the pointer rests on a character, for what to show about the name there.</summary>
+    event EventHandler<CodeHoverModel>? HoverRequested;
+
     /// <summary>The text being edited, with \n for every new line.</summary>
     string CodeText { get; }
 

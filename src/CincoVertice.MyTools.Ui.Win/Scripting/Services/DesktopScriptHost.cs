@@ -9,6 +9,7 @@ using CincoVertice.Common.WinApi.Hotkey;
 using CincoVertice.Common.WinApi.Libs;
 using CincoVertice.Common.WinApi.Libs.Enums;
 using CincoVertice.MyTools.Ui.Win.Shell.Services;
+using CincoVertice.MyTools.Ui.Win.Zones.Services;
 using CincoVertice.MyTools.Ui.Zones.Services;
 
 namespace CincoVertice.MyTools.Ui.Win.Scripting.Services;
@@ -193,6 +194,13 @@ public sealed class DesktopScriptHost : IScriptHost
 
     public void WriteFile(string path, string text) =>
         AtomicFile.WriteAllText(FullPath(path), text, new UTF8Encoding(false));
+
+    public void AppendFile(string path, string text) =>
+        File.AppendAllText(FullPath(path), text, new UTF8Encoding(false));
+
+    public bool FileExists(string path) => File.Exists(FullPath(path));
+
+    public bool SetActiveWindowOnTop(bool? isOnTop) => ActiveWindowOnTop.Set(isOnTop).IsOnTop;
 
     /// <summary>A script's file: %VARIABLES% expanded, and a path that isn't full taken in the scripts folder.</summary>
     public static string FullPath(string path)

@@ -131,6 +131,14 @@ window.tozone(3)
 
 See [Scripts](08b-script-functions.md#window).
 
+## Keeping a window on top
+
+Press **Ctrl+Alt+Win+T** (`ToggleAlwaysOnTop`) to keep the window you're working in on top of the other windows, even when you click another one: handy for a video, notes or a chat beside your work. Press it again in that window to let it go behind others again. A notification says which, with the window's title, as the window itself looks the same.
+
+It lasts until the window closes. The hotkey is in the `hotkeys.cfg` a new install creates; if yours is older, add `ToggleAlwaysOnTop = Ctrl+Alt+Win+T` (see [Hotkeys](02-hotkeys.md)). Scripts do the same with `window.ontop()` (see [Scripts](08b-script-functions.md#window)).
+
+Windows doesn't let My Tools change a program run as administrator, unless My Tools runs as administrator too; the notification then says so.
+
 ## Limits
 
 - **Programs run as administrator.** Windows does not let My Tools move their windows unless My Tools runs as administrator too. Dropping one on a zone shows "Could not move the window: it runs as administrator...".
