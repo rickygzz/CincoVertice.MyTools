@@ -42,6 +42,7 @@ public sealed class ConfigEditorPresenter
         _view.TextEdited += View_TextEdited;
         _view.SaveRequested += View_SaveRequested;
         _view.NewScriptRequested += View_NewScriptRequested;
+        _view.RefreshFilesRequested += View_RefreshFilesRequested;
         _view.ProblemSelected += View_ProblemSelected;
         _view.ViewActivated += View_ViewActivated;
         _view.CloseRequested += View_CloseRequested;
@@ -283,6 +284,16 @@ public sealed class ConfigEditorPresenter
 
         RefreshFiles();
         Load(file);
+    }
+
+    // The file open stays open, selected in the new list, or shown alone when it's no longer there
+    private void View_RefreshFilesRequested(object? sender, EventArgs e)
+    {
+        RefreshFiles();
+        EditableFileModel? selected = _file is null
+            ? null
+            : _files.FirstOrDefault(file => SamePath(file.Path, _file.Path)) ?? _file;
+        _view.ShowFiles(_files, selected);
     }
 
     private void View_ProblemSelected(object? sender, int index)

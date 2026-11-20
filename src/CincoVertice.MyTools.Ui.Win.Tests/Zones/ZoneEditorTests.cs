@@ -140,5 +140,13 @@ public sealed class ZoneEditorTests : IDisposable
         public Rectangle GetWindowBounds(nint window) => Rectangle.Empty;
 
         public string? MoveWindow(nint window, Rectangle bounds) => null;
+
+        public Point GetPointerPosition() => Point.Empty;
+
+        public bool IsMaximized(nint window) => false;
+
+        public void SetMaximized(nint window, bool isMaximized)
+        {
+        }
     }
 }

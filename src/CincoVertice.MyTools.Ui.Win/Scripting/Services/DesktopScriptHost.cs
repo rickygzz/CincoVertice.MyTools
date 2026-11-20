@@ -166,6 +166,14 @@ public sealed class DesktopScriptHost : IScriptHost
         }
     }
 
+    public void MoveActiveWindowToPointer()
+    {
+        if (_zones.MoveActiveWindowToPointer() is string problem)
+        {
+            throw new ArgumentException(problem);
+        }
+    }
+
     public Task WaitAsync(int milliseconds) => Task.Delay(milliseconds);
 
     public async Task<SystemLoadModel> MeasureLoadAsync(int milliseconds)

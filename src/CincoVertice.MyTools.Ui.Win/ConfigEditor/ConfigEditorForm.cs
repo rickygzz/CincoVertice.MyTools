@@ -49,6 +49,8 @@ public partial class ConfigEditorForm : Form, IConfigEditorView
 
     public event EventHandler? NewScriptRequested;
 
+    public event EventHandler? RefreshFilesRequested;
+
     public event EventHandler<int>? ProblemSelected;
 
     public event EventHandler? ViewActivated;
@@ -225,6 +227,13 @@ public partial class ConfigEditorForm : Form, IConfigEditorView
             {
                 SaveRequested?.Invoke(this, EventArgs.Empty);
             }
+
+            return true;
+        }
+
+        if (keyData == Keys.F5)
+        {
+            RefreshFilesRequested?.Invoke(this, EventArgs.Empty);
 
             return true;
         }
@@ -447,6 +456,9 @@ public partial class ConfigEditorForm : Form, IConfigEditorView
     }
 
     private void SaveButton_Click(object? sender, EventArgs e) => SaveRequested?.Invoke(this, EventArgs.Empty);
+
+    private void RefreshButton_Click(object? sender, EventArgs e) =>
+        RefreshFilesRequested?.Invoke(this, EventArgs.Empty);
 
     private void NewScriptButton_Click(object? sender, EventArgs e) => NewScriptRequested?.Invoke(this, EventArgs.Empty);
 

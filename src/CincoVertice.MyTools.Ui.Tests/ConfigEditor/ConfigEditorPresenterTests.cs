@@ -470,6 +470,40 @@ public class ConfigEditorPresenterTests
         Assert.Equal("ShowCalculator: Shows the calculator", shown);
     }
 
+    [Fact]
+    public void Refresh_ShowsTheFilesThereAreNow_WithTheOpenOneStillSelected()
+    {
+        // Arrange: a script added and one removed elsewhere
+        _presenter.Open(_script.Path);
+        var added = new EditableFileModel("b.mts", "b.mts", EditableFileKind.Script);
+        _catalog.Files.Add(added);
+
+        // Act
+        _view.RaiseRefresh();
+
+        // Assert
+        Assert.Equal([_hotkeys, _script, added], _view.ShownFiles);
+        Assert.Equal(_script, _view.SelectedFile);
+        Assert.Equal("x = 1", _view.CodeText);
+    }
+
+    [Fact]
+    public void Refresh_KeepsTheOpenFile_WhenItIsNoLongerThere()
+    {
+        // Arrange
+        _presenter.Open(_script.Path);
+        _view.CodeText = "edited";
+        _catalog.Files.Remove(_script);
+
+        // Act
+        _view.RaiseRefresh();
+
+        // Assert: still shown, with the changes made to it
+        Assert.Equal([_hotkeys], _view.ShownFiles);
+        Assert.Equal(_script, _view.SelectedFile);
+        Assert.Equal("edited", _view.CodeText);
+    }
+
     private sealed class FakeView : IConfigEditorView
     {
         public event EventHandler<EditableFileModel>? FileSelected;
@@ -479,6 +513,8 @@ public class ConfigEditorPresenterTests
         public event EventHandler? SaveRequested;
 
         public event EventHandler? NewScriptRequested;
+
+        public event EventHandler? RefreshFilesRequested;
 
         public event EventHandler<int>? ProblemSelected;
 
@@ -596,6 +632,8 @@ public class ConfigEditorPresenterTests
 
         public void RaiseNewScript() => NewScriptRequested?.Invoke(this, EventArgs.Empty);
 
+        public void RaiseRefresh() => RefreshFilesRequested?.Invoke(this, EventArgs.Empty);
+
         public void RaiseProblemSelected(int index) => ProblemSelected?.Invoke(this, index);
 
         public void RaiseActivated() => ViewActivated?.Invoke(this, EventArgs.Empty);
@@ -616,6 +654,9 @@ public class ConfigEditorPresenterTests
         public string? CreateError { get; set; }
 
         public IReadOnlyList<EditableFileModel> GetFiles() => _files;
+
+        /// <summary>The files there are now, as if changed elsewhere.</summary>
+        public List<EditableFileModel> Files => _files;
 
         public bool TryCreateScript(string name, out EditableFileModel? file, out string error)
         {

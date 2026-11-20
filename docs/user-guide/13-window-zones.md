@@ -129,6 +129,13 @@ script.wait(2000)
 window.tozone(3)
 ```
 
+`window.tomouse()` moves the active window to the monitor the mouse pointer is on, keeping its place and size there. A script with only that line, bound to a hotkey, brings a window to the screen you're looking at:
+
+```ini
+# hotkeys.cfg, with config\scripts\ToMouse.mts holding window.tomouse()
+ToMouse = Ctrl+Alt+Win+M
+```
+
 See [Scripts](08b-script-functions.md#window).
 
 ## Keeping a window on top

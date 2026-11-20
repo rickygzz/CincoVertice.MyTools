@@ -141,5 +141,30 @@ public static class ZoneCalculator
             ? Enumerable.Range(0, count).Where(i => i != top).Append(top)
             : Enumerable.Range(0, count);
 
+    /// <summary>
+    ///     Where a window goes on another monitor: as large, but no larger than its work area, and at the same place in
+    ///     it, so a window at the right edge stays at the right edge, and one in the middle in the middle.
+    /// </summary>
+    /// <param name="window">The window as the user sees it, in screen pixels.</param>
+    /// <param name="from">The work area of the monitor it's on.</param>
+    /// <param name="to">The work area of the monitor it goes to.</param>
+    public static Rectangle MoveToArea(Rectangle window, Rectangle from, Rectangle to)
+    {
+        int width = Math.Min(window.Width, to.Width);
+        int height = Math.Min(window.Height, to.Height);
+        int left = to.Left + Along(window.Left - from.Left, from.Width - window.Width, to.Width - width);
+        int top = to.Top + Along(window.Top - from.Top, from.Height - window.Height, to.Height - height);
+
+        return new Rectangle(left, top, width, height);
+    }
+
+    // The same part of the room there is on the other monitor; the middle when there was no room
+    private static int Along(int offset, int room, int newRoom)
+    {
+        double part = room <= 0 ? 0.5 : Math.Clamp((double)offset / room, 0, 1);
+
+        return (int)Math.Round(part * newRoom);
+    }
+
     private static int Percent(int length, double percent) => (int)Math.Round(length * percent / 100);
 }

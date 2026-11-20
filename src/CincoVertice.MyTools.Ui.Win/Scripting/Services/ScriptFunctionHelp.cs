@@ -27,6 +27,7 @@ public static class ScriptFunctionHelp
         Of("keyboard.press", "keyboard.press(keys, times)", "Presses keys, written as in hotkeys.cfg"),
         Of("window.title", "window.title()", "The active window's title"),
         Of("window.tozone", "window.tozone(number)", "Moves the active window to that zone of its monitor"),
+        Of("window.tomouse", "window.tomouse()", "Moves the active window to the monitor the mouse pointer is on"),
         Of("window.activate", "window.activate(title)", "Brings the window with that in its title to the front"),
         Of(
             "window.activateoropen",

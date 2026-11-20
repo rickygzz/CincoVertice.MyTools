@@ -138,4 +138,72 @@ public class ZoneMoverTests
         _mover.MoveActiveWindowBy(-1);
         Assert.Equal(new Rectangle(500, 0, 500, 600), _desktop.WindowBounds);
     }
+
+    [Fact]
+    public void MoveActiveWindowToPointer_MovesItToThePointersMonitor_AtTheSamePlace()
+    {
+        // Arrange
+        _desktop.Pointer = new Point(1500, 300);
+
+        // Act
+        string? problem = _mover.MoveActiveWindowToPointer();
+
+        // Assert
+        Assert.Null(problem);
+        Assert.Equal((FakeZoneDesktop.Window, new Rectangle(1100, 100, 300, 200)), Assert.Single(_desktop.Moves));
+        Assert.Empty(_desktop.Changes);
+    }
+
+    [Fact]
+    public void MoveActiveWindowToPointer_OnThatMonitorAlready_DoesNothing()
+    {
+        // Act
+        string? problem = _mover.MoveActiveWindowToPointer();
+
+        // Assert
+        Assert.Null(problem);
+        Assert.Empty(_desktop.Moves);
+    }
+
+    [Fact]
+    public void MoveActiveWindowToPointer_AMaximizedWindow_IsMaximizedThere()
+    {
+        // Arrange
+        _desktop.Pointer = new Point(1500, 300);
+        _desktop.IsWindowMaximized = true;
+
+        // Act
+        _mover.MoveActiveWindowToPointer();
+
+        // Assert
+        Assert.Equal(["restore", "maximize"], _desktop.Changes);
+        Assert.Equal(new Rectangle(1100, 100, 300, 200), Assert.Single(_desktop.Moves).Bounds);
+    }
+
+    [Fact]
+    public void MoveActiveWindowToPointer_ThatCant_SaysWhy_AndAMaximizedWindowStaysSo()
+    {
+        // Arrange
+        _desktop.Pointer = new Point(1500, 300);
+        _desktop.IsWindowMaximized = true;
+        _desktop.MoveProblem = "Could not move the window.";
+
+        // Act
+        string? problem = _mover.MoveActiveWindowToPointer();
+
+        // Assert
+        Assert.Equal("Could not move the window.", problem);
+        Assert.True(_desktop.IsWindowMaximized);
+    }
+
+    [Fact]
+    public void MoveActiveWindowToPointer_WithNoWindow_SaysSo()
+    {
+        // Arrange
+        _desktop.ActiveWindow = 0;
+        _desktop.Pointer = new Point(1500, 300);
+
+        // Act / Assert
+        Assert.Equal("There's no window to move.", _mover.MoveActiveWindowToPointer());
+    }
 }

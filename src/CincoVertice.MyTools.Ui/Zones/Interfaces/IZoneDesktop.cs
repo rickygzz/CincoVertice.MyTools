@@ -21,4 +21,13 @@ public interface IZoneDesktop
     /// <summary>Moves and sizes the window so that what the user sees of it fills the bounds.</summary>
     /// <returns>Why it couldn't, for the user; null when it moved.</returns>
     string? MoveWindow(nint window, Rectangle bounds);
+
+    /// <returns>Where the mouse pointer is.</returns>
+    Point GetPointerPosition();
+
+    /// <returns>Whether the window fills its monitor, maximized.</returns>
+    bool IsMaximized(nint window);
+
+    /// <summary>Maximizes the window, or restores it to its size before.</summary>
+    void SetMaximized(nint window, bool isMaximized);
 }

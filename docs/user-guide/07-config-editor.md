@@ -5,8 +5,8 @@ The config editor opens when you choose **Edit hotkeys...**, **Edit activity set
 - **Only one config editor window exists.** Asking for another file shows it in the same window.
 - The title is `<file> - Config editor`, with `*` after the file name when there are unsaved changes.
 - The left side lists your files: `hotkeys.cfg`, `activity.cfg`, `startup.cfg`, `zones.cfg`, `recording.cfg`, then each script. The right side is a text editor with syntax colors. Below it, a list of problems appears only when there are problems. Click a problem to jump to its line.
-- The toolbar has **New script...**, **Save** (tooltip "Save (Ctrl+S)") and a zoom button showing a percentage such as "100%" (tooltip "Ctrl+wheel to zoom. Click, or Ctrl+0, for 100%").
-- Keys: **Ctrl+S** saves, **Ctrl+0** resets zoom and **Ctrl+Space** shows [suggestions](#suggestions).
+- The toolbar has **New script...**, **Save** (tooltip "Save (Ctrl+S)"), **Refresh** (F5), which reads the list of files again, as after you add, rename or delete a script in Explorer, and a zoom button showing a percentage such as "100%" (tooltip "Ctrl+wheel to zoom. Click, or Ctrl+0, for 100%").
+- Keys: **Ctrl+S** saves, **F5** refreshes the file list, **Ctrl+0** resets zoom and **Ctrl+Space** shows [suggestions](#suggestions).
 
 ## Suggestions
 

@@ -186,4 +186,43 @@ public class ZoneCalculatorTests
         Assert.Equal(1, ZoneCalculator.ZoneOf(zones, new Rectangle(0, 0, 520, 310)));
         Assert.Equal(0, ZoneCalculator.ZoneOf(zones, new Rectangle(0, 0, 990, 600)));
     }
+
+    [Fact]
+    public void MoveToArea_KeepsTheWindowsSizeAndItsPlaceInTheArea()
+    {
+        // Act
+        Rectangle moved = ZoneCalculator.MoveToArea(
+            new Rectangle(100, 100, 300, 200),
+            new Rectangle(0, 0, 1000, 600),
+            new Rectangle(1000, 0, 1000, 600));
+
+        // Assert
+        Assert.Equal(new Rectangle(1100, 100, 300, 200), moved);
+    }
+
+    [Fact]
+    public void MoveToArea_ALargerArea_KeepsAWindowAtTheEdgeAtTheEdge_AndOneAsHighAsTheAreaInTheMiddle()
+    {
+        // Act
+        Rectangle moved = ZoneCalculator.MoveToArea(
+            new Rectangle(700, 0, 300, 600),
+            new Rectangle(0, 0, 1000, 600),
+            new Rectangle(1000, 0, 1600, 900));
+
+        // Assert
+        Assert.Equal(new Rectangle(2300, 150, 300, 600), moved);
+    }
+
+    [Fact]
+    public void MoveToArea_ASmallerArea_MakesTheWindowNoLargerThanIt()
+    {
+        // Act
+        Rectangle moved = ZoneCalculator.MoveToArea(
+            new Rectangle(400, 300, 600, 300),
+            new Rectangle(0, 0, 1000, 600),
+            new Rectangle(2000, 0, 500, 400));
+
+        // Assert
+        Assert.Equal(new Rectangle(2000, 100, 500, 300), moved);
+    }
 }

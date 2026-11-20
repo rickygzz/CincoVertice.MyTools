@@ -63,6 +63,24 @@ internal sealed class FakeZoneDesktop : IZoneDesktop, IZoneLayoutSource
         return null;
     }
 
+    /// <summary>Where the mouse pointer is; on the left monitor at first.</summary>
+    public Point Pointer { get; set; } = new(500, 300);
+
+    public bool IsWindowMaximized { get; set; }
+
+    /// <summary>What was done to the window: "maximize" or "restore".</summary>
+    public List<string> Changes { get; } = [];
+
+    public Point GetPointerPosition() => Pointer;
+
+    public bool IsMaximized(nint window) => IsWindowMaximized;
+
+    public void SetMaximized(nint window, bool isMaximized)
+    {
+        IsWindowMaximized = isMaximized;
+        Changes.Add(isMaximized ? "maximize" : "restore");
+    }
+
     public ZoneLayoutsModel Load()
     {
         Loads++;

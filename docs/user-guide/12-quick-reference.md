@@ -75,6 +75,7 @@ All other actions have no default hotkey. Add them in `hotkeys.cfg`.
 | Key | Effect |
 |---|---|
 | Ctrl+S | Save |
+| F5 | Read the list of files again |
 | Ctrl+0 | Reset zoom |
 | Ctrl+wheel | Zoom |
 | Ctrl+Space | Suggestions; Enter or Tab writes the one chosen, Esc closes them |

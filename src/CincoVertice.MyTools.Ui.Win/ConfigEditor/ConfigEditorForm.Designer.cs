@@ -33,6 +33,7 @@ partial class ConfigEditorForm
         ToolStrip = new ToolStrip();
         NewScriptButton = new ToolStripButton();
         SaveButton = new ToolStripButton();
+        RefreshButton = new ToolStripButton();
         ZoomButton = new ToolStripButton();
         MainSplit = new SplitContainer();
         FilesList = new ListBox();
@@ -50,7 +51,7 @@ partial class ConfigEditorForm
         // ToolStrip
         //
         ToolStrip.GripStyle = ToolStripGripStyle.Hidden;
-        ToolStrip.Items.AddRange(new ToolStripItem[] { NewScriptButton, SaveButton, ZoomButton });
+        ToolStrip.Items.AddRange(new ToolStripItem[] { NewScriptButton, SaveButton, RefreshButton, ZoomButton });
         ToolStrip.Location = new Point(0, 0);
         ToolStrip.Name = "ToolStrip";
         ToolStrip.Size = new Size(884, 25);
@@ -72,6 +73,15 @@ partial class ConfigEditorForm
         SaveButton.Text = "Save";
         SaveButton.ToolTipText = "Save (Ctrl+S)";
         SaveButton.Click += SaveButton_Click;
+        //
+        // RefreshButton
+        //
+        RefreshButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
+        RefreshButton.Name = "RefreshButton";
+        RefreshButton.Size = new Size(50, 22);
+        RefreshButton.Text = "Refresh";
+        RefreshButton.ToolTipText = "Read the list of files again, as after adding a script elsewhere (F5)";
+        RefreshButton.Click += RefreshButton_Click;
         //
         // ZoomButton
         //
@@ -184,6 +194,7 @@ partial class ConfigEditorForm
     private ToolStrip ToolStrip;
     private ToolStripButton NewScriptButton;
     private ToolStripButton SaveButton;
+    private ToolStripButton RefreshButton;
     private ToolStripButton ZoomButton;
     private SplitContainer MainSplit;
     private ListBox FilesList;

@@ -18,6 +18,9 @@ public interface IConfigEditorView
 
     event EventHandler? NewScriptRequested;
 
+    /// <summary>Raised when the user asks to read the list of files again, as after adding a script elsewhere.</summary>
+    event EventHandler? RefreshFilesRequested;
+
     /// <summary>Raised with the index of the problem the user picked.</summary>
     event EventHandler<int>? ProblemSelected;
 

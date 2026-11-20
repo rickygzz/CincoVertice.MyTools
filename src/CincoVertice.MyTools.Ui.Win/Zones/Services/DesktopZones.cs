@@ -1,6 +1,8 @@
 ﻿using System.ComponentModel;
 using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.Common.WinApi.Libs;
+using CincoVertice.Common.WinApi.Libs.Enums;
+using CincoVertice.Common.WinApi.Libs.Structs;
 using CincoVertice.MyTools.Ui.Zones.Interfaces;
 using CincoVertice.MyTools.Ui.Zones.Models;
 
@@ -72,4 +74,19 @@ public sealed class DesktopZones : IZoneDesktop
             return $"Could not move the window: {ex.Message}";
         }
     }
+
+    public Point GetPointerPosition()
+    {
+        using (DpiAwarenessScope.PerMonitorV2())
+        {
+            User32.GetCursorPos(out POINT point);
+
+            return new Point(point.X, point.Y);
+        }
+    }
+
+    public bool IsMaximized(nint window) => User32.IsZoomed(window);
+
+    public void SetMaximized(nint window, bool isMaximized) =>
+        WinUser.ShowWindow(window, isMaximized ? SW.SW_SHOWMAXIMIZED : SW.SW_RESTORE);
 }

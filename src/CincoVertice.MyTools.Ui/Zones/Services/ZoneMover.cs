@@ -54,6 +54,49 @@ public sealed class ZoneMover
         return _desktop.MoveWindow(window, zones[next]);
     }
 
+    /// <summary>
+    ///     To the monitor the mouse pointer is on, at the same place in it and as large, no larger than it; a maximized
+    ///     window stays maximized. Nothing happens when it's on that monitor already.
+    /// </summary>
+    /// <returns>Why it couldn't, for the user; null when it moved, or needn't.</returns>
+    public string? MoveActiveWindowToPointer()
+    {
+        nint window = _desktop.GetActiveWindow();
+
+        if (window == 0)
+        {
+            return "There's no window to move.";
+        }
+
+        Point pointer = _desktop.GetPointerPosition();
+        ZoneMonitorModel from = _desktop.GetMonitorOf(window);
+
+        if (_desktop.GetMonitors().FirstOrDefault(monitor => monitor.Bounds.Contains(pointer)) is not { } to
+            || to.Bounds == from.Bounds)
+        {
+            return null;
+        }
+
+        bool maximized = _desktop.IsMaximized(window);
+
+        if (maximized)
+        {
+            _desktop.SetMaximized(window, false);
+        }
+
+        Rectangle bounds = ZoneCalculator.MoveToArea(_desktop.GetWindowBounds(window), from.WorkArea, to.WorkArea);
+
+        string? problem = _desktop.MoveWindow(window, bounds);
+
+        // Maximized again even when it couldn't move: as it was
+        if (maximized)
+        {
+            _desktop.SetMaximized(window, true);
+        }
+
+        return problem;
+    }
+
     private bool TryGetActiveWindowZones(out nint window, out IReadOnlyList<Rectangle> zones, out string? problem)
     {
         window = _desktop.GetActiveWindow();
