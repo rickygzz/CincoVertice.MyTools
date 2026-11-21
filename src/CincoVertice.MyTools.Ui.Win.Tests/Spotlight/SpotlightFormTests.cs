@@ -40,4 +40,30 @@ public class SpotlightFormTests
         spotlight.HideSpotlight();
         Assert.False(spotlight.Visible);
     }
+
+    [Fact]
+    public void ShowSpotlight_OfAWindow_FramesIt_TheMarginOutsideIt()
+    {
+        // Arrange
+        using var spotlight = new SpotlightForm();
+
+        // Act
+        spotlight.ShowSpotlight(new Rectangle(200, 150, 400, 300), 10);
+        Application.DoEvents();
+
+        // Assert
+        int margin = 10 * spotlight.DeviceDpi / 96;
+        var expected = new Rectangle(
+            200 - spotlight.Left - margin,
+            150 - spotlight.Top - margin,
+            400 + margin * 2,
+            300 + margin * 2);
+        Assert.True(spotlight.Visible);
+        Assert.Equal((expected, false), spotlight.Drawn);
+
+        // And: the circle again
+        spotlight.ShowSpotlight(new Point(100, 100), 50);
+        Assert.True(spotlight.Drawn.IsRound);
+        spotlight.HideSpotlight();
+    }
 }

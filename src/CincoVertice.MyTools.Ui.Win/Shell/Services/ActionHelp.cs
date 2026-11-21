@@ -31,6 +31,7 @@ public static class ActionHelp
         ["ToggleAlwaysOnTop"] = "Keeps the active window on top of the others, or no longer",
         ["ShowHelp"] = "Opens the user guide",
         ["ShowMouseSpotlight"] = "Shows the mouse spotlight, as tapping Left Ctrl twice does",
+        ["ShowAppSpotlight"] = "Shows where the active window is, as tapping Right Ctrl twice does",
     };
 
     /// <returns>What the action does, or null for one not built in, such as a script.</returns>

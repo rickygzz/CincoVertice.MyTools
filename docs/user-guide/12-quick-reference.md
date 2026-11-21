@@ -15,6 +15,7 @@
 | Ctrl+Alt+K | Keep the computer awake, or stop |
 | Ctrl+Alt+Win+T | Keep the active window on top of the others, or stop |
 | Left Ctrl, twice | Show where the mouse is: see [Mouse Spotlight](14-mouse-spotlight.md) |
+| Right Ctrl, twice | Show which window is active: see [Mouse Spotlight](14-mouse-spotlight.md#app-spotlight) |
 
 All other actions have no default hotkey. Add them in `hotkeys.cfg`.
 

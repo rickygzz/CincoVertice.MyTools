@@ -27,6 +27,7 @@
 | `EditZones` | none | Opens the window zones editor |
 | `ShowHelp` | none | Opens this user guide in the help window |
 | `ShowMouseSpotlight` | none | Shows the mouse spotlight, as tapping Left Ctrl twice does. See [Mouse Spotlight](14-mouse-spotlight.md). |
+| `ShowAppSpotlight` | none | Shows where the active window is, as tapping Right Ctrl twice does. See [Mouse Spotlight](14-mouse-spotlight.md#app-spotlight). |
 | each script | none | Runs the script |
 
 Hotkeys work in the same way whichever window is active, including My Tools' own windows. Holding a hotkey down does not repeat it.
@@ -62,6 +63,7 @@ DiagramEditor = Ctrl+Alt+D
 # PasteAsText = Ctrl+Alt+
 PickColor = Ctrl+Alt+P
 RecordScreen = Ctrl+Alt+R
+# ShowAppSpotlight = Ctrl+Alt+
 ShowCalculator = Ctrl+Alt+C
 # ShowHelp = Ctrl+Alt+
 # ShowMouseSpotlight = Ctrl+Alt+

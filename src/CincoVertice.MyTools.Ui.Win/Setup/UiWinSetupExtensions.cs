@@ -206,8 +206,14 @@ public static class UiWinSetupExtensions
         services.AddSingleton<ISpotlightView>(sp => sp.GetRequiredService<SpotlightForm>());
         services.AddSingleton(sp =>
             new SpotlightPresenter(sp.GetRequiredService<ISpotlightView>(), TimeProvider.System));
+
+        // The app spotlight, by tapping Right Ctrl twice or by its action: a spotlight window of its own
+        services.AddSingleton<IAppSpotlightView>(_ => new SpotlightForm());
+        services.AddSingleton(sp =>
+            new AppSpotlightPresenter(sp.GetRequiredService<IAppSpotlightView>(), TimeProvider.System));
         services.AddSingleton<SpotlightWatcher>();
         services.AddSingleton<ShowMouseSpotlightAction>();
+        services.AddSingleton<ShowAppSpotlightAction>();
 
         // The user guide, docs\user-guide next to the exe
         services.AddSingleton<IHelpPageStore>(_ => new HelpPageStore(HelpPageStore.DefaultFolder));
@@ -237,6 +243,7 @@ public static class UiWinSetupExtensions
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<EditZonesAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ToggleAlwaysOnTopAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ShowMouseSpotlightAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ShowAppSpotlightAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<CompareFilesAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<OpenDiagramEditorAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ShowHelpAction>());
