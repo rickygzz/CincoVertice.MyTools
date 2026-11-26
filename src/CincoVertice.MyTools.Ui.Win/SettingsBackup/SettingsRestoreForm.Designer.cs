@@ -142,7 +142,6 @@ partial class SettingsRestoreForm
         MinimizeBox = false;
         MinimumSize = new Size(480, 360);
         Name = "SettingsRestoreForm";
-        ShowInTaskbar = false;
         StartPosition = FormStartPosition.Manual;
         Text = "Restore settings";
         ResumeLayout(false);

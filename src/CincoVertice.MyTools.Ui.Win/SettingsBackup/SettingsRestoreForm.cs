@@ -20,15 +20,21 @@ public partial class SettingsRestoreForm : Form
     {
         InitializeComponent();
         _compare = compare;
-        NoteLabel.Text = "Your settings as they are now are saved to the backups folder first. Close My Tools' other"
-            + " windows before restoring, and exit and reopen My Tools after, so nothing writes old settings over the"
+        NoteLabel.Text = "Before restoring, your current settings are saved to the backups folder. Close My Tools'"
+            + " other windows first, and exit and reopen My Tools after, so nothing writes old settings over the"
             + " restored ones.";
 
         // The same files aren't shown: the restore leaves them alone
         _shown = [.. plan.ToWrite, .. plan.NotInBackup];
         int same = plan.Files.Count - _shown.Count;
-        SummaryLabel.Text = $"Restoring {Path.GetFileName(plan.BackupPath)} writes {Files(plan.ToWrite.Count)}"
-            + (same > 0 ? $" ({Files(same)} the same are left alone)." : ".")
+        string alone = same switch
+        {
+            0 => string.Empty,
+            1 => " 1 file is the same in both and is left alone.",
+            _ => $" {same} files are the same in both and are left alone.",
+        };
+        SummaryLabel.Text = $"Restoring {Path.GetFileName(plan.BackupPath)} writes {Files(plan.ToWrite.Count)}."
+            + alone
             + " Select a text file and choose Compare to see what changes.";
         DeleteCheck.Text = $"Also &delete the {Files(plan.NotInBackup.Count)} the backup doesn't have";
         DeleteCheck.Enabled = plan.NotInBackup.Count > 0;
