@@ -38,14 +38,4 @@ public class DpiFollowerTests
         // Act / Assert
         Assert.Equal(expected, DpiFollower.Scaled(pixels, dpi));
     }
-
-    [Fact]
-    public void FontScale_IsHowMuchTheFontGrewFromItsDesignedSize()
-    {
-        // Arrange
-        using var label = new Label { Font = new Font("Segoe UI", 11.25f) };
-
-        // Act / Assert: 9 points rescaled to 11.25 on a monitor at 125% when the main one is at 100%
-        Assert.Equal(1.25f, DpiFollower.FontScale(label, 9f), 3);
-    }
 }

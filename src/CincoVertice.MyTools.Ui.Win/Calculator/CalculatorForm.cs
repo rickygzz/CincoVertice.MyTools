@@ -61,11 +61,11 @@ public partial class CalculatorForm : Form, ICalculatorView
         FormExtensions.HideOnUserClose(this);
         DragMover.Attach(this, CalculatorTextBox, ResultOutputControl);
 
-        // The theme's font sizes are fixed: on a monitor with other scaling, the output is zoomed as the form's font
-        float designedFontSize = Font.Size;
+        // RichEdit sizes the output's text for the monitor itself; but WinForms rescales the box's font too, which the
+        // box takes as its text's: the theme's font again, and the text written again with it
         DpiFollower.Attach(this, _ =>
         {
-            ResultOutputControl.ContentZoom = DpiFollower.FontScale(this, designedFontSize);
+            ResultOutputControl.SetTheme(theme);
             ResultOutputControl.UpdateText();
         });
     }

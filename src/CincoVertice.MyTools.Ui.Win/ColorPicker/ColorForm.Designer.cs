@@ -248,8 +248,8 @@ partial class ColorForm
         //
         // ColorForm
         //
-        AutoScaleDimensions = new SizeF(7F, 15F);
-        AutoScaleMode = AutoScaleMode.Font;
+        AutoScaleDimensions = new SizeF(96F, 96F);
+        AutoScaleMode = AutoScaleMode.Dpi;
         ClientSize = new Size(636, 392);
         Controls.Add(ShadesLabel);
         Controls.Add(ShadesPanel);

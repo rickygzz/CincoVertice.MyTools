@@ -48,10 +48,4 @@ public static class DpiFollower
 
     /// <returns>A size in pixels at 100% scaling, at the DPI.</returns>
     public static int Scaled(int pixels, int dpi) => (int)Math.Round(pixels * dpi / 96.0);
-
-    /// <returns>
-    ///     How much WinForms rescaled the control's font from its size as designed, on a monitor with other scaling than
-    ///     the main one: the zoom for what shows at sizes of its own, which don't follow, such as RTF.
-    /// </returns>
-    public static float FontScale(Control control, float designedSize) => control.Font.Size / designedSize;
 }
