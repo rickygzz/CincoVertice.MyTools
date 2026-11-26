@@ -12,7 +12,9 @@ using CincoVertice.MyTools.Ui.Win.CodeReview.Actions;
 using CincoVertice.MyTools.Ui.Win.Diagramming.Actions;
 using CincoVertice.MyTools.Ui.Win.Diff.Actions;
 using CincoVertice.MyTools.Ui.Win.Help.Actions;
+using CincoVertice.MyTools.Ui.Win.JsonEditor.Actions;
 using CincoVertice.MyTools.Ui.Win.Scripting.Actions;
+using CincoVertice.MyTools.Ui.Win.SettingsBackup.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Models;
 using CincoVertice.MyTools.Ui.Win.Shell.Services;
@@ -70,8 +72,11 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
         EditScriptsAction editScriptsAction,
         OpenDiagramEditorAction openDiagramEditorAction,
         CompareFilesAction compareFilesAction,
+        OpenJsonEditorAction openJsonEditorAction,
         ShowHelpAction showHelpAction,
-        FixerSelection fixerSelection)
+        FixerSelection fixerSelection,
+        BackUpSettingsAction backUpSettingsAction,
+        RestoreSettingsAction restoreSettingsAction)
     {
         _mainForm = mainForm;
         _appIconService = appIconService;
@@ -91,6 +96,7 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
         open.Font = new Font(open.Font, FontStyle.Bold);
         AddAction(menu.Items, "&Diagram editor", openDiagramEditorAction);
         AddAction(menu.Items, "&Compare files...", compareFilesAction);
+        AddAction(menu.Items, "&JSON editor", openJsonEditorAction);
         AddAction(menu.Items, "Check folder for &standard...", checkFolderAction);
         menu.Items.Add(CreateFixMenu(fixFolderAction, fixerSelection));
         menu.Items.Add(new ToolStripSeparator());
@@ -106,6 +112,11 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
         ToolStripMenuItem keepAwakeItem = AddAction(menu.Items, "&Keep awake", toggleKeepAwakeAction);
         AddAction(menu.Items, "Edit &activity settings...", editActivitySettingsAction);
         AddAction(menu.Items, "Edit window &zones...", editZonesAction);
+        menu.Items.Add(new ToolStripSeparator());
+        ToolStripMenuItem backupMenu = new("Back up or restore &settings");
+        AddAction(backupMenu.DropDownItems, "&Back up settings...", backUpSettingsAction);
+        AddAction(backupMenu.DropDownItems, "&Restore settings from a backup...", restoreSettingsAction);
+        menu.Items.Add(backupMenu);
         menu.Items.Add(new ToolStripSeparator());
         _startWithWindowsItem = AddItem(
             menu.Items,

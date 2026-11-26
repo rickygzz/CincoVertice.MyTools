@@ -22,12 +22,23 @@ Everything below is in the `config` folder next to the exe unless noted.
 | `help.json` | When the help window closes | Where the help window was, the page it showed last, and dark or light if you chose one with its button |
 | `fixers.json` | When you change a choice under **Fix folder for standard** | The fixers that **Fix a folder...** doesn't run, and the line ending and encoding it gives the files |
 | `updates.json` | The first time you click **Check for updates at start** | Whether to look for a newer version at start |
+| `backups\` next to the exe, not in `config` | Each time you restore settings | Your settings as they were before each of the last 10 restores (see [Back up or restore settings](#back-up-or-restore-settings)) |
 | `%LocalAppData%\Microsoft\Windows\Fonts\Roboto.ttf` and a Fonts registry entry | The first time the diagram editor opens, if Roboto is not installed | Lets other programs show saved diagrams in the right font |
 | Startup entries in the Windows registry | When you turn **Start with Windows** on | Starts the app when you sign in |
 
 The `scripts` folder is recreated with the example if it is missing when the app next lists scripts. Deleting it while the app runs and then using **Open scripts folder** creates an empty folder.
 
 The app writes no log files and keeps no diagnostic files for support. It goes on the internet only to look for a newer version: when you choose **Check for updates...**, and at start if **Check for updates at start** is checked. It then asks GitHub for the latest release and sends nothing about you or your files. Scripts can also open web addresses (the example script `GoogleSearch` does).
+
+### Back up or restore settings
+
+Choose **Back up or restore settings** from the tray menu, then **Back up settings...** to save the `config` folder to a ZIP file you choose. Keep the backup outside the My Tools folder if it must survive moving or deleting that folder. It holds your scripts, global values and calculator lines, so keep it as private as they are.
+
+To restore, choose **Restore settings from a backup...** and pick the ZIP file. Nothing changes yet: a window lists each file the restore writes, **Replaced** or **Added**, and each file your settings have that the backup doesn't. Files that are the same are left alone and not listed. Select a text file and choose **Compare** (or double-click it) to see your version and the backup's side by side; pictures and files over 64 MB can't be compared.
+
+Files the backup doesn't have, such as diagram recovery copies or images added since, are kept unless you tick **Also delete the files the backup doesn't have**. When you choose **Restore**, My Tools first saves your settings as they are to a ZIP in the `backups` folder next to the exe (`settings-before-restore-` and the date and time; the last 10 are kept), then writes each file whole. To undo a restore, restore that ZIP the same way.
+
+Close My Tools' other windows before restoring, and exit and reopen My Tools after: an open window, such as the calculator, may write its settings from before over the restored ones. `BackUpSettings` and `RestoreSettings` can also be bound to hotkeys. The backup covers the files in `config`, not Windows registry settings such as **Start with Windows**, nor the installed Roboto font.
 
 If the folder holding the exe is protected, the `config` folder cannot be written. Hotkeys and activity settings then use their defaults and report `Could not use <path>, so the default ... used`, the JSON settings do not save, and `global.set` fails with a script error.
 

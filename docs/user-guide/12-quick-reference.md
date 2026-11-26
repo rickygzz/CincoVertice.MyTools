@@ -15,6 +15,7 @@
 | Ctrl+Alt+K | Keep the computer awake, or stop |
 | Ctrl+Alt+Win+T | Keep the active window on top of the others, or stop |
 | Ctrl+Alt+X | Transform the text selected: case, lines, base64, URL, JSON (see [Text Transforms](17-text-transforms.md)) |
+| Ctrl+Alt+J | New JSON editor window (see [JSON Editor](18-json-editor.md)) |
 | Left Ctrl, twice | Show where the mouse is: see [Mouse Spotlight](14-mouse-spotlight.md) |
 | Right Ctrl, twice | Show which window is active: see [Mouse Spotlight](14-mouse-spotlight.md#app-spotlight) |
 

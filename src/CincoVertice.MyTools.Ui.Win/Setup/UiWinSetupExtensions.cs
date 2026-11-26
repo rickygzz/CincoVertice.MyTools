@@ -16,6 +16,8 @@ using CincoVertice.MyTools.Ui.Diagramming.Interfaces;
 using CincoVertice.MyTools.Ui.Diagramming.Services;
 using CincoVertice.MyTools.Ui.Help.Interfaces;
 using CincoVertice.MyTools.Ui.Help.Services;
+using CincoVertice.MyTools.Ui.SettingsBackup.Presenters;
+using CincoVertice.MyTools.Ui.SettingsBackup.Services;
 using CincoVertice.MyTools.Ui.Setup;
 using CincoVertice.MyTools.Ui.Shell.Interfaces;
 using CincoVertice.MyTools.Ui.Shell.Presenters;
@@ -38,8 +40,11 @@ using CincoVertice.MyTools.Ui.Win.Diagramming.Services;
 using CincoVertice.MyTools.Ui.Win.Diff.Actions;
 using CincoVertice.MyTools.Ui.Win.Help.Actions;
 using CincoVertice.MyTools.Ui.Win.Help.Services;
+using CincoVertice.MyTools.Ui.Win.JsonEditor.Actions;
 using CincoVertice.MyTools.Ui.Win.Scripting.Actions;
 using CincoVertice.MyTools.Ui.Win.Scripting.Services;
+using CincoVertice.MyTools.Ui.Win.SettingsBackup.Actions;
+using CincoVertice.MyTools.Ui.Win.SettingsBackup.Services;
 using CincoVertice.MyTools.Ui.Win.Shell;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Services;
@@ -210,6 +215,18 @@ public static class UiWinSetupExtensions
 
         // Compare files: a new window each time
         services.AddSingleton<CompareFilesAction>();
+        services.AddSingleton<OpenJsonEditorAction>();
+
+        // Settings backup: the config folder to a zip and back; before a restore, the settings go to backups
+        services.AddSingleton(_ => new SettingsBackupService(
+            Path.Combine(AppContext.BaseDirectory, "config"),
+            Path.Combine(AppContext.BaseDirectory, "backups")));
+        services.AddSingleton<DesktopSettingsBackupView>();
+        services.AddSingleton(sp => new SettingsBackupPresenter(
+            sp.GetRequiredService<DesktopSettingsBackupView>(),
+            sp.GetRequiredService<SettingsBackupService>()));
+        services.AddSingleton<BackUpSettingsAction>();
+        services.AddSingleton<RestoreSettingsAction>();
 
         // The mouse spotlight, shown by tapping Left Ctrl twice or by its action
         services.AddSingleton<SpotlightForm>();
@@ -256,6 +273,9 @@ public static class UiWinSetupExtensions
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ShowMouseSpotlightAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ShowAppSpotlightAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<CompareFilesAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<OpenJsonEditorAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<BackUpSettingsAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<RestoreSettingsAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<OpenDiagramEditorAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ShowHelpAction>());
 

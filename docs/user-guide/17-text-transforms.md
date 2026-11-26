@@ -33,4 +33,4 @@ To use another hotkey, change `TransformText` in `hotkeys.cfg` (see [Hotkeys](02
 
 ---
 
-← Previous: [Try MyTools: Eight Short Tutorials](16-tutorials.md) | [Contents](README.md)
+← Previous: [Try MyTools: Eight Short Tutorials](16-tutorials.md) | [Contents](README.md) | Next: [JSON Editor](18-json-editor.md) →

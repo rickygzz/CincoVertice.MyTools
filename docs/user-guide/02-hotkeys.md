@@ -9,6 +9,7 @@
 | `ToggleKeepAwake` | Ctrl+Alt+K | Starts or stops keeping the computer awake, whether the mouse mover is on or not |
 | `ToggleAlwaysOnTop` | Ctrl+Alt+Win+T | Keeps the active window on top of the others, or no longer. See [Keeping a window on top](13-window-zones.md#keeping-a-window-on-top). |
 | `TransformText` | Ctrl+Alt+X | Transforms the text selected in any program, from a menu at the mouse pointer. See [Text Transforms](17-text-transforms.md). |
+| `OpenJsonEditor` | Ctrl+Alt+J | Opens a new JSON editor window. See [JSON Editor](18-json-editor.md). |
 | `SnipAndEdit` | Ctrl+Alt+S | Takes a snip, then opens the snip editor |
 | `SnipRegion` | Ctrl+Alt+Shift+S | Takes a snip to the clipboard |
 | `SnipText` | Ctrl+Alt+T | Takes a snip and copies the text in it, as text |
@@ -26,6 +27,8 @@
 | `MoveToNextZone` | none | Moves the active window to the next zone |
 | `MoveToPreviousZone` | none | Moves the active window to the zone before |
 | `EditZones` | none | Opens the window zones editor |
+| `BackUpSettings` | none | Saves the `config` folder to a ZIP file you choose. See [Back up or restore settings](10-files-and-updates.md#back-up-or-restore-settings). |
+| `RestoreSettings` | none | Restores the settings from a backup, after showing what changes |
 | `ShowHelp` | none | Opens this user guide in the help window |
 | `ShowMouseSpotlight` | none | Shows the mouse spotlight, as tapping Left Ctrl twice does. See [Mouse Spotlight](14-mouse-spotlight.md). |
 | `ShowAppSpotlight` | none | Shows where the active window is, as tapping Right Ctrl twice does. See [Mouse Spotlight](14-mouse-spotlight.md#app-spotlight). |
@@ -48,6 +51,7 @@ On a fresh install the app creates this file. Actions without a default shortcut
 #   PrTemplate = Ctrl+Alt+1, app1
 #   PrTemplate = Ctrl+Alt+2, app2
 
+# BackUpSettings = Ctrl+Alt+
 # CheckFolder = Ctrl+Alt+
 # CompareFiles = Ctrl+Alt+
 DiagramEditor = Ctrl+Alt+D
@@ -60,10 +64,12 @@ DiagramEditor = Ctrl+Alt+D
 # MoveToNextZone = Ctrl+Alt+
 # MoveToPreviousZone = Ctrl+Alt+
 # MoveToZone = Ctrl+Alt+
+OpenJsonEditor = Ctrl+Alt+J
 # OpenScriptsFolder = Ctrl+Alt+
 # PasteAsText = Ctrl+Alt+
 PickColor = Ctrl+Alt+P
 RecordScreen = Ctrl+Alt+R
+# RestoreSettings = Ctrl+Alt+
 # ShowAppSpotlight = Ctrl+Alt+
 ShowCalculator = Ctrl+Alt+C
 # ShowHelp = Ctrl+Alt+

@@ -38,6 +38,15 @@
     <Compile Update="Help\HelpForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="JsonEditor\JsonEditorForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="JsonEditor\JsonTextControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="SettingsBackup\SettingsRestoreForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Shell\MainForm.cs">
       <SubType>Form</SubType>
     </Compile>

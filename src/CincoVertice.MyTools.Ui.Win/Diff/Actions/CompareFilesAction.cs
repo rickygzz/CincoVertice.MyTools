@@ -45,4 +45,21 @@ public sealed class CompareFilesAction : IAppAction
         form.ActivateWhenShown();
         form.Show();
     }
+
+    /// <summary>Shows a modal comparison of two in-memory texts that cannot be saved over source files.</summary>
+    /// <param name="owner">The window it's shown over, which waits; none for the pointer's screen.</param>
+    public void CompareTexts(
+        string leftName,
+        string leftText,
+        string rightName,
+        string rightText,
+        IWin32Window? owner = null)
+    {
+        using var form = new DiffForm { Icon = _appIcon.Current };
+        var presenter = new DiffPresenter(form, new DiskDiffFileReader(), new DiskDiffFileWriter());
+        _help.OpenOnF1(form, () => HelpTopics.CompareFiles);
+        presenter.OpenTexts(leftName, leftText, rightName, rightText);
+        form.CenterOnCursorScreen();
+        form.ShowDialog(owner);
+    }
 }

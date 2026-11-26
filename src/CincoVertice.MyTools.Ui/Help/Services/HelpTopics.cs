@@ -14,12 +14,15 @@ public static class HelpTopics
     public const string CodeReview = "09-code-review.md";
     public const string WindowZones = "13-window-zones.md";
     public const string CompareFiles = "15-compare-files.md";
+    public const string JsonEditor = "18-json-editor.md";
     public const string ColorPicker = Snipping + "#picking-a-color-from-the-screen";
+    public const string SettingsBackup = "10-files-and-updates.md#back-up-or-restore-settings";
 
     /// <summary>Every topic, files' ones included, for the test.</summary>
     public static IReadOnlyList<string> All { get; } =
     [
         Calculator, Snipping, DiagramEditor, ConfigEditor, Scripts, CodeReview, WindowZones, ColorPicker, CompareFiles,
+        JsonEditor, SettingsBackup,
         ForFile("hotkeys.cfg"), ForFile("activity.cfg"), ForFile("recording.cfg"), ForFile("startup.cfg"),
     ];
 

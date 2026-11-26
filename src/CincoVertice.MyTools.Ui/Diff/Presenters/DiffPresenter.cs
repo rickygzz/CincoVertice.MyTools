@@ -88,6 +88,23 @@ public sealed class DiffPresenter
         Compare(keepPlace: false);
     }
 
+    /// <summary>Opens two labeled text values; neither side is backed by a file.</summary>
+    public void OpenTexts(string leftName, string leftText, string rightName, string rightText)
+    {
+        if (!ConfirmReplace([DiffSide.Left, DiffSide.Right]))
+        {
+            return;
+        }
+
+        SetSource(DiffSide.Left, new DiffSourceModel(
+            TextDiffer.SplitLines(leftText, preserveFinalLine: true), null, null,
+            DiffTextFormatModel.Default, DisplayName: leftName));
+        SetSource(DiffSide.Right, new DiffSourceModel(
+            TextDiffer.SplitLines(rightText, preserveFinalLine: true), null, null,
+            DiffTextFormatModel.Default, DisplayName: rightName));
+        Compare(keepPlace: false);
+    }
+
     /// <summary>A summary of what differs, for the status bar.</summary>
     public static string Summary(
         DiffResultModel result,
@@ -140,6 +157,7 @@ public sealed class DiffPresenter
 
     private static string NameOf(DiffSourceModel? source) => source switch
     {
+        { DisplayName: { } displayName } => displayName,
         null => "?",
         { Path: { } path } => Path.GetFileName(path) + (source.NeedsSaving ? "*" : string.Empty),
         _ => PastedText,
@@ -147,6 +165,7 @@ public sealed class DiffPresenter
 
     private static string DescriptionOf(DiffSourceModel? source) => source switch
     {
+        { DisplayName: { } displayName } => displayName,
         null => NoSource,
         { Path: { } path } => path + (source.NeedsSaving ? " *" : string.Empty),
         _ => PastedText,
