@@ -29,8 +29,10 @@ public static class ScriptCatalog
         #   global.set(name, value)  global.get(name, default)  (kept between runs, in config\global.vars)
         #   text.length  text.upper  text.lower  text.trim  text.replace(text, old, new)  text.contains(text, part)
         #   text.urlencode  list.length(list)  list.contains(list, item)  number(value)  text(value)
-        # Lists:   [a, b, c]  list[1] is the first item  list + list
+        # Lists:   [a, b, c]  list[1] is the first item  list + list  list.range(1, 10)
         # Logic:   name = value   if ... elseif ... else ... end   == != < <= > >=   and or not   + - * / %
+        # Loops:   for item in list ... end
+        # Functions: function name(a, b) ... return value ... end   (at the top of the script; call it as name(1, 2))
         #
         # To ask several things in one dialog:
         #   answers = dialog.form("Search Google", ["Search for:", "Only on site:"], [clipboard.gettext(), ""])

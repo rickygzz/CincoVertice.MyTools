@@ -36,8 +36,13 @@ Some examples:
 - `The number <n> is too large`
 - `A variable name can't contain '.': '<name>' looks like a function`
 - `A line must assign a value (name = ...) or call a function (name(...))`
-- `'<keyword>' without an 'if'`
-- `Missing 'end' for the 'if' on line N`
+- `'elseif' without an 'if'`, `'else' without an 'if'`, `'end' without an 'if', 'for' or 'function'`
+- `Missing 'end' for the 'if' on line N`, and likewise for a `for` or a `function`
+- `Expected 'in' after 'for <name>', as in: for item in list`, `'in' goes in a for: for item in list`
+- `'<keyword>' is a word of the language, not a name: expected ...`, `A for name can't contain '.'`, `A function name can't contain '.'`
+- `Expected '(' after 'function <name>'`, `Missing ',' or ')' in function <name>(`, `function <name>( has two values named '<p>'`
+- `A function goes at the top of the script, not inside an if, a for or another function`
+- `'return' goes in a function; to end the script, call script.stop()`
 - `Compare two values at a time: use 'and', as in a < b and b < c`
 - `A list's items can't be changed: build a new list, e.g. names = [first, second]`
 - `Use == to compare; = only assigns a value at the start of a line`
@@ -53,6 +58,11 @@ Some examples:
 - `The condition must be true or false, not <type>`
 - `There is no item N: the list has M items, and the first is 1`
 - `Division by zero`
+- `'for' goes through a list, not <type>`
+- `<f>() is a built-in function: give yours another name`
+- `There is already a function <f>(), on line N` (or `, in <script>, on line N` for one in an included script)
+- `Functions call each other more than 100 levels deep: does <f>() call itself without end?`
+- `<f>(): in <script>, line N, column M: <message>`, for an error inside a function of an included script
 - `<function>(): <message>` for problems inside a function, for example:
   - `argument N must be a number, not <type>`
   - `the time must be from 0 to 600000 milliseconds`
@@ -60,6 +70,7 @@ Some examples:
   - `the quiet seconds (<s>) are longer than the minutes (<m>) to wait`
   - `Could not open the performance counters (error 0x<code>).`, when Windows' counters are turned off
   - `the text to replace can't be empty`
+  - `from and to must be whole numbers, not <a> and <b>`, `a range has at most 100000 numbers, not <n>`
   - `there is no global variable '<name>'; global.get("<name>", value) gives a value then`
   - `'<name>' must be the name of a script in the scripts folder`
   - `There is no script <file> in <folder>`
@@ -69,8 +80,8 @@ Some examples:
 
 The language is kept small on purpose. It does not have:
 
-- Loops (`while`, `for`) or your own functions.
-- Dates and times, math functions such as `sqrt` or `round`, or reading and writing files.
+- A `while` loop: `for` goes through a list read once, so every script ends. See [for](08a-script-language.md#for).
+- Math functions such as `sqrt` or `round`.
 - Changing a list item in place.
 
 Numbers are decimals with up to 28 to 29 significant digits; a result too large for that is an error.

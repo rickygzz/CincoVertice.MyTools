@@ -19,7 +19,7 @@ end
 This chapter has several pages:
 
 - This page: [Getting started](#getting-started) and [the example script](#the-example-script-googlesearchmts).
-- [Script Language](08a-script-language.md): values, variables, operators, `if` and lists.
+- [Script Language](08a-script-language.md): values, variables, operators, `if`, lists, `for` loops and your own functions.
 - [Script Functions](08b-script-functions.md): everything a script can do, by module: dialogs, the clipboard, the keyboard, windows, programs and more.
 - [Reusing Scripts and Examples](08c-script-examples.md): one script for several hotkeys, shared steps, and scripts to copy.
 - [Script Errors and Limits](08d-script-errors.md): what the error messages mean, and what the language can't do.
@@ -99,8 +99,10 @@ This script is created with the app. It asks what to search for (starting with t
 #   global.set(name, value)  global.get(name, default)  (kept between runs, in config\global.vars)
 #   text.length  text.upper  text.lower  text.trim  text.replace(text, old, new)  text.contains(text, part)
 #   text.urlencode  list.length(list)  list.contains(list, item)  number(value)  text(value)
-# Lists:   [a, b, c]  list[1] is the first item  list + list
+# Lists:   [a, b, c]  list[1] is the first item  list + list  list.range(1, 10)
 # Logic:   name = value   if ... elseif ... else ... end   == != < <= > >=   and or not   + - * / %
+# Loops:   for item in list ... end
+# Functions: function name(a, b) ... return value ... end   (at the top of the script; call it as name(1, 2))
 #
 # To ask several things in one dialog:
 #   answers = dialog.form("Search Google", ["Search for:", "Only on site:"], [clipboard.gettext(), ""])

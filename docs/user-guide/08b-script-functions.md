@@ -17,7 +17,7 @@ Functions are grouped in modules: you call one as `module.function(...)`, as in 
 | [`script`](#script) | The running script | `wait` `stop` `argument` `include` |
 | [`global`](#global) | Values kept between runs | `set` `get` `has` `remove` `names` |
 | [`text`](#text) | Working with text | `length` `upper` `lower` `trim` `replace` `contains` `urlencode` |
-| [`list`](#list) | Working with lists | `length` `contains` |
+| [`list`](#list) | Working with lists | `length` `contains` `range` |
 | [Global](#conversions) | Conversions | `number` `text` |
 
 Names are not case-sensitive: `Clipboard.GetText()` works too. A function that expects a text also accepts a number or true/false, which it turns into text: `dialog.message(5)` works. Functions that return nothing can't be stored or used in a calculation.
@@ -412,6 +412,7 @@ Texts go between `"`, lists between `[ ]`, and true/false and numbers as they ar
 |---|---|---|
 | `list.length(list)` | The number of items | `list.length(["a", "b"])` is `2` |
 | `list.contains(list, item)` | Whether an item equals `item` (`==` rules: texts are case-sensitive) | `list.contains(["a", "b"], "b")` is `true` |
+| `list.range(from, to)` | The whole numbers from `from` to `to`, both included; empty when `to` is less. At most 100,000. For a `for` that runs a number of times. | `list.range(1, 3)` is `[1, 2, 3]` |
 
 ## Conversions
 

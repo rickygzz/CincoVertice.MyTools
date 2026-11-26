@@ -5,9 +5,10 @@ namespace CincoVertice.MyTools.Ui.ConfigEditor.Services;
 
 /// <summary>
 ///     Suggestions for scripts (.mts), by what's before the caret: a module's functions after "module.", with how
-///     they're called and what they do; otherwise the variables the script sets, the keywords, the modules and the
-///     global functions. Inside a text, only where a text names something: the libraries in script.include("..."), the
-///     keys in keyboard.press("..."). Nothing in comments or numbers.
+///     they're called and what they do; otherwise the variables the script sets (also with for, and its functions'
+///     parameters), its own functions, the keywords, the modules and the global functions. Inside a text, only where a
+///     text names something: the libraries in script.include("..."), the keys in keyboard.press("..."). Nothing in
+///     comments or numbers.
 /// </summary>
 public static partial class ScriptSuggester
 {
@@ -106,7 +107,7 @@ public static partial class ScriptSuggester
                 $"{function.Signature}: {function.Description}",
                 function.ShortName + (function.HasArguments ? "(" : "()")));
 
-    // A word on its own: the script's variables, keywords, modules, then the global functions
+    // A word on its own: the script's variables and functions, keywords, modules, then the global functions
     private static IEnumerable<CodeSuggestionModel> Words(
         string text,
         int lineStart,
@@ -116,6 +117,14 @@ public static partial class ScriptSuggester
         foreach (string variable in Variables(text, lineStart, keywords))
         {
             yield return new CodeSuggestionModel(variable, "Variable");
+        }
+
+        foreach ((string name, string parameters) in ScriptFunctions(text, lineStart))
+        {
+            yield return new CodeSuggestionModel(
+                $"{name}({parameters})",
+                "Function of this script",
+                name + (parameters.Length > 0 ? "(" : "()"));
         }
 
         foreach (string keyword in keywords)
@@ -138,7 +147,7 @@ public static partial class ScriptSuggester
         }
     }
 
-    // The names set at the start of a line, other than the one being typed
+    // The names set at the start of a line, a for's and a function's, other than on the line being typed
     private static IEnumerable<string> Variables(string text, int lineStart, IReadOnlyList<string> keywords)
     {
         var names = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -146,10 +155,21 @@ public static partial class ScriptSuggester
 
         foreach (string line in text.Split('\n'))
         {
-            if (start != lineStart && AssignmentRegex().Match(line) is { Success: true } match
-                && !keywords.Contains(match.Groups[1].Value, StringComparer.OrdinalIgnoreCase))
+            if (start != lineStart)
             {
-                names.Add(match.Groups[1].Value);
+                if (AssignmentRegex().Match(line) is { Success: true } assignment
+                    && !keywords.Contains(assignment.Groups[1].Value, StringComparer.OrdinalIgnoreCase))
+                {
+                    names.Add(assignment.Groups[1].Value);
+                }
+                else if (ForRegex().Match(line) is { Success: true } loop)
+                {
+                    names.Add(loop.Groups[1].Value);
+                }
+                else if (FunctionRegex().Match(line) is { Success: true } function)
+                {
+                    names.UnionWith(ParametersOf(function));
+                }
             }
 
             start += line.Length + 1;
@@ -157,6 +177,28 @@ public static partial class ScriptSuggester
 
         return names;
     }
+
+    // function name(a, b) lines, other than the one being typed: each name, with its parameters as written
+    private static IEnumerable<(string Name, string Parameters)> ScriptFunctions(string text, int lineStart)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        int start = 0;
+
+        foreach (string line in text.Split('\n'))
+        {
+            if (start != lineStart && FunctionRegex().Match(line) is { Success: true } function
+                && seen.Add(function.Groups[1].Value))
+            {
+                yield return (function.Groups[1].Value, string.Join(", ", ParametersOf(function)));
+            }
+
+            start += line.Length + 1;
+        }
+    }
+
+    private static IEnumerable<string> ParametersOf(Match function) =>
+        function.Groups[2].Value
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     private static CodeSuggestionsModel? InText(
         string before,
@@ -211,6 +253,12 @@ public static partial class ScriptSuggester
 
     [GeneratedRegex(@"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=(?!=)")]
     private static partial Regex AssignmentRegex();
+
+    [GeneratedRegex(@"^\s*for\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\b", RegexOptions.IgnoreCase)]
+    private static partial Regex ForRegex();
+
+    [GeneratedRegex(@"^\s*function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)", RegexOptions.IgnoreCase)]
+    private static partial Regex FunctionRegex();
 
     // The function a text is the first value of: name( just before it
     [GeneratedRegex(@"([A-Za-z_][A-Za-z0-9_.]*)\s*\(\s*$")]

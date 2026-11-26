@@ -10,7 +10,7 @@ public static class ScriptFunctionHelp
 {
     /// <summary>The script language's keywords; a test checks the lexer knows each.</summary>
     public static IReadOnlyList<string> Keywords { get; } =
-        ["if", "elseif", "else", "end", "and", "or", "not", "true", "false"];
+        ["if", "elseif", "else", "end", "for", "in", "function", "return", "and", "or", "not", "true", "false"];
 
     public static IReadOnlyList<ScriptFunctionModel> Functions { get; } =
     [
@@ -80,6 +80,7 @@ public static class ScriptFunctionHelp
         Of("text.urlencode", "text.urlencode(text)", "The text made safe for a web address"),
         Of("list.length", "list.length(list)", "The number of items"),
         Of("list.contains", "list.contains(list, item)", "Whether an item equals item"),
+        Of("list.range", "list.range(from, to)", "The whole numbers from one to the other, for a for"),
         Of("text", "text(value)", "Any value as text"),
         Of("number", "number(text)", "The text as a number"),
     ];

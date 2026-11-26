@@ -1,10 +1,10 @@
 ﻿# Script Language
 
-How scripts are written: lines and comments, values, variables, operators, `if` and lists. For what a script can do with them, see [Script Functions](08b-script-functions.md).
+How scripts are written: lines and comments, values, variables, operators, `if`, lists, `for` and your own functions. For what a script can do with them, see [Script Functions](08b-script-functions.md).
 
 ## Lines and comments
 
-Each line is one step: storing a value, calling a function, or part of an `if`. `#` starts a comment, to the end of the line, also after code. Blank lines are ignored, and indentation is free.
+Each line is one step: storing a value, calling a function, or part of an `if`, a `for` or a `function`. `#` starts a comment, to the end of the line, also after code. Blank lines are ignored, and indentation is free.
 
 ```mts
 # Say hello
@@ -99,7 +99,7 @@ end
 
 `elseif` and `else` are optional, and you can use as many `elseif` as you like. An `if` can contain another `if`. Every `if` needs its `end`. The condition must be true or false: `if "yes"` is an error, write `if answer == "yes"`.
 
-Keywords (`if`, `elseif`, `else`, `end`, `and`, `or`, `not`, `true`, `false`) are not case-sensitive.
+Keywords (`if`, `elseif`, `else`, `end`, `for`, `in`, `function`, `return`, `and`, `or`, `not`, `true`, `false`) are not case-sensitive, and can't be the names of variables or functions.
 
 ## Lists
 
@@ -115,6 +115,74 @@ dialog.message(sites + ["bing.com"])
 - Items can't be changed: `sites[1] = "x"` is an error. Build a new list instead.
 - `list + list` joins two lists; `list.contains(list, item)` checks for an item.
 - `dialog.message(list)` shows the items, as in `[github.com, google.com]`.
+
+## for
+
+`for name in list` runs the lines up to its `end` once for each item of the list, with the item in the variable:
+
+```mts
+for w in process.windows("notepad")
+    window.minimize(w)
+end
+
+for site in ["github.com", "google.com"]
+    shell.open("https://" + site)
+end
+```
+
+- The list is read once, when the `for` starts, so the loop always ends, even if the lines inside change the variable that held it.
+- An empty list runs nothing. Anything else than a list is an error: `for c in "abc"` says `'for' goes through a list, not a text`.
+- After the loop, the variable keeps the last item.
+- A `for` can contain `if`s and other `for`s. Every `for` needs its `end`.
+
+To run a number of times, go through `list.range(from, to)`, the whole numbers from one to the other. There is no `while`: to wait until something happens, try a number of times in a function, and leave with `return`:
+
+```mts
+# Waits up to 10 seconds for a window with this title
+function waitFor(title)
+    for i in list.range(1, 20)
+        w = window.find(title)
+        if w != 0
+            return w
+        end
+        script.wait(500)
+    end
+    return 0
+end
+```
+
+## Functions
+
+`function name(parameter, ...)` defines steps you can call by name, as you call the built-in functions. `return value` gives the call its value:
+
+```mts
+function shrink(program)
+    for w in process.windows(program)
+        window.minimize(w)
+    end
+end
+
+function firstWindow(title)
+    w = window.find(title)
+    if w == 0
+        dialog.message("No window has " + title + " in its title")
+        script.stop()
+    end
+    return w
+end
+
+shrink("notepad")
+shrink("calc")
+window.maximize(firstWindow("Outlook"))
+```
+
+- A function goes at the top of the script, not inside an `if`, a `for` or another function. It can be anywhere in the file, even after the lines that call it.
+- Its name follows the rules of variable names, without a `.`, and can't be a built-in function's: `function text(x)` is an error.
+- It must be called with as many values as it has parameters.
+- `return` ends the function, also from inside a `for`. `return` alone, or reaching `end`, gives no value: `x = shrink("notepad")` is then an error.
+- **Variables:** the parameters, and what the function assigns, are its own, and are gone when it returns. It can read the script's variables, but assigning one gives the function a variable of its own, so the script's keeps its value.
+- A function can call other functions and itself, up to 100 calls deep.
+- Functions in a script you include (`script.include("_Windows")`) can be called after the `script.include` line. An error inside one is reported at the call, with its place in that script: `shrink(): in _Windows, line 3, column 9: ...`. See [Shared steps](08c-script-examples.md#shared-steps-scriptinclude).
 
 ---
 

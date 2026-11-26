@@ -58,6 +58,7 @@ clipboard.paste(pr)
 ```
 
 - The included script sees the variables set before `script.include`, and what it sets is there afterwards (`pr` above).
+- Its [functions](08a-script-language.md#functions) can be called afterwards too, so a `_` script can be a library of them. See [Tidy up a program's windows](#tidy-up-a-programs-windows).
 - `script.stop()`, or Cancel in a dialog, inside the included script ends the whole script.
 - An included script can include others, up to 10 levels deep, but a script can't include itself, directly or through others.
 - The included script is read when `script.include` runs, so an error in it is found then, not before the script starts. It is reported at the `script.include` line, with the place in the included script: `script.include(): in _PrCommon, line 2, column 45: Unknown variable 'app'` when `app` was not set.
@@ -239,6 +240,50 @@ Run = StartLater, C:\Program Files\Slack\slack.exe
 ```
 
 Startup actions run only when Windows starts My Tools, so **Start with Windows** in the tray menu must be on; starting My Tools yourself does not run them. See [Startup actions](01-getting-started.md#startup-actions).
+
+### Tidy up a program's windows
+
+Functions kept in a library, `_Windows.mts`:
+
+```mts
+# _Windows.mts: functions for other scripts
+function minimizeAll(program)
+    for w in process.windows(program)
+        window.minimize(w)
+    end
+end
+
+# Waits up to 10 seconds for a window with this title; 0 when none came
+function waitFor(title)
+    for i in list.range(1, 20)
+        w = window.find(title)
+        if w != 0
+            return w
+        end
+        script.wait(500)
+    end
+    return 0
+end
+```
+
+A script that uses them: it minimizes every Notepad and Paint window, then starts Outlook and maximizes it once its window shows.
+
+```mts
+# FocusMail.mts
+script.include("_Windows")
+
+for program in ["notepad", "mspaint"]
+    minimizeAll(program)
+end
+
+shell.run("outlook.exe")
+w = waitFor("Outlook")
+if w == 0
+    tray.notify("Outlook didn't open within 10 seconds")
+else
+    window.maximize(w)
+end
+```
 
 ### Type a signature
 

@@ -56,6 +56,31 @@ public class ScriptSuggesterTests
     }
 
     [Fact]
+    public void AWord_TheScriptsFunctions_AndTheNamesOfForAndOfParameters()
+    {
+        // Act
+        CodeSuggestionsModel? suggestions = Suggest(
+            "function shrink(window, times)\n"
+            + "end\n"
+            + "function stop_all()\n"
+            + "end\n"
+            + "for w in ws\n"
+            + "end\n"
+            + "s",
+            explicitly: false);
+
+        // Assert
+        // Those that start as typed, then those that hold it
+        Assert.Equal(["shrink(window, times)", "stop_all()", "times", "else"], Texts(suggestions));
+        Assert.Equal("Function of this script", suggestions!.Items[0].Detail);
+        Assert.Equal("shrink(", suggestions.Items[0].Insert);
+        Assert.Equal("stop_all()", suggestions.Items[1].Insert);
+        Assert.Equal(
+            ["w", "window"],
+            Texts(Suggest("function shrink(window)\nend\nfor w in ws\nend\nw")).Take(2));
+    }
+
+    [Fact]
     public void TheLineBeingTyped_IsNoVariableYet()
     {
         // Act
