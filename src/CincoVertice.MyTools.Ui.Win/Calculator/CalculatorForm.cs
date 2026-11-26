@@ -37,6 +37,9 @@ public partial class CalculatorForm : Form, ICalculatorView
     // The history's operations, like RtfConstants.Console (its results) but dimmer
     private readonly RtfFormat _operationFormat;
 
+    // While the Save dialog of a file a line gave is open, which takes the focus from the calculator
+    private bool _isAskingSavePath;
+
     public CalculatorForm()
     {
         InitializeComponent();
@@ -175,6 +178,31 @@ public partial class CalculatorForm : Form, ICalculatorView
     {
         Clipboard.SetText(result);
         HistoryToolTip.Show("Copied", ResultOutputControl, 0, -LogicalToDeviceUnits(24), 1200);
+    }
+
+    public string? AskSavePath(string fileName, string kind, string extension)
+    {
+        using var dialog = new SaveFileDialog
+        {
+            Title = $"Save the {kind}",
+            FileName = fileName,
+            DefaultExt = extension,
+            AddExtension = true,
+            OverwritePrompt = true,
+            Filter = $"{kind} files (*{extension})|*{extension}|All files (*.*)|*.*",
+        };
+
+        // The calculator hides when it loses the focus; not to its own dialog
+        _isAskingSavePath = true;
+
+        try
+        {
+            return dialog.ShowDialog(this) == DialogResult.OK ? dialog.FileName : null;
+        }
+        finally
+        {
+            _isAskingSavePath = false;
+        }
     }
 
     public void ShowHistory(IReadOnlyList<CalculatorHistoryEntryModel> entries, string emptyText)
@@ -351,6 +379,9 @@ public partial class CalculatorForm : Form, ICalculatorView
 
     private void CalculatorForm_Deactivate(object sender, EventArgs e)
     {
-        Hide();
+        if (!_isAskingSavePath)
+        {
+            Hide();
+        }
     }
 }

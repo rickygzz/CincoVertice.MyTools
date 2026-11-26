@@ -18,7 +18,7 @@ The calculator also hides when it loses focus. The calculator has no title-bar b
 
 **Suggestions.** While you type, a list under the box offers the functions and what can come next in a conversion:
 
-- Where a value starts (at the start of the line, or after an operator, `(`, `,` or `=`), the letters you type offer the functions and constants whose name starts with them, each with what it gives: `s` offers `sin(x): sine, in radians` and `sqrt(x): square root`. Choosing a function writes its name and `(`, so you go on with its values; `ipconfig()` comes whole. `pi`, `e`, `ans` and `today` are offered too, and the names you gave values (`rate = 1500`), each with its value: `rate: 1,500`, `ans: the last answer, 42`.
+- Where a value starts (at the start of the line, or after an operator, `(`, `,` or `=`), the letters you type offer the functions and constants whose name starts with them, each with what it gives: `sq` offers `sqrt(x): square root`, and `s` the hashes `sha1` and `sha256` too. Choosing a function writes its name and `(`, so you go on with its values; `ipconfig()` comes whole. `pi`, `e`, `ans` and `today` are offered too, and the names you gave values (`rate = 1500`), each with its value: `rate: 1,500`, `ans: the last answer, 42`.
 
 - After a time and a space (`10:30 `, `3 pm `, `now `), the places, each with its UTC offset today: `Mexico City (UTC-6)`. Type the start of a place to narrow them; any of its names works, in any case and without accents (`sao`, `cdmx`). After a 12-hour time, `a` or `p` also offers `am` or `pm`.
 - After a number and a space (`10 `), the units, each with its name and kind: `km (kilometer, length)`. Type the start of a symbol or a name (`kilo`) to narrow them. After anything other than a single number, such as `1 + 2 `, the units wait for a letter, so they don't pop up at every space of a sum.
@@ -63,8 +63,31 @@ The calculator never touches your clipboard. To copy a result, select it with th
 | `find("part", "text")` or `find("part", "text", start)` | position of the part in the text, counting from 1, case-sensitive |
 | `ipconfig()` | this computer's IP address and gateway, as a text: `192.168.1.23, gateway 192.168.1.1 (Wi-Fi)` |
 | `guid()` | a new GUID, as a text: `0f8fad5b-d9cb-469f-a165-70867728950e` |
+| `md5("text")`, `sha1("text")`, `sha256("text")` | the hash of the text, in lowercase hexadecimal: `md5("abc")` is `900150983cd24fb0d6963f7d28e17f72` |
+| `base64("text")`, `base64decode("base64")` | the text in base64 (`aGVsbG8=` for `hello`), and back |
+| `hex(x)`, `bin(x)` | a whole number in hexadecimal or binary: `hex(255)` is `0xFF`, `bin(5)` is `0b101`; given a text, back to a number: `hex("FF")` is `255` |
+| `unix(seconds)` | a Unix time to its date and time, in UTC and here; given a date, back to the number; `unix()` is now's |
+| `cron("expression")` | what a cron expression does, in words, and the next 3 times it runs |
+| `base64topdf("base64")` | saves the PDF the base64 stands for, where you choose |
 
 Text goes in double quotes (`""` inside means a quote) and is allowed only as a function argument.
+
+**Hashes and encodings.** `md5`, `sha1` and `sha256` hash the text's UTF-8 bytes, so `sha256("ñ")` is what any other tool gives for that text in UTF-8. `base64decode` also reads base64 without its `=` at the end, with spaces and line breaks, in the URL-safe alphabet (`-` and `_`) and after a `data:...;base64,` prefix; what it stands for must be text, or it says it may be a file. `hex` and `bin` show a negative number with a `-` (`hex(-26)` is `-0x1A`), and read their text with or without `0x` or `0b`. Their results are texts, which can be kept in a name; `hex("FF")` and `bin("101")` are numbers, to calculate with: `hex("ff") + 1` is `256`.
+
+**`unix()`** reads the numbers logs write:
+
+- `unix(1700000000)` is `2023-11-14 22:13:20 UTC, 2023-11-14 16:13:20 local (Tuesday)`. A number of 13 digits or more is milliseconds, as JavaScript and many logs write them: `unix(1700000000123)` shows `.123` and says it was read as milliseconds.
+- `unix("2023-11-14 22:13:20")` is `1700000000`: a date and time in quotes, in UTC unless it says otherwise (`2023-11-14T16:13:20-06:00`, or `Z`). `unix(2023-11-14)` is midnight UTC that day. `unix()` is the time now.
+
+**`cron()`** explains a schedule, in either kind of cron:
+
+- **5 fields**, `minute hour day month weekday`, as Unix's cron and most schedulers write them: `cron("0 9 * * MON-FRI")` is `At 09:00, on Monday through Friday. Next: Fri 2026-01-16 09:00, ...` in local time.
+- **6 fields**, the second first, as Azure Functions' timer triggers (NCRONTAB) write them: `cron("0 */15 * * * *")` is `Every 15 minutes. Next: ...` in UTC, as Azure runs them unless the app sets another time zone.
+- Fields take `*`, `?`, numbers, ranges (`1-5`), steps (`*/15`, `10-30/5`), lists (`1,15`), and the names of months and weekdays (`JAN`, `MON`); `0` and `7` are Sunday. `@yearly`, `@monthly`, `@weekly`, `@daily`, `@hourly` and `@reboot` work too.
+- When a schedule gives both a day of the month and a weekday, Unix's cron runs on days matching either (`0 0 13 * 5`: every 13th and every Friday), and Azure's only on days matching both (`0 0 0 13 * 5`: Friday the 13th); the explanation says which.
+- A wrong field says what's wrong with it: `In the hour field, '25' isn't from 0 to 23`.
+
+**`base64topdf()`** turns a PDF sent as base64, as in a JSON reply or an email's source, back into the file. Paste the base64 in quotes, alone on the line: `base64topdf("JVBERi0xLjQK...")`. A box asks where to save it, and the result says where it went: `A PDF of 34.5 KB, saved to C:\Users\you\Documents\document.pdf`. A `data:application/pdf;base64,` prefix is fine. If what it stands for doesn't start as every PDF does, nothing is saved: `That base64 isn't a PDF's`. A line this long shows in the history shortened, and offers no suggestions while you type.
 
 **`ipconfig()`** shows the address of each network adapter that is connected, with its gateway and the adapter's name, separated by `;` when there are several. Only the adapters with a gateway are shown when there are any, which leaves out virtual ones such as WSL's or VirtualBox's; with none, it shows the others, or `No network connection`. It's read again each time. Its result is a text: select it with the mouse to copy it, or keep it in a name (`net = ipconfig()`), but it can't be calculated with.
 
@@ -197,6 +220,10 @@ Messages you may see (each is followed by ` at position N`):
 - `Logarithm of zero or a negative number`
 - `Expected a number` and `Expected text`
 - `ipconfig()` and `guid()`: `Function 'ipconfig' expects no arguments`, `Expected a number, not a text`, `A text can't be negative`, `Can't add a text and a number` (and the like)
+- Hashes and encodings: `Expected a text, in quotes: "abc"`, `hex() needs a whole number`, `'FG' isn't a hexadecimal number`, `'102' isn't a binary number`, `'<text>' is too large`, `That isn't base64`, `That base64 isn't text: it may be a file, such as a PDF for base64topdf()`
+- `unix()`: `'<text>' isn't a date and time, such as 2023-11-14 22:13:20`, `That's too far from 1970 to be a date`, `Expected a number of seconds, a date or a text with a date`
+- `cron()`: `A cron expression has 5 fields, minute hour day month weekday, or 6 for Azure Functions, the second first; this has <n>`, `In the <field> field, '<value>' isn't from <min> to <max>`, `In the <field> field, the step of '<part>' isn't a whole number above 0`, `In the <field> field, '<part>' goes backwards`, `In the <field> field, '<part>' isn't a value, a range or a step`
+- `base64topdf()`: `That base64 isn't a PDF's: a PDF starts with %PDF-`, `base64topdf() goes alone on its line: it gives a PDF to save, not a value`
 - `Start must be a whole number from 1 to <N>`
 - `Text not found`
 - `Decimal places must be a whole number from 0 to 28`

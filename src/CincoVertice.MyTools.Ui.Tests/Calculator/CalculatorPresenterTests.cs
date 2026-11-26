@@ -121,6 +121,64 @@ public class CalculatorPresenterTests
             _view.History!);
     }
 
+    [Fact]
+    public void Base64ToPdf_SavesThePdfWhereChosen_AndKeepsTheLastAnswer()
+    {
+        // Arrange
+        byte[] pdf = "%PDF-1.4\n%%EOF\n"u8.ToArray();
+        string path = Path.Combine(Path.GetTempPath(), $"calc-{Guid.NewGuid():N}.pdf");
+        _view.SavePath = path;
+        Calculate("2");
+
+        try
+        {
+            // Act
+            Calculate($"base64topdf(\"{Convert.ToBase64String(pdf)}\")");
+            string saved = _view.Result!;
+            Calculate("ans");
+
+            // Assert
+            Assert.Equal(["document.pdf"], _view.SaveAsked);
+            Assert.Equal(pdf, File.ReadAllBytes(path));
+            Assert.Equal($"A PDF of 15 bytes, saved to {path}", saved);
+            Assert.Equal("2", _view.Result);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void Base64ToPdf_Cancelled_SavesNothing()
+    {
+        // Arrange: the dialog is cancelled
+        _view.SavePath = null;
+
+        // Act
+        Calculate($"base64topdf(\"{Convert.ToBase64String("%PDF-1.4\n"u8.ToArray())}\")");
+
+        // Assert
+        Assert.Equal("A PDF of 9 bytes, not saved", _view.Result);
+    }
+
+    [Fact]
+    public void History_ShortensALongLine()
+    {
+        // Arrange
+        string line = string.Join("+", Enumerable.Repeat("1", 60));
+
+        // Act
+        Calculate(line);
+        _view.RequestToggleHistory();
+
+        // Assert
+        CalculatorHistoryEntryModel entry = Assert.Single(_view.History!);
+        Assert.Equal(CalculatorPresenter.MaxOperationLength, entry.Operation.Length);
+        Assert.EndsWith("…", entry.Operation);
+        Assert.Equal("60", entry.Result);
+    }
+
     [Theory]
     [InlineData("2+)")]
     [InlineData("")]
@@ -445,6 +503,19 @@ public class CalculatorPresenterTests
         public string? Copied { get; private set; }
 
         public void CopyResult(string result) => Copied = result;
+
+        /// <summary>What AskSavePath answers; null as a cancel.</summary>
+        public string? SavePath { get; set; }
+
+        /// <summary>The file names AskSavePath offered.</summary>
+        public List<string> SaveAsked { get; } = [];
+
+        public string? AskSavePath(string fileName, string kind, string extension)
+        {
+            SaveAsked.Add(fileName);
+
+            return SavePath;
+        }
 
         public bool RequestCopy()
         {

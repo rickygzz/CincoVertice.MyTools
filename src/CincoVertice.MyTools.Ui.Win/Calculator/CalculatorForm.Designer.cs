@@ -40,6 +40,7 @@ partial class CalculatorForm
         // 
         CalculatorTextBox.Font = new Font("Segoe UI", 14F);
         CalculatorTextBox.Location = new Point(5, 5);
+        CalculatorTextBox.MaxLength = 0;
         CalculatorTextBox.Name = "CalculatorTextBox";
         CalculatorTextBox.PlaceholderText = "Enter expression (e.g. 2+2*3)";
         CalculatorTextBox.Size = new Size(790, 32);

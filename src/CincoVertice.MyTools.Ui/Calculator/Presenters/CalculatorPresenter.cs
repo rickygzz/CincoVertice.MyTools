@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel;
 using CincoVertice.Common.Application.Calculator;
 using CincoVertice.Common.Application.Calculator.Models;
+using CincoVertice.Common.Utils.Helpers;
 using CincoVertice.MyTools.Ui.Calculator.Models;
 using CincoVertice.MyTools.Ui.Calculator.Services;
 using CincoVertice.MyTools.Ui.Calculator.Views;
@@ -20,6 +21,9 @@ public class CalculatorPresenter
 
     /// <summary>How many lines typed Up and Down go back through; the oldest are dropped after this many.</summary>
     public const int MaxRecalled = 200;
+
+    /// <summary>How long an operation is in the history, at most; a longer one ends in "…".</summary>
+    public const int MaxOperationLength = 80;
 
     /// <summary>What the history shows before the first operation.</summary>
     public const string NoHistoryText = "No operations yet";
@@ -92,7 +96,7 @@ public class CalculatorPresenter
         try
         {
             CalculationResult calculated = _calculator.Calculate(expression, _names, groupThousands: true);
-            string result = calculated.Text;
+            string result = calculated.File is { } file ? Save(file, calculated.Text) : calculated.Text;
 
             // A time in another place has no value, so the last answer stays
             if (calculated.Value is CalculatorValue value)
@@ -105,7 +109,7 @@ public class CalculatorPresenter
                 }
             }
 
-            AddToHistory(new CalculatorHistoryEntryModel(expression.Trim(), result));
+            AddToHistory(new CalculatorHistoryEntryModel(Shortened(expression.Trim()), result));
             _result = result;
             _showCurrent = () => _view.ShowResult(result);
 
@@ -163,6 +167,37 @@ public class CalculatorPresenter
             _showCurrent();
         }
     }
+
+    /// <summary>
+    ///     Saves a file a line gave where the user chooses, as base64topdf()'s PDF.
+    /// </summary>
+    /// <param name="file">The file.</param>
+    /// <param name="description">What the line gave, as the calculator writes it: A PDF of 34.5 KB.</param>
+    /// <returns>What the line shows: that and where it was saved, or that it wasn't, and why.</returns>
+    private string Save(CalculatedFileModel file, string description)
+    {
+        string? path = _view.AskSavePath($"document{file.Extension}", file.Kind, file.Extension);
+
+        if (path is null)
+        {
+            return $"{description}, not saved";
+        }
+
+        try
+        {
+            AtomicFile.Write(path, temporary => File.WriteAllBytes(temporary, file.Content));
+
+            return $"{description}, saved to {path}";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return $"{description}, not saved: {ex.Message}";
+        }
+    }
+
+    // A line as long as base64topdf()'s, pasted, would fill the history
+    private static string Shortened(string operation) =>
+        operation.Length <= MaxOperationLength ? operation : $"{operation[..(MaxOperationLength - 1)]}…";
 
     private void AddToHistory(CalculatorHistoryEntryModel entry)
     {

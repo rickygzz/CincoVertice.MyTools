@@ -46,6 +46,13 @@ public interface ICalculatorView
     /// <summary>Puts the result in the clipboard, and says so for a moment.</summary>
     void CopyResult(string result);
 
+    /// <summary>Asks where to save a file a line gave, such as base64topdf()'s PDF.</summary>
+    /// <param name="fileName">The name offered: document.pdf.</param>
+    /// <param name="kind">What it is: PDF.</param>
+    /// <param name="extension">Its file name's: .pdf.</param>
+    /// <returns>The path chosen; null when the user cancels.</returns>
+    string? AskSavePath(string fileName, string kind, string extension);
+
     /// <summary>
     ///     Makes the output taller if it isn't yet, and shows these operations in it, each with its operation and
     ///     result in different colors, scrolled to the last.

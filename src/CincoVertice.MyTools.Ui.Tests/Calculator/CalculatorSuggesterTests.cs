@@ -48,6 +48,17 @@ public class CalculatorSuggesterTests
     }
 
     [Fact]
+    public void ALineLongerThanItsMaximum_GetsNothing_AsAPastedOne()
+    {
+        // Arrange: a function name at the end, which a short line would get
+        string pasted = $"base64(\"{new string('a', CalculatorSuggester.MaxLength)}\") + s";
+
+        // Act / Assert
+        Assert.NotNull(Suggest("1 + s"));
+        Assert.Null(Suggest(pasted));
+    }
+
+    [Fact]
     public void APlace_ReplacesWhatsTyped_AndTheFirstOneWritesTo()
     {
         // Act
@@ -149,7 +160,12 @@ public class CalculatorSuggesterTests
     }
 
     [Theory]
-    [InlineData("s", "sin(x): sine, in radians", "sqrt(x): square root")]
+    [InlineData(
+        "s",
+        "sha1(\"text\"): SHA-1 hash of the text",
+        "sha256(\"text\"): SHA-256 hash of the text",
+        "sin(x): sine, in radians",
+        "sqrt(x): square root")]
     [InlineData("SQ", "sqrt(x): square root")]
     [InlineData("2 * (ro", "round(x, decimals): rounds; decimals are optional")]
     [InlineData("max(1, mi", "min(a, ...): smallest")]

@@ -30,6 +30,16 @@ public static class CalculatorFunctionHelp
             ["find"] = ("find(\"part\", \"text\", start)", "position of the part; start is optional"),
             [BuiltIns.IpConfig] = ("ipconfig()", "IP address and gateway"),
             [BuiltIns.Guid] = ("guid()", "a new GUID"),
+            [BuiltIns.Md5] = ("md5(\"text\")", "MD5 hash of the text"),
+            [BuiltIns.Sha1] = ("sha1(\"text\")", "SHA-1 hash of the text"),
+            [BuiltIns.Sha256] = ("sha256(\"text\")", "SHA-256 hash of the text"),
+            [BuiltIns.Base64] = ("base64(\"text\")", "the text in base64"),
+            [BuiltIns.Base64Decode] = ("base64decode(\"base64\")", "the text base64 stands for"),
+            [BuiltIns.Base64ToPdf] = ("base64topdf(\"base64\")", "saves the PDF base64 stands for"),
+            [BuiltIns.Hex] = ("hex(x)", "x in hexadecimal; hex(\"FF\") back to a number"),
+            [BuiltIns.Bin] = ("bin(x)", "x in binary; bin(\"101\") back to a number"),
+            [BuiltIns.Unix] = ("unix(seconds)", "Unix time to a date; unix(\"date\") back, unix() now"),
+            [BuiltIns.Cron] = ("cron(\"*/5 * * * *\")", "a cron expression in words, and when it runs next"),
         };
 
     /// <summary>The names that stand for a value: the constants, the last answer and today's date.</summary>

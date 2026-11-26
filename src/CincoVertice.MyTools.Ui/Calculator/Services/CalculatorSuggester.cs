@@ -27,6 +27,12 @@ public static partial class CalculatorSuggester
 {
     private const string To = " to ";
 
+    /// <summary>
+    ///     How long a line can be and still get suggestions: one longer is pasted, such as base64topdf()'s base64,
+    ///     which nothing is offered for, and reading it all would hold up every key.
+    /// </summary>
+    public const int MaxLength = 10_000;
+
     // What a date moves by
     private static readonly (string Symbol, string Name)[] _durations =
         [("d", "days"), ("wk", "weeks"), ("mo", "months"), ("yr", "years")];
@@ -44,7 +50,7 @@ public static partial class CalculatorSuggester
         DateTime utcNow,
         IReadOnlyDictionary<string, CalculatorValue>? names = null)
     {
-        if (caret != expression.Length)
+        if (caret != expression.Length || expression.Length > MaxLength)
         {
             return null;
         }
