@@ -62,10 +62,13 @@ The calculator never touches your clipboard. To copy a result, select it with th
 | `len("text")` | length of a text |
 | `find("part", "text")` or `find("part", "text", start)` | position of the part in the text, counting from 1, case-sensitive |
 | `ipconfig()` | this computer's IP address and gateway, as a text: `192.168.1.23, gateway 192.168.1.1 (Wi-Fi)` |
+| `guid()` | a new GUID, as a text: `0f8fad5b-d9cb-469f-a165-70867728950e` |
 
 Text goes in double quotes (`""` inside means a quote) and is allowed only as a function argument.
 
 **`ipconfig()`** shows the address of each network adapter that is connected, with its gateway and the adapter's name, separated by `;` when there are several. Only the adapters with a gateway are shown when there are any, which leaves out virtual ones such as WSL's or VirtualBox's; with none, it shows the others, or `No network connection`. It's read again each time. Its result is a text: select it with the mouse to copy it, or keep it in a name (`net = ipconfig()`), but it can't be calculated with.
+
+**`guid()`** gives a new GUID each time you press Enter, in lowercase with hyphens, as .NET's `Guid.NewGuid()` writes it. Press **Ctrl+C** to copy it. Like `ipconfig()`'s, it's a text: kept in a name (`id = guid()`), the name stays the same GUID.
 
 ## Dates
 
@@ -193,7 +196,7 @@ Messages you may see (each is followed by ` at position N`):
 - `Result is not a real number`
 - `Logarithm of zero or a negative number`
 - `Expected a number` and `Expected text`
-- `ipconfig()`: `Function 'ipconfig' expects no arguments`, `Expected a number, not a text`, `A text can't be negative`, `Can't add a text and a number` (and the like)
+- `ipconfig()` and `guid()`: `Function 'ipconfig' expects no arguments`, `Expected a number, not a text`, `A text can't be negative`, `Can't add a text and a number` (and the like)
 - `Start must be a whole number from 1 to <N>`
 - `Text not found`
 - `Decimal places must be a whole number from 0 to 28`

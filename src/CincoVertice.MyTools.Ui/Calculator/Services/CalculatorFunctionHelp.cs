@@ -29,6 +29,7 @@ public static class CalculatorFunctionHelp
             ["len"] = ("len(\"text\")", "length of a text"),
             ["find"] = ("find(\"part\", \"text\", start)", "position of the part; start is optional"),
             [BuiltIns.IpConfig] = ("ipconfig()", "IP address and gateway"),
+            [BuiltIns.Guid] = ("guid()", "a new GUID"),
         };
 
     /// <summary>The names that stand for a value: the constants, the last answer and today's date.</summary>

@@ -168,6 +168,7 @@ public class CalculatorSuggesterTests
     [Theory]
     [InlineData("sq", 0, 2, "sqrt(")]
     [InlineData("1 + ipc", 4, 3, "ipconfig()")]
+    [InlineData("id = gu", 5, 2, "guid()")]
     [InlineData("an", 0, 2, "ans")]
     public void AFunction_WritesItsParenthesis(string expression, int start, int length, string insert)
     {
