@@ -1990,6 +1990,24 @@ public class DiagramEditorPresenterTests
         Assert.Equal(count, _view.PropertiesShowCount);
     }
 
+    [Fact]
+    public void Style_IsOnlySentWhenItChanges_NotForEachMoveOrNewShape()
+    {
+        // Arrange
+        AddShape(100, 100);
+        int count = _view.StyleShowCount;
+
+        // Act: moved, then another shape of the same style
+        _view.Drag(150, 125, 300, 200);
+        AddShape(500, 100);
+        int unchanged = _view.StyleShowCount;
+        _view.SelectLineWidth(5);
+
+        // Assert
+        Assert.Equal(count, unchanged);
+        Assert.Equal(count + 1, _view.StyleShowCount);
+    }
+
     [Theory]
     [InlineData(300, 100, 100, 50)]
     [InlineData(100, 400, 100, 50)]
@@ -6224,8 +6242,13 @@ public class DiagramEditorPresenterTests
         {
         }
 
-        public void ShowStyle(DiagramStyleModel style, DiagramRouting routing, DiagramArrowHeads heads) =>
+        public int StyleShowCount { get; private set; }
+
+        public void ShowStyle(DiagramStyleModel style, DiagramRouting routing, DiagramArrowHeads heads)
+        {
             (ShownStyle, ShownRouting, ShownHeads) = (style, routing, heads);
+            StyleShowCount++;
+        }
 
         public void ShowProperties(DiagramPropertiesModel properties)
         {

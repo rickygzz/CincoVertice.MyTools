@@ -139,6 +139,9 @@ public sealed class DiagramEditorPresenter
 
     private DiagramPropertiesModel? _shownProperties;
 
+    // The style the top bar shows, so it's sent only when it changes
+    private (DiagramStyleModel Style, DiagramRouting Routing, DiagramArrowHeads Heads)? _shownStyle;
+
     // What ends the text being typed
     private Action<DiagramRichTextModel>? _commitText;
 
@@ -3253,12 +3256,22 @@ public sealed class DiagramEditorPresenter
             ?? _style;
     }
 
+    /// <summary>
+    ///     Only when it changed: this runs after every move and every new shape, and each item the top bar is given
+    ///     again is laid out and drawn again, one after the other.
+    /// </summary>
     private void ShowSelectedStyle()
     {
         DiagramConnectorModel? connector = _diagram.Connectors
             .FirstOrDefault(c => _selectedConnectors.Contains(c.Id));
+        (DiagramStyleModel, DiagramRouting, DiagramArrowHeads) shown =
+            (SelectedStyle(), connector?.Routing ?? _routing, connector?.Heads ?? _heads);
 
-        _view.ShowStyle(SelectedStyle(), connector?.Routing ?? _routing, connector?.Heads ?? _heads);
+        if (shown != _shownStyle)
+        {
+            _shownStyle = shown;
+            _view.ShowStyle(shown.Item1, shown.Item2, shown.Item3);
+        }
     }
 
     /// <summary>The new diagram becomes current; undo goes back to the one before it, redo is lost.</summary>

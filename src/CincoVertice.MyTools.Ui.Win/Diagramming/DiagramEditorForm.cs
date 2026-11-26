@@ -438,19 +438,38 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         // With no edge, its swatch shows no color, as no fill does; the color is kept for when it's turned on
         Color textOutline = style.TextOutlineWidth == 0 ? Color.Empty : style.TextOutlineColor;
         TextOutlinePalette.SelectedColor = textOutline;
-        ShowSwatch(FillDropDownButton, style.Fill);
-        ShowSwatch(LineDropDownButton, style.Line);
-        ShowSwatch(TextColorDropDownButton, style.TextColor);
-        ShowSwatch(TextOutlineDropDownButton, textOutline);
+        // Only what changed: each item set again is laid out and drawn again, which shows on a slow computer
+        StyleStrip.SuspendLayout();
+        ShowSwatchIfChanged(FillDropDownButton, style.Fill);
+        ShowSwatchIfChanged(LineDropDownButton, style.Line);
+        ShowSwatchIfChanged(TextColorDropDownButton, style.TextColor);
+        ShowSwatchIfChanged(TextOutlineDropDownButton, textOutline);
 
-        LineWidthComboBox.SelectedIndex = _lineWidths.ToList().IndexOf(style.LineWidth);
-        FontSizeComboBox.SelectedIndex = _fontSizes.ToList().IndexOf(style.FontSize);
-        TextOutlineWidthComboBox.SelectedIndex = _textOutlineWidths.ToList().IndexOf(style.TextOutlineWidth);
+        SelectIfChanged(LineWidthComboBox, _lineWidths.ToList().IndexOf(style.LineWidth));
+        SelectIfChanged(FontSizeComboBox, _fontSizes.ToList().IndexOf(style.FontSize));
+        SelectIfChanged(TextOutlineWidthComboBox, _textOutlineWidths.ToList().IndexOf(style.TextOutlineWidth));
         DashedButton.Checked = style.Dashed;
-        RoutingComboBox.SelectedIndex = routing == DiagramRouting.Elbow ? 0 : 1;
-        ArrowHeadsComboBox.SelectedIndex = (int)heads;
+        SelectIfChanged(RoutingComboBox, routing == DiagramRouting.Elbow ? 0 : 1);
+        SelectIfChanged(ArrowHeadsComboBox, (int)heads);
+        StyleStrip.ResumeLayout();
 
         _isShowingChoices = false;
+    }
+
+    private void ShowSwatchIfChanged(ToolStripDropDownButton button, Color color)
+    {
+        if (!_swatchColors.TryGetValue(button, out Color shown) || shown != color)
+        {
+            ShowSwatch(button, color);
+        }
+    }
+
+    private static void SelectIfChanged(ToolStripComboBox box, int index)
+    {
+        if (box.SelectedIndex != index)
+        {
+            box.SelectedIndex = index;
+        }
     }
 
     public void ShowPropertiesPanel(bool isVisible) => ShowTab(PropertiesTab, isVisible);
