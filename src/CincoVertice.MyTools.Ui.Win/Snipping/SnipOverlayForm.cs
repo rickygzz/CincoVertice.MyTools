@@ -23,7 +23,16 @@ public partial class SnipOverlayForm : Form, ISnipView
     // The squares drawn at an adjustable selection's handles, in screen pixels
     private const int HandleSize = 8;
 
+    // The round Snip and Cancel buttons by an adjustable selection, at 100%; apart from the handles, which reach 10
+    private const int ButtonSize = 28;
+    private const int ButtonGap = 6;
+    private const int ButtonMargin = 12;
+
     private static readonly Color _borderColor = Color.FromArgb(0, 120, 215);
+    private static readonly Color _confirmColor = Color.FromArgb(16, 124, 16);
+    private static readonly Color _confirmHoverColor = Color.FromArgb(34, 160, 34);
+    private static readonly Color _cancelColor = Color.FromArgb(220, 48, 48, 48);
+    private static readonly Color _cancelHoverColor = Color.FromArgb(196, 43, 28);
 
     private readonly Bitmap _screenshot;
     private readonly Bitmap _dimmed;
@@ -33,6 +42,10 @@ public partial class SnipOverlayForm : Form, ISnipView
     private string _sizeText = string.Empty;
     private Rectangle _labelBounds;
     private IReadOnlyList<Point> _handles = [];
+
+    // The presenter's pointer, shown again once the pointer leaves a button; and the button under it
+    private Cursor _cursor = Cursors.Cross;
+    private Rectangle _hovered;
 
     /// <param name="screenshot">The screenshot to show; the caller keeps and disposes it.</param>
     /// <param name="screenBounds">Where the screenshot was taken, in screen coordinates.</param>
@@ -84,9 +97,15 @@ public partial class SnipOverlayForm : Form, ISnipView
         _handles = [];
     }
 
+    /// <summary>The green button that takes the snip, as Enter does; empty when the selection can't be adjusted.</summary>
+    internal Rectangle ConfirmButtonBounds => Buttons().Confirm;
+
+    /// <summary>The button that gives up, as Esc does; empty when the selection can't be adjusted.</summary>
+    internal Rectangle CancelButtonBounds => Buttons().Cancel;
+
     public void ShowCursor(SnipCursor cursor)
     {
-        Cursor = cursor switch
+        _cursor = cursor switch
         {
             SnipCursor.Move => Cursors.SizeAll,
             SnipCursor.SizeVertical => Cursors.SizeNS,
@@ -95,6 +114,11 @@ public partial class SnipOverlayForm : Form, ISnipView
             SnipCursor.SizeTopRightBottomLeft => Cursors.SizeNESW,
             _ => Cursors.Cross,
         };
+
+        if (_hovered.IsEmpty)
+        {
+            Cursor = _cursor;
+        }
     }
 
     public void TakeFocus()
@@ -162,9 +186,101 @@ public partial class SnipOverlayForm : Form, ISnipView
         }
 
         Rectangle area = Rectangle.Union(selection, _labelBounds);
+        (Rectangle confirm, Rectangle cancel) = Buttons();
+
+        if (!confirm.IsEmpty)
+        {
+            area = Rectangle.Union(area, Rectangle.Union(confirm, cancel));
+        }
+
         area.Inflate(2 + HandleSize, 2 + HandleSize);
 
         return area;
+    }
+
+    /// <summary>
+    ///     With handles, the Snip button below the selection's bottom right corner and Cancel left of it, or inside the
+    ///     selection when there's no room below; none without handles, when letting go takes the snip.
+    /// </summary>
+    private (Rectangle Confirm, Rectangle Cancel) Buttons()
+    {
+        if (_selection is not Rectangle selection || _handles.Count == 0)
+        {
+            return (Rectangle.Empty, Rectangle.Empty);
+        }
+
+        int size = LogicalToDeviceUnits(ButtonSize);
+        int gap = LogicalToDeviceUnits(ButtonGap);
+        int margin = LogicalToDeviceUnits(ButtonMargin);
+        int y = selection.Bottom + margin;
+
+        if (y + size > _screenshot.Height)
+        {
+            y = Math.Max(0, selection.Bottom - margin - size);
+        }
+
+        // Both on the screenshot, also for a selection at its left edge
+        int x = Math.Clamp(selection.Right - size, size + gap, Math.Max(size + gap, _screenshot.Width - size));
+
+        return (new Rectangle(x, y, size, size), new Rectangle(x - size - gap, y, size, size));
+    }
+
+    /// <summary>A round button: a check mark on green, or a cross; brighter under the pointer.</summary>
+    private void DrawButton(Graphics graphics, Rectangle bounds, bool isConfirm)
+    {
+        bool isHovered = bounds == _hovered;
+        Color fill = isConfirm
+            ? isHovered ? _confirmHoverColor : _confirmColor
+            : isHovered ? _cancelHoverColor : _cancelColor;
+
+        using var brush = new SolidBrush(fill);
+        using var ring = new Pen(Color.FromArgb(200, Color.White), Math.Max(1, bounds.Width / 14f));
+        using var mark = new Pen(Color.White, Math.Max(2, bounds.Width / 9f))
+        {
+            StartCap = LineCap.Round,
+            EndCap = LineCap.Round,
+            LineJoin = LineJoin.Round,
+        };
+
+        graphics.FillEllipse(brush, bounds);
+        graphics.DrawEllipse(ring, bounds);
+
+        float left = bounds.X;
+        float top = bounds.Y;
+        float side = bounds.Width;
+
+        if (isConfirm)
+        {
+            graphics.DrawLines(
+                mark,
+                [
+                    new PointF(left + side * 0.28f, top + side * 0.52f),
+                    new PointF(left + side * 0.44f, top + side * 0.68f),
+                    new PointF(left + side * 0.73f, top + side * 0.36f),
+                ]);
+        }
+        else
+        {
+            graphics.DrawLine(mark, left + side * 0.34f, top + side * 0.34f, left + side * 0.66f, top + side * 0.66f);
+            graphics.DrawLine(mark, left + side * 0.66f, top + side * 0.34f, left + side * 0.34f, top + side * 0.66f);
+        }
+    }
+
+    /// <summary>The button under the point, brightened, with the hand pointer; the presenter's pointer elsewhere.</summary>
+    private void HoverButton(Point point)
+    {
+        (Rectangle confirm, Rectangle cancel) = Buttons();
+        Rectangle hovered = confirm.Contains(point) ? confirm : cancel.Contains(point) ? cancel : Rectangle.Empty;
+
+        if (hovered == _hovered)
+        {
+            return;
+        }
+
+        Invalidate(_hovered);
+        Invalidate(hovered);
+        _hovered = hovered;
+        Cursor = hovered.IsEmpty ? _cursor : Cursors.Hand;
     }
 
     private void SnipOverlayForm_Paint(object? sender, PaintEventArgs e)
@@ -204,11 +320,29 @@ public partial class SnipOverlayForm : Form, ISnipView
             _labelBounds,
             Color.White,
             TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+
+        (Rectangle confirm, Rectangle cancel) = Buttons();
+
+        if (!confirm.IsEmpty)
+        {
+            DrawButton(graphics, cancel, isConfirm: false);
+            DrawButton(graphics, confirm, isConfirm: true);
+        }
     }
 
     private void SnipOverlayForm_MouseDown(object? sender, MouseEventArgs e)
     {
-        if (e.Button == MouseButtons.Left)
+        (Rectangle confirm, Rectangle cancel) = Buttons();
+
+        if (e.Button == MouseButtons.Left && confirm.Contains(e.Location))
+        {
+            ConfirmRequested?.Invoke(this, EventArgs.Empty);
+        }
+        else if (e.Button == MouseButtons.Left && cancel.Contains(e.Location))
+        {
+            CancelRequested?.Invoke(this, EventArgs.Empty);
+        }
+        else if (e.Button == MouseButtons.Left)
         {
             SelectionStarted?.Invoke(this, e.Location);
         }
@@ -227,6 +361,7 @@ public partial class SnipOverlayForm : Form, ISnipView
         else if (e.Button == MouseButtons.None)
         {
             PointerMoved?.Invoke(this, e.Location);
+            HoverButton(e.Location);
         }
     }
 

@@ -38,10 +38,10 @@ flowchart TD
 In the snip editor, **Options** > **Adjust the area before snipping** changes how every snip is selected, from any hotkey (also the area of a screen recording):
 
 - The snip starts with **the area you snipped last** already selected, at the same place and size, so the same part of the screen is one key away. The first time, or when that area is no longer on any monitor, you drag one as usual. An area partly off the monitors is cut to what's on them.
-- Letting go of the mouse button **keeps the selection**, with eight square handles on its corners and sides, and the label says `W × H   Enter to snip`.
+- Letting go of the mouse button **keeps the selection**, with eight square handles on its corners and sides, and the label says `W × H   Enter to snip`. Two round buttons sit under its bottom right corner (inside it, when it reaches the bottom of the screen): a green check mark and a cross.
 - **Drag a handle** to resize the selection, **drag inside it** to move it (it stops at the edges of the screen), or **drag outside it** to draw a new one. The pointer shows which: arrows on a handle, the move arrows inside, the cross-hair elsewhere. A click outside changes nothing.
-- **Enter** takes the snip, and then whatever the hotkey does with it: **Ctrl+Alt+S** opens it in the editor, **Ctrl+Alt+T** reads its text, and so on.
-- **Esc** or a right click cancels, as always.
+- **Enter**, or a click on the **green check mark**, takes the snip, and then whatever the hotkey does with it: **Ctrl+Alt+S** opens it in the editor, **Ctrl+Alt+T** reads its text, and so on.
+- **Esc**, a click on the **cross**, or a right click cancels.
 
 The area of each snip is remembered, in `config\snipping.json`, whether this option is on or not, so turning it on starts at your last snip. The option itself is kept with the editor's settings, in `config\snipeditor.json`, and applies from the next snip.
 
