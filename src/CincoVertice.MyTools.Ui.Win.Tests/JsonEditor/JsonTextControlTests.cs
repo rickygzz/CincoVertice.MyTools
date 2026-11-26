@@ -1,4 +1,6 @@
-﻿using System.Windows.Forms;
+﻿using System.Drawing;
+using System.Runtime.ExceptionServices;
+using System.Windows.Forms;
 using CincoVertice.MyTools.Ui.Diff.Models;
 using CincoVertice.MyTools.Ui.JsonEditor.Models;
 using CincoVertice.MyTools.Ui.JsonEditor.Services;
@@ -32,6 +34,31 @@ public class JsonTextControlTests
         return control;
     }
 
+    // The menu asks the clipboard whether to offer Paste, which needs a thread of the STA kind
+    private static void OnSta(Action test)
+    {
+        Exception? failure = null;
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                test();
+            }
+            catch (Exception ex)
+            {
+                failure = ex;
+            }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+
+        if (failure is not null)
+        {
+            ExceptionDispatchInfo.Throw(failure);
+        }
+    }
+
     [Fact]
     public void Toggle_CollapsesASection_ToItsFirstLine_AndOpensItAgain()
     {
@@ -46,6 +73,127 @@ public class JsonTextControlTests
         // Assert: the array's lines, its closing one too, hidden
         Assert.Equal([0, 1, 6, 7], collapsed);
         Assert.Equal(8, control.ShownLines.Count);
+    }
+
+    [Fact]
+    public void Menu_CollapsesTheSectionClickedIn_ThenExpandsIt_FromItsFirstLine()
+    {
+        OnSta(() =>
+        {
+            // Arrange
+            using JsonTextControl control = Create();
+
+            // Act: on Ann's name, in the object over lines 2 to 4
+            Assert.Contains("Co&llapse section", control.MenuAt(new DiffPosition(3, 8)));
+            control.ClickMenu("Co&llapse section");
+            IReadOnlyList<int> collapsed = [.. control.Collapsed];
+            IReadOnlyList<string> menu = control.MenuAt(new DiffPosition(2, 2));
+            control.ClickMenu("E&xpand section");
+
+            // Assert
+            Assert.Equal([2], collapsed);
+            Assert.Contains("E&xpand section", menu);
+            Assert.Contains("&Expand all", menu);
+            Assert.Empty(control.Collapsed);
+        });
+    }
+
+    [Fact]
+    public void CtrlMinus_CollapsesTheSectionOfTheCaret_ThenTheOneAroundIt_AndCtrlPlusOpensItAgain()
+    {
+        // Arrange: the caret on Ann's name, in the object over lines 2 to 4, in the array over 1 to 5
+        using JsonTextControl control = Create();
+        control.Select(new JsonMatchModel(new DiffPosition(3, 8), new DiffPosition(3, 8)));
+
+        // Act
+        control.HandleKey(Keys.Control | Keys.OemMinus);
+        IReadOnlyList<int> once = [.. control.Collapsed.Order()];
+        control.HandleKey(Keys.Control | Keys.Subtract);
+        IReadOnlyList<int> twice = [.. control.Collapsed.Order()];
+        control.HandleKey(Keys.Control | Keys.Oemplus);
+
+        // Assert: the caret goes to each first line, so the next press takes the next one out
+        Assert.Equal([2], once);
+        Assert.Equal([1, 2], twice);
+        Assert.Equal([2], control.Collapsed);
+        Assert.Equal(1, control.Caret.Line);
+    }
+
+    [Fact]
+    public void CtrlShiftMinus_CollapsesAll_AndCtrlShiftPlusExpandsAll()
+    {
+        // Arrange
+        using JsonTextControl control = Create();
+
+        // Act
+        control.HandleKey(Keys.Control | Keys.Shift | Keys.OemMinus);
+        IReadOnlyList<int> collapsed = [.. control.Collapsed.Order()];
+        control.HandleKey(Keys.Control | Keys.Shift | Keys.Add);
+
+        // Assert
+        Assert.Equal([1, 2], collapsed);
+        Assert.Empty(control.Collapsed);
+    }
+
+    [Fact]
+    public void Menu_InASelection_AsksForItsValues_AndSaysHowMany()
+    {
+        OnSta(() =>
+        {
+            // Arrange: the presenter's answer, as many values as the selection holds
+            using JsonTextControl control = Create();
+            (DiffPosition, DiffPosition)? asked = null;
+            control.PathRequested += (_, request) =>
+            {
+                asked = request.Selection;
+                (request.Value, request.ValueCount) = request.Selection is null ? ("1", 1) : ("1,\n2,\n3", 3);
+                (request.NameAndValue, request.NameAndValueCount) =
+                    request.Selection is null ? (null, 0) : ("\"a\": 1", 2);
+            };
+
+            // Act
+            IReadOnlyList<string> one = control.MenuAt(new DiffPosition(6, 12));
+            control.HandleKey(Keys.Control | Keys.A);
+            IReadOnlyList<string> several = control.MenuAt(new DiffPosition(3, 8));
+
+            // Assert: one value, whose name the presenter didn't give; then the selection's
+            Assert.Contains("Copy &value", one);
+            Assert.DoesNotContain("Copy &name and value", one);
+            Assert.Contains("Copy &values (3)", several);
+            Assert.Contains("Copy &names and values (2)", several);
+            Assert.Equal((new DiffPosition(0, 0), new DiffPosition(7, 1)), asked);
+        });
+    }
+
+    [Fact]
+    public void ShowTheme_Dark_DrawsTheTextDark_AndLightAgain()
+    {
+        // Arrange
+        using JsonTextControl control = Create();
+
+        // Act
+        control.ShowTheme(isDark: true);
+        Color dark = control.BackColor;
+        control.ShowTheme(isDark: false);
+
+        // Assert
+        Assert.True(dark.GetBrightness() < 0.2f);
+        Assert.Equal(Color.White, control.BackColor);
+        Assert.False(control.IsDark);
+    }
+
+    [Fact]
+    public void Form_ShowTheme_RecolorsTheTextToo()
+    {
+        // Arrange
+        using var form = new JsonEditorForm(isDark: false);
+
+        // Act
+        form.ShowTheme(true);
+
+        // Assert
+        Assert.True(form.IsDark);
+        Assert.True(form.TextControl.IsDark);
     }
 
     [Fact]

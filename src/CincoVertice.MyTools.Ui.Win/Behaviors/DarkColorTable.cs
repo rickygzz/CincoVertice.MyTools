@@ -1,7 +1,7 @@
-﻿namespace CincoVertice.MyTools.Ui.Win.Help.Services;
+﻿namespace CincoVertice.MyTools.Ui.Win.Behaviors;
 
-/// <summary>A toolbar and its menus in dark colors, for Windows' dark mode: WinForms draws them light.</summary>
-public sealed class HelpDarkColorTable : ProfessionalColorTable
+/// <summary>A toolbar and its menus in dark colors, for a window shown dark: WinForms draws them light.</summary>
+public sealed class DarkColorTable : ProfessionalColorTable
 {
     public static Color Background { get; } = Color.FromArgb(43, 43, 43);
 
@@ -60,4 +60,10 @@ public sealed class HelpDarkColorTable : ProfessionalColorTable
     public override Color SeparatorDark => _line;
 
     public override Color SeparatorLight => Background;
+
+    public override Color StatusStripGradientBegin => Background;
+
+    public override Color StatusStripGradientEnd => Background;
+
+    public override Color StatusStripBorder => _line;
 }

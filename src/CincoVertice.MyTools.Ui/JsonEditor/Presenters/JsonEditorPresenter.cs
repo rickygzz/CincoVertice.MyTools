@@ -1,5 +1,6 @@
 ﻿using CincoVertice.MyTools.Ui.Diff.Interfaces;
 using CincoVertice.MyTools.Ui.Diff.Models;
+using CincoVertice.MyTools.Ui.JsonEditor.Interfaces;
 using CincoVertice.MyTools.Ui.JsonEditor.Models;
 using CincoVertice.MyTools.Ui.JsonEditor.Services;
 using CincoVertice.MyTools.Ui.JsonEditor.Views;
@@ -18,6 +19,7 @@ public sealed class JsonEditorPresenter
     private readonly IJsonEditorView _view;
     private readonly IDiffFileReader _reader;
     private readonly IDiffFileWriter _writer;
+    private readonly IJsonEditorSettingsStore? _settings;
 
     private string? _path;
     private DiffTextFormatModel _format = DiffTextFormatModel.Default;
@@ -27,11 +29,17 @@ public sealed class JsonEditorPresenter
     private int _current = -1;
     private DiffPosition _caret;
 
-    public JsonEditorPresenter(IJsonEditorView view, IDiffFileReader reader, IDiffFileWriter writer)
+    /// <param name="settings">Where dark or light is kept; none keeps it for the window only.</param>
+    public JsonEditorPresenter(
+        IJsonEditorView view,
+        IDiffFileReader reader,
+        IDiffFileWriter writer,
+        IJsonEditorSettingsStore? settings = null)
     {
         _view = view;
         _reader = reader;
         _writer = writer;
+        _settings = settings;
 
         _view.TextEdited += (_, _) => Changed();
         _view.CaretMoved += (_, caret) => ShowCaret(caret);
@@ -47,6 +55,7 @@ public sealed class JsonEditorPresenter
         _view.SuggestionChosen += (_, suggestion) => Choose(suggestion);
         _view.PathRequested += (_, request) => AnswerPath(request);
         _view.CloseRequested += (_, e) => e.Cancel = !MayDiscard();
+        _view.ThemeToggled += (_, _) => ToggleTheme();
     }
 
     public bool IsModified => !_view.Lines.SequenceEqual(_savedLines);
@@ -54,6 +63,11 @@ public sealed class JsonEditorPresenter
     /// <summary>Shows a file, or an empty text for null.</summary>
     public void Start(string? path)
     {
+        if (_settings?.Load()?.IsDark is bool isDark)
+        {
+            _view.ShowTheme(isDark);
+        }
+
         if (path is null || !Load(path))
         {
             Show(null, [string.Empty], DiffTextFormatModel.Default);
@@ -213,14 +227,40 @@ public sealed class JsonEditorPresenter
         _view.ShowStatus($"Ln {caret.Line + 1}, Col {caret.Column + 1}", path, validity);
     }
 
+    private void ToggleTheme()
+    {
+        bool isDark = !_view.IsDark;
+        _view.ShowTheme(isDark);
+        _settings?.Save(new JsonEditorSettingsModel(isDark));
+    }
+
+    // The values the selection holds, or the one clicked when it holds none
     private void AnswerPath(JsonPathRequestModel request)
     {
-        if (JsonPathWriter.NodeAt(_document.Root, request.Position) is { } node)
+        JsonNodeModel? clicked = JsonPathWriter.NodeAt(_document.Root, request.Position);
+        IReadOnlyList<JsonNodeModel> values = request.Selection is var (start, end)
+            ? JsonPathWriter.NodesIn(_document.Root, start, end)
+            : [];
+
+        if (values.Count == 0 && clicked is not null)
         {
-            request.Path = JsonPathWriter.PathOf(node);
-            request.Value = JsonTextWriter.Write(node, indented: false);
+            values = [clicked];
         }
+
+        List<JsonNodeModel> named = [.. values.Where(value => value.Key is not null)];
+        string separator = "," + Environment.NewLine;
+
+        request.Path = clicked is null ? null : JsonPathWriter.PathOf(clicked);
+        request.ValueCount = values.Count;
+        request.Value = values.Count == 0
+            ? null
+            : string.Join(separator, values.Select(value => JsonTextWriter.Write(value, indented: false)));
+        request.NameAndValueCount = named.Count;
+        request.NameAndValue = named.Count == 0 ? null : string.Join(separator, named.Select(NameAndValueOf));
     }
+
+    private static string NameAndValueOf(JsonNodeModel value) =>
+        $"{JsonTextWriter.Quoted(value.Key!)}: {JsonTextWriter.Write(value, indented: false)}";
 
     private void SearchChanged()
     {

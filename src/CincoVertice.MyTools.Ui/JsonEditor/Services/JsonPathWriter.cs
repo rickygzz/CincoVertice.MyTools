@@ -60,6 +60,49 @@ public static partial class JsonPathWriter
         return found;
     }
 
+    /// <returns>
+    ///     The values wholly inside the selection, outermost first and in their order: a whole object selected is one
+    ///     value, some of its members are theirs. None when the selection is inside one value.
+    /// </returns>
+    public static IReadOnlyList<JsonNodeModel> NodesIn(JsonNodeModel? root, DiffPosition start, DiffPosition end)
+    {
+        List<JsonNodeModel> found = [];
+
+        if (root is not null && start < end)
+        {
+            Collect(root, start, end, found);
+        }
+
+        return found;
+    }
+
+    private static void Collect(JsonNodeModel node, DiffPosition start, DiffPosition end, List<JsonNodeModel> found)
+    {
+        if (node.Start is not DiffPosition from || node.End is not DiffPosition to || to <= start || from >= end)
+        {
+            return;
+        }
+
+        if (start <= from && to <= end)
+        {
+            found.Add(node);
+
+            return;
+        }
+
+        IEnumerable<JsonNodeModel> inside = node.Kind switch
+        {
+            JsonNodeKind.Object => node.Members.Select(member => member.Value),
+            JsonNodeKind.Array => node.Items,
+            _ => [],
+        };
+
+        foreach (JsonNodeModel child in inside)
+        {
+            Collect(child, start, end, found);
+        }
+    }
+
     private static bool Contains(JsonNodeModel node, DiffPosition position) =>
         node.Start is DiffPosition start && (node.KeyStart ?? start) <= position
         && (node.End is not DiffPosition end || position < end);

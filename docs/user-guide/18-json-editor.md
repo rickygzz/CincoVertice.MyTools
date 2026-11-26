@@ -15,11 +15,23 @@ Open it from the tray menu's **JSON editor**, or with **Ctrl+Alt+J**. Each time 
 
 Each object or array over several lines has a marker in the gutter beside its first line: ▾ when it's open, ▸ when it's collapsed. Click it to collapse the section to its first line, which then shows how much it holds: `{ 3 keys }`, `[ 12 items ]`. Click the marker or that summary to open it again; moving the caret into it, as a search does, opens it too.
 
-**Collapse all** on the toolbar collapses every section but the outermost one, to see a document's shape at a glance; **Expand all** opens them all.
+Right-click inside a section for **Collapse section**, which collapses the innermost one you clicked in. On the first line of a collapsed one, it's **Expand section**.
+
+From the keyboard:
+- **Ctrl+−** collapses the section the caret is in. Press it again to collapse the one around it, and so on outward.
+- **Ctrl++** opens the collapsed section the caret is on.
+
+**Collapse all** (Ctrl+Shift+−) collapses every section but the outermost one, to see a document's shape at a glance; **Expand all** (Ctrl+Shift++) opens them all. Both are on the toolbar and the right-click menu. The number pad's − and + work too.
 
 ## The path of a value
 
-The status bar shows the JMESPath of the value the caret is in: `people[1].address."zip code"`. Right-click a value, or its name, for **Copy JMESPath** with its path, and **Copy value**, the value as JSON on one line. A name that isn't letters, digits and `_` is quoted, as JMESPath writes it.
+The status bar shows the JMESPath of the value the caret is in: `people[1].address."zip code"`. Right-click a value, or its name, for:
+
+- **Copy JMESPath**: its path. A name that isn't letters, digits and `_` is quoted, as JMESPath writes it.
+- **Copy value**: the value as JSON on one line.
+- **Copy name and value**: the member as JSON writes it, `"name": "Ann"`. An item of an array has no name, so this is greyed out there.
+
+To copy several at once, select them, for example a few lines, and right-click in the selection. The menu then says **Copy values (3)** and **Copy names and values (3)**. It copies each value the selection wholly holds, one per line with a comma between them, so they paste into an array or an object. A whole object selected counts as one value; a part of one string, as the value clicked.
 
 ## Searching
 
@@ -56,6 +68,10 @@ The functions are JMESPath's: `abs`, `avg`, `ceil`, `contains`, `ends_with`, `fl
 - **Save** (Ctrl+S) writes the file with the encoding and line breaks it had; **Save as...** (Ctrl+Shift+S) under another name. A new document is saved as UTF-8 with Windows line breaks.
 - The title shows `*` while there are changes not saved, and closing the window, opening another file or **New** asks first.
 
+## Dark or light
+
+The editor opens in Windows' mode for apps, dark or light. The **Dark** or **Light** button at the right of the toolbar switches to the other one. Your choice is kept in `config\jsoneditor.json`, so windows opened later use it too.
+
 ## Keys
 
 | Key | Does |
@@ -64,6 +80,8 @@ The functions are JMESPath's: `abs`, `avg`, `ceil`, `contains`, `ends_with`, `fl
 | Ctrl+F / Ctrl+J | Search text / search JMESPath |
 | Enter, F3 / Shift+Enter, Shift+F3 | Next / previous match |
 | Shift+Alt+F | Format |
+| Ctrl+− / Ctrl++ | Collapse the section the caret is in / expand the one it's on |
+| Ctrl+Shift+− / Ctrl+Shift++ | Collapse all / expand all |
 | F1 | This page |
 
 ---

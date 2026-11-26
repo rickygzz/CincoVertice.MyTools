@@ -41,6 +41,7 @@ partial class JsonEditorForm
         FormatSeparator = new ToolStripSeparator();
         CollapseAllButton = new ToolStripButton();
         ExpandAllButton = new ToolStripButton();
+        ThemeButton = new ToolStripButton();
         SearchLayout = new TableLayoutPanel();
         ModeComboBox = new ComboBox();
         SearchBox = new TextBox();
@@ -69,7 +70,7 @@ partial class JsonEditorForm
         // Tools
         //
         Tools.GripStyle = ToolStripGripStyle.Hidden;
-        Tools.Items.AddRange(new ToolStripItem[] { NewButton, OpenButton, SaveButton, SaveAsButton, FileSeparator, FormatButton, MinifyButton, FormatSeparator, CollapseAllButton, ExpandAllButton });
+        Tools.Items.AddRange(new ToolStripItem[] { NewButton, OpenButton, SaveButton, SaveAsButton, FileSeparator, FormatButton, MinifyButton, FormatSeparator, CollapseAllButton, ExpandAllButton, ThemeButton });
         Tools.Location = new Point(0, 0);
         Tools.Name = "Tools";
         Tools.Size = new Size(900, 25);
@@ -136,7 +137,7 @@ partial class JsonEditorForm
         CollapseAllButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
         CollapseAllButton.Name = "CollapseAllButton";
         CollapseAllButton.Text = "Collapse all";
-        CollapseAllButton.ToolTipText = "Collapse every section but the outermost; click a section's ▸ to open it";
+        CollapseAllButton.ToolTipText = "Collapse every section but the outermost (Ctrl+Shift+-); Ctrl+- collapses the one the caret is in";
         CollapseAllButton.Click += CollapseAllButton_Click;
         //
         // ExpandAllButton
@@ -144,8 +145,16 @@ partial class JsonEditorForm
         ExpandAllButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
         ExpandAllButton.Name = "ExpandAllButton";
         ExpandAllButton.Text = "Expand all";
-        ExpandAllButton.ToolTipText = "Open every section";
+        ExpandAllButton.ToolTipText = "Open every section (Ctrl+Shift++); Ctrl++ opens the one the caret is on";
         ExpandAllButton.Click += ExpandAllButton_Click;
+        //
+        // ThemeButton
+        //
+        ThemeButton.Alignment = ToolStripItemAlignment.Right;
+        ThemeButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
+        ThemeButton.Name = "ThemeButton";
+        ThemeButton.Text = "&Dark";
+        ThemeButton.Click += ThemeButton_Click;
         //
         // SearchLayout
         //
@@ -348,6 +357,7 @@ partial class JsonEditorForm
     private ToolStripSeparator FormatSeparator;
     private ToolStripButton CollapseAllButton;
     private ToolStripButton ExpandAllButton;
+    private ToolStripButton ThemeButton;
     private TableLayoutPanel SearchLayout;
     private ComboBox ModeComboBox;
     private TextBox SearchBox;

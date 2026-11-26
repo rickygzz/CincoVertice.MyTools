@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel;
+using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.MyTools.Ui.Diff.Models;
 using CincoVertice.MyTools.Ui.JsonEditor.Models;
 using CincoVertice.MyTools.Ui.JsonEditor.Views;
@@ -20,9 +21,21 @@ public partial class JsonEditorForm : Form, IJsonEditorView
     // While the search text or mode is set here, not by the user
     private bool _isSettingSearch;
 
+    private bool _isDark;
+    private Color _textColor = SystemColors.ControlText;
+    private Color _detailColor = SystemColors.GrayText;
+
     public JsonEditorForm()
+        : this(DarkMode.IsOn())
+    {
+    }
+
+    /// <param name="isDark">Dark, whatever Windows' mode is; for the tests.</param>
+    internal JsonEditorForm(bool isDark)
     {
         InitializeComponent();
+        _isDark = isDark;
+        ApplyColors();
         _isSettingSearch = true;
         ModeComboBox.SelectedIndex = 0;
         _isSettingSearch = false;
@@ -30,6 +43,8 @@ public partial class JsonEditorForm : Form, IJsonEditorView
             this,
             dpi => SuggestionsList.ItemHeight = SuggestionsList.Font.Height + DpiFollower.Scaled(4, dpi));
     }
+
+    public event EventHandler? ThemeToggled;
 
     public event EventHandler? TextEdited;
 
@@ -61,6 +76,8 @@ public partial class JsonEditorForm : Form, IJsonEditorView
 
     public IReadOnlyList<string> Lines => Editor.Lines;
 
+    public bool IsDark => _isDark;
+
     public string SearchText => SearchBox.Text;
 
     public JsonSearchMode SearchMode => ModeComboBox.SelectedIndex == 1 ? JsonSearchMode.JmesPath : JsonSearchMode.Text;
@@ -77,12 +94,30 @@ public partial class JsonEditorForm : Form, IJsonEditorView
 
     public void ShowTitle(string title) => Text = title;
 
+    public void ShowTheme(bool isDark)
+    {
+        if (isDark == _isDark)
+        {
+            return;
+        }
+
+        _isDark = isDark;
+        ApplyColors();
+
+        if (IsHandleCreated)
+        {
+            ApplyWindowTheme();
+        }
+
+        Invalidate(invalidateChildren: true);
+    }
+
     public void ShowStatus(string position, string path, string validity)
     {
         PositionLabel.Text = position;
         PathLabel.Text = path;
         ValidityLabel.Text = validity;
-        ValidityLabel.ForeColor = validity is "Valid JSON" or "Empty" ? SystemColors.ControlText : Color.Firebrick;
+        ValidityLabel.ForeColor = validity is "Valid JSON" or "Empty" ? _textColor : ProblemColor;
     }
 
     public void ShowMatches(IReadOnlyList<JsonMatchModel> matches, int current) => Editor.ShowMatches(matches, current);
@@ -92,7 +127,7 @@ public partial class JsonEditorForm : Form, IJsonEditorView
     public void ShowSearchMessage(string message, bool isProblem)
     {
         SearchMessageLabel.Text = message;
-        SearchMessageLabel.ForeColor = isProblem ? Color.Firebrick : SystemColors.ControlText;
+        SearchMessageLabel.ForeColor = isProblem ? ProblemColor : _textColor;
         Tips.SetToolTip(SearchMessageLabel, message);
     }
 
@@ -213,9 +248,89 @@ public partial class JsonEditorForm : Form, IJsonEditorView
             case Keys.Shift | Keys.Alt | Keys.F:
                 FormatRequested?.Invoke(this, EventArgs.Empty);
                 return true;
+
+            // Sections, from anywhere in the window: the search box too
+            case Keys.Control | Keys.OemMinus or Keys.Control | Keys.Subtract:
+            case Keys.Control | Keys.Oemplus or Keys.Control | Keys.Add:
+            case Keys.Control | Keys.Shift | Keys.OemMinus or Keys.Control | Keys.Shift | Keys.Subtract:
+            case Keys.Control | Keys.Shift | Keys.Oemplus or Keys.Control | Keys.Shift | Keys.Add:
+                return Editor.HandleKey(keyData);
             default:
                 return base.ProcessCmdKey(ref msg, keyData);
         }
+    }
+
+    /// <summary>Windows draws the title bar and the scroll bars; dark, it's told so once they're there.</summary>
+    protected override void OnLoad(EventArgs e)
+    {
+        base.OnLoad(e);
+
+        if (_isDark)
+        {
+            ApplyWindowTheme();
+        }
+    }
+
+    private Color ProblemColor => _isDark ? Color.FromArgb(244, 112, 112) : Color.Firebrick;
+
+    private void ApplyWindowTheme()
+    {
+        DarkMode.UseDarkTitleBar(Handle, _isDark);
+        DarkMode.UseDarkScrollBars(ResultBox.Handle, _isDark);
+        DarkMode.UseDarkScrollBars(SuggestionsList.Handle, _isDark);
+    }
+
+    // The toolbar, search, result and status bar; the text draws its own
+    private void ApplyColors()
+    {
+        Color back = _isDark ? DarkColorTable.Background : SystemColors.Control;
+        Color box = _isDark ? Color.FromArgb(30, 30, 30) : SystemColors.Window;
+        _textColor = _isDark ? DarkColorTable.Text : SystemColors.ControlText;
+        _detailColor = _isDark ? Color.FromArgb(150, 150, 150) : SystemColors.GrayText;
+
+        BackColor = back;
+        ForeColor = _textColor;
+
+        foreach (ToolStrip strip in new ToolStrip[] { Tools, Status })
+        {
+            if (_isDark)
+            {
+                strip.Renderer = new ToolStripProfessionalRenderer(new DarkColorTable()) { RoundedEdges = false };
+            }
+            else
+            {
+                strip.RenderMode = ToolStripRenderMode.ManagerRenderMode;
+            }
+
+            strip.BackColor = back;
+            strip.ForeColor = _textColor;
+        }
+
+        ThemeButton.Text = _isDark ? "&Light" : "&Dark";
+        ThemeButton.ToolTipText = _isDark ? "Show the editor in light colors" : "Show the editor in dark colors";
+        SearchLayout.BackColor = back;
+        Split.BackColor = back;
+        ResultLabel.ForeColor = _textColor;
+
+        foreach (Control input in new Control[] { ModeComboBox, SearchBox, ResultBox, SuggestionsList })
+        {
+            input.BackColor = box;
+            input.ForeColor = _textColor;
+        }
+
+        ModeComboBox.FlatStyle = _isDark ? FlatStyle.Flat : FlatStyle.Standard;
+
+        foreach (Button button in new[] { PreviousButton, NextButton })
+        {
+            button.FlatStyle = _isDark ? FlatStyle.Flat : FlatStyle.Standard;
+            button.UseVisualStyleBackColor = !_isDark;
+            button.BackColor = _isDark ? Color.FromArgb(62, 62, 64) : SystemColors.Control;
+            button.ForeColor = _textColor;
+        }
+
+        SearchMessageLabel.ForeColor = _textColor;
+        ValidityLabel.ForeColor = ValidityLabel.Text is "Valid JSON" or "Empty" or "" ? _textColor : ProblemColor;
+        Editor.ShowTheme(_isDark);
     }
 
     private void FocusSearch(JsonSearchMode mode)
@@ -258,6 +373,8 @@ public partial class JsonEditorForm : Form, IJsonEditorView
     private void CollapseAllButton_Click(object? sender, EventArgs e) => Editor.CollapseAll();
 
     private void ExpandAllButton_Click(object? sender, EventArgs e) => Editor.ExpandAll();
+
+    private void ThemeButton_Click(object? sender, EventArgs e) => ThemeToggled?.Invoke(this, EventArgs.Empty);
 
     private void PreviousButton_Click(object? sender, EventArgs e) => SearchStepRequested?.Invoke(this, -1);
 
@@ -335,8 +452,8 @@ public partial class JsonEditorForm : Form, IJsonEditorView
         e.DrawBackground();
         JsonSuggestionModel suggestion = _suggestions[e.Index];
         bool selected = (e.State & DrawItemState.Selected) != 0;
-        Color text = selected ? SystemColors.HighlightText : SystemColors.ControlText;
-        Color detail = selected ? SystemColors.HighlightText : SystemColors.GrayText;
+        Color text = selected ? SystemColors.HighlightText : _textColor;
+        Color detail = selected ? SystemColors.HighlightText : _detailColor;
         int padding = DpiFollower.Scaled(4, DeviceDpi);
         Rectangle bounds = Rectangle.Inflate(e.Bounds, -padding, 0);
         const TextFormatFlags Flags =

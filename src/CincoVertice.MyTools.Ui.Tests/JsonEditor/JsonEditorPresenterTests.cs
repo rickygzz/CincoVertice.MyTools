@@ -2,6 +2,7 @@
 using System.Text;
 using CincoVertice.MyTools.Ui.Diff.Interfaces;
 using CincoVertice.MyTools.Ui.Diff.Models;
+using CincoVertice.MyTools.Ui.JsonEditor.Interfaces;
 using CincoVertice.MyTools.Ui.JsonEditor.Models;
 using CincoVertice.MyTools.Ui.JsonEditor.Presenters;
 using CincoVertice.MyTools.Ui.JsonEditor.Views;
@@ -54,6 +55,104 @@ public class JsonEditorPresenterTests
 
         // Assert
         Assert.Equal(("people[0]", "{\"name\":\"Ann\"}"), (request.Path, request.Value));
+        Assert.Equal(1, request.ValueCount);
+    }
+
+    [Fact]
+    public void RightClick_OnAMember_GivesItsNameAndValue_ButAnItemInAnArrayHasNoName()
+    {
+        // Act: on "name" in Ann's object, then on Bob's object in the array
+        var member = new JsonPathRequestModel(new DiffPosition(2, 8));
+        _view.RaisePathRequested(member);
+        var item = new JsonPathRequestModel(new DiffPosition(3, 4));
+        _view.RaisePathRequested(item);
+
+        // Assert
+        Assert.Equal(
+            ("\"Ann\"", "\"name\": \"Ann\"", 1),
+            (member.Value, member.NameAndValue, member.NameAndValueCount));
+        Assert.Equal((null, 0), (item.NameAndValue, item.NameAndValueCount));
+    }
+
+    [Fact]
+    public void RightClick_InASelectionOfSeveralLines_GivesEachValueInIt()
+    {
+        // Act: lines 3 and 4 selected whole, the two people
+        var request = new JsonPathRequestModel(
+            new DiffPosition(2, 8),
+            (new DiffPosition(2, 0), new DiffPosition(3, 21)));
+        _view.RaisePathRequested(request);
+
+        // Assert: as in an array; the path is still the one clicked
+        Assert.Equal(2, request.ValueCount);
+        Assert.Equal($"{{\"name\":\"Ann\"}},{Environment.NewLine}{{\"name\":\"Bob\"}}", request.Value);
+        Assert.Equal("people[0].name", request.Path);
+        Assert.Null(request.NameAndValue);
+    }
+
+    [Fact]
+    public void RightClick_InASelectionOfMembers_GivesTheirNamesAndValues()
+    {
+        // Arrange
+        _view.Edit(lines =>
+        {
+            lines.Clear();
+            lines.AddRange(["{", "  \"a\": 1,", "  \"b\": [true],", "  \"c\": null", "}"]);
+        });
+
+        // Act: "a" and "b", and the start of "c" but not its value
+        var request = new JsonPathRequestModel(
+            new DiffPosition(1, 3),
+            (new DiffPosition(1, 0), new DiffPosition(3, 5)));
+        _view.RaisePathRequested(request);
+
+        // Assert
+        Assert.Equal(2, request.NameAndValueCount);
+        Assert.Equal($"\"a\": 1,{Environment.NewLine}\"b\": [true]", request.NameAndValue);
+        Assert.Equal($"1,{Environment.NewLine}[true]", request.Value);
+    }
+
+    [Fact]
+    public void RightClick_InASelectionInsideOneValue_GivesTheValueClicked()
+    {
+        // Act: part of "Ann" selected
+        var request = new JsonPathRequestModel(
+            new DiffPosition(2, 16),
+            (new DiffPosition(2, 15), new DiffPosition(2, 17)));
+        _view.RaisePathRequested(request);
+
+        // Assert
+        Assert.Equal(("\"Ann\"", 1), (request.Value, request.ValueCount));
+    }
+
+    [Fact]
+    public void Start_ShowsTheThemeChosenBefore_AndToggling_KeepsTheOther()
+    {
+        // Arrange
+        var store = new FakeSettings { Settings = new JsonEditorSettingsModel(IsDark: true) };
+        var view = new FakeView();
+        var presenter = new JsonEditorPresenter(view, _files, _files, store);
+
+        // Act
+        presenter.Start(Path);
+        view.RaiseThemeToggled();
+
+        // Assert
+        Assert.Equal([true, false], view.ThemesShown);
+        Assert.Equal(new JsonEditorSettingsModel(IsDark: false), store.Settings);
+    }
+
+    [Fact]
+    public void Start_WithNoThemeChosen_LeavesWindowsMode()
+    {
+        // Arrange
+        var view = new FakeView();
+
+        // Act
+        new JsonEditorPresenter(view, _files, _files, new FakeSettings()).Start(Path);
+
+        // Assert
+        Assert.Empty(view.ThemesShown);
     }
 
     [Fact]
@@ -216,6 +315,15 @@ public class JsonEditorPresenterTests
         }
     }
 
+    private sealed class FakeSettings : IJsonEditorSettingsStore
+    {
+        public JsonEditorSettingsModel? Settings { get; set; }
+
+        public JsonEditorSettingsModel? Load() => Settings;
+
+        public void Save(JsonEditorSettingsModel settings) => Settings = settings;
+    }
+
     private sealed class FakeView : IJsonEditorView
     {
         private List<string> _lines = [string.Empty];
@@ -248,7 +356,13 @@ public class JsonEditorPresenterTests
 
         public event EventHandler<CancelEventArgs>? CloseRequested;
 
+        public event EventHandler? ThemeToggled;
+
         public IReadOnlyList<string> Lines => _lines;
+
+        public bool IsDark { get; private set; }
+
+        public List<bool> ThemesShown { get; } = [];
 
         public string SearchText { get; private set; } = string.Empty;
 
@@ -291,6 +405,12 @@ public class JsonEditorPresenterTests
         public void ShowDocument(JsonDocumentModel document) => Document = document;
 
         public void ShowTitle(string title) => Title = title;
+
+        public void ShowTheme(bool isDark)
+        {
+            IsDark = isDark;
+            ThemesShown.Add(isDark);
+        }
 
         public void ShowStatus(string position, string path, string validity) =>
             (Position, Path, Validity) = (position, path, validity);
@@ -364,5 +484,7 @@ public class JsonEditorPresenterTests
         public void RaiseOpen() => OpenRequested?.Invoke(this, EventArgs.Empty);
 
         public void RaiseSaveAs() => SaveAsRequested?.Invoke(this, EventArgs.Empty);
+
+        public void RaiseThemeToggled() => ThemeToggled?.Invoke(this, EventArgs.Empty);
     }
 }

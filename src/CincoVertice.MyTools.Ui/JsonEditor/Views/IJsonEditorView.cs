@@ -41,7 +41,13 @@ public interface IJsonEditorView
     /// <summary>The window is closing; cancel to keep it open.</summary>
     event EventHandler<CancelEventArgs>? CloseRequested;
 
+    /// <summary>The Dark or Light button: the other of the two, from now on.</summary>
+    event EventHandler? ThemeToggled;
+
     IReadOnlyList<string> Lines { get; }
+
+    /// <summary>Whether it's shown dark: as Windows' mode when it opens, until a theme is chosen.</summary>
+    bool IsDark { get; }
 
     string SearchText { get; }
 
@@ -57,6 +63,8 @@ public interface IJsonEditorView
     void ShowDocument(JsonDocumentModel document);
 
     void ShowTitle(string title);
+
+    void ShowTheme(bool isDark);
 
     /// <summary>Where the caret is, the path of the value there, and whether the JSON is valid.</summary>
     void ShowStatus(string position, string path, string validity);

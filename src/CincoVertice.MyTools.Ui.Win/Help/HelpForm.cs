@@ -350,14 +350,14 @@ public partial class HelpForm : Form, IHelpView
     {
         Color page = MarkdownRtfWriter.BackgroundOf(_isDark);
         Color side = _isDark ? Color.FromArgb(37, 37, 38) : SystemColors.Window;
-        Color text = _isDark ? HelpDarkColorTable.Text : SystemColors.WindowText;
+        Color text = _isDark ? DarkColorTable.Text : SystemColors.WindowText;
 
-        BackColor = _isDark ? HelpDarkColorTable.Background : SystemColors.Control;
+        BackColor = _isDark ? DarkColorTable.Background : SystemColors.Control;
         ForeColor = _isDark ? text : SystemColors.ControlText;
 
         if (_isDark)
         {
-            Tools.Renderer = new ToolStripProfessionalRenderer(new HelpDarkColorTable()) { RoundedEdges = false };
+            Tools.Renderer = new ToolStripProfessionalRenderer(new DarkColorTable()) { RoundedEdges = false };
         }
         else
         {

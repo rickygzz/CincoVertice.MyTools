@@ -1,8 +1,11 @@
 ﻿using System.ComponentModel;
 using System.Drawing.Drawing2D;
+using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.MyTools.Ui.Diff.Models;
 using CincoVertice.MyTools.Ui.Diff.Services;
 using CincoVertice.MyTools.Ui.JsonEditor.Models;
+using CincoVertice.MyTools.Ui.JsonEditor.Services;
+using CincoVertice.MyTools.Ui.Win.Behaviors;
 using CincoVertice.MyTools.Ui.Win.Diff;
 
 namespace CincoVertice.MyTools.Ui.Win.JsonEditor;
@@ -21,16 +24,7 @@ public sealed class JsonTextControl : Control
     private const int GutterPadding = 6;
     private const int CaretWidth = 2;
 
-    private static readonly Color _gutterBack = Color.FromArgb(246, 246, 246);
-    private static readonly Color _gutterFore = Color.FromArgb(130, 130, 130);
-    private static readonly Color _markerColor = Color.FromArgb(110, 110, 110);
-    private static readonly Color _selectionBack = Color.FromArgb(173, 214, 255);
-    private static readonly Color _matchBack = Color.FromArgb(255, 236, 140);
-    private static readonly Color _currentMatchBack = Color.FromArgb(255, 170, 60);
-    private static readonly Color _summaryBack = Color.FromArgb(232, 232, 232);
-    private static readonly Color _errorColor = Color.FromArgb(220, 40, 40);
-
-    private static readonly Dictionary<JsonTokenKind, Color> _colors = new()
+    private static readonly Dictionary<JsonTokenKind, Color> _lightColors = new()
     {
         [JsonTokenKind.Punctuation] = Color.FromArgb(60, 60, 60),
         [JsonTokenKind.Key] = Color.FromArgb(4, 81, 165),
@@ -40,6 +34,28 @@ public sealed class JsonTextControl : Control
         [JsonTokenKind.Comment] = Color.FromArgb(0, 128, 0),
         [JsonTokenKind.Invalid] = Color.FromArgb(220, 40, 40),
     };
+
+    private static readonly Dictionary<JsonTokenKind, Color> _darkColors = new()
+    {
+        [JsonTokenKind.Punctuation] = Color.FromArgb(212, 212, 212),
+        [JsonTokenKind.Key] = Color.FromArgb(156, 220, 254),
+        [JsonTokenKind.String] = Color.FromArgb(206, 145, 120),
+        [JsonTokenKind.Number] = Color.FromArgb(181, 206, 168),
+        [JsonTokenKind.Literal] = Color.FromArgb(86, 156, 214),
+        [JsonTokenKind.Comment] = Color.FromArgb(106, 153, 85),
+        [JsonTokenKind.Invalid] = Color.FromArgb(244, 71, 71),
+    };
+
+    // Set by ShowTheme: light at first
+    private Dictionary<JsonTokenKind, Color> _colors = _lightColors;
+    private Color _gutterBack;
+    private Color _gutterFore;
+    private Color _markerColor;
+    private Color _selectionBack;
+    private Color _matchBack;
+    private Color _currentMatchBack;
+    private Color _summaryBack;
+    private Color _errorColor;
 
     private const TextFormatFlags TextFlags =
         TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.NoClipping;
@@ -51,6 +67,8 @@ public sealed class JsonTextControl : Control
     private readonly ContextMenuStrip _menu = new();
     private readonly ToolStripMenuItem _copyPathItem = new() { Enabled = false };
     private readonly ToolStripMenuItem _copyValueItem = new("Copy &value");
+    private readonly ToolStripMenuItem _copyNameAndValueItem = new("Copy &name and value");
+    private readonly ToolStripMenuItem _sectionItem = new("Co&llapse section");
 
     private IReadOnlyList<IReadOnlyList<JsonTokenModel>> _tokens = [];
     private Dictionary<int, JsonFoldModel> _folds = [];
@@ -72,6 +90,8 @@ public sealed class JsonTextControl : Control
     private DiffPosition _menuPosition;
     private string? _menuPath;
     private string? _menuValue;
+    private string? _menuNameAndValue;
+    private Action _prepareMenu = () => { };
 
     public JsonTextControl()
     {
@@ -79,8 +99,7 @@ public sealed class JsonTextControl : Control
             ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer
             | ControlStyles.ResizeRedraw | ControlStyles.Selectable,
             true);
-        BackColor = Color.White;
-        ForeColor = Color.Black;
+        ShowTheme(isDark: false);
         Font = new Font("Consolas", 10);
         Cursor = Cursors.IBeam;
         TabStop = true;
@@ -197,6 +216,93 @@ public sealed class JsonTextControl : Control
         CaretChanged(scroll: true);
     }
 
+    /// <summary>The text's colors, its menu's, and its scroll bars', dark or light.</summary>
+    public void ShowTheme(bool isDark)
+    {
+        IsDark = isDark;
+        BackColor = isDark ? Color.FromArgb(30, 30, 30) : Color.White;
+        ForeColor = isDark ? Color.FromArgb(212, 212, 212) : Color.Black;
+        _colors = isDark ? _darkColors : _lightColors;
+        _gutterBack = isDark ? Color.FromArgb(37, 37, 38) : Color.FromArgb(246, 246, 246);
+        _gutterFore = isDark ? Color.FromArgb(133, 133, 133) : Color.FromArgb(130, 130, 130);
+        _markerColor = isDark ? Color.FromArgb(170, 170, 170) : Color.FromArgb(110, 110, 110);
+        _selectionBack = isDark ? Color.FromArgb(38, 79, 120) : Color.FromArgb(173, 214, 255);
+        _matchBack = isDark ? Color.FromArgb(98, 82, 30) : Color.FromArgb(255, 236, 140);
+        _currentMatchBack = isDark ? Color.FromArgb(160, 95, 20) : Color.FromArgb(255, 170, 60);
+        _summaryBack = isDark ? Color.FromArgb(55, 55, 55) : Color.FromArgb(232, 232, 232);
+        _errorColor = isDark ? Color.FromArgb(244, 71, 71) : Color.FromArgb(220, 40, 40);
+
+        if (isDark)
+        {
+            _menu.Renderer = new ToolStripProfessionalRenderer(new DarkColorTable()) { RoundedEdges = false };
+        }
+        else
+        {
+            _menu.RenderMode = ToolStripRenderMode.ManagerRenderMode;
+        }
+
+        _menu.ForeColor = isDark ? DarkColorTable.Text : SystemColors.ControlText;
+
+        if (IsHandleCreated)
+        {
+            DarkMode.UseDarkScrollBars(_vertical.Handle, isDark);
+            DarkMode.UseDarkScrollBars(_horizontal.Handle, isDark);
+        }
+
+        Invalidate();
+    }
+
+    /// <summary>Whether <see cref="ShowTheme"/> made it dark.</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool IsDark { get; private set; }
+
+    /// <summary>The menu as a right click there makes it, for tests: each item enabled, by its text.</summary>
+    internal IReadOnlyList<string> MenuAt(DiffPosition position)
+    {
+        _menuPosition = position;
+        _prepareMenu();
+
+        return [.. _menu.Items.OfType<ToolStripMenuItem>().Where(item => item.Enabled).Select(item => item.Text!)];
+    }
+
+    /// <summary>Chooses an item of the menu <see cref="MenuAt"/> made, by its text.</summary>
+    internal void ClickMenu(string text) =>
+        _menu.Items.OfType<ToolStripMenuItem>().Single(item => item.Text == text).PerformClick();
+
+    /// <summary>Collapses the section the line is in, or opens it when it's collapsed, as the menu does.</summary>
+    internal void ToggleSectionAt(int line)
+    {
+        if (IsCollapsedStart(line))
+        {
+            ExpandSectionAt(line);
+        }
+        else
+        {
+            CollapseSectionAt(line);
+        }
+    }
+
+    /// <summary>Collapses the innermost open section the line is in (Ctrl+-); again, the one around it.</summary>
+    public void CollapseSectionAt(int line)
+    {
+        if (JsonSections.OpenSectionAt(_folds.Values, _collapsed, line) is JsonFoldModel section)
+        {
+            Toggle(section.StartLine);
+        }
+    }
+
+    /// <summary>Opens the collapsed section starting on the line (Ctrl++); nothing for another line.</summary>
+    public void ExpandSectionAt(int line)
+    {
+        if (IsCollapsedStart(line))
+        {
+            Toggle(line);
+        }
+    }
+
+    private bool IsCollapsedStart(int line) => _collapsed.Contains(line) && _folds.ContainsKey(line);
+
     public void CollapseAll()
     {
         // The outermost section stays open, or there would be only its first line
@@ -246,6 +352,18 @@ public sealed class JsonTextControl : Control
 
         switch (key)
         {
+            case Keys.OemMinus or Keys.Subtract when control && shift:
+                CollapseAll();
+                return true;
+            case Keys.Oemplus or Keys.Add when control && shift:
+                ExpandAll();
+                return true;
+            case Keys.OemMinus or Keys.Subtract when control:
+                CollapseSectionAt(_buffer.Caret.Line);
+                return true;
+            case Keys.Oemplus or Keys.Add when control:
+                ExpandSectionAt(_buffer.Caret.Line);
+                return true;
             case Keys.Z when control && shift:
             case Keys.Y when control:
                 Edit(buffer => buffer.Redo());
@@ -514,6 +632,18 @@ public sealed class JsonTextControl : Control
         PaintCaret(graphics);
     }
 
+    /// <summary>Windows draws the scroll bars; dark, they're told so once they're there.</summary>
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+
+        if (IsDark)
+        {
+            DarkMode.UseDarkScrollBars(_vertical.Handle, isDark: true);
+            DarkMode.UseDarkScrollBars(_horizontal.Handle, isDark: true);
+        }
+    }
+
     protected override void Dispose(bool disposing)
     {
         if (disposing)
@@ -562,28 +692,54 @@ public sealed class JsonTextControl : Control
         ToolStripMenuItem cut = MenuItem("Cu&t", "Ctrl+X", Cut);
         ToolStripMenuItem copy = MenuItem("&Copy", "Ctrl+C", Copy);
         ToolStripMenuItem paste = MenuItem("&Paste", "Ctrl+V", Paste);
+        ToolStripMenuItem collapseAll = MenuItem("Collapse &all", "Ctrl+Shift+-", CollapseAll);
+        ToolStripMenuItem expandAll = MenuItem("&Expand all", "Ctrl+Shift++", ExpandAll);
         _copyPathItem.Click += (_, _) => CopyText(_menuPath);
         _copyValueItem.Click += (_, _) => CopyText(_menuValue);
+        _copyNameAndValueItem.Click += (_, _) => CopyText(_menuNameAndValue);
+        _sectionItem.Click += (_, _) => ToggleSectionAt(_menuPosition.Line);
         _menu.Items.AddRange(
         [
-            _copyPathItem, _copyValueItem, new ToolStripSeparator(),
+            _copyPathItem, _copyValueItem, _copyNameAndValueItem, new ToolStripSeparator(),
+            _sectionItem, collapseAll, expandAll, new ToolStripSeparator(),
             undo, redo, new ToolStripSeparator(), cut, copy, paste,
         ]);
-        _menu.Opening += (_, _) =>
+        _prepareMenu = () =>
         {
-            var request = new JsonPathRequestModel(_menuPosition);
+            // A click in the selection works on the values it holds; one outside it has cleared it
+            var request = new JsonPathRequestModel(
+                _menuPosition,
+                _buffer.HasSelection ? (_buffer.SelectionStart, _buffer.SelectionEnd) : null);
             PathRequested?.Invoke(this, request);
             _menuPath = request.Path;
             _menuValue = request.Value;
+            _menuNameAndValue = request.NameAndValue;
             _copyPathItem.Text = request.Path is null ? "Copy JMESPath" : $"Copy JMESPath: {Shortened(request.Path)}";
             _copyPathItem.Enabled = request.Path is not null;
+            _copyValueItem.Text = request.ValueCount > 1 ? $"Copy &values ({request.ValueCount})" : "Copy &value";
             _copyValueItem.Enabled = request.Value is not null;
+            _copyNameAndValueItem.Text = request.NameAndValueCount > 1
+                ? $"Copy &names and values ({request.NameAndValueCount})"
+                : "Copy &name and value";
+            _copyNameAndValueItem.Enabled = request.NameAndValue is not null;
+
+            int line = _menuPosition.Line;
+            bool isCollapsed = _collapsed.Contains(line) && _folds.ContainsKey(line);
+            JsonFoldModel? section = isCollapsed
+                ? _folds[line]
+                : JsonSections.OpenSectionAt(_folds.Values, _collapsed, line);
+            _sectionItem.Text = isCollapsed ? "E&xpand section" : "Co&llapse section";
+            _sectionItem.ShortcutKeyDisplayString = isCollapsed ? "Ctrl++" : "Ctrl+-";
+            _sectionItem.Enabled = section is not null;
+            collapseAll.Enabled = _folds.Count > 0;
+            expandAll.Enabled = _collapsed.Count > 0;
             undo.Enabled = _buffer.CanUndo;
             redo.Enabled = _buffer.CanRedo;
             cut.Enabled = _buffer.HasSelection;
             copy.Enabled = _buffer.HasSelection;
             paste.Enabled = Clipboard.ContainsText();
         };
+        _menu.Opening += (_, _) => _prepareMenu();
     }
 
     private static string Shortened(string path) => path.Length <= 60 ? path : path[..59] + "…";
