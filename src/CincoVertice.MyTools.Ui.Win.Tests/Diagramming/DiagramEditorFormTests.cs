@@ -1001,6 +1001,23 @@ public class DiagramEditorFormTests
         Assert.Equal([DiagramLineDirection.Horizontal], chosen);
     }
 
+    [Theory]
+    [InlineData("DuplicateMenuItem")]
+    [InlineData("DuplicateContextMenuItem")]
+    public void Duplicate_InTheEditAndRightClickMenus_AsksToDuplicate(string item)
+    {
+        // Arrange
+        using var form = new DiagramEditorForm();
+        List<DiagramCommand> commands = [];
+        form.CommandRequested += (_, command) => commands.Add(command);
+
+        // Act
+        ClickToolbarButton(form, item);
+
+        // Assert
+        Assert.Equal([DiagramCommand.Duplicate], commands);
+    }
+
     [Fact]
     public void Properties_KeepProportions_ShowsTheLock_AndResetSizeIsOnlyForImages()
     {

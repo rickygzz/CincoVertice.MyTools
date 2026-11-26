@@ -4200,6 +4200,23 @@ public class DiagramEditorPresenterTests
     }
 
     [Fact]
+    public void Duplicate_AddsACopyFurtherAlong_Selected_AndAgainFromTheCopy()
+    {
+        // Arrange
+        AddShape(100, 100);
+
+        // Act
+        _view.Command(DiagramCommand.Duplicate);
+        _view.Command(DiagramCommand.Duplicate);
+        _view.Nudge(0, 10);
+
+        // Assert: only the last copy is selected, so only it moved
+        Assert.Equal(
+            [new Point(100, 100), new Point(120, 120), new Point(140, 150)],
+            Diagram.Shapes.Select(shape => shape.Bounds.Location));
+    }
+
+    [Fact]
     public void Group_SelectsAndMovesTogether_UntilUngrouped()
     {
         // Arrange

@@ -64,6 +64,7 @@ partial class DiagramEditorForm
         DistributeHorizontallyContextMenuItem = new ToolStripMenuItem();
         DistributeVerticallyMenuItem = new ToolStripMenuItem();
         DistributeVerticallyContextMenuItem = new ToolStripMenuItem();
+        DuplicateContextMenuItem = new ToolStripMenuItem();
         CopyStyleContextMenuItem = new ToolStripMenuItem();
         PasteStyleContextMenuItem = new ToolStripMenuItem();
         GroupContextSeparator = new ToolStripSeparator();
@@ -131,6 +132,7 @@ partial class DiagramEditorForm
         NoTextOutlineMenuItem = new ToolStripMenuItem();
         MoreTextOutlineColorsMenuItem = new ToolStripMenuItem();
         TextOutlineWidthComboBox = new ToolStripComboBox();
+        DuplicateMenuItem = new ToolStripMenuItem();
         CopyStyleMenuItem = new ToolStripMenuItem();
         PasteStyleMenuItem = new ToolStripMenuItem();
         StyleSeparator = new ToolStripSeparator();
@@ -395,7 +397,7 @@ partial class DiagramEditorForm
         // EditDropDownButton
         //
         EditDropDownButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
-        EditDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { UndoMenuItem, RedoMenuItem, HistorySeparator, CopyPictureMenuItem, CopyStyleMenuItem, PasteStyleMenuItem, TextFormatSeparator, BoldMenuItem, ItalicMenuItem, GroupSeparator, GroupMenuItem, UngroupMenuItem, ImageSeparator, InsertImageMenuItem, ResetSizeMenuItem });
+        EditDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { UndoMenuItem, RedoMenuItem, HistorySeparator, CopyPictureMenuItem, DuplicateMenuItem, CopyStyleMenuItem, PasteStyleMenuItem, TextFormatSeparator, BoldMenuItem, ItalicMenuItem, GroupSeparator, GroupMenuItem, UngroupMenuItem, ImageSeparator, InsertImageMenuItem, ResetSizeMenuItem });
         EditDropDownButton.Name = "EditDropDownButton";
         EditDropDownButton.Text = "Edit";
         EditDropDownButton.ToolTipText = "Undo, redo, copy and paste a style, group";
@@ -552,8 +554,16 @@ partial class DiagramEditorForm
         //
         // SelectionMenu
         //
-        SelectionMenu.Items.AddRange(new ToolStripItem[] { CenterContextMenuItem, CenterContextSeparator, CopyPictureContextMenuItem, CopyPictureContextSeparator, CopyStyleContextMenuItem, PasteStyleContextMenuItem, GroupContextSeparator, GroupContextMenuItem, UngroupContextMenuItem, AlignContextSeparator, AlignContextMenuItem });
+        SelectionMenu.Items.AddRange(new ToolStripItem[] { CenterContextMenuItem, CenterContextSeparator, CopyPictureContextMenuItem, DuplicateContextMenuItem, CopyPictureContextSeparator, CopyStyleContextMenuItem, PasteStyleContextMenuItem, GroupContextSeparator, GroupContextMenuItem, UngroupContextMenuItem, AlignContextSeparator, AlignContextMenuItem });
         SelectionMenu.Name = "SelectionMenu";
+        //
+        // DuplicateContextMenuItem
+        //
+        DuplicateContextMenuItem.Name = "DuplicateContextMenuItem";
+        DuplicateContextMenuItem.ShortcutKeyDisplayString = "Ctrl+D";
+        DuplicateContextMenuItem.Tag = "Duplicate";
+        DuplicateContextMenuItem.Text = "Duplicate";
+        DuplicateContextMenuItem.Click += CommandButton_Click;
         //
         // CopyStyleContextMenuItem
         //
@@ -670,6 +680,15 @@ partial class DiagramEditorForm
         ExitMenuItem.Text = "Exit";
         ExitMenuItem.ToolTipText = "Close this window";
         ExitMenuItem.Click += ExitMenuItem_Click;
+        //
+        // DuplicateMenuItem
+        //
+        DuplicateMenuItem.Name = "DuplicateMenuItem";
+        DuplicateMenuItem.Tag = "Duplicate";
+        DuplicateMenuItem.Text = "Duplicate";
+        DuplicateMenuItem.ShortcutKeyDisplayString = "Ctrl+D";
+        DuplicateMenuItem.ToolTipText = "Copy what's selected a little further along, without the clipboard";
+        DuplicateMenuItem.Click += CommandButton_Click;
         //
         // CopyStyleMenuItem
         //
@@ -1889,6 +1908,7 @@ partial class DiagramEditorForm
     private ToolStripMenuItem DistributeHorizontallyContextMenuItem;
     private ToolStripMenuItem DistributeVerticallyMenuItem;
     private ToolStripMenuItem DistributeVerticallyContextMenuItem;
+    private ToolStripMenuItem DuplicateContextMenuItem;
     private ToolStripMenuItem CopyStyleContextMenuItem;
     private ToolStripMenuItem PasteStyleContextMenuItem;
     private ToolStripSeparator GroupContextSeparator;
@@ -1948,6 +1968,7 @@ partial class DiagramEditorForm
     private ToolStripMenuItem NoTextOutlineMenuItem;
     private ToolStripMenuItem MoreTextOutlineColorsMenuItem;
     private ToolStripComboBox TextOutlineWidthComboBox;
+    private ToolStripMenuItem DuplicateMenuItem;
     private ToolStripMenuItem CopyStyleMenuItem;
     private ToolStripMenuItem PasteStyleMenuItem;
     private ToolStripSeparator StyleSeparator;
