@@ -32,6 +32,26 @@ public class DpiRescaleOnDropTests
     }
 
     [Fact]
+    public void WhileMovedOrResized_TheFormIsPaintedInOneGo_AndAfterAsBefore()
+    {
+        // Arrange
+        using Form form = ShowForm();
+        bool before = CompositedPainting.IsOn(form.Handle);
+
+        // Act
+        User32.SendMessage(form.Handle, (uint)WM.WM_ENTERSIZEMOVE, 0, 0);
+        form.Size = new Size(500, 350);
+        Application.DoEvents();
+        bool during = CompositedPainting.IsOn(form.Handle);
+        User32.SendMessage(form.Handle, (uint)WM.WM_EXITSIZEMOVE, 0, 0);
+
+        // Assert
+        Assert.False(before);
+        Assert.True(during);
+        Assert.False(CompositedPainting.IsOn(form.Handle));
+    }
+
+    [Fact]
     public void ADragOnOneMonitor_ChangesNothing()
     {
         // Arrange

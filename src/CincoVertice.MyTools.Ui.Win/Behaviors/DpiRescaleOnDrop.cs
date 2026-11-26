@@ -12,7 +12,8 @@ namespace CincoVertice.MyTools.Ui.Win.Behaviors;
 ///     for a large one: a drag would stutter at every crossing. While the form is moved, its controls keep their
 ///     scale (Windows still resizes the window, to the size <see cref="TryScaledSize"/> gives), and the DPI messages
 ///     Windows sends its child controls wait too; at the drop, the change is played again, as Windows sends it, as if
-///     the form had just crossed where it is.
+///     the form had just crossed where it is. While moved or resized, the form is also painted in one go
+///     (<see cref="CompositedPainting"/>), so its controls don't flicker.
 /// </summary>
 public sealed class DpiRescaleOnDrop : NativeWindow
 {
@@ -84,11 +85,14 @@ public sealed class DpiRescaleOnDrop : NativeWindow
                 _isMoving = true;
                 _scaledDpi = _form.DeviceDpi;
                 HoldChildren();
+                // Painted in one go while resized, so its controls don't flicker
+                CompositedPainting.Set(Handle, true);
                 break;
 
             case (uint)WM.WM_EXITSIZEMOVE:
                 base.WndProc(ref m);
                 _isMoving = false;
+                CompositedPainting.Set(Handle, false);
                 ReleaseChildren();
 
                 if (_form.DeviceDpi != _scaledDpi)

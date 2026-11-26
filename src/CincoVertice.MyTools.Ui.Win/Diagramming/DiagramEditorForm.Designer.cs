@@ -148,7 +148,7 @@ partial class DiagramEditorForm
         BackButton = new ToolStripButton();
         PanelsButton = new ToolStripButton();
         LayersPanel = new Panel();
-        LayersListView = new ListView();
+        LayersListView = new BufferedListView();
         LayersHintLabel = new Label();
         ZoomLabel = new ToolStripLabel();
         ViewDropDownButton = new ToolStripDropDownButton();
@@ -163,7 +163,7 @@ partial class DiagramEditorForm
         LayersTab = new TabPage();
         PropertiesTab = new TabPage();
         ImagesPanel = new Panel();
-        ImagesListView = new ListView();
+        ImagesListView = new BufferedListView();
         ImagesEmptyLabel = new Label();
         ImageSearchBox = new TextBox();
         ImagesFolderButton = new Button();
@@ -1992,7 +1992,7 @@ partial class DiagramEditorForm
     private RichTextBox TextInputBox;
     private Panel PropertiesPanel;
     private Panel ImagesPanel;
-    private ListView ImagesListView;
+    private BufferedListView ImagesListView;
     private Label ImagesEmptyLabel;
     private TextBox ImageSearchBox;
     private Button ImagesFolderButton;
@@ -2061,7 +2061,7 @@ partial class DiagramEditorForm
     private TabPage ImagesTab;
     private TabPage LayersTab;
     private TabPage PropertiesTab;
-    private ListView LayersListView;
+    private BufferedListView LayersListView;
     private Label LayersHintLabel;
     private ToolStripMenuItem CopyPictureMenuItem;
     private System.Windows.Forms.Timer AutosaveTimer;

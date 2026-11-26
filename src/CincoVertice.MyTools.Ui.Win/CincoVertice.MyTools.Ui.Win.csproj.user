@@ -20,6 +20,9 @@
     <Compile Update="ConfigEditor\ConfigEditorForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="Diagramming\BufferedListView.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Update="Diagramming\DiagramCanvasControl.cs">
       <SubType>Component</SubType>
     </Compile>
