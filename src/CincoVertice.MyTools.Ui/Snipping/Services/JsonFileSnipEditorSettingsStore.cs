@@ -12,7 +12,7 @@ namespace CincoVertice.MyTools.Ui.Snipping.Services;
 ///     The snip editor's settings in a JSON file, read when an editor opens and written on every change:
 ///     { "tool": "Arrow", "tools": { "Pen": { "size": 4, "transparency": 0, "color": "#FF0000" }, ... },
 ///     "customColors": ["#123456", ...], "arrowHeads": "Both", "textOutline": { "width": 2, "color": "#FFFFFF" },
-///     "cornerRadius": 12, "hideWhileSnipping": true }.
+///     "cornerRadius": 12, "hideWhileSnipping": true, "adjustBeforeSnipping": false }.
 ///     A missing or broken file gives no settings, so the editor starts with its defaults; a missing or broken
 ///     color gives <see cref="Color.Empty"/>, so that tool keeps its default color. A broken custom color is skipped.
 /// </summary>
@@ -66,7 +66,8 @@ public sealed class JsonFileSnipEditorSettingsStore : ISnipEditorSettingsStore
                 file.CornerRadius,
                 file.HideWhileSnipping ?? true,
                 file.Emoji,
-                file.RecentEmojis is { } recent ? [.. recent.OfType<string>()] : null);
+                file.RecentEmojis is { } recent ? [.. recent.OfType<string>()] : null,
+                file.AdjustBeforeSnipping ?? false);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
@@ -89,7 +90,8 @@ public sealed class JsonFileSnipEditorSettingsStore : ISnipEditorSettingsStore
             settings.CornerRadius,
             settings.HideWhileSnipping,
             settings.Emoji,
-            settings.RecentEmojis is { } recent ? [.. recent] : null);
+            settings.RecentEmojis is { } recent ? [.. recent] : null,
+            settings.AdjustBeforeSnipping);
 
         try
         {
@@ -128,7 +130,8 @@ public sealed class JsonFileSnipEditorSettingsStore : ISnipEditorSettingsStore
         int? CornerRadius = null,
         bool? HideWhileSnipping = null,
         string? Emoji = null,
-        List<string?>? RecentEmojis = null);
+        List<string?>? RecentEmojis = null,
+        bool? AdjustBeforeSnipping = null);
 
     private sealed record ToolFile(
         int Size,

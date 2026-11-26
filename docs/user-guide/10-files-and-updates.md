@@ -13,7 +13,8 @@ Everything below is in the `config` folder next to the exe unless noted.
 | `zones.cfg` | The first time you show the zones, or open it in the config editor | Window zones (see [Window Zones](13-window-zones.md)) |
 | `recording.cfg` | The first time you record the screen, or open the config editor | Screen recording settings (see [recording.cfg](04-snipping.md#recordingcfg)) |
 | `global.vars` | The first time a script uses `global.set` | Values scripts keep between runs |
-| `snipeditor.json` | After the first snip editor setting change | Snip editor tool choices |
+| `snipeditor.json` | After the first snip editor setting change | Snip editor tool choices and options |
+| `snipping.json` | After the first snip | The area snipped last, which a snip starts at with **Adjust the area before snipping** on |
 | `diagrameditor.json` | After diagram editor settings are saved | Diagram editor choices and window size, and whether its panels are shown |
 | `images\` | When you first insert an image in the diagram editor | The images inserted, to insert again from its images panel, and `recent.json`, which were used last. You can add SVG files and folders of your own (see [Diagram Editor](05-diagram-editor.md#working-with-shapes)) |
 | `library\` next to the exe, not in `config` | Comes with the app | The diagram editor's shape libraries: flowchart, network, cloud and UML shapes. An update replaces them, so put images of your own in `config\images` instead |

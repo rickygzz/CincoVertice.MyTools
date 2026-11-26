@@ -167,6 +167,9 @@ public static class UiWinSetupExtensions
         services.AddSingleton<ITextRecognizer, WindowsTextRecognizer>();
         services.AddSingleton<ISnipEditorSettingsStore>(_ =>
             new JsonFileSnipEditorSettingsStore(SnipAndEditAction.SettingsFilePath));
+        // The area snipped last, which an adjusted snip starts at: config\snipping.json
+        services.AddSingleton<ISnipAreaStore>(_ =>
+            new JsonFileSnipAreaStore(Path.Combine(AppContext.BaseDirectory, "config", "snipping.json")));
         services.AddSingleton<SnipEditorWindowService>();
         services.AddSingleton<SnipRegionAction>();
         services.AddSingleton<SnipAndEditAction>();

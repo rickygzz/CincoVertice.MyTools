@@ -15,6 +15,9 @@ namespace CincoVertice.MyTools.Ui.Snipping.Models;
 /// <param name="HideWhileSnipping">True to keep the open editor out of the next snips' screenshots.</param>
 /// <param name="Emoji">The emoji the emoji tool drops; null keeps the default.</param>
 /// <param name="RecentEmojis">The emoji dropped last, most recent first.</param>
+/// <param name="AdjustBeforeSnipping">
+///     True to keep a snip's selection, with handles to adjust it, until Enter; it starts at the area snipped last.
+/// </param>
 public sealed record SnipEditorSettingsModel(
     SnipTool Tool,
     IReadOnlyDictionary<SnipTool, SnipToolSettingsModel> Tools,
@@ -24,4 +27,5 @@ public sealed record SnipEditorSettingsModel(
     int? CornerRadius = null,
     bool HideWhileSnipping = true,
     string? Emoji = null,
-    IReadOnlyList<string>? RecentEmojis = null);
+    IReadOnlyList<string>? RecentEmojis = null,
+    bool AdjustBeforeSnipping = false);

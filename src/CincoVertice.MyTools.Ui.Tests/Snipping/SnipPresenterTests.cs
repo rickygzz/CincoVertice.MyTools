@@ -1,4 +1,5 @@
 ﻿using System.Drawing;
+using CincoVertice.MyTools.Ui.Snipping.Models;
 using CincoVertice.MyTools.Ui.Snipping.Presenters;
 using CincoVertice.MyTools.Ui.Snipping.Views;
 using Xunit;
@@ -227,6 +228,174 @@ public class SnipPresenterTests
         Assert.Equal(0, _view.CloseCount);
     }
 
+    private (FakeSnipView View, SnipPresenter Presenter) Adjustable(Rectangle? lastArea = null)
+    {
+        var view = new FakeSnipView();
+
+        return (view, new SnipPresenter(view, new Size(1000, 500), _time, isAdjustable: true, lastArea));
+    }
+
+    [Fact]
+    public async Task Adjustable_StartsAtTheLastArea_WithHandles_AndEnterTakesIt()
+    {
+        // Arrange
+        (FakeSnipView view, SnipPresenter presenter) = Adjustable(new Rectangle(100, 100, 200, 100));
+
+        // Act
+        Rectangle? shown = view.Selection;
+        view.PressEnter();
+
+        // Assert
+        Assert.Equal(new Rectangle(100, 100, 200, 100), shown);
+        Assert.Equal($"200 × 100   {SnipPresenter.ConfirmHint}", view.SizeText);
+        Assert.Equal(
+            [new(100, 100), new(200, 100), new(300, 100), new(300, 150), new(300, 200), new(200, 200), new(100, 200),
+                new(100, 150)],
+            view.Handles);
+        Assert.Equal(new Rectangle(100, 100, 200, 100), await presenter.Completion);
+        Assert.Equal(1, view.CloseCount);
+    }
+
+    [Theory]
+    [InlineData(900, 400, 300, 300, 900, 400, 100, 100)]
+    [InlineData(-50, -50, 100, 100, 0, 0, 50, 50)]
+    public void Adjustable_LastAreaPartlyOffTheScreen_IsCutToIt(
+        int x, int y, int width, int height, int shownX, int shownY, int shownWidth, int shownHeight)
+    {
+        // Act: e.g. a monitor unplugged since
+        (FakeSnipView view, _) = Adjustable(new Rectangle(x, y, width, height));
+
+        // Assert
+        Assert.Equal(new Rectangle(shownX, shownY, shownWidth, shownHeight), view.Selection);
+    }
+
+    [Fact]
+    public void Adjustable_LastAreaOffTheScreen_OrNotAdjustable_StartsWithNothing()
+    {
+        // Act
+        (FakeSnipView offScreen, _) = Adjustable(new Rectangle(2000, 0, 50, 50));
+        var view = new FakeSnipView();
+        _ = new SnipPresenter(view, new Size(1000, 500), _time, isAdjustable: false, new Rectangle(10, 10, 50, 50));
+
+        // Assert
+        Assert.Null(offScreen.Selection);
+        Assert.Null(view.Selection);
+    }
+
+    [Fact]
+    public async Task Adjustable_ADrag_IsKeptWithHandles_UntilEnter()
+    {
+        // Arrange
+        (FakeSnipView view, SnipPresenter presenter) = Adjustable();
+
+        // Act
+        view.Start(10, 10);
+        view.Move(110, 60);
+        view.End(110, 60);
+        bool wasDone = presenter.Completion.IsCompleted;
+        view.PressEnter();
+
+        // Assert
+        Assert.False(wasDone);
+        Assert.Equal(8, view.Handles.Count);
+        Assert.Equal(new Rectangle(10, 10, 100, 50), await presenter.Completion);
+    }
+
+    [Fact]
+    public void Adjustable_DraggingInside_MovesIt_AndStopsAtTheEdges()
+    {
+        // Arrange
+        (FakeSnipView view, _) = Adjustable(new Rectangle(100, 100, 200, 100));
+
+        // Act
+        view.Start(150, 150);
+        view.Move(170, 160);
+        view.End(170, 160);
+        Rectangle? moved = view.Selection;
+        view.Start(150, 150);
+        view.End(2000, 2000);
+
+        // Assert
+        Assert.Equal(new Rectangle(120, 110, 200, 100), moved);
+        Assert.Equal(new Rectangle(800, 400, 200, 100), view.Selection);
+    }
+
+    [Theory]
+    [InlineData(300, 200, 350, 260, 100, 100, 250, 160)]
+    [InlineData(308, 205, 350, 260, 100, 100, 250, 160)]
+    [InlineData(100, 150, 50, 0, 50, 100, 250, 100)]
+    [InlineData(200, 100, 999, 0, 100, 0, 200, 200)]
+    public void Adjustable_DraggingAHandle_ResizesIt(
+        int fromX, int fromY, int toX, int toY, int x, int y, int width, int height)
+    {
+        // Arrange
+        (FakeSnipView view, _) = Adjustable(new Rectangle(100, 100, 200, 100));
+
+        // Act
+        view.Start(fromX, fromY);
+        view.End(toX, toY);
+
+        // Assert
+        Assert.Equal(new Rectangle(x, y, width, height), view.Selection);
+    }
+
+    [Fact]
+    public void Adjustable_AClickOutside_KeepsTheSelection_AndADragOutside_DrawsAnother()
+    {
+        // Arrange
+        (FakeSnipView view, SnipPresenter presenter) = Adjustable(new Rectangle(100, 100, 200, 100));
+
+        // Act
+        view.Start(600, 400);
+        view.End(600, 400);
+        Rectangle? afterClick = view.Selection;
+        view.Start(500, 300);
+        view.End(700, 450);
+
+        // Assert
+        Assert.Equal(new Rectangle(100, 100, 200, 100), afterClick);
+        Assert.Equal(new Rectangle(500, 300, 200, 150), view.Selection);
+        Assert.False(presenter.Completion.IsCompleted);
+    }
+
+    [Theory]
+    [InlineData(300, 200, SnipCursor.SizeTopLeftBottomRight)]
+    [InlineData(300, 100, SnipCursor.SizeTopRightBottomLeft)]
+    [InlineData(200, 104, SnipCursor.SizeVertical)]
+    [InlineData(96, 150, SnipCursor.SizeHorizontal)]
+    [InlineData(200, 150, SnipCursor.Move)]
+    [InlineData(600, 400, SnipCursor.Cross)]
+    public void Adjustable_ThePointer_SaysWhatADragThereDoes(int x, int y, SnipCursor cursor)
+    {
+        // Arrange
+        (FakeSnipView view, _) = Adjustable(new Rectangle(100, 100, 200, 100));
+
+        // Act
+        view.Hover(600, 400);
+        view.Hover(x, y);
+
+        // Assert
+        Assert.Equal(cursor, view.Cursor);
+    }
+
+    [Fact]
+    public void Enter_WithNothingSelected_OrNotAdjustable_DoesNothing()
+    {
+        // Arrange
+        (FakeSnipView view, SnipPresenter presenter) = Adjustable();
+        _view.Start(10, 10);
+        _view.Move(100, 100);
+
+        // Act
+        view.PressEnter();
+        _view.PressEnter();
+
+        // Assert
+        Assert.False(presenter.Completion.IsCompleted);
+        Assert.False(_presenter.Completion.IsCompleted);
+        Assert.Empty(_view.Handles);
+    }
+
     private sealed class MovableTimeProvider : TimeProvider
     {
         private DateTimeOffset _now = new(2026, 11, 3, 9, 0, 0, TimeSpan.Zero);
@@ -259,6 +428,10 @@ public class SnipPresenterTests
 
         public event EventHandler<Point>? SelectionEnded;
 
+        public event EventHandler<Point>? PointerMoved;
+
+        public event EventHandler? ConfirmRequested;
+
         public event EventHandler? CancelRequested;
 
         public event EventHandler? ViewClosed;
@@ -266,6 +439,16 @@ public class SnipPresenterTests
         public Rectangle? Selection { get; private set; }
 
         public string? SizeText { get; private set; }
+
+        public IReadOnlyList<Point> Handles { get; private set; } = [];
+
+        public SnipCursor Cursor { get; private set; } = SnipCursor.Cross;
+
+        public void Hover(int x, int y) => PointerMoved?.Invoke(this, new Point(x, y));
+
+        public void PressEnter() => ConfirmRequested?.Invoke(this, EventArgs.Empty);
+
+        public void ShowCursor(SnipCursor cursor) => Cursor = cursor;
 
         public int CloseCount { get; private set; }
 
@@ -282,16 +465,18 @@ public class SnipPresenterTests
 
         public void RaiseClosed() => ViewClosed?.Invoke(this, EventArgs.Empty);
 
-        public void ShowSelection(Rectangle selection, string sizeText)
+        public void ShowSelection(Rectangle selection, string sizeText, IReadOnlyList<Point> handles)
         {
             Selection = selection;
             SizeText = sizeText;
+            Handles = handles;
         }
 
         public void ClearSelection()
         {
             Selection = null;
             SizeText = null;
+            Handles = [];
         }
 
         public void Close()

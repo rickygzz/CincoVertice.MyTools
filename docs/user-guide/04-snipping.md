@@ -15,9 +15,9 @@ There are three ways to take a snip, one to record a video, and one to pick a co
 When you press the hotkey, the whole screen (all monitors) freezes and is shown dimmed with a cross-hair cursor.
 
 1. Press the left mouse button and drag. The area you cover appears at normal brightness with a blue border and a label "W × H" showing its size in pixels.
-2. **Release the button.** The snip is taken at once. You cannot move or resize the selection afterwards.
+2. **Release the button.** The snip is taken at once. To move or resize the selection before it's taken, turn on [Adjust the area before snipping](#adjusting-the-area-before-snipping).
 
-To cancel, press **Esc** or click the **right mouse button**. A drag smaller than 2 pixels in either direction selects nothing and the overlay stays. Clicking away so the overlay loses focus also cancels it (not during the first second after it opens). No hint text is shown on the overlay. Pressing the hotkey again while a snip is open is ignored.
+To cancel, press **Esc** or click the **right mouse button**. A drag smaller than 2 pixels in either direction selects nothing and the overlay stays. Clicking away so the overlay loses focus also cancels it (not during the first second after it opens). No hint text is shown on the overlay, unless the area is adjusted before snipping. Pressing the hotkey again while a snip is open is ignored.
 
 The diagram below shows the steps of taking a snip.
 
@@ -32,6 +32,18 @@ flowchart TD
     F -->|"Ctrl+Alt+Shift+S (SnipRegion)"| G["Done"]
     F -->|"Ctrl+Alt+S (SnipAndEdit)"| H["Snip editor opens"]
 ```
+
+### Adjusting the area before snipping
+
+In the snip editor, **Options** > **Adjust the area before snipping** changes how every snip is selected, from any hotkey (also the area of a screen recording):
+
+- The snip starts with **the area you snipped last** already selected, at the same place and size, so the same part of the screen is one key away. The first time, or when that area is no longer on any monitor, you drag one as usual. An area partly off the monitors is cut to what's on them.
+- Letting go of the mouse button **keeps the selection**, with eight square handles on its corners and sides, and the label says `W × H   Enter to snip`.
+- **Drag a handle** to resize the selection, **drag inside it** to move it (it stops at the edges of the screen), or **drag outside it** to draw a new one. The pointer shows which: arrows on a handle, the move arrows inside, the cross-hair elsewhere. A click outside changes nothing.
+- **Enter** takes the snip, and then whatever the hotkey does with it: **Ctrl+Alt+S** opens it in the editor, **Ctrl+Alt+T** reads its text, and so on.
+- **Esc** or a right click cancels, as always.
+
+The area of each snip is remembered, in `config\snipping.json`, whether this option is on or not, so turning it on starts at your last snip. The option itself is kept with the editor's settings, in `config\snipeditor.json`, and applies from the next snip.
 
 ## The Snip editor window
 
@@ -68,6 +80,9 @@ The window is titled "Snip editor". It opens at the snip's size (at most 90% of 
 - **Arrow heads:** "Head at the end", "Head at the start", "Heads at both ends".
 - **Text edge:** an "Edge" color drop-down and an edge width list ("No edge" for 0, otherwise "N px": 0, 1, 2, 3, 4, 5, 6, 8, 10, 12).
 - Buttons for Undo, Redo, Copy, Copy text and Save.
+- **Options**, on the right:
+  - **Leave this window out of new snips** (on at first): the editor stays on the screen while you snip, but isn't in the screenshot. Turn it off to snip the editor itself.
+  - **Adjust the area before snipping** (off at first): a new snip starts at the area snipped last, with handles to move and resize it, and Enter takes it. See [Adjusting the area before snipping](#adjusting-the-area-before-snipping).
 
 Defaults: the Pen is the starting tool unless you used another last time. Pen, Arrow and Rectangle are 4 px, the Highlighter is 16 px, 50% transparent and yellow, and Text is 24 px. Everything else starts red. Arrow heads start at the end, and the text edge starts off with white as the edge color. Each tool remembers its own color, size and transparency between runs.
 
@@ -108,7 +123,7 @@ Choose Select (V), or end a text with Esc.
 
 ## Recording a video
 
-Press **Ctrl+Alt+R** (`RecordScreen`) and drag over the area to record, as for a snip. When you release the button:
+Press **Ctrl+Alt+R** (`RecordScreen`) and drag over the area to record, as for a snip. When you release the button (or press **Enter**, with [Adjust the area before snipping](#adjusting-the-area-before-snipping) on):
 
 - A red frame shows the area, and a small bar below it (or above, when there's no room) counts down, **Starts in 3**, then shows how long it has recorded. Drag the bar by its time to move it. Neither is in the video, and the bar doesn't take the focus from the program you record.
 - **Pause** stops adding to the video, and **Resume** goes on; the time paused isn't in the video.

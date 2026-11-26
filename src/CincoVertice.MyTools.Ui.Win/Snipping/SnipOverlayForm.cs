@@ -2,6 +2,7 @@
 using System.Drawing.Imaging;
 using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.Common.WinApi.Libs.Enums;
+using CincoVertice.MyTools.Ui.Snipping.Models;
 using CincoVertice.MyTools.Ui.Snipping.Views;
 using CincoVertice.MyTools.Ui.Win.Behaviors;
 
@@ -9,7 +10,8 @@ namespace CincoVertice.MyTools.Ui.Win.Snipping;
 
 /// <summary>
 ///     Snip view: covers every monitor with the frozen screenshot, dimmed, and shows the selection undimmed.
-///     <see cref="Ui.Snipping.Presenters.SnipPresenter"/> turns the drag into the selection; the form only shows it.
+///     <see cref="Ui.Snipping.Presenters.SnipPresenter"/> turns the drag into the selection; the form only shows it, with
+///     its handles when it can be adjusted, and says where the pointer is and when Enter is pressed.
 ///     <para>The window must be created per-monitor DPI aware (see SnipRegionAction), so a client pixel is a
 ///     screenshot pixel on every monitor.</para>
 /// </summary>
@@ -17,6 +19,9 @@ public partial class SnipOverlayForm : Form, ISnipView
 {
     private const int LabelPadding = 4;
     private const int LabelMargin = 6;
+
+    // The squares drawn at an adjustable selection's handles, in screen pixels
+    private const int HandleSize = 8;
 
     private static readonly Color _borderColor = Color.FromArgb(0, 120, 215);
 
@@ -27,6 +32,7 @@ public partial class SnipOverlayForm : Form, ISnipView
     private Rectangle? _selection;
     private string _sizeText = string.Empty;
     private Rectangle _labelBounds;
+    private IReadOnlyList<Point> _handles = [];
 
     /// <param name="screenshot">The screenshot to show; the caller keeps and disposes it.</param>
     /// <param name="screenBounds">Where the screenshot was taken, in screen coordinates.</param>
@@ -47,18 +53,23 @@ public partial class SnipOverlayForm : Form, ISnipView
 
     public event EventHandler<Point>? SelectionEnded;
 
+    public event EventHandler<Point>? PointerMoved;
+
+    public event EventHandler? ConfirmRequested;
+
     public event EventHandler? CancelRequested;
 
     public event EventHandler? FocusLost;
 
     public event EventHandler? ViewClosed;
 
-    public void ShowSelection(Rectangle selection, string sizeText)
+    public void ShowSelection(Rectangle selection, string sizeText, IReadOnlyList<Point> handles)
     {
         Rectangle oldArea = PaintedArea();
 
         _selection = selection;
         _sizeText = sizeText;
+        _handles = handles;
         _labelBounds = PlaceLabel(selection, TextRenderer.MeasureText(sizeText, Font));
 
         // Only what changed: repainting every monitor on each mouse move would lag
@@ -70,6 +81,20 @@ public partial class SnipOverlayForm : Form, ISnipView
     {
         Invalidate(PaintedArea());
         _selection = null;
+        _handles = [];
+    }
+
+    public void ShowCursor(SnipCursor cursor)
+    {
+        Cursor = cursor switch
+        {
+            SnipCursor.Move => Cursors.SizeAll,
+            SnipCursor.SizeVertical => Cursors.SizeNS,
+            SnipCursor.SizeHorizontal => Cursors.SizeWE,
+            SnipCursor.SizeTopLeftBottomRight => Cursors.SizeNWSE,
+            SnipCursor.SizeTopRightBottomLeft => Cursors.SizeNESW,
+            _ => Cursors.Cross,
+        };
     }
 
     public void TakeFocus()
@@ -137,7 +162,7 @@ public partial class SnipOverlayForm : Form, ISnipView
         }
 
         Rectangle area = Rectangle.Union(selection, _labelBounds);
-        area.Inflate(2, 2);
+        area.Inflate(2 + HandleSize, 2 + HandleSize);
 
         return area;
     }
@@ -157,6 +182,14 @@ public partial class SnipOverlayForm : Form, ISnipView
 
         graphics.DrawImage(_screenshot, selection, selection, GraphicsUnit.Pixel);
         graphics.DrawRectangle(_borderPen, selection.X, selection.Y, selection.Width - 1, selection.Height - 1);
+
+        foreach (Point handle in _handles)
+        {
+            var square = new Rectangle(handle.X - HandleSize / 2, handle.Y - HandleSize / 2, HandleSize, HandleSize);
+
+            graphics.FillRectangle(Brushes.White, square);
+            graphics.DrawRectangle(_borderPen, square.X, square.Y, square.Width - 1, square.Height - 1);
+        }
 
         using var labelPath = new GraphicsPath();
         using var labelBrush = new SolidBrush(Color.FromArgb(220, 32, 32, 32));
@@ -191,6 +224,10 @@ public partial class SnipOverlayForm : Form, ISnipView
         {
             SelectionMoved?.Invoke(this, e.Location);
         }
+        else if (e.Button == MouseButtons.None)
+        {
+            PointerMoved?.Invoke(this, e.Location);
+        }
     }
 
     private void SnipOverlayForm_MouseUp(object? sender, MouseEventArgs e)
@@ -206,6 +243,10 @@ public partial class SnipOverlayForm : Form, ISnipView
         if (e.KeyCode == Keys.Escape)
         {
             CancelRequested?.Invoke(this, EventArgs.Empty);
+        }
+        else if (e.KeyCode == Keys.Enter)
+        {
+            ConfirmRequested?.Invoke(this, EventArgs.Empty);
         }
     }
 

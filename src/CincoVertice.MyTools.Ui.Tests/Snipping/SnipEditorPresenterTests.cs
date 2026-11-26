@@ -3534,6 +3534,41 @@ public class SnipEditorPresenterTests
     }
 
     [Fact]
+    public void AdjustBeforeSnipping_IsOffAtFirst_AndShownAndSavedWhenChosen()
+    {
+        // Arrange
+        bool? atFirst = _view.AdjustsBeforeSnipping;
+
+        // Act
+        _view.SelectAdjustBeforeSnipping(true);
+
+        // Assert
+        Assert.False(atFirst);
+        Assert.True(_view.AdjustsBeforeSnipping);
+        Assert.True(_store.Saved[^1].AdjustBeforeSnipping);
+    }
+
+    [Fact]
+    public void AdjustBeforeSnipping_TurnedOnBefore_StaysOn_AndIsKeptWhenOtherSettingsAreSaved()
+    {
+        // Arrange
+        var view = new FakeSnipEditorView();
+        var store = new FakeSettingsStore(new SnipEditorSettingsModel(
+            SnipTool.Pen,
+            new Dictionary<SnipTool, SnipToolSettingsModel>(),
+            [],
+            AdjustBeforeSnipping: true));
+        new SnipEditorPresenter(view, _time, store, _recognizer).Start();
+
+        // Act
+        view.SelectTool(SnipTool.Arrow);
+
+        // Assert
+        Assert.True(view.AdjustsBeforeSnipping);
+        Assert.True(store.Saved[^1].AdjustBeforeSnipping);
+    }
+
+    [Fact]
     public void HideWhileSnipping_IsKeptWhenOtherSettingsAreSaved()
     {
         // Arrange
@@ -4112,6 +4147,8 @@ public class SnipEditorPresenterTests
 
         public event EventHandler<bool>? HideWhileSnippingSelected;
 
+        public event EventHandler<bool>? AdjustBeforeSnippingSelected;
+
         public event EventHandler<int>? ZoomRequested;
 
         /// <summary>How large every snip is, before any crop.</summary>
@@ -4152,6 +4189,12 @@ public class SnipEditorPresenterTests
         public void SelectHideWhileSnipping(bool isHidden) => HideWhileSnippingSelected?.Invoke(this, isHidden);
 
         public void ShowHideWhileSnipping(bool isHidden) => HidesWhileSnipping = isHidden;
+
+        public bool? AdjustsBeforeSnipping { get; private set; }
+
+        public void SelectAdjustBeforeSnipping(bool isAdjusted) => AdjustBeforeSnippingSelected?.Invoke(this, isAdjusted);
+
+        public void ShowAdjustBeforeSnipping(bool isAdjusted) => AdjustsBeforeSnipping = isAdjusted;
 
         /// <summary>What AskDiscardSnips answers.</summary>
         public bool DiscardAnswer { get; set; }

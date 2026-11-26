@@ -94,6 +94,7 @@ partial class SnipEditorForm
         ZoomLabel = new ToolStripLabel();
         OptionsDropDownButton = new ToolStripDropDownButton();
         HideWhileSnippingMenuItem = new ToolStripMenuItem();
+        AdjustBeforeSnippingMenuItem = new ToolStripMenuItem();
         SelectionMenu = new ContextMenuStrip();
         NoticeToolTip = new ToolTip();
         ResetMenuItem = new ToolStripMenuItem();
@@ -463,7 +464,7 @@ partial class SnipEditorForm
         // OptionsDropDownButton
         //
         OptionsDropDownButton.Alignment = ToolStripItemAlignment.Right;
-        OptionsDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { HideWhileSnippingMenuItem });
+        OptionsDropDownButton.DropDownItems.AddRange(new ToolStripItem[] { HideWhileSnippingMenuItem, AdjustBeforeSnippingMenuItem });
         OptionsDropDownButton.Name = "OptionsDropDownButton";
         OptionsDropDownButton.Text = "Options";
         //
@@ -473,6 +474,13 @@ partial class SnipEditorForm
         HideWhileSnippingMenuItem.Text = "Leave this window out of new snips";
         HideWhileSnippingMenuItem.ToolTipText = "It stays on the screen, but isn't in the screenshot. Turn it off to snip the editor itself";
         HideWhileSnippingMenuItem.Click += HideWhileSnippingMenuItem_Click;
+        //
+        // AdjustBeforeSnippingMenuItem
+        //
+        AdjustBeforeSnippingMenuItem.Name = "AdjustBeforeSnippingMenuItem";
+        AdjustBeforeSnippingMenuItem.Text = "Adjust the area before snipping";
+        AdjustBeforeSnippingMenuItem.ToolTipText = "A new snip starts at the area snipped last, with handles to move or resize it; Enter takes it";
+        AdjustBeforeSnippingMenuItem.Click += AdjustBeforeSnippingMenuItem_Click;
         //
         // SelectionMenu
         //
@@ -636,6 +644,7 @@ partial class SnipEditorForm
     private ToolStripLabel ZoomLabel;
     private ToolStripDropDownButton OptionsDropDownButton;
     private ToolStripMenuItem HideWhileSnippingMenuItem;
+    private ToolStripMenuItem AdjustBeforeSnippingMenuItem;
     private ContextMenuStrip SelectionMenu;
     private ToolTip NoticeToolTip;
     private ToolStripMenuItem ResetMenuItem;

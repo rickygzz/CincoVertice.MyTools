@@ -107,6 +107,9 @@ public interface ISnipEditorView
     /// <summary>Raised with true when the user wants the window kept out of the next snips' screenshots.</summary>
     event EventHandler<bool>? HideWhileSnippingSelected;
 
+    /// <summary>Raised with true when the user wants to adjust the next snips' area before taking them.</summary>
+    event EventHandler<bool>? AdjustBeforeSnippingSelected;
+
     /// <summary>Raised when the user closes the window; cancel to keep it open.</summary>
     event EventHandler<CancelEventArgs>? CloseRequested;
 
@@ -216,6 +219,9 @@ public interface ISnipEditorView
 
     /// <summary>Shows whether the window is kept out of the next snips' screenshots.</summary>
     void ShowHideWhileSnipping(bool isHidden);
+
+    /// <summary>Shows whether the next snips' area is adjusted before they're taken.</summary>
+    void ShowAdjustBeforeSnipping(bool isAdjusted);
 
     /// <summary>Lets the user type a text at the location; ends with <see cref="TextCommitted"/>.</summary>
     /// <param name="location">Where it goes.</param>

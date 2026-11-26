@@ -109,6 +109,7 @@ public sealed class SnipEditorPresenter
 
     // A snip is mostly of something else; the editor in it would be in the way
     private bool _hideWhileSnipping = true;
+    private bool _adjustBeforeSnipping;
 
     // How large the snip is shown, in percent
     private int _zoomPercent = 100;
@@ -205,6 +206,7 @@ public sealed class SnipEditorPresenter
         _view.SaveRequested += OnSaveRequested;
         _view.CloseRequested += OnCloseRequested;
         _view.HideWhileSnippingSelected += OnHideWhileSnippingSelected;
+        _view.AdjustBeforeSnippingSelected += OnAdjustBeforeSnippingSelected;
         _view.ZoomRequested += OnZoomRequested;
         _view.CropApplyRequested += OnCropApplyRequested;
         _view.CropCancelRequested += OnCropCancelRequested;
@@ -245,6 +247,7 @@ public sealed class SnipEditorPresenter
     {
         _view.ShowPalette(Palette, [.. _customColors]);
         _view.ShowHideWhileSnipping(_hideWhileSnipping);
+        _view.ShowAdjustBeforeSnipping(_adjustBeforeSnipping);
         _view.ShowZoom(_zoomPercent);
         ShowTool();
         ShowPage(0);
@@ -281,6 +284,7 @@ public sealed class SnipEditorPresenter
         }
 
         _hideWhileSnipping = saved.HideWhileSnipping;
+        _adjustBeforeSnipping = saved.AdjustBeforeSnipping;
 
         if (saved.CornerRadius is int radius && CornerRadii.Contains(radius))
         {
@@ -336,7 +340,8 @@ public sealed class SnipEditorPresenter
             _cornerRadius,
             _hideWhileSnipping,
             _emoji,
-            [.. _recentEmojis]));
+            [.. _recentEmojis],
+            _adjustBeforeSnipping));
     }
 
     /// <summary>
@@ -1652,6 +1657,14 @@ public sealed class SnipEditorPresenter
     {
         _hideWhileSnipping = isHidden;
         _view.ShowHideWhileSnipping(isHidden);
+        SaveSettings();
+    }
+
+    /// <summary>Saved at once too: the next snip reads it, from any hotkey.</summary>
+    private void OnAdjustBeforeSnippingSelected(object? sender, bool isAdjusted)
+    {
+        _adjustBeforeSnipping = isAdjusted;
+        _view.ShowAdjustBeforeSnipping(isAdjusted);
         SaveSettings();
     }
 

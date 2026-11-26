@@ -1,4 +1,5 @@
 ﻿using System.Drawing;
+using CincoVertice.MyTools.Ui.Snipping.Models;
 
 namespace CincoVertice.MyTools.Ui.Snipping.Views;
 
@@ -17,6 +18,12 @@ public interface ISnipView
     /// <summary>Raised when the user stops dragging (left button up).</summary>
     event EventHandler<Point>? SelectionEnded;
 
+    /// <summary>Raised when the pointer moves with no button down, for the pointer to show.</summary>
+    event EventHandler<Point>? PointerMoved;
+
+    /// <summary>Raised when the user takes the selection as it is (Enter).</summary>
+    event EventHandler? ConfirmRequested;
+
     /// <summary>Raised when the user gives up, e.g. Esc or a right click.</summary>
     event EventHandler? CancelRequested;
 
@@ -27,10 +34,14 @@ public interface ISnipView
     event EventHandler? ViewClosed;
 
     /// <summary>Shows the selected area undimmed, with its size next to it.</summary>
-    void ShowSelection(Rectangle selection, string sizeText);
+    /// <param name="handles">The points to drag to change its size, drawn as small squares; none while only dragged.</param>
+    void ShowSelection(Rectangle selection, string sizeText, IReadOnlyList<Point> handles);
 
     /// <summary>Removes the selection, so the whole screenshot is dimmed again.</summary>
     void ClearSelection();
+
+    /// <summary>The pointer over the screenshot.</summary>
+    void ShowCursor(SnipCursor cursor);
 
     /// <summary>Takes the focus back.</summary>
     void TakeFocus();

@@ -159,6 +159,8 @@ public partial class SnipEditorForm : Form, ISnipEditorView
 
     public event EventHandler<bool>? HideWhileSnippingSelected;
 
+    public event EventHandler<bool>? AdjustBeforeSnippingSelected;
+
     public event EventHandler<int>? ZoomRequested;
 
     public event EventHandler? CropApplyRequested;
@@ -443,6 +445,11 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     public void ShowHideWhileSnipping(bool isHidden)
     {
         HideWhileSnippingMenuItem.Checked = isHidden;
+    }
+
+    public void ShowAdjustBeforeSnipping(bool isAdjusted)
+    {
+        AdjustBeforeSnippingMenuItem.Checked = isAdjusted;
     }
 
     public void ShowZoom(int percent)
@@ -956,6 +963,11 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     private void HideWhileSnippingMenuItem_Click(object? sender, EventArgs e)
     {
         HideWhileSnippingSelected?.Invoke(this, !HideWhileSnippingMenuItem.Checked);
+    }
+
+    private void AdjustBeforeSnippingMenuItem_Click(object? sender, EventArgs e)
+    {
+        AdjustBeforeSnippingSelected?.Invoke(this, !AdjustBeforeSnippingMenuItem.Checked);
     }
 
     private void ResetMenuItem_Click(object? sender, EventArgs e)

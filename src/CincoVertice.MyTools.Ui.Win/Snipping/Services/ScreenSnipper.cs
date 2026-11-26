@@ -1,5 +1,6 @@
 ﻿using System.Drawing.Imaging;
 using CincoVertice.Common.WinApi.Helpers;
+using CincoVertice.MyTools.Ui.Snipping.Interfaces;
 using CincoVertice.MyTools.Ui.Snipping.Presenters;
 
 namespace CincoVertice.MyTools.Ui.Win.Snipping.Services;
@@ -10,7 +11,18 @@ namespace CincoVertice.MyTools.Ui.Win.Snipping.Services;
 /// </summary>
 public sealed class ScreenSnipper
 {
+    private readonly ISnipEditorSettingsStore _settings;
+    private readonly ISnipAreaStore _lastArea;
+
     private bool _isSnipping;
+
+    /// <param name="settings">Whether to adjust the area before snipping, which the snip editor's Options set.</param>
+    /// <param name="lastArea">The area snipped last, which an adjusted snip starts at.</param>
+    public ScreenSnipper(ISnipEditorSettingsStore settings, ISnipAreaStore lastArea)
+    {
+        _settings = settings;
+        _lastArea = lastArea;
+    }
 
     /// <returns>
     ///     The part of the screen the user selected, which the caller disposes; null when the snip was cancelled or
@@ -60,7 +72,7 @@ public sealed class ScreenSnipper
         }
     }
 
-    private static async Task<Bitmap?> SnipOnceAsync()
+    private async Task<Bitmap?> SnipOnceAsync()
     {
         (Bitmap screenshot, _, Rectangle? selection) = await SelectOnceAsync();
 
@@ -75,7 +87,7 @@ public sealed class ScreenSnipper
     ///     The frozen screen, which the caller disposes; where it is on the screen; and the part the user selected, in
     ///     the screenshot's pixels, or null when cancelled.
     /// </returns>
-    private static async Task<(Bitmap Screenshot, Rectangle Bounds, Rectangle? Selection)> SelectOnceAsync()
+    private async Task<(Bitmap Screenshot, Rectangle Bounds, Rectangle? Selection)> SelectOnceAsync()
     {
         Rectangle bounds;
         Bitmap screenshot;
@@ -91,17 +103,33 @@ public sealed class ScreenSnipper
         SnipOverlayForm overlay;
         SnipPresenter presenter;
 
+        // Read at each snip, as the editor's Options may have changed it since; the area is kept in screen pixels
+        bool isAdjustable = _settings.Load()?.AdjustBeforeSnipping == true;
+        Rectangle? lastArea = isAdjustable && _lastArea.Load() is Rectangle area
+            ? area with { X = area.X - bounds.X, Y = area.Y - bounds.Y }
+            : null;
+
         // The overlay keeps the DPI awareness it's created with, so its pixels are the screenshot's pixels
         using (DpiAwarenessScope.PerMonitorV2())
         {
             overlay = new SnipOverlayForm(screenshot, bounds);
-            presenter = new SnipPresenter(overlay, screenshot.Size, TimeProvider.System);
+            presenter = new SnipPresenter(overlay, screenshot.Size, TimeProvider.System, isAdjustable, lastArea);
             overlay.Show();
         }
 
+        Rectangle? selection;
+
         using (overlay)
         {
-            return (screenshot, bounds, await presenter.Completion);
+            selection = await presenter.Completion;
         }
+
+        // Remembered however it was taken, so turning the option on starts at the last snip
+        if (selection is Rectangle snipped)
+        {
+            _lastArea.Save(snipped with { X = snipped.X + bounds.X, Y = snipped.Y + bounds.Y });
+        }
+
+        return (screenshot, bounds, selection);
     }
 }

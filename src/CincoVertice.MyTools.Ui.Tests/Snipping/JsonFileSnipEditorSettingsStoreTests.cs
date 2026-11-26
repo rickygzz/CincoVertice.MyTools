@@ -135,6 +135,25 @@ public sealed class JsonFileSnipEditorSettingsStoreTests : IDisposable
 
         // On, as for anyone who never chose
         Assert.True(_store.Load()!.HideWhileSnipping);
+
+        // Off: a snip is taken when let go, as it always was
+        Assert.False(_store.Load()!.AdjustBeforeSnipping);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SaveThenLoad_KeepsAdjustBeforeSnipping(bool isAdjusted)
+    {
+        // Act
+        _store.Save(new SnipEditorSettingsModel(
+            SnipTool.Pen,
+            new Dictionary<SnipTool, SnipToolSettingsModel>(),
+            [],
+            AdjustBeforeSnipping: isAdjusted));
+
+        // Assert
+        Assert.Equal(isAdjusted, _store.Load()!.AdjustBeforeSnipping);
     }
 
     [Fact]

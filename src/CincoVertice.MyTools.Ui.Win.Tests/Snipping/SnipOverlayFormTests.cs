@@ -1,6 +1,8 @@
 ﻿using System.Drawing;
 using System.Reflection;
 using System.Windows.Forms;
+using CincoVertice.Common.WinApi.Libs;
+using CincoVertice.Common.WinApi.Libs.Enums;
 using CincoVertice.MyTools.Ui.Snipping.Presenters;
 using CincoVertice.MyTools.Ui.Win.Snipping;
 using Xunit;
@@ -82,6 +84,38 @@ public class SnipOverlayFormTests
         // Assert: reaching here is the point
         Assert.True(overlay.IsDisposed);
     }
+
+    [Fact]
+    public async Task Adjustable_AHandleShowsItsPointer_DraggingItResizes_AndEnterSnips()
+    {
+        // Arrange: the area snipped last, from (10, 10) to (60, 40)
+        using var screenshot = new Bitmap(100, 100);
+        using SnipOverlayForm overlay = ShowOverlay(screenshot);
+        var presenter = new SnipPresenter(
+            overlay,
+            screenshot.Size,
+            TimeProvider.System,
+            isAdjustable: true,
+            new Rectangle(10, 10, 50, 30));
+
+        // Act: the bottom right handle, as the mouse and keyboard tell the form
+        Send(overlay, WM.WM_MOUSEMOVE, 0, 60, 40);
+        Cursor overHandle = overlay.Cursor;
+        Send(overlay, WM.WM_LBUTTONDOWN, 1, 60, 40);
+        Send(overlay, WM.WM_MOUSEMOVE, 1, 80, 70);
+        Send(overlay, WM.WM_LBUTTONUP, 0, 80, 70);
+        bool snippedWhenLetGo = presenter.Completion.IsCompleted;
+        Send(overlay, WM.WM_KEYDOWN, (int)Keys.Enter, 0, 0);
+        Pump();
+
+        // Assert
+        Assert.Equal(Cursors.SizeNWSE, overHandle);
+        Assert.False(snippedWhenLetGo);
+        Assert.Equal(new Rectangle(10, 10, 70, 60), await presenter.Completion);
+    }
+
+    private static void Send(SnipOverlayForm overlay, WM message, int wParam, int x, int y) =>
+        User32.SendMessage(overlay.Handle, (uint)message, wParam, (y << 16) | x);
 
     /// <summary>Every reading is much later than the last, so the grace period is over at once.</summary>
     private sealed class LaterTimeProvider : TimeProvider
