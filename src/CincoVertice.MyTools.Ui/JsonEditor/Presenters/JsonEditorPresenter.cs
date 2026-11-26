@@ -943,6 +943,13 @@ public sealed class JsonEditorPresenter
         string query = _view.SearchText;
         string text = query[..Math.Min(suggestion.Start, query.Length)] + suggestion.Insert;
         _view.SetSearchText(text);
+
+        // A text chosen is what's looked for: offering the longer ones that hold it would keep Enter choosing, since
+        // it chooses while the list shows, and it would never go to the matches
+        if (_view.SearchMode == JsonSearchMode.Text)
+        {
+            _view.ShowSuggestions([]);
+        }
     }
 
     private static string Where(DiffPosition at) => $"line {at.Line + 1}, character {at.Column + 1}";

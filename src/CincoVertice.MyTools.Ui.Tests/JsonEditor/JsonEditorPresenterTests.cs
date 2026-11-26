@@ -218,6 +218,27 @@ public class JsonEditorPresenterTests
     }
 
     [Fact]
+    public void TextSuggestion_Chosen_IsSearched_AndNothingMoreIsOffered()
+    {
+        // Arrange
+        _view.Edit(lines =>
+        {
+            lines.Clear();
+            lines.Add("{\"people\":[{\"name\":\"Ann\"},{\"name\":\"Anna\"}]}");
+        });
+
+        // Act
+        _view.Search(JsonSearchMode.Text, "An");
+        JsonSuggestionModel ann = Assert.Single(_view.Suggestions, suggestion => suggestion.Text == "Ann");
+        _view.RaiseSuggestionChosen(ann);
+
+        // Assert
+        Assert.Equal("Ann", _view.SearchText);
+        Assert.Empty(_view.Suggestions);
+        Assert.Equal("2 matches", _view.SearchMessage);
+    }
+
+    [Fact]
     public void Format_LaysTheJsonOut_AsAnEdit_AndMinifyPutsItOnOneLine()
     {
         // Act

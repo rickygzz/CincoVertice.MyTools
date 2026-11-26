@@ -822,7 +822,7 @@ public partial class JsonEditorForm : Form, IJsonEditorView
             case Keys.Tab when listed && !e.Shift:
                 Choose(SuggestionsList.SelectedIndex);
                 break;
-            case Keys.Enter when listed && SearchMode == JsonSearchMode.JmesPath:
+            case Keys.Enter when listed:
                 Choose(SuggestionsList.SelectedIndex);
                 break;
             case Keys.Enter:

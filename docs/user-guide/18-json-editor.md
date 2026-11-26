@@ -47,10 +47,10 @@ To copy several at once, select them, for example a few lines, and right-click i
 
 Choose **Text** or **JMESPath** beside the search box, or press **Ctrl+F** for text and **Ctrl+J** for JMESPath.
 
-- **Text** finds each place the text is, ignoring case. As you type, the list under the box offers the names and values in the document that hold it.
+- **Text** finds each place the text is, ignoring case. As you type, the list under the box offers the names and values in the document that hold it: **Up** and **Down** go through it, **Tab** or **Enter** searches for the one chosen, **Esc** closes it.
 - **JMESPath** runs the expression on the document. The values it gives are marked where they are in the text, even those a projection gathers from many places, and the result, as JSON, shows under the text. An expression that can't run says why, and at which column: `Write == to compare (column 14)`.
 
-**Enter** or **F3** goes to the next match, **Shift+Enter** or **Shift+F3** to the one before; the box says which: `2 of 5`.
+**Enter** (while no suggestions show) or **F3** goes to the next match, **Shift+Enter** or **Shift+F3** to the one before; the box says which: `2 of 5`.
 
 Right-click a JMESPath result for **Copy as JSON**, or **Copy as lines**: an array's values one per line, strings without quotes, ready for a spreadsheet or a list.
 
