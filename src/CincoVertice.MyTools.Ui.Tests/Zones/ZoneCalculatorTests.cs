@@ -225,4 +225,26 @@ public class ZoneCalculatorTests
         // Assert
         Assert.Equal(new Rectangle(2000, 100, 500, 300), moved);
     }
+
+    [Theory]
+    [InlineData(100, 100, 520, 400)] // the right edge
+    [InlineData(100, 100, 500, 450)] // the bottom edge
+    [InlineData(80, 100, 520, 400)] // the left edge
+    [InlineData(60, 70, 540, 430)] // the top left corner
+    public void IsResize_AnEdgeOrACornerDragged_IsOne(int left, int top, int width, int height)
+    {
+        // Act / Assert: from 100, 100, 500 by 400
+        Assert.True(ZoneCalculator.IsResize(new Rectangle(100, 100, 500, 400), new Rectangle(left, top, width, height)));
+    }
+
+    [Theory]
+    [InlineData(300, 100, 500, 400)] // moved, as large
+    [InlineData(1150, 120, 750, 600)] // moved to a monitor at 150%, and sized for it
+    [InlineData(400, -8, 800, 600)] // a maximized window given back its own size
+    public void IsResize_AMove_IsNone_EvenWhenTheSizeChanges(int left, int top, int width, int height)
+    {
+        // Act / Assert: from a window at 100, 100, or one maximized at -8, -8
+        Rectangle before = top == -8 ? new Rectangle(-8, -8, 1936, 1056) : new Rectangle(100, 100, 500, 400);
+        Assert.False(ZoneCalculator.IsResize(before, new Rectangle(left, top, width, height)));
+    }
 }

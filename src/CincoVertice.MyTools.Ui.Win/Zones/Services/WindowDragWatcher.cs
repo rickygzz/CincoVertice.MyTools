@@ -5,6 +5,7 @@ using CincoVertice.Common.WinApi.Libs.Enums;
 using CincoVertice.Common.WinApi.Libs.Structs;
 using CincoVertice.MyTools.Ui.Zones.Interfaces;
 using CincoVertice.MyTools.Ui.Zones.Models;
+using CincoVertice.MyTools.Ui.Zones.Services;
 
 namespace CincoVertice.MyTools.Ui.Win.Zones.Services;
 
@@ -12,8 +13,9 @@ namespace CincoVertice.MyTools.Ui.Win.Zones.Services;
 ///     Tells when the user drags a window of another program, from Windows' window events, and while they do, where
 ///     the mouse is and whether Shift, the right mouse button and Esc are down, a few times a second. Start it on the UI
 ///     thread: the events come through its message loop.
-///     A drag is a resize once the window's size has changed twice: moving a maximized or snapped window changes it
-///     once, when Windows gives it back its own size, and a resize changes it with every move of the mouse.
+///     A drag is a resize once the window has changed twice as a resize does (<see cref="ZoneCalculator.IsResize"/>):
+///     an edge of it staying on each axis. Not by its size alone: a move changes it too, when Windows gives a maximized
+///     or snapped window back its own size, or when a program sizes its window for another monitor's scaling.
 /// </summary>
 public sealed class WindowDragWatcher : IWindowDragSource, IDisposable
 {
@@ -28,10 +30,11 @@ public sealed class WindowDragWatcher : IWindowDragSource, IDisposable
     private InputHook? _input;
     private bool _isEscapePressed;
 
-    // The window being dragged, 0 for none, its size at the last tick, and how many times that size changed
+    // The window being dragged, 0 for none, where it was at the last tick, and how many times it changed as a resize
+    // does
     private nint _window;
-    private Size _lastSize;
-    private int _sizeChanges;
+    private Rectangle _lastBounds;
+    private int _resizeSteps;
 
     public WindowDragWatcher()
     {
@@ -69,10 +72,10 @@ public sealed class WindowDragWatcher : IWindowDragSource, IDisposable
             // In the same pixels as on each tick
             using (DpiAwarenessScope.PerMonitorV2())
             {
-                _lastSize = SizeOf(window);
+                _lastBounds = BoundsOf(window);
             }
 
-            _sizeChanges = 0;
+            _resizeSteps = 0;
             _isEscapePressed = false;
             _input?.Dispose();
             _input = null;
@@ -127,29 +130,30 @@ public sealed class WindowDragWatcher : IWindowDragSource, IDisposable
             User32.GetCursorPos(out POINT point);
             cursor = new Point(point.X, point.Y);
 
-            Size size = SizeOf(_window);
+            Rectangle bounds = BoundsOf(_window);
 
-            if (size != _lastSize)
+            if (ZoneCalculator.IsResize(_lastBounds, bounds))
             {
-                _sizeChanges++;
-                _lastSize = size;
+                _resizeSteps++;
             }
+
+            _lastBounds = bounds;
         }
 
         return new ZoneDragPointerModel(
             cursor,
             IsDown(KeyCode.VK_SHIFT),
-            IsResizing: _sizeChanges >= 2,
+            IsResizing: _resizeSteps >= 2,
             IsRightButtonDown: IsDown(KeyCode.VK_RBUTTON),
             IsEscapeDown: _isEscapePressed || IsDown(KeyCode.VK_ESCAPE));
     }
 
     private static bool IsDown(KeyCode key) => (User32.GetAsyncKeyState(key) & KeyDown) != 0;
 
-    private static Size SizeOf(nint window)
+    private static Rectangle BoundsOf(nint window)
     {
         User32.GetWindowRect(window, out RECT rect);
 
-        return new Size(rect.Right - rect.Left, rect.Bottom - rect.Top);
+        return Rectangle.FromLTRB(rect.Left, rect.Top, rect.Right, rect.Bottom);
     }
 }

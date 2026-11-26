@@ -142,6 +142,19 @@ public static class ZoneCalculator
             : Enumerable.Range(0, count);
 
     /// <summary>
+    ///     Whether a window that changed from one place to the other was resized by an edge or a corner: its size
+    ///     changed, and on each axis one of its edges stayed, the one opposite to the edge dragged. A move changes
+    ///     every edge, even when the size changes with it: a program sizing its window for another monitor's scaling,
+    ///     or a maximized window given back its own size.
+    /// </summary>
+    /// <param name="before">The window as it was, in screen pixels.</param>
+    /// <param name="after">The window as it is now.</param>
+    public static bool IsResize(Rectangle before, Rectangle after) =>
+        before.Size != after.Size
+        && (before.Left == after.Left || before.Right == after.Right)
+        && (before.Top == after.Top || before.Bottom == after.Bottom);
+
+    /// <summary>
     ///     Where a window goes on another monitor: as large, but no larger than its work area, and at the same place in
     ///     it, so a window at the right edge stays at the right edge, and one in the middle in the middle.
     /// </summary>
