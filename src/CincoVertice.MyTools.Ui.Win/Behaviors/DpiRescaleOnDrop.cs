@@ -9,10 +9,10 @@ namespace CincoVertice.MyTools.Ui.Win.Behaviors;
 /// <summary>
 ///     Rescales a form for another monitor's scaling once, when the user lets go of it, not while they drag it across.
 ///     WinForms rescales a whole form each time it crosses between monitors with other scaling, a quarter of a second
-///     for a large one, and the window grows or shrinks under the mouse, which can put it back on the other monitor
-///     and start again: a drag would stutter at every crossing. While the form is moved, it keeps its size and its
-///     controls theirs, and the DPI messages Windows sends its child controls wait too; at the drop, the change is
-///     played again, as Windows sends it, as if the form had just crossed.
+///     for a large one: a drag would stutter at every crossing. While the form is moved, its controls keep their
+///     scale (Windows still resizes the window, to the size <see cref="TryScaledSize"/> gives), and the DPI messages
+///     Windows sends its child controls wait too; at the drop, the change is played again, as Windows sends it, as if
+///     the form had just crossed where it is.
 /// </summary>
 public sealed class DpiRescaleOnDrop : NativeWindow
 {
@@ -178,9 +178,10 @@ public sealed class DpiRescaleOnDrop : NativeWindow
 
     /// <summary>
     ///     The crossing again, as Windows sends it: back to the DPI the controls are at, which changes nothing; then
-    ///     to every child, from the bottom up, that its form's DPI changes; to the form, the monitor's DPI, at the size
-    ///     it asks for, around the window's middle, so it stays on the monitor it was dropped on; and to every
-    ///     child, from the top down, that it did.
+    ///     to every child, from the bottom up, that its form's DPI changes; to the form, the monitor's DPI, where it
+    ///     is and as large; and to every child, from the top down, that it did. Not resized: a drag resizes the window
+    ///     itself at each crossing, to the size <see cref="TryScaledSize"/> gave, so it already is as large as it
+    ///     should be; resized again, it grew or shrank twice.
     /// </summary>
     private void Replay(int from, int to)
     {
@@ -205,20 +206,7 @@ public sealed class DpiRescaleOnDrop : NativeWindow
             User32.SendMessage(children[i], WM_DPICHANGED_BEFOREPARENT, 0, 0);
         }
 
-        Size size = ScaledSize(window, to, bounds.Size, (float)to / from);
-        Rectangle target = _form.WindowState == FormWindowState.Normal
-            ? new Rectangle(
-                bounds.Left + (bounds.Width - size.Width) / 2,
-                bounds.Top + (bounds.Height - size.Height) / 2,
-                size.Width,
-                size.Height)
-            : bounds;
-
-        // Its title bar where it can be grabbed again
-        Rectangle area = Screen.FromRectangle(bounds).WorkingArea;
-        target.Y = Math.Max(target.Y, area.Top);
-
-        SendDpiChanged(window, to, target);
+        SendDpiChanged(window, to, bounds);
         _scaledDpi = to;
 
         foreach (nint child in children)
@@ -244,33 +232,6 @@ public sealed class DpiRescaleOnDrop : NativeWindow
         {
             Marshal.FreeHGlobal(rect);
         }
-    }
-
-    // What the window answers Windows for the new DPI, as TryScaledSize does; the size scaled when nothing does
-    private static Size ScaledSize(nint window, int dpi, Size size, float factor)
-    {
-        nint answer = Marshal.AllocHGlobal(Marshal.SizeOf<WindowSize>());
-
-        try
-        {
-            Marshal.StructureToPtr(new WindowSize { Width = size.Width, Height = size.Height }, answer, false);
-
-            if (User32.SendMessage(window, WM_GETDPISCALEDSIZE, dpi, answer) != 0)
-            {
-                WindowSize asked = Marshal.PtrToStructure<WindowSize>(answer);
-
-                if (asked.Width > 0 && asked.Height > 0)
-                {
-                    return new Size(asked.Width, asked.Height);
-                }
-            }
-        }
-        finally
-        {
-            Marshal.FreeHGlobal(answer);
-        }
-
-        return new Size((int)Math.Round(size.Width * factor), (int)Math.Round(size.Height * factor));
     }
 
     /// <summary>Keeps a child control's DPI messages from it while its form is moved; the drop sends them again.</summary>

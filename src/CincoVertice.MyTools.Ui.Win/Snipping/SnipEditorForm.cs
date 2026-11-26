@@ -84,7 +84,7 @@ public partial class SnipEditorForm : Form, ISnipEditorView
         _snips.Add(snip);
         SizeCanvas();
 
-        DpiFollower.Attach(this, MakeIcons);
+        DpiFollower.Attach(this, FollowDpi);
 
         // The palette and More colors only, without the menu's empty image column
         ((ToolStripDropDownMenu)ColorDropDownButton.DropDown).ShowImageMargin = false;
@@ -634,11 +634,16 @@ public partial class SnipEditorForm : Form, ISnipEditorView
     }
 
     /// <summary>
-    ///     The toolbar's icons, 16 pixels at 100% scaling, drawn at the monitor's size rather than stretched, so they
-    ///     stay sharp; made again on a monitor with other scaling, with the swatches and the emoji shown.
+    ///     What follows the monitor's scaling, again on a monitor with other scaling: the toolbar's icons, 16 pixels at
+    ///     100% scaling, drawn at the monitor's size rather than stretched, so they stay sharp, with the swatches and
+    ///     the emoji shown. And the canvas, sized from the snip again: WinForms rescales it as any control, but it is
+    ///     the snip's pixels at the zoom, on any monitor.
     /// </summary>
-    private void MakeIcons(int dpi)
+    private void FollowDpi(int dpi)
     {
+        SizeCanvas();
+        Canvas.Invalidate();
+
         _iconSize = DpiFollower.Scaled(16, dpi);
         Tools.ImageScalingSize = new Size(_iconSize, _iconSize);
 
