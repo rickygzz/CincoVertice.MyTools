@@ -103,12 +103,28 @@ if (Test-Path $guideFolder) {
 New-Item -ItemType Directory -Path $guideFolder -Force | Out-Null
 Copy-Item (Join-Path $repoRoot 'docs\user-guide\*') $guideFolder -Recurse
 
-# The exe, the licenses, which Roboto's requires to go along with the font inside it, and the guide. Not the whole
-# folder: it can also have a config folder from trying the app there
-$zip = Join-Path $repoRoot "artifacts\MyTools-$version-win-x64.zip"
+# The diagram editor's shape libraries go next to the exe as library, a folder per library, which its images panel
+# reads. Copied fresh too, so a shape removed from a library isn't left over from an earlier publish
+$libraryFolder = Join-Path $outputFolder 'library'
 
-Compress-Archive -Path (Join-Path $outputFolder '*.exe'), (Join-Path $outputFolder 'licenses'), (Join-Path $outputFolder 'docs') `
-    -DestinationPath $zip -Force
+if (Test-Path $libraryFolder) {
+    Remove-Item $libraryFolder -Recurse -Force
+}
+
+New-Item -ItemType Directory -Path $libraryFolder -Force | Out-Null
+Copy-Item (Join-Path $repoRoot 'src\CincoVertice.MyTools.Ui.Win\Diagramming\Library\*') $libraryFolder -Recurse
+
+# The exe, the licenses, which Roboto's requires to go along with the font inside it, the guide and the shape
+# libraries. Not the whole folder: it can also have a config folder from trying the app there
+$zip = Join-Path $repoRoot "artifacts\MyTools-$version-win-x64.zip"
+$zipped = @(
+    (Join-Path $outputFolder '*.exe'),
+    (Join-Path $outputFolder 'licenses'),
+    (Join-Path $outputFolder 'docs'),
+    $libraryFolder
+)
+
+Compress-Archive -Path $zipped -DestinationPath $zip -Force
 
 Write-Host "Zipped to $zip" -ForegroundColor Green
 Write-Host "SHA-256: $((Get-FileHash $zip -Algorithm SHA256).Hash)" -ForegroundColor Green
