@@ -5,8 +5,12 @@
 .DESCRIPTION
     Changes <Version> in the Ui.Win csproj, then runs dotnet publish into artifacts\MyTools-<version>. If the publish
     fails, the csproj goes back to the old version. The exe, its licenses and the user guide (docs\user-guide) then go in
-    artifacts\MyTools-<version>-win-x64.zip, and the zip's SHA-256 hash is shown, for the release notes. The script
-    commits nothing.
+    artifacts\MyTools-<version>-win-x64.zip, and the zip's SHA-256 hash is shown, for the release notes.
+
+    Then it asks, one step at a time, whether to commit the csproj as "Version <version>.", tag that commit
+    v<version>, push the common submodule when it has commits not pushed, push the branch and the tag, and open the
+    GitHub page to create the release. Each step is done only on a yes; a step that can't be done yet is skipped, with
+    why. -NoGit publishes without asking.
 
     Files already in the output folder are kept, so a config folder from trying the app there isn't lost.
 
@@ -14,16 +18,24 @@
     Which part of the version to increase: Major (1.2.3 to 2.0.0), Minor (1.3.0), Patch (1.2.4, the default), or None
     to publish the current version again.
 
+.PARAMETER NoGit
+    Publishes and zips only: asks nothing, and commits, tags and pushes nothing.
+
 .EXAMPLE
     .\scripts\Publish.ps1
 
 .EXAMPLE
     .\scripts\Publish.ps1 -Bump Minor
+
+.EXAMPLE
+    .\scripts\Publish.ps1 -Bump None -NoGit
 #>
 [CmdletBinding()]
 param(
     [ValidateSet('Major', 'Minor', 'Patch', 'None')]
-    [string] $Bump = 'Patch'
+    [string] $Bump = 'Patch',
+
+    [switch] $NoGit
 )
 
 $ErrorActionPreference = 'Stop'
@@ -128,3 +140,107 @@ Compress-Archive -Path $zipped -DestinationPath $zip -Force
 
 Write-Host "Zipped to $zip" -ForegroundColor Green
 Write-Host "SHA-256: $((Get-FileHash $zip -Algorithm SHA256).Hash)" -ForegroundColor Green
+
+if ($NoGit) {
+    return
+}
+
+# Releasing: each step only when the user says yes, in the order the tag needs, since it must include the commit
+# that changes the version
+function Confirm-Step([string] $question) {
+    return (Read-Host "$question [y/N]") -match '^\s*(y|yes)\s*$'
+}
+
+function Invoke-Git([string] $folder) {
+    & git -C $folder @args
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "git $($args -join ' ') failed with exit code $LASTEXITCODE"
+    }
+}
+
+function Skip([string] $why) {
+    Write-Host "Skipped: $why" -ForegroundColor Yellow
+}
+
+Write-Host ''
+
+$tag = "v$version"
+$commonFolder = Join-Path $repoRoot 'common'
+$projectPath = 'src/CincoVertice.MyTools.Ui.Win/CincoVertice.MyTools.Ui.Win.csproj'
+$branch = (& git -C $repoRoot branch --show-current).Trim()
+
+if ($branch -ne 'dev') {
+    Write-Warning "This is branch '$branch': releases come from dev."
+}
+
+# Changes other than the version: the zip has them, the tag wouldn't
+$others = @(& git -C $repoRoot status --porcelain | Where-Object { -not $_.EndsWith($projectPath) })
+
+if ($others.Count -gt 0) {
+    Write-Warning "Changes not committed, which the zip has but the tag won't:"
+    $others | ForEach-Object { Write-Host "    $_" }
+}
+
+$isVersionCommitted = -not (& git -C $repoRoot status --porcelain '--' $projectPath)
+
+if (-not $isVersionCommitted -and (Confirm-Step "Commit the csproj as 'Version $version.'?")) {
+    # Only that file, even when others are staged
+    Invoke-Git $repoRoot commit -m "Version $version." '--' $projectPath
+    $isVersionCommitted = $true
+}
+
+if (& git -C $repoRoot tag --list $tag) {
+    Write-Host "Tag $tag is there already." -ForegroundColor Yellow
+}
+elseif (-not $isVersionCommitted) {
+    Skip "tag $tag, since the csproj's new version isn't committed: commit it, then git tag $tag"
+}
+elseif (Confirm-Step "Tag this commit $tag ($((& git -C $repoRoot log -1 --format=%s).Trim()))?") {
+    Invoke-Git $repoRoot tag $tag
+}
+
+# The release's submodule commit must be on GitHub too, or nobody else can build the tag
+# Windows PowerShell turns a native command's error output into an error, which stops the script here
+$ErrorActionPreference = 'Continue'
+$commonUpstream = & git -C $commonFolder rev-parse --abbrev-ref '@{upstream}' 2>$null
+$commonFailed = $LASTEXITCODE -ne 0
+$ErrorActionPreference = 'Stop'
+
+if ($commonFailed) {
+    Skip "checking common, whose branch follows none on GitHub: push it yourself if it has commits"
+}
+else {
+    $commonAhead = [int](& git -C $commonFolder rev-list --count '@{upstream}..HEAD')
+    $commits = if ($commonAhead -eq 1) { '1 commit' } else { "$commonAhead commits" }
+
+    if ($commonAhead -gt 0 -and (Confirm-Step "common has $commits not pushed to $commonUpstream. Push common?")) {
+        # To the branch it follows, by name, whatever its own is called: origin/dev is origin, HEAD:dev
+        $remote, $remoteBranch = $commonUpstream.Trim() -split '/', 2
+        Invoke-Git $commonFolder push $remote "HEAD:$remoteBranch"
+    }
+}
+
+$hasTag = [bool](& git -C $repoRoot tag --list $tag)
+$pushed = if ($hasTag) { "$branch and tag $tag" } else { $branch }
+
+if (Confirm-Step "Push $pushed to origin?") {
+    Invoke-Git $repoRoot push origin $branch
+
+    if ($hasTag) {
+        Invoke-Git $repoRoot push origin $tag
+    }
+}
+
+# Where the release is made, from the csproj's repository, as the app's update check reads it
+$repository = [regex]::Match($original, '<RepositoryUrl>([^<]+)</RepositoryUrl>').Groups[1].Value.TrimEnd('/')
+
+if ($repository -and $hasTag) {
+    $releasePage = "$repository/releases/new?tag=$tag"
+
+    Write-Host "Create the release at $releasePage and attach $zip" -ForegroundColor Green
+
+    if (Confirm-Step 'Open that page?') {
+        Start-Process $releasePage
+    }
+}
