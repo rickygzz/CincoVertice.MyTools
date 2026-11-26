@@ -29,6 +29,7 @@ public static class ActionHelp
         ["MoveToPreviousZone"] = "Moves the active window to the zone before",
         ["EditZones"] = "Opens the window zones editor",
         ["ToggleAlwaysOnTop"] = "Keeps the active window on top of the others, or no longer",
+        ["TransformText"] = "Transforms the text selected: case, lines, base64, URL, JSON, from a menu at the pointer",
         ["ShowHelp"] = "Opens the user guide",
         ["ShowMouseSpotlight"] = "Shows the mouse spotlight, as tapping Left Ctrl twice does",
         ["ShowAppSpotlight"] = "Shows where the active window is, as tapping Right Ctrl twice does",

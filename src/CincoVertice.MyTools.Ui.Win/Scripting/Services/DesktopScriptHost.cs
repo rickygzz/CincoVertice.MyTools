@@ -20,23 +20,6 @@ namespace CincoVertice.MyTools.Ui.Win.Scripting.Services;
 /// </summary>
 public sealed class DesktopScriptHost : IScriptHost
 {
-    // How long type() waits for the user to release the hotkey's keys
-    private const int ReleaseTimeoutMilliseconds = 3000;
-
-    // How long pasteastext() gives the program to read the clipboard before putting the old content back
-    private const int PasteSettleMilliseconds = 500;
-
-    private static readonly KeyCode[] _modifierKeys = [
-        KeyCode.VK_CONTROL,
-        KeyCode.VK_MENU,
-        KeyCode.VK_SHIFT,
-        KeyCode.VK_LWIN,
-        KeyCode.VK_RWIN ];
-
-    // One paste at a time across all scripts, each of which has its own host: another script's paste in between would
-    // send the wrong text and leave temporary text on the clipboard
-    private static readonly SemaphoreSlim _pasteGate = new(1, 1);
-
     private readonly string _title;
     private readonly TrayNotificationService _notifications;
     private readonly ZoneMover _zones;
@@ -82,61 +65,20 @@ public sealed class DesktopScriptHost : IScriptHost
 
     public string GetClipboard() => Clipboard.ContainsText() ? Clipboard.GetText() : string.Empty;
 
-    public void SetClipboard(string text)
-    {
-        // SetText does not accept an empty text
-        if (text.Length == 0)
-        {
-            Clipboard.Clear();
-        }
-        else
-        {
-            Clipboard.SetText(text);
-        }
-    }
+    public void SetClipboard(string text) => DesktopClipboard.SetText(text);
 
     public async Task TypeAsync(string text)
     {
         // The hotkey's Ctrl or Alt is usually still down, which would turn the typed text into shortcuts
-        await WaitForModifierKeysReleasedAsync();
+        await DesktopClipboard.WaitForModifierKeysReleasedAsync();
 
         // Each character as itself: SendKeys pressed the key that types it on this app's keyboard layout, and the
         // window may have another, where that key types something else, as AltGr+2 for @ on a Spanish one
         InputSimulator.SendUnicodeText(text);
     }
 
-    public async Task PasteTextAsync(string text)
-    {
-        await _pasteGate.WaitAsync();
-
-        try
-        {
-            // Copied now: the clipboard's own data object stops working once the clipboard changes
-            DataObject? saved = CopyClipboard();
-
-            // Windows line endings, which every program accepts; scripts write lines with \n
-            SetClipboard(text.ReplaceLineEndings("\r\n"));
-
-            await WaitForModifierKeysReleasedAsync();
-            InputSimulator.SendShortcut(FSModifiers.MOD_CONTROL, KeyCode.V);
-
-            // The program reads the clipboard when it handles Ctrl+V, a moment after the keys were sent
-            await Task.Delay(PasteSettleMilliseconds);
-
-            if (saved is null)
-            {
-                Clipboard.Clear();
-            }
-            else
-            {
-                Clipboard.SetDataObject(saved, copy: true);
-            }
-        }
-        finally
-        {
-            _pasteGate.Release();
-        }
-    }
+    // Scripts write lines with \n, pasted with Windows' line endings
+    public Task PasteTextAsync(string text) => DesktopClipboard.PasteAsync(text);
 
     public async Task PressAsync(string keys, int times)
     {
@@ -151,7 +93,7 @@ public sealed class DesktopScriptHost : IScriptHost
         }
 
         // The hotkey's own keys would add to the ones pressed: Ctrl+Alt+V instead of Ctrl+V
-        await WaitForModifierKeysReleasedAsync();
+        await DesktopClipboard.WaitForModifierKeysReleasedAsync();
 
         InputSimulator.SendShortcut(modifiers, key, times, altGr);
     }
@@ -243,49 +185,5 @@ public sealed class DesktopScriptHost : IScriptHost
         WindowHelper.ForceForeground(owner.Handle);
 
         return owner;
-    }
-
-    /// <summary>
-    ///     A copy of everything in the clipboard, in every format it has (text, formatted text, HTML, pictures...).
-    ///     A format that can't be read, e.g. an embedded object, is left out. Null when the clipboard is empty.
-    /// </summary>
-    private static DataObject? CopyClipboard()
-    {
-        var current = Clipboard.GetDataObject();
-
-        if (current is null)
-        {
-            return null;
-        }
-
-        var copy = new DataObject();
-
-        foreach (string format in current.GetFormats(autoConvert: false))
-        {
-            try
-            {
-                if (current.GetData(format, autoConvert: false) is { } data)
-                {
-                    copy.SetData(format, autoConvert: false, data);
-                }
-            }
-            catch (Exception ex) when (ex is ExternalException or NotSupportedException or InvalidOperationException)
-            {
-                // Left out; the other formats are still put back
-            }
-        }
-
-        return copy.GetFormats().Length == 0 ? null : copy;
-    }
-
-    private static async Task WaitForModifierKeysReleasedAsync()
-    {
-        var stopwatch = Stopwatch.StartNew();
-
-        while (_modifierKeys.Any(key => User32.GetAsyncKeyState(key) < 0)
-            && stopwatch.ElapsedMilliseconds < ReleaseTimeoutMilliseconds)
-        {
-            await Task.Delay(20);
-        }
     }
 }

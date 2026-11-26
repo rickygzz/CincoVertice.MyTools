@@ -42,3 +42,4 @@ picture, record a how-to, compare notes, draw a plan, arrange windows, calculate
 - [Mouse Spotlight](14-mouse-spotlight.md)
 - [Compare Files](15-compare-files.md)
 - [Try MyTools: Eight Short Tutorials](16-tutorials.md)
+- [Text Transforms](17-text-transforms.md)

@@ -8,6 +8,7 @@
 | `ToggleActivity` | Ctrl+Alt+M | Starts or stops the mouse mover |
 | `ToggleKeepAwake` | Ctrl+Alt+K | Starts or stops keeping the computer awake, whether the mouse mover is on or not |
 | `ToggleAlwaysOnTop` | Ctrl+Alt+Win+T | Keeps the active window on top of the others, or no longer. See [Keeping a window on top](13-window-zones.md#keeping-a-window-on-top). |
+| `TransformText` | Ctrl+Alt+X | Transforms the text selected in any program, from a menu at the mouse pointer. See [Text Transforms](17-text-transforms.md). |
 | `SnipAndEdit` | Ctrl+Alt+S | Takes a snip, then opens the snip editor |
 | `SnipRegion` | Ctrl+Alt+Shift+S | Takes a snip to the clipboard |
 | `SnipText` | Ctrl+Alt+T | Takes a snip and copies the text in it, as text |
@@ -73,6 +74,7 @@ SnipText = Ctrl+Alt+T
 ToggleActivity = Ctrl+Alt+M
 ToggleAlwaysOnTop = Ctrl+Alt+Win+T
 ToggleKeepAwake = Ctrl+Alt+K
+TransformText = Ctrl+Alt+X
 ```
 
 The file is created only if it does not exist.

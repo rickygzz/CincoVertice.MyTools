@@ -49,6 +49,7 @@ using CincoVertice.MyTools.Ui.Win.Snipping.Services;
 using CincoVertice.MyTools.Ui.Win.Spotlight;
 using CincoVertice.MyTools.Ui.Win.Spotlight.Actions;
 using CincoVertice.MyTools.Ui.Win.Spotlight.Services;
+using CincoVertice.MyTools.Ui.Win.TextTransform.Actions;
 using CincoVertice.MyTools.Ui.Win.Zones;
 using CincoVertice.MyTools.Ui.Win.Zones.Actions;
 using CincoVertice.MyTools.Ui.Win.Zones.Services;
@@ -204,6 +205,9 @@ public static class UiWinSetupExtensions
         services.AddSingleton<EditZonesAction>();
         services.AddSingleton<ToggleAlwaysOnTopAction>();
 
+        // Text transforms: the selection in any program, transformed from a menu at the mouse pointer
+        services.AddSingleton<TransformTextAction>();
+
         // Compare files: a new window each time
         services.AddSingleton<CompareFilesAction>();
 
@@ -248,6 +252,7 @@ public static class UiWinSetupExtensions
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<MoveToPreviousZoneAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<EditZonesAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ToggleAlwaysOnTopAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<TransformTextAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ShowMouseSpotlightAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ShowAppSpotlightAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<CompareFilesAction>());
