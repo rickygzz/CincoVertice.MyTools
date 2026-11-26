@@ -92,6 +92,7 @@ This script is created with the app. It asks what to search for (starting with t
 #   keyboard.press("Ctrl+V")  keyboard.press("Tab", 3)
 #   window.activate(title)  window.activateoropen(title, program)  file.read(path)  file.write(path, text)
 #   window.ontop()  file.append(path, text)  file.exists(path)
+#   w = process.window("notepad")  window.hide(w)  window.show(w)  window.minimize(w)  window.state(w)
 #   date.now()  date.format(format)  date.format(date, format)
 #   shell.open(address or file)  shell.run(program, arguments)  tray.notify(text)
 #   script.wait(ms)  script.stop()  system.waitidle(cpu %, disk %, quiet seconds, most minutes)

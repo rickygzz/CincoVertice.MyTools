@@ -152,6 +152,27 @@ public sealed class DesktopScriptHost : IScriptHost
 
     public bool SetActiveWindowOnTop(bool? isOnTop) => ActiveWindowOnTop.Set(isOnTop).IsOnTop;
 
+    public bool IsProcessRunning(string processName) => ScriptWindows.IsProcessRunning(processName);
+
+    public IReadOnlyList<long> GetProcessWindows(string processName) =>
+        [.. ScriptWindows.OfProcess(processName).Select(window => (long)window)];
+
+    public long FindWindow(string titlePart) => ScriptWindows.ByTitle(titlePart);
+
+    public long GetActiveWindow() => WinUser.GetForegroundWindow();
+
+    public ScriptWindowState GetWindowState(long window) => ScriptWindows.StateOf((nint)window);
+
+    public Task<bool> ChangeWindowAsync(long window, ScriptWindowChange change) =>
+        ScriptWindows.ChangeAsync((nint)window, change);
+
+    public bool ActivateWindow(long window) => ScriptWindows.Activate((nint)window);
+
+    public string GetWindowTitle(long window) =>
+        User32.IsWindow((nint)window) ? WindowHelper.GetWindowTitle((nint)window) : string.Empty;
+
+    public bool SetWindowOnTop(long window, bool? isOnTop) => ScriptWindows.SetOnTop((nint)window, isOnTop);
+
     /// <summary>A script's file: %VARIABLES% expanded, and a path that isn't full taken in the scripts folder.</summary>
     public static string FullPath(string path)
     {

@@ -7,7 +7,8 @@ Functions are grouped in modules: you call one as `module.function(...)`, as in 
 | [`dialog`](#dialog) | Asking and showing | `ask` `form` `message` `confirm` |
 | [`clipboard`](#clipboard) | The clipboard | `gettext` `settext` `clear` `paste` `pasteastext` |
 | [`keyboard`](#keyboard) | Typing and pressing keys | `type` `press` |
-| [`window`](#window) | Windows | `title` `tozone` `activate` `activateoropen` `ontop` |
+| [`window`](#window) | Windows | `title` `tozone` `tomouse` `activate` `activateoropen` `ontop` `find` `active` `state` `hide` `show` `minimize` `maximize` `restore` `close` |
+| [`process`](#process) | Programs running | `isrunning` `window` `windows` |
 | [`shell`](#shell) | Web pages, files and programs | `open` `run` |
 | [`tray`](#tray) | Notifications | `notify` |
 | [`system`](#system) | The computer | `waitidle` |
@@ -139,12 +140,21 @@ Typing blocks the app until it finishes. Typing into a program that runs as admi
 
 | Function | Returns |
 |---|---|
-| `window.title()` | The title of the active window, the one you are working in, e.g. `"Inbox - Outlook"`. `""` when it has none. |
+| `window.title()`<br>`window.title(window)` | The title of the active window, the one you are working in, e.g. `"Inbox - Outlook"`, or of the window with that number (see [A window in a variable](#a-window-in-a-variable)). `""` when it has none, or is closed. |
 | `window.tozone(number)` | Moves the active window to that zone of its monitor, from 1, as set in `zones.cfg`. Nothing. A number with no zone is an error. See [Window Zones](13-window-zones.md). |
 | `window.tomouse()` | Moves the active window to the monitor the mouse pointer is on, at the same place on it, as large, but no larger than that monitor; a maximized window stays maximized. Nothing when it is on that monitor already. No active window is an error. Bind it to a hotkey to bring a window to the screen you look at. |
-| `window.activate(title)` | Brings to the front the window whose title has `title` in it, ignoring case, as if you had clicked it: restored when minimized. When several have it, the one you used last. Only windows you can switch to count: not hidden ones, nor those on another virtual desktop. `true` when there was one, `false` when not. |
+| `window.activate(title)`<br>`window.activate(window)` | Brings to the front the window whose title has `title` in it, ignoring case, as if you had clicked it: restored when minimized. When several have it, the one you used last. Only windows you can switch to count: not hidden ones, nor those on another virtual desktop. Given a window's number instead, brings that one, shown again first if it was hidden. `true` when there was one, `false` when not. |
 | `window.activateoropen(title, program)`<br>`window.activateoropen(title, program, arguments)` | Brings the window to the front, as `window.activate` does; when there's none, starts `program` (as `shell.run` does) and waits up to 10 seconds for a window with `title` to show, then brings it to the front. `true` when a window is in front, `false` when the program showed none in time. |
-| `window.ontop()`<br>`window.ontop(true)`<br>`window.ontop(false)` | Keeps the active window on top of the other windows (`true`), or no longer (`false`); with nothing, switches it, as the `ToggleAlwaysOnTop` hotkey does. `true` when it's on top afterwards. No active window is an error, as is a program run as administrator, which Windows doesn't let My Tools change. |
+| `window.ontop()`<br>`window.ontop(true)`<br>`window.ontop(false)`<br>`window.ontop(window, true)` | Keeps the active window on top of the other windows (`true`), or no longer (`false`); with nothing, switches it, as the `ToggleAlwaysOnTop` hotkey does. With a window's number first, changes that window instead: `window.ontop(w)` switches it. `true` when it's on top afterwards. No active window is an error, as are a closed window and a program run as administrator, which Windows doesn't let My Tools change. |
+| `window.find(title)` | The number of the window whose title has `title` in it, ignoring case, as `window.activate` finds it, or else of a hidden one. `0` when there's none. |
+| `window.active()` | The number of the active window. |
+| `window.state(window)` | How the window is: `"normal"`, `"minimized"`, `"maximized"`, `"hidden"`, or `"closed"` once it's gone. |
+| `window.hide(window)` | Hides the window, and its button on the taskbar. The program keeps running; `window.show` or `window.activate` brings it back. |
+| `window.show(window)` | Shows a hidden window again, as it was, without bringing it to the front. |
+| `window.minimize(window)`<br>`window.maximize(window)`<br>`window.restore(window)` | Minimizes the window, maximizes it, or makes it neither. |
+| `window.close(window)` | Closes the window, as its X does: the program may ask to save first. |
+
+`window.hide`, `show`, `minimize`, `maximize`, `restore` and `close` give `true`, or `false` when the window is closed or Windows didn't let My Tools change it (a program run as administrator). They wait up to a second for the program to do it, so `window.state` says the new state right after.
 
 With a hotkey, the active window is the program you pressed it in. Read the title at the start of the script: while a dialog of the script is open, the dialog is the active window. From the tray menu, the active window is usually the taskbar, so the title is `""`.
 
@@ -167,6 +177,52 @@ if not window.activateoropen("Notepad", "notepad.exe")
     tray.notify("Notepad didn't open")
 end
 ```
+
+### A window in a variable
+
+`process.window`, `window.find` and `window.active` give a window as a number, which stays the same until the window closes. Keep it in a variable and give it to the other `window` functions:
+
+```mts
+w = process.window("notepad")
+if w == 0
+    tray.notify("Notepad isn't running")
+    script.stop()
+end
+
+window.minimize(w)
+window.ontop(w, true)
+```
+
+`0` means none: giving `0` to a `window` function is an error, so check for it first. A number can also be kept between runs with `global.set`, so one hotkey can hide a window and another show it again:
+
+```mts
+# HideNotepad = Ctrl+Alt+H
+w = process.window("notepad")
+if w != 0
+    window.hide(w)
+    global.set("notepad", w)
+end
+```
+
+```mts
+# ShowNotepad = Ctrl+Alt+Shift+H
+w = global.get("notepad", 0)
+if w != 0
+    window.activate(w)
+end
+```
+
+A hidden window is still found by `process.window` and `window.find` (after those shown), so the second script could also look for it again.
+
+## process
+
+| Function | Returns |
+|---|---|
+| `process.isrunning(name)` | `true` when a program with that name is running, as Task Manager's **Details** tab shows it, with or without `.exe`: `process.isrunning("notepad")`. Case doesn't matter. |
+| `process.window(name)` | The number of the program's window you used last; a hidden one when none is shown. `0` when it has none, or isn't running. |
+| `process.windows(name)` | The numbers of all the program's windows, as a list: those shown, the one used last first, then those hidden. `[]` when there's none. Take one with `list[1]`. |
+
+Store apps, such as Calculator or Settings, show their windows through another program, `ApplicationFrameHost`: find those with `window.find` and a part of their title.
 
 ## shell
 
