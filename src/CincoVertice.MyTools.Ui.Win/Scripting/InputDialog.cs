@@ -35,6 +35,7 @@ public static class InputDialog
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
             Padding = new Padding(12),
         };
+        DpiRescaleOnDrop.Attach(form);
 
         var layout = new TableLayoutPanel { AutoSize = true, ColumnCount = 1, Dock = DockStyle.Fill };
 

@@ -3,6 +3,7 @@ using CincoVertice.Common.WinApi.Libs;
 using CincoVertice.MyTools.Ui.ColorPicker.Models;
 using CincoVertice.MyTools.Ui.ColorPicker.Services;
 using CincoVertice.MyTools.Ui.ColorPicker.Views;
+using CincoVertice.MyTools.Ui.Win.Behaviors;
 
 namespace CincoVertice.MyTools.Ui.Win.ColorPicker;
 
@@ -27,6 +28,7 @@ public partial class ColorForm : Form, IColorView
     public ColorForm()
     {
         InitializeComponent();
+        DpiRescaleOnDrop.Attach(this);
     }
 
     public event EventHandler<Color>? ColorChosen;

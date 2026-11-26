@@ -32,8 +32,17 @@ public static class DpiFollower
 
         if (control is Form form)
         {
+            // First, so a change while the form is dragged is held until the drop, and not set up here either
+            DpiRescaleOnDrop.Attach(form);
+
             // Raised before WinForms rescales the form's controls: the setup reads their new fonts and sizes after
-            form.DpiChanged += (_, _) => form.BeginInvoke(() => Check(form, EventArgs.Empty));
+            form.DpiChanged += (_, e) =>
+            {
+                if (!e.Cancel)
+                {
+                    form.BeginInvoke(() => Check(form, EventArgs.Empty));
+                }
+            };
         }
     }
 

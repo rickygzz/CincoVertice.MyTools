@@ -4,6 +4,7 @@ using System.Globalization;
 using CincoVertice.MyTools.Ui.Zones.Models;
 using CincoVertice.MyTools.Ui.Zones.Services;
 using CincoVertice.MyTools.Ui.Zones.Views;
+using CincoVertice.MyTools.Ui.Win.Behaviors;
 
 namespace CincoVertice.MyTools.Ui.Win.Zones;
 
@@ -43,6 +44,7 @@ public partial class ZoneEditorForm : Form, IZoneEditorView
     public ZoneEditorForm()
     {
         InitializeComponent();
+        DpiRescaleOnDrop.Attach(this);
     }
 
     public event EventHandler<ZoneEditorPointerModel>? PointerPressed;

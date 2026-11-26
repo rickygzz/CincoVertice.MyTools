@@ -2,6 +2,7 @@
 using CincoVertice.MyTools.Ui.Diff.Models;
 using CincoVertice.MyTools.Ui.Diff.Presenters;
 using CincoVertice.MyTools.Ui.Diff.Views;
+using CincoVertice.MyTools.Ui.Win.Behaviors;
 
 namespace CincoVertice.MyTools.Ui.Win.Diff;
 
@@ -16,6 +17,7 @@ public partial class DiffForm : Form, IDiffView
     public DiffForm()
     {
         InitializeComponent();
+        DpiRescaleOnDrop.Attach(this);
 
         // The side titles line up with the sides, which stop before the change strip and the scroll bar
         HeaderTable.Padding = new Padding(0, 0, DiffText.RightMargin, 0);

@@ -1,4 +1,5 @@
-﻿using CincoVertice.MyTools.Ui.Win.CodeReview.Services;
+﻿using CincoVertice.MyTools.Ui.Win.Behaviors;
+using CincoVertice.MyTools.Ui.Win.CodeReview.Services;
 
 namespace CincoVertice.MyTools.Ui.Win.Shell;
 
@@ -9,6 +10,7 @@ public partial class MainForm : Form
     public MainForm(CodeReviewWindowService codeReviewWindowService)
     {
         InitializeComponent();
+        DpiRescaleOnDrop.Attach(this);
 
         _codeReviewWindowService = codeReviewWindowService;
     }
