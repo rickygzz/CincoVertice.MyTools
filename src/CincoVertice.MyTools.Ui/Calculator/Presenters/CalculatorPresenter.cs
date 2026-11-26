@@ -2,6 +2,7 @@
 using CincoVertice.Common.Application.Calculator;
 using CincoVertice.Common.Application.Calculator.Models;
 using CincoVertice.Common.Utils.Helpers;
+using CincoVertice.MyTools.Ui.Calculator.Interfaces;
 using CincoVertice.MyTools.Ui.Calculator.Models;
 using CincoVertice.MyTools.Ui.Calculator.Services;
 using CincoVertice.MyTools.Ui.Calculator.Views;
@@ -42,6 +43,7 @@ public class CalculatorPresenter
     // The lines entered, the newest last, those that failed too, to fix them; which one shows, -1 for none, and
     // what was being typed before Up, which Down past the newest brings back
     private readonly List<string> _entered = [];
+    private readonly ICalculatorRecallStore? _recallStore;
     private int _recalled = -1;
     private string _draft = string.Empty;
     private bool _isRecalling;
@@ -56,12 +58,25 @@ public class CalculatorPresenter
     /// <param name="view">The window.</param>
     /// <param name="calculator">Evaluates the expressions.</param>
     /// <param name="utcNow">The time now, for the UTC offsets the suggestions show; the clock's if null.</param>
-    public CalculatorPresenter(ICalculatorView view, ExpressionCalculator calculator, Func<DateTime>? utcNow = null)
+    /// <param name="recallStore">
+    ///     Keeps the lines entered from one run to the next, for Up and Down; null keeps them until the app exits.
+    /// </param>
+    public CalculatorPresenter(
+        ICalculatorView view,
+        ExpressionCalculator calculator,
+        Func<DateTime>? utcNow = null,
+        ICalculatorRecallStore? recallStore = null)
     {
         _view = view;
         _calculator = calculator;
         _utcNow = utcNow ?? (() => DateTime.UtcNow);
+        _recallStore = recallStore;
         _showCurrent = () => _view.ShowResult(string.Empty);
+
+        if (_recallStore is not null)
+        {
+            _entered.AddRange(_recallStore.Load().TakeLast(MaxRecalled));
+        }
 
         _view.EvaluateRequested += OnEvaluateRequested;
         _view.ToggleHistoryRequested += OnToggleHistoryRequested;
@@ -235,6 +250,9 @@ public class CalculatorPresenter
             {
                 _entered.RemoveAt(0);
             }
+
+            // Not a pasted line, such as base64topdf()'s, which would make the file megabytes long: only this run's
+            _recallStore?.Save([.. _entered.Where(line => line.Length <= CalculatorSuggester.MaxLength)]);
         }
 
         _recalled = -1;

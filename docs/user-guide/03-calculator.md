@@ -38,7 +38,7 @@ The calculator never touches your clipboard. To copy a result, select it with th
 
 **History.** Kept until you exit the app, up to 200 entries; the oldest are dropped. It is shown as `operation = result` lines, and with "No operations yet" when empty. Only successful calculations are added.
 
-**Bringing a line back.** **Up** puts the line you entered last back in the box, to change it or calculate it again; each Up goes one further back, through up to 200 lines, until you exit the app. A line that gave an error comes back too, so you can fix it. **Down** goes forward again, and past the newest line brings back what you were typing before you pressed Up. While the suggestion list is open, Up and Down go through it instead.
+**Bringing a line back.** **Up** puts the line you entered last back in the box, to change it or calculate it again; each Up goes one further back, through up to 200 lines. The lines are kept from one run to the next, in `config\calculator.json`, so after a restart Up still brings back what you calculated before. A line that gave an error comes back too, so you can fix it. A line of more than 10,000 characters, such as a pasted `base64topdf()`, comes back only until you exit the app. **Down** goes forward again, and past the newest line brings back what you were typing before you pressed Up. While the suggestion list is open, Up and Down go through it instead.
 
 ## What you can type
 

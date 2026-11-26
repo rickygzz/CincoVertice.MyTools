@@ -1,8 +1,10 @@
 ﻿using System.ComponentModel;
 using System.Globalization;
 using CincoVertice.Common.Application.Calculator;
+using CincoVertice.MyTools.Ui.Calculator.Interfaces;
 using CincoVertice.MyTools.Ui.Calculator.Models;
 using CincoVertice.MyTools.Ui.Calculator.Presenters;
+using CincoVertice.MyTools.Ui.Calculator.Services;
 using CincoVertice.MyTools.Ui.Calculator.Views;
 using Xunit;
 
@@ -399,6 +401,65 @@ public class CalculatorPresenterTests
     }
 
     [Fact]
+    public void Recall_TheLinesOfTheRunBefore_ComeBackWithUp_AndNewOnesAreKept()
+    {
+        // Arrange: what the run before entered
+        var store = new MemoryRecallStore(["1+1", "x = 5"]);
+        var view = new FakeCalculatorView();
+        _ = new CalculatorPresenter(view, new ExpressionCalculator(), recallStore: store);
+
+        // Act
+        view.Recall(-1);
+        string newest = view.Expression;
+        view.Expression = "2*3";
+        view.RequestEvaluate();
+
+        // Assert
+        Assert.Equal("x = 5", newest);
+        Assert.Equal(["1+1", "x = 5", "2*3"], store.Lines);
+    }
+
+    [Fact]
+    public void Recall_APastedLine_ComesBackThisRun_ButIsntKept()
+    {
+        // Arrange
+        var store = new MemoryRecallStore([]);
+        var view = new FakeCalculatorView();
+        _ = new CalculatorPresenter(view, new ExpressionCalculator(), recallStore: store);
+        string pasted = $"len(\"{new string('a', CalculatorSuggester.MaxLength)}\")";
+
+        // Act
+        view.Expression = "1+1";
+        view.RequestEvaluate();
+        view.Expression = pasted;
+        view.RequestEvaluate();
+        view.Recall(-1);
+
+        // Assert
+        Assert.Equal(pasted, view.Expression);
+        Assert.Equal(["1+1"], store.Lines);
+    }
+
+    [Fact]
+    public void Recall_KeepsTheNewestLines_AsManyAsItGoesBackThrough()
+    {
+        // Arrange
+        IEnumerable<string> lines = Enumerable.Range(1, CalculatorPresenter.MaxRecalled + 5).Select(n => $"{n}");
+        var store = new MemoryRecallStore([.. lines]);
+        var view = new FakeCalculatorView();
+        _ = new CalculatorPresenter(view, new ExpressionCalculator(), recallStore: store);
+
+        // Act: back past the oldest
+        for (int i = 0; i < CalculatorPresenter.MaxRecalled + 10; i++)
+        {
+            view.Recall(-1);
+        }
+
+        // Assert
+        Assert.Equal("6", view.Expression);
+    }
+
+    [Fact]
     public void Recall_ALineBroughtBack_OffersNoSuggestions_AndTypingStartsOver()
     {
         // Arrange
@@ -484,6 +545,15 @@ public class CalculatorPresenterTests
         Assert.True(copied);
         Assert.Equal("42", result);
         Assert.False(afterError);
+    }
+
+    private sealed class MemoryRecallStore(IReadOnlyList<string> lines) : ICalculatorRecallStore
+    {
+        public IReadOnlyList<string> Lines { get; private set; } = lines;
+
+        public IReadOnlyList<string> Load() => Lines;
+
+        public void Save(IReadOnlyList<string> lines) => Lines = lines;
     }
 
     private sealed class FakeCalculatorView : ICalculatorView

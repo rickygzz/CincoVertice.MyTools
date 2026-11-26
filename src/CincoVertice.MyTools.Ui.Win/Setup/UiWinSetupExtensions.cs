@@ -3,6 +3,8 @@ using CincoVertice.Common.Application.Scripting;
 using CincoVertice.Common.Application.Scripting.Services;
 using CincoVertice.Common.Application.Setup;
 using CincoVertice.Common.WinApi.Helpers;
+using CincoVertice.MyTools.Ui.Calculator.Interfaces;
+using CincoVertice.MyTools.Ui.Calculator.Services;
 using CincoVertice.MyTools.Ui.Calculator.Views;
 using CincoVertice.Common.Application.CodeStandard.Models;
 using CincoVertice.MyTools.Ui.CodeReview.Interfaces;
@@ -90,6 +92,10 @@ public static class UiWinSetupExtensions
             return calculator;
         });
         services.AddSingleton<ICalculatorView>(sp => sp.GetRequiredService<CalculatorForm>());
+
+        // The lines entered, which Up brings back, kept from one run to the next in config\calculator.json
+        services.AddSingleton<ICalculatorRecallStore>(_ => new JsonFileCalculatorRecallStore(
+            Path.Combine(AppContext.BaseDirectory, "config", "calculator.json")));
 
         services.AddSingleton<GlobalHotkeyService>();
         services.AddSingleton<IHotkeyRegistrar>(sp => sp.GetRequiredService<GlobalHotkeyService>());
