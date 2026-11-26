@@ -5,6 +5,7 @@ using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.Common.WinApi.Libs;
 using CincoVertice.MyTools.Ui.Help.Models;
 using CincoVertice.MyTools.Ui.Help.Views;
+using CincoVertice.MyTools.Ui.Win.Behaviors;
 using CincoVertice.MyTools.Ui.Win.Help.Models;
 using CincoVertice.MyTools.Ui.Win.Help.Services;
 
@@ -30,7 +31,13 @@ public partial class HelpForm : Form, IHelpView
 
     // As Windows' apps are when the window opens, or as chosen with its button
     private bool _isDark;
-    private readonly Font _boldFont;
+
+    // The list's bold font, at the size of the monitor the window is on
+    private Font _boldFont;
+
+    // The page box's font size as designed: WinForms rescales the font on a monitor with other scaling, but not the
+    // page's RTF, whose sizes are fixed, so the page is zoomed as much
+    private readonly float _pageFontSize;
 
     private MarkdownDocumentModel? _document;
     private string? _shownPage;
@@ -52,8 +59,37 @@ public partial class HelpForm : Form, IHelpView
         _isDark = isDark;
         InitializeComponent();
         _boldFont = new Font(PagesListBox.Font, FontStyle.Bold);
+        _pageFontSize = PageTextBox.Font.Size;
         ActiveControl = PageTextBox;
         ApplyColors();
+        DpiFollower.Attach(this, _ => FollowDpi());
+    }
+
+    /// <summary>
+    ///     On a monitor with other scaling: the list's rows measured again with its font, and the page laid out again at
+    ///     the zoom that matches it, where it was read.
+    /// </summary>
+    private void FollowDpi()
+    {
+        Font old = _boldFont;
+        _boldFont = new Font(PagesListBox.Font, FontStyle.Bold);
+        old.Dispose();
+
+        if (PagesListBox.Items.Count > 0)
+        {
+            int selected = PagesListBox.SelectedIndex;
+            FillList([.. PagesListBox.Items.Cast<object>()]);
+            _isUpdating = true;
+            PagesListBox.SelectedIndex = selected;
+            _isUpdating = false;
+        }
+
+        if (_document is not null)
+        {
+            int top = TopPosition;
+            LayOut();
+            ScrollToPosition(top);
+        }
     }
 
     public event EventHandler<string>? LinkClicked;
@@ -398,6 +434,23 @@ public partial class HelpForm : Form, IHelpView
         OutlineButton.Enabled = OutlineButton.DropDownItems.Count > 0;
     }
 
+    /// <summary>
+    ///     The page as large as the box's font: as designed on the main monitor, and rescaled by WinForms as the font is
+    ///     on a monitor with other scaling, since the page's own sizes don't follow. Set after each new page, which the
+    ///     box shows at its zoom of 1 again.
+    /// </summary>
+    private void ZoomPage()
+    {
+        float zoom = DpiFollower.FontScale(PageTextBox, _pageFontSize);
+
+        PageTextBox.ZoomFactor = 1;
+
+        if (Math.Abs(zoom - 1) > 0.01f)
+        {
+            PageTextBox.ZoomFactor = zoom;
+        }
+    }
+
     // The page as RTF, as wide as the text box, then the marks taken out, kept as where the links and headings are
     private void LayOut()
     {
@@ -419,6 +472,7 @@ public partial class HelpForm : Form, IHelpView
         {
             PageTextBox.ReadOnly = false;
             PageTextBox.Rtf = page.Rtf;
+            ZoomPage();
             TakeMarks(page.Marks);
             PageTextBox.ReadOnly = true;
             PageTextBox.Select(0, 0);

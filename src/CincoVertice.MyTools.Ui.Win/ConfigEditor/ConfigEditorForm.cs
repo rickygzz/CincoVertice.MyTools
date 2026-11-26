@@ -4,6 +4,7 @@ using CincoVertice.Common.Utils.Highlighting;
 using CincoVertice.MyTools.Ui.ConfigEditor.Models;
 using CincoVertice.MyTools.Ui.ConfigEditor.Presenters;
 using CincoVertice.MyTools.Ui.ConfigEditor.Views;
+using CincoVertice.MyTools.Ui.Win.Behaviors;
 using CincoVertice.MyTools.Ui.Win.Scripting;
 
 namespace CincoVertice.MyTools.Ui.Win.ConfigEditor;
@@ -29,7 +30,11 @@ public partial class ConfigEditorForm : Form, IConfigEditorView
     public ConfigEditorForm()
     {
         InitializeComponent();
-        SuggestionsList.ItemHeight = SuggestionsList.Font.Height + LogicalToDeviceUnits(4);
+
+        // As high as its text on the monitor the window is on
+        DpiFollower.Attach(
+            this,
+            dpi => SuggestionsList.ItemHeight = SuggestionsList.Font.Height + DpiFollower.Scaled(4, dpi));
 
         // The editor asks what to show where the pointer rests, which the presenter knows
         CodeEditor.HoverText = position =>

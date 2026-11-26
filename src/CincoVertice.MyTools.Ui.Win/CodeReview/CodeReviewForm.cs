@@ -3,6 +3,7 @@ using CincoVertice.Common.Ui.Rtf.Constants;
 using CincoVertice.Common.Ui.Rtf.Models;
 using CincoVertice.Common.Ui.Rtf.Themes;
 using CincoVertice.MyTools.Ui.CodeReview.Views;
+using CincoVertice.MyTools.Ui.Win.Behaviors;
 
 namespace CincoVertice.MyTools.Ui.Win.CodeReview;
 
@@ -19,6 +20,14 @@ public partial class CodeReviewForm : Form, ICodeReviewView
     public CodeReviewForm()
     {
         InitializeComponent();
+
+        // The theme's font sizes are fixed: on a monitor with other scaling, the output is zoomed as the form's font
+        float designedFontSize = Font.Size;
+        DpiFollower.Attach(this, _ =>
+        {
+            ConsoleOutput.ContentZoom = DpiFollower.FontScale(this, designedFontSize);
+            ConsoleOutput.UpdateText();
+        });
     }
 
     private void CodeReviewForm_Load(object sender, EventArgs e)

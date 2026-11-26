@@ -40,7 +40,8 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     // The name browsers, chats and Office give a PNG picture on the clipboard
     internal const string PngClipboardFormat = "PNG";
 
-    private readonly int _iconSize;
+    // The toolbars' icons, at the size of the monitor the window is on
+    private int _iconSize;
     private readonly List<Image> _images = [];
 
     // Sizes the images panel's items, whose pictures are drawn by the form: it holds no image
@@ -51,6 +52,9 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
 
     // The color buttons' images: the current colors, replaced when they change
     private readonly Dictionary<ToolStripDropDownButton, Image> _swatches = [];
+
+    // The color each swatch shows, to draw it again at another size
+    private readonly Dictionary<ToolStripDropDownButton, Color> _swatchColors = [];
 
     private DiagramSceneModel? _scene;
     private IReadOnlyList<int> _lineWidths = [];
@@ -95,16 +99,6 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
     {
         InitializeComponent();
 
-        // 16 pixels at 100% scaling, drawn at the screen's size rather than stretched, so they stay sharp
-        _iconSize = (int)Math.Round(16 * DeviceDpi / 96.0);
-        ToolsStrip.ImageScalingSize = new Size(_iconSize, _iconSize);
-        StyleStrip.ImageScalingSize = new Size(_iconSize, _iconSize);
-
-        foreach (ToolStripButton button in ToolButtons())
-        {
-            button.Image = Keep(DiagramToolIcons.Create(ToolOf(button), _iconSize));
-        }
-
         foreach (ToolStripDropDownButton button in ColorButtons())
         {
             ((ToolStripDropDownMenu)button.DropDown).ShowImageMargin = false;
@@ -129,9 +123,8 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         LayersListView.AllowDrop = Canvas.AllowDrop;
 
         FormExtensions.CenterOnCursorScreen(this);
-        _thumbnails.ImageSize = new Size(LogicalToDeviceUnits(ThumbnailSize), LogicalToDeviceUnits(ThumbnailSize));
-        ImagesListView.LargeImageList = _thumbnails;
         components?.Add(_thumbnails);
+        DpiFollower.Attach(this, FollowDpi);
 
         FormExtensions.ActivateWhenShown(this);
         FindBox.TextBox.PlaceholderText = "Find (Ctrl+F)";
@@ -1103,6 +1096,44 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         return image;
     }
 
+    /// <summary>
+    ///     What's made from the monitor's scaling, again on a monitor with other scaling: the toolbars' icons and
+    ///     swatches, 16 pixels at 100%, drawn at the monitor's size rather than stretched, so they stay sharp; the
+    ///     images panel's pictures; the layers panel's icons.
+    /// </summary>
+    private void FollowDpi(int dpi)
+    {
+        _iconSize = DpiFollower.Scaled(16, dpi);
+        ToolsStrip.ImageScalingSize = new Size(_iconSize, _iconSize);
+        StyleStrip.ImageScalingSize = new Size(_iconSize, _iconSize);
+
+        List<Image> old = [.. _images];
+        _images.Clear();
+
+        foreach (ToolStripButton button in ToolButtons())
+        {
+            button.Image = Keep(DiagramToolIcons.Create(ToolOf(button), _iconSize));
+        }
+
+        old.ForEach(image => image.Dispose());
+
+        foreach ((ToolStripDropDownButton button, Color color) in _swatchColors.ToList())
+        {
+            ShowSwatch(button, color);
+        }
+
+        // The panel takes the new size only from a list it's given again; the list holds no image
+        int thumbnail = DpiFollower.Scaled(ThumbnailSize, dpi);
+        _thumbnails.ImageSize = new Size(thumbnail, thumbnail);
+        ImagesListView.LargeImageList = null;
+        ImagesListView.LargeImageList = _thumbnails;
+
+        _layerIconFont?.Dispose();
+        _layerIconFont = null;
+        SizeLayerTiles();
+        LayersListView.Invalidate();
+    }
+
     private void ShowSwatch(ToolStripDropDownButton button, Color color)
     {
         _swatches.TryGetValue(button, out Image? old);
@@ -1110,6 +1141,7 @@ public partial class DiagramEditorForm : Form, IDiagramEditorView
         Image swatch = CreateSwatch(color, _iconSize);
 
         _swatches[button] = swatch;
+        _swatchColors[button] = color;
         button.Image = swatch;
         old?.Dispose();
     }

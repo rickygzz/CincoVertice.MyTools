@@ -57,6 +57,14 @@ public partial class CalculatorForm : Form, ICalculatorView
         // Safety net for Alt+F4 (still works with ControlBox = false) or any future Close() call
         FormExtensions.HideOnUserClose(this);
         DragMover.Attach(this, CalculatorTextBox, ResultOutputControl);
+
+        // The theme's font sizes are fixed: on a monitor with other scaling, the output is zoomed as the form's font
+        float designedFontSize = Font.Size;
+        DpiFollower.Attach(this, _ =>
+        {
+            ResultOutputControl.ContentZoom = DpiFollower.FontScale(this, designedFontSize);
+            ResultOutputControl.UpdateText();
+        });
     }
 
     public event EventHandler? EvaluateRequested;

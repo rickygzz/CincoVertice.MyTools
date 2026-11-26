@@ -80,8 +80,8 @@ public sealed class ScreenSnipper
         Rectangle bounds;
         Bitmap screenshot;
 
-        // The app is only system DPI aware: with monitors at different scaling, the bounds and the pixels would be
-        // scaled. Per-monitor aware, they are physical on every monitor.
+        // Per-monitor aware, the bounds and the pixels are physical on every monitor, whatever its scaling; the app is
+        // already, and the scope keeps it so should that change
         using (DpiAwarenessScope.PerMonitorV2())
         {
             bounds = ScreenCapture.VirtualScreenBounds;

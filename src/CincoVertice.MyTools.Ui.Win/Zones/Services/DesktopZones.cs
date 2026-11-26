@@ -9,8 +9,8 @@ using CincoVertice.MyTools.Ui.Zones.Models;
 namespace CincoVertice.MyTools.Ui.Win.Zones.Services;
 
 /// <summary>
-///     The monitors and windows, in physical pixels on every monitor: the app is only system DPI aware, so each call
-///     runs per-monitor aware.
+///     The monitors and windows, in physical pixels on every monitor: each call runs per-monitor aware, as the app is,
+///     so it stays right should that change.
 /// </summary>
 public sealed class DesktopZones : IZoneDesktop
 {
