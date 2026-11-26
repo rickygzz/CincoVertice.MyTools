@@ -16,7 +16,7 @@ namespace CincoVertice.MyTools.Ui.Win.Behaviors;
 /// </summary>
 public sealed class DpiRescaleOnDrop : NativeWindow
 {
-    // Windows asks it how large to be at another DPI; WinForms answers from its controls
+    // Windows asks a window how large to be at another DPI; this answers, by the change of scaling
     private const uint WM_GETDPISCALEDSIZE = 0x02E4;
 
     // What Windows sends each child window around the form's WM_DPICHANGED: a control remakes its font then
@@ -70,6 +70,16 @@ public sealed class DpiRescaleOnDrop : NativeWindow
     {
         switch ((uint)m.Msg)
         {
+            case WM_GETDPISCALEDSIZE:
+                if (TryScaledSize(m.WParam, m.LParam))
+                {
+                    m.Result = 1;
+
+                    return;
+                }
+
+                break;
+
             case (uint)WM.WM_ENTERSIZEMOVE:
                 _isMoving = true;
                 _scaledDpi = _form.DeviceDpi;
@@ -103,6 +113,35 @@ public sealed class DpiRescaleOnDrop : NativeWindow
         {
             _scaledDpi = e.DeviceDpiNew;
         }
+    }
+
+    /// <summary>
+    ///     The window's size at another DPI, for Windows: scaled by exactly as much as the scaling changes, so it looks
+    ///     the same on both monitors and keeps its shape (WinForms answers from its fonts: 900 by 600 became 1028 by
+    ///     800 at 125%), and comes back to its size on the first monitor.
+    /// </summary>
+    /// <returns>Whether it was written; WinForms answers otherwise.</returns>
+    private bool TryScaledSize(nint newDpi, nint answer)
+    {
+        int to = (int)newDpi;
+        int from = _form.DeviceDpi;
+
+        if (answer == 0 || to <= 0 || from <= 0 || _form.WindowState != FormWindowState.Normal)
+        {
+            return false;
+        }
+
+        Size size = _form.Size;
+        Marshal.StructureToPtr(
+            new WindowSize
+            {
+                Width = (int)Math.Round(size.Width * (double)to / from),
+                Height = (int)Math.Round(size.Height * (double)to / from),
+            },
+            answer,
+            false);
+
+        return true;
     }
 
     private void HoldChildren()
@@ -140,7 +179,7 @@ public sealed class DpiRescaleOnDrop : NativeWindow
     /// <summary>
     ///     The crossing again, as Windows sends it: back to the DPI the controls are at, which changes nothing; then
     ///     to every child, from the bottom up, that its form's DPI changes; to the form, the monitor's DPI, at the size
-    ///     WinForms asks for, around the window's middle, so it stays on the monitor it was dropped on; and to every
+    ///     it asks for, around the window's middle, so it stays on the monitor it was dropped on; and to every
     ///     child, from the top down, that it did.
     /// </summary>
     private void Replay(int from, int to)
@@ -207,7 +246,7 @@ public sealed class DpiRescaleOnDrop : NativeWindow
         }
     }
 
-    // What WinForms answers Windows for the new DPI; the size scaled when it doesn't
+    // What the window answers Windows for the new DPI, as TryScaledSize does; the size scaled when nothing does
     private static Size ScaledSize(nint window, int dpi, Size size, float factor)
     {
         nint answer = Marshal.AllocHGlobal(Marshal.SizeOf<WindowSize>());
