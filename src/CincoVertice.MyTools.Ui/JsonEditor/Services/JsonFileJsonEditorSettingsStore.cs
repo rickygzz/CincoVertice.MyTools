@@ -32,7 +32,7 @@ public sealed class JsonFileJsonEditorSettingsStore : IJsonEditorSettingsStore
         {
             return File.Exists(FilePath)
                 && JsonSerializer.Deserialize<SettingsFile>(File.ReadAllText(FilePath), _options) is SettingsFile file
-                ? new JsonEditorSettingsModel(file.Dark)
+                ? new JsonEditorSettingsModel(file.Dark, file.Tree)
                 : null;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
@@ -46,7 +46,8 @@ public sealed class JsonFileJsonEditorSettingsStore : IJsonEditorSettingsStore
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-            AtomicFile.WriteAllText(FilePath, JsonSerializer.Serialize(new SettingsFile(settings.IsDark), _options));
+            var file = new SettingsFile(settings.IsDark, settings.IsTreeShown);
+            AtomicFile.WriteAllText(FilePath, JsonSerializer.Serialize(file, _options));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -54,5 +55,5 @@ public sealed class JsonFileJsonEditorSettingsStore : IJsonEditorSettingsStore
         }
     }
 
-    private sealed record SettingsFile(bool? Dark = null);
+    private sealed record SettingsFile(bool? Dark = null, bool Tree = false);
 }

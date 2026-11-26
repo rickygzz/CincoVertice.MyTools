@@ -1,5 +1,4 @@
 ﻿using System.Drawing;
-using System.Runtime.ExceptionServices;
 using System.Windows.Forms;
 using CincoVertice.MyTools.Ui.Diff.Models;
 using CincoVertice.MyTools.Ui.JsonEditor.Models;
@@ -34,31 +33,6 @@ public class JsonTextControlTests
         return control;
     }
 
-    // The menu asks the clipboard whether to offer Paste, which needs a thread of the STA kind
-    private static void OnSta(Action test)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                test();
-            }
-            catch (Exception ex)
-            {
-                failure = ex;
-            }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-
-        if (failure is not null)
-        {
-            ExceptionDispatchInfo.Throw(failure);
-        }
-    }
-
     [Fact]
     public void Toggle_CollapsesASection_ToItsFirstLine_AndOpensItAgain()
     {
@@ -78,7 +52,7 @@ public class JsonTextControlTests
     [Fact]
     public void Menu_CollapsesTheSectionClickedIn_ThenExpandsIt_FromItsFirstLine()
     {
-        OnSta(() =>
+        StaThread.Run(() =>
         {
             // Arrange
             using JsonTextControl control = Create();
@@ -138,7 +112,7 @@ public class JsonTextControlTests
     [Fact]
     public void Menu_InASelection_AsksForItsValues_AndSaysHowMany()
     {
-        OnSta(() =>
+        StaThread.Run(() =>
         {
             // Arrange: the presenter's answer, as many values as the selection holds
             using JsonTextControl control = Create();

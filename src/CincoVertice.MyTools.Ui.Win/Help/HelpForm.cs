@@ -357,7 +357,7 @@ public partial class HelpForm : Form, IHelpView
 
         if (_isDark)
         {
-            Tools.Renderer = new ToolStripProfessionalRenderer(new DarkColorTable()) { RoundedEdges = false };
+            Tools.Renderer = new DarkToolStripRenderer();
         }
         else
         {

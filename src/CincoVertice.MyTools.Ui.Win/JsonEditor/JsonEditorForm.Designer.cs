@@ -42,6 +42,30 @@ partial class JsonEditorForm
         CollapseAllButton = new ToolStripButton();
         ExpandAllButton = new ToolStripButton();
         ThemeButton = new ToolStripButton();
+        TreeButton = new ToolStripButton();
+        ToolsSeparator = new ToolStripSeparator();
+        SortKeysButton = new ToolStripButton();
+        RepairButton = new ToolStripButton();
+        CompareButton = new ToolStripDropDownButton();
+        CompareClipboardItem = new ToolStripMenuItem();
+        CompareFileItem = new ToolStripMenuItem();
+        ConvertButton = new ToolStripDropDownButton();
+        CopyYamlItem = new ToolStripMenuItem();
+        CopyCsvItem = new ToolStripMenuItem();
+        SaveYamlItem = new ToolStripMenuItem();
+        SaveCsvItem = new ToolStripMenuItem();
+        ConvertSeparator = new ToolStripSeparator();
+        OpenCsvItem = new ToolStripMenuItem();
+        PasteCsvItem = new ToolStripMenuItem();
+        SchemaButton = new ToolStripDropDownButton();
+        ChooseSchemaItem = new ToolStripMenuItem();
+        NoSchemaItem = new ToolStripMenuItem();
+        TreeSplit = new SplitContainer();
+        JsonTree = new TreeView();
+        SchemaLabel = new ToolStripStatusLabel();
+        ResultMenu = new ContextMenuStrip(components);
+        CopyResultJsonItem = new ToolStripMenuItem();
+        CopyResultLinesItem = new ToolStripMenuItem();
         SearchLayout = new TableLayoutPanel();
         ModeComboBox = new ComboBox();
         SearchBox = new TextBox();
@@ -64,13 +88,18 @@ partial class JsonEditorForm
         Split.Panel1.SuspendLayout();
         Split.Panel2.SuspendLayout();
         Split.SuspendLayout();
+        ((System.ComponentModel.ISupportInitialize)TreeSplit).BeginInit();
+        TreeSplit.Panel1.SuspendLayout();
+        TreeSplit.Panel2.SuspendLayout();
+        TreeSplit.SuspendLayout();
+        ResultMenu.SuspendLayout();
         Status.SuspendLayout();
         SuspendLayout();
         //
         // Tools
         //
         Tools.GripStyle = ToolStripGripStyle.Hidden;
-        Tools.Items.AddRange(new ToolStripItem[] { NewButton, OpenButton, SaveButton, SaveAsButton, FileSeparator, FormatButton, MinifyButton, FormatSeparator, CollapseAllButton, ExpandAllButton, ThemeButton });
+        Tools.Items.AddRange(new ToolStripItem[] { NewButton, OpenButton, SaveButton, SaveAsButton, FileSeparator, FormatButton, MinifyButton, FormatSeparator, CollapseAllButton, ExpandAllButton, TreeButton, ToolsSeparator, SortKeysButton, RepairButton, CompareButton, ConvertButton, SchemaButton, ThemeButton });
         Tools.Location = new Point(0, 0);
         Tools.Name = "Tools";
         Tools.Size = new Size(900, 25);
@@ -155,6 +184,114 @@ partial class JsonEditorForm
         ThemeButton.Name = "ThemeButton";
         ThemeButton.Text = "&Dark";
         ThemeButton.Click += ThemeButton_Click;
+        //
+        // TreeButton
+        //
+        TreeButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
+        TreeButton.Name = "TreeButton";
+        TreeButton.Text = "&Tree";
+        TreeButton.ToolTipText = "Show or hide the values as a tree, beside the text (Ctrl+T)";
+        TreeButton.Click += TreeButton_Click;
+        //
+        // SortKeysButton
+        //
+        SortKeysButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
+        SortKeysButton.Name = "SortKeysButton";
+        SortKeysButton.Text = "&Sort keys";
+        SortKeysButton.ToolTipText = "Sort every object's keys and format; right-click an object to sort only it";
+        SortKeysButton.Click += SortKeysButton_Click;
+        //
+        // RepairButton
+        //
+        RepairButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
+        RepairButton.Name = "RepairButton";
+        RepairButton.Text = "&Repair";
+        RepairButton.ToolTipText = "Fix single quotes, names without quotes, extra or missing commas, comments, and Python or JavaScript values";
+        RepairButton.Click += RepairButton_Click;
+        //
+        // CompareButton
+        //
+        CompareButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
+        CompareButton.DropDownItems.AddRange(new ToolStripItem[] { CompareClipboardItem, CompareFileItem });
+        CompareButton.Name = "CompareButton";
+        CompareButton.Text = "&Compare";
+        CompareButton.ToolTipText = "Compare with the clipboard or a file, both formatted the same way";
+        //
+        // CompareClipboardItem
+        //
+        CompareClipboardItem.Name = "CompareClipboardItem";
+        CompareClipboardItem.Text = "With the &clipboard";
+        CompareClipboardItem.Click += CompareClipboardItem_Click;
+        //
+        // CompareFileItem
+        //
+        CompareFileItem.Name = "CompareFileItem";
+        CompareFileItem.Text = "With a &file...";
+        CompareFileItem.Click += CompareFileItem_Click;
+        //
+        // ConvertButton
+        //
+        ConvertButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
+        ConvertButton.DropDownItems.AddRange(new ToolStripItem[] { CopyYamlItem, CopyCsvItem, SaveYamlItem, SaveCsvItem, ConvertSeparator, OpenCsvItem, PasteCsvItem });
+        ConvertButton.Name = "ConvertButton";
+        ConvertButton.Text = "Con&vert";
+        ConvertButton.ToolTipText = "YAML or CSV of the document, or of the JMESPath result when there is one; CSV to JSON";
+        //
+        // CopyYamlItem
+        //
+        CopyYamlItem.Name = "CopyYamlItem";
+        CopyYamlItem.Text = "Copy as &YAML";
+        CopyYamlItem.Click += CopyYamlItem_Click;
+        //
+        // CopyCsvItem
+        //
+        CopyCsvItem.Name = "CopyCsvItem";
+        CopyCsvItem.Text = "Copy as &CSV";
+        CopyCsvItem.Click += CopyCsvItem_Click;
+        //
+        // SaveYamlItem
+        //
+        SaveYamlItem.Name = "SaveYamlItem";
+        SaveYamlItem.Text = "Save as Y&AML...";
+        SaveYamlItem.Click += SaveYamlItem_Click;
+        //
+        // SaveCsvItem
+        //
+        SaveCsvItem.Name = "SaveCsvItem";
+        SaveCsvItem.Text = "Save as C&SV...";
+        SaveCsvItem.Click += SaveCsvItem_Click;
+        //
+        // OpenCsvItem
+        //
+        OpenCsvItem.Name = "OpenCsvItem";
+        OpenCsvItem.Text = "&Open CSV as JSON...";
+        OpenCsvItem.Click += OpenCsvItem_Click;
+        //
+        // PasteCsvItem
+        //
+        PasteCsvItem.Name = "PasteCsvItem";
+        PasteCsvItem.Text = "&Paste CSV as JSON";
+        PasteCsvItem.Click += PasteCsvItem_Click;
+        //
+        // SchemaButton
+        //
+        SchemaButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
+        SchemaButton.DropDownItems.AddRange(new ToolStripItem[] { ChooseSchemaItem, NoSchemaItem });
+        SchemaButton.Name = "SchemaButton";
+        SchemaButton.Text = "Sc&hema";
+        SchemaButton.ToolTipText = "Check the JSON against a JSON Schema file; one named in $schema is used by itself";
+        //
+        // ChooseSchemaItem
+        //
+        ChooseSchemaItem.Name = "ChooseSchemaItem";
+        ChooseSchemaItem.Text = "&Choose a schema...";
+        ChooseSchemaItem.Click += ChooseSchemaItem_Click;
+        //
+        // NoSchemaItem
+        //
+        NoSchemaItem.Name = "NoSchemaItem";
+        NoSchemaItem.Text = "&No schema";
+        NoSchemaItem.Click += NoSchemaItem_Click;
         //
         // SearchLayout
         //
@@ -241,7 +378,35 @@ partial class JsonEditorForm
         //
         // Split.Panel1
         //
-        Split.Panel1.Controls.Add(Editor);
+        Split.Panel1.Controls.Add(TreeSplit);
+        //
+        // TreeSplit
+        //
+        TreeSplit.Dock = DockStyle.Fill;
+        TreeSplit.FixedPanel = FixedPanel.Panel1;
+        TreeSplit.Name = "TreeSplit";
+        TreeSplit.Panel1Collapsed = true;
+        TreeSplit.Size = new Size(900, 521);
+        TreeSplit.SplitterDistance = 260;
+        TreeSplit.TabIndex = 0;
+        //
+        // TreeSplit.Panel1
+        //
+        TreeSplit.Panel1.Controls.Add(JsonTree);
+        //
+        // TreeSplit.Panel2
+        //
+        TreeSplit.Panel2.Controls.Add(Editor);
+        //
+        // JsonTree
+        //
+        JsonTree.BorderStyle = BorderStyle.None;
+        JsonTree.Dock = DockStyle.Fill;
+        JsonTree.HideSelection = false;
+        JsonTree.Name = "JsonTree";
+        JsonTree.TabIndex = 0;
+        JsonTree.BeforeExpand += JsonTree_BeforeExpand;
+        JsonTree.AfterSelect += JsonTree_AfterSelect;
         //
         // Split.Panel2
         //
@@ -256,6 +421,10 @@ partial class JsonEditorForm
         Editor.TextEdited += Editor_TextEdited;
         Editor.CaretMoved += Editor_CaretMoved;
         Editor.PathRequested += Editor_PathRequested;
+        Editor.HoverRequested += Editor_HoverRequested;
+        Editor.KeysRequested += Editor_KeysRequested;
+        Editor.SortKeysHereRequested += Editor_SortKeysHereRequested;
+        Editor.GoToPathRequested += Editor_GoToPathRequested;
         //
         // ResultBox
         //
@@ -267,6 +436,24 @@ partial class JsonEditorForm
         ResultBox.ScrollBars = ScrollBars.Both;
         ResultBox.TabIndex = 1;
         ResultBox.WordWrap = false;
+        ResultBox.ContextMenuStrip = ResultMenu;
+        //
+        // ResultMenu
+        //
+        ResultMenu.Items.AddRange(new ToolStripItem[] { CopyResultJsonItem, CopyResultLinesItem });
+        ResultMenu.Name = "ResultMenu";
+        //
+        // CopyResultJsonItem
+        //
+        CopyResultJsonItem.Name = "CopyResultJsonItem";
+        CopyResultJsonItem.Text = "Copy as &JSON";
+        CopyResultJsonItem.Click += CopyResultJsonItem_Click;
+        //
+        // CopyResultLinesItem
+        //
+        CopyResultLinesItem.Name = "CopyResultLinesItem";
+        CopyResultLinesItem.Text = "Copy as &lines (values without quotes)";
+        CopyResultLinesItem.Click += CopyResultLinesItem_Click;
         //
         // ResultLabel
         //
@@ -279,7 +466,7 @@ partial class JsonEditorForm
         //
         // Status
         //
-        Status.Items.AddRange(new ToolStripItem[] { PositionLabel, PathLabel, ValidityLabel });
+        Status.Items.AddRange(new ToolStripItem[] { PositionLabel, PathLabel, SchemaLabel, ValidityLabel });
         Status.Name = "Status";
         Status.TabIndex = 3;
         //
@@ -294,6 +481,14 @@ partial class JsonEditorForm
         PathLabel.Spring = true;
         PathLabel.TextAlign = ContentAlignment.MiddleLeft;
         PathLabel.ToolTipText = "The JMESPath of the value at the caret; right-click a value to copy its path";
+        //
+        // SchemaLabel
+        //
+        SchemaLabel.IsLink = true;
+        SchemaLabel.Name = "SchemaLabel";
+        SchemaLabel.ToolTipText = "Go to the next schema problem (F8; Shift+F8 for the one before)";
+        SchemaLabel.Visible = false;
+        SchemaLabel.Click += SchemaLabel_Click;
         //
         // ValidityLabel
         //
@@ -333,6 +528,11 @@ partial class JsonEditorForm
         Tools.PerformLayout();
         SearchLayout.ResumeLayout(false);
         SearchLayout.PerformLayout();
+        TreeSplit.Panel1.ResumeLayout(false);
+        TreeSplit.Panel2.ResumeLayout(false);
+        ((System.ComponentModel.ISupportInitialize)TreeSplit).EndInit();
+        TreeSplit.ResumeLayout(false);
+        ResultMenu.ResumeLayout(false);
         Split.Panel1.ResumeLayout(false);
         Split.Panel2.ResumeLayout(false);
         Split.Panel2.PerformLayout();
@@ -358,6 +558,30 @@ partial class JsonEditorForm
     private ToolStripButton CollapseAllButton;
     private ToolStripButton ExpandAllButton;
     private ToolStripButton ThemeButton;
+    private ToolStripButton TreeButton;
+    private ToolStripSeparator ToolsSeparator;
+    private ToolStripButton SortKeysButton;
+    private ToolStripButton RepairButton;
+    private ToolStripDropDownButton CompareButton;
+    private ToolStripMenuItem CompareClipboardItem;
+    private ToolStripMenuItem CompareFileItem;
+    private ToolStripDropDownButton ConvertButton;
+    private ToolStripMenuItem CopyYamlItem;
+    private ToolStripMenuItem CopyCsvItem;
+    private ToolStripMenuItem SaveYamlItem;
+    private ToolStripMenuItem SaveCsvItem;
+    private ToolStripSeparator ConvertSeparator;
+    private ToolStripMenuItem OpenCsvItem;
+    private ToolStripMenuItem PasteCsvItem;
+    private ToolStripDropDownButton SchemaButton;
+    private ToolStripMenuItem ChooseSchemaItem;
+    private ToolStripMenuItem NoSchemaItem;
+    private SplitContainer TreeSplit;
+    private TreeView JsonTree;
+    private ToolStripStatusLabel SchemaLabel;
+    private ContextMenuStrip ResultMenu;
+    private ToolStripMenuItem CopyResultJsonItem;
+    private ToolStripMenuItem CopyResultLinesItem;
     private TableLayoutPanel SearchLayout;
     private ComboBox ModeComboBox;
     private TextBox SearchBox;

@@ -44,6 +44,39 @@ public interface IJsonEditorView
     /// <summary>The Dark or Light button: the other of the two, from now on.</summary>
     event EventHandler? ThemeToggled;
 
+    /// <summary>The Tree button (Ctrl+T): the tree panel shown or hidden, from now on.</summary>
+    event EventHandler? TreeToggled;
+
+    /// <summary>A value chosen in the tree panel, or a step of the breadcrumb clicked: to go to it.</summary>
+    event EventHandler<JsonNodeModel>? NodeChosen;
+
+    /// <summary>The pointer rests on the text: the presenter says what's there.</summary>
+    event EventHandler<JsonHoverRequestModel>? HoverRequested;
+
+    /// <summary>Ctrl+Space: the names to offer for a new member there.</summary>
+    event EventHandler<JsonKeyRequestModel>? KeysRequested;
+
+    /// <summary>Sort keys: of the object at the caret when true, of the whole document when false.</summary>
+    event EventHandler<bool>? SortKeysRequested;
+
+    event EventHandler<JsonCompareSource>? CompareRequested;
+
+    /// <summary>Go to path (Ctrl+G).</summary>
+    event EventHandler? GoToPathRequested;
+
+    /// <summary>Copy the result: as plain lines when true, as JSON when false.</summary>
+    event EventHandler<bool>? CopyResultRequested;
+
+    event EventHandler? RepairRequested;
+
+    event EventHandler<JsonConversionKind>? ConvertRequested;
+
+    /// <summary>Choose a schema when true; check against none when false.</summary>
+    event EventHandler<bool>? SchemaRequested;
+
+    /// <summary>To the next schema problem after the caret (F8), or the one before (Shift+F8, -1).</summary>
+    event EventHandler<int>? ProblemStepRequested;
+
     IReadOnlyList<string> Lines { get; }
 
     /// <summary>Whether it's shown dark: as Windows' mode when it opens, until a theme is chosen.</summary>
@@ -94,4 +127,48 @@ public interface IJsonEditorView
     bool? AskSaveChanges();
 
     void ShowProblem(string message);
+
+    void ShowMessage(string message);
+
+    /// <summary>Replaces part of the text as one edit, which Undo takes back.</summary>
+    void ReplaceRange(DiffPosition start, DiffPosition end, string text);
+
+    /// <summary>The tree panel shown or hidden.</summary>
+    void ShowTreePanel(bool isShown);
+
+    /// <summary>The document's values in the tree panel; null for none.</summary>
+    void ShowTree(JsonNodeModel? root);
+
+    /// <summary>The value at the caret selected in the tree panel, its sections opened down to it.</summary>
+    void SelectInTree(JsonNodeModel? node);
+
+    /// <summary>The steps to the value at the caret, in the status bar.</summary>
+    void ShowCrumbs(IReadOnlyList<JsonCrumbModel> crumbs);
+
+    /// <summary>The bracket at the caret and its pair, marked; null for none.</summary>
+    void ShowBracketPair((DiffPosition Open, DiffPosition Close)? pair);
+
+    /// <summary>The values the schema finds wrong, underlined.</summary>
+    void ShowSchemaProblems(IReadOnlyList<JsonSchemaProblemModel> problems);
+
+    /// <summary>The schema's name and how many problems, in the status bar; null for no schema.</summary>
+    void ShowSchemaStatus(string? status);
+
+    /// <summary>Two texts side by side, in Compare files.</summary>
+    void ShowComparison(string leftName, string leftText, string rightName, string rightText);
+
+    /// <returns>The path to go to; null when the user cancels.</returns>
+    string? AskPath(string current);
+
+    string? AskSchemaPath();
+
+    string? AskCsvPath();
+
+    /// <returns>Where to save a YAML or CSV file, by its extension; null when the user cancels.</returns>
+    string? AskExportPath(string fileName);
+
+    /// <returns>The clipboard's text; null when it has none.</returns>
+    string? ReadClipboard();
+
+    void WriteClipboard(string text);
 }

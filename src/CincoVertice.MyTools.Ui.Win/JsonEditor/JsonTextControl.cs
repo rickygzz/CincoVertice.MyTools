@@ -92,6 +92,15 @@ public sealed class JsonTextControl : Control
     private string? _menuValue;
     private string? _menuNameAndValue;
     private Action _prepareMenu = () => { };
+    private readonly System.Windows.Forms.Timer _hoverTimer = new() { Interval = 600 };
+    private readonly ToolTip _hoverTip = new() { UseAnimation = false, UseFading = false };
+    private readonly ContextMenuStrip _keysMenu = new() { ShowImageMargin = false };
+    private Point _hoverPoint;
+    private (DiffPosition Open, DiffPosition Close)? _bracketPair;
+    private IReadOnlyList<(DiffPosition Start, DiffPosition End)> _problemMarks = [];
+    private Color _bracketBack;
+    private Color _bracketBorder;
+    private Color _problemColor;
 
     public JsonTextControl()
     {
@@ -113,6 +122,7 @@ public sealed class JsonTextControl : Control
 
         // The control isn't made by the designer, so its own parts are wired here
         _blink.Tick += (_, _) => Blink();
+        _hoverTimer.Tick += (_, _) => Hover();
         BuildMenu();
         ContextMenuStrip = _menu;
         Measure();
@@ -125,6 +135,18 @@ public sealed class JsonTextControl : Control
 
     /// <summary>The menu opens on a right click: the path and the value there, answered in the request.</summary>
     public event EventHandler<JsonPathRequestModel>? PathRequested;
+
+    /// <summary>The pointer rests on the text: what's there, for a tooltip, answered in the request.</summary>
+    public event EventHandler<JsonHoverRequestModel>? HoverRequested;
+
+    /// <summary>Ctrl+Space: the names to offer at the caret, answered in the request.</summary>
+    public event EventHandler<JsonKeyRequestModel>? KeysRequested;
+
+    /// <summary>The menu's Sort keys here: the object at the caret.</summary>
+    public event EventHandler? SortKeysHereRequested;
+
+    /// <summary>The menu's Go to path.</summary>
+    public event EventHandler? GoToPathRequested;
 
     public IReadOnlyList<string> Lines => _buffer.Lines;
 
@@ -177,6 +199,34 @@ public sealed class JsonTextControl : Control
     }
 
     /// <summary>Replaces the whole text as one edit, which Undo takes back.</summary>
+    /// <summary>Replaces part of the text as one edit, which Undo takes back; the caret at the part's start.</summary>
+    public void ReplaceRange(DiffPosition start, DiffPosition end, string text)
+    {
+        Edit(buffer =>
+        {
+            buffer.Select(buffer.Clamp(start), buffer.Clamp(end));
+            buffer.Insert(text);
+            buffer.MoveTo(buffer.Clamp(start), extend: false);
+        });
+    }
+
+    /// <summary>The bracket at the caret and its pair, marked; null for none.</summary>
+    public void ShowBracketPair((DiffPosition Open, DiffPosition Close)? pair)
+    {
+        if (pair != _bracketPair)
+        {
+            _bracketPair = pair;
+            Invalidate();
+        }
+    }
+
+    /// <summary>The values a schema finds wrong, underlined in another color than the syntax error.</summary>
+    public void ShowProblemMarks(IReadOnlyList<(DiffPosition Start, DiffPosition End)> marks)
+    {
+        _problemMarks = marks;
+        Invalidate();
+    }
+
     public void ReplaceAll(string text)
     {
         Edit(buffer =>
@@ -231,17 +281,23 @@ public sealed class JsonTextControl : Control
         _currentMatchBack = isDark ? Color.FromArgb(160, 95, 20) : Color.FromArgb(255, 170, 60);
         _summaryBack = isDark ? Color.FromArgb(55, 55, 55) : Color.FromArgb(232, 232, 232);
         _errorColor = isDark ? Color.FromArgb(244, 71, 71) : Color.FromArgb(220, 40, 40);
+        _bracketBack = isDark ? Color.FromArgb(60, 70, 60) : Color.FromArgb(220, 240, 220);
+        _bracketBorder = isDark ? Color.FromArgb(130, 160, 130) : Color.FromArgb(110, 160, 110);
+        _problemColor = isDark ? Color.FromArgb(230, 180, 60) : Color.FromArgb(200, 130, 0);
 
-        if (isDark)
+        foreach (ContextMenuStrip menu in new[] { _menu, _keysMenu })
         {
-            _menu.Renderer = new ToolStripProfessionalRenderer(new DarkColorTable()) { RoundedEdges = false };
-        }
-        else
-        {
-            _menu.RenderMode = ToolStripRenderMode.ManagerRenderMode;
-        }
+            if (isDark)
+            {
+                menu.Renderer = new DarkToolStripRenderer();
+            }
+            else
+            {
+                menu.RenderMode = ToolStripRenderMode.ManagerRenderMode;
+            }
 
-        _menu.ForeColor = isDark ? DarkColorTable.Text : SystemColors.ControlText;
+            menu.ForeColor = isDark ? DarkColorTable.Text : SystemColors.ControlText;
+        }
 
         if (IsHandleCreated)
         {
@@ -303,6 +359,123 @@ public sealed class JsonTextControl : Control
 
     private bool IsCollapsedStart(int line) => _collapsed.Contains(line) && _folds.ContainsKey(line);
 
+    /// <summary>Ctrl+]: from the bracket at the caret to its pair, the caret before it.</summary>
+    internal void JumpToPair()
+    {
+        if (_bracketPair is not var (open, close))
+        {
+            return;
+        }
+
+        DiffPosition caret = _buffer.Caret;
+        bool atOpen = caret == open || caret == open with { Column = open.Column + 1 };
+        _buffer.MoveTo(atOpen ? close : open, extend: false);
+        CaretChanged(scroll: true);
+    }
+
+    /// <summary>
+    ///     Ctrl+Space: the names the presenter offers for a new member there, those starting as the word before the
+    ///     caret does, in a list at the caret; choosing one writes "name": in place of that word.
+    /// </summary>
+    internal IReadOnlyList<string> ShowKeys(bool show = true)
+    {
+        var request = new JsonKeyRequestModel(_buffer.Caret);
+        KeysRequested?.Invoke(this, request);
+        (DiffPosition start, string typed) = TypedName();
+        List<string> names =
+            [.. request.Names.Where(name => name.StartsWith(typed, StringComparison.OrdinalIgnoreCase))];
+
+        if (names.Count == 0 || !show)
+        {
+            return names;
+        }
+
+        foreach (ToolStripItem old in _keysMenu.Items.Cast<ToolStripItem>().ToList())
+        {
+            old.Dispose();
+        }
+
+        _keysMenu.Items.Clear();
+        _keysMenu.Font = Font;
+
+        foreach (string name in names)
+        {
+            _keysMenu.Items.Add(new ToolStripMenuItem(name, null, (_, _) => WriteName(start, name)));
+        }
+
+        Point at = PointOf(_buffer.Caret);
+        _keysMenu.Show(this, at with { Y = at.Y + _rowHeight });
+        _keysMenu.Items[0].Select();
+
+        return names;
+    }
+
+    /// <summary>Writes a name chosen from Ctrl+Space's list, in place of the word typed before the caret.</summary>
+    internal void WriteName(DiffPosition start, string name) =>
+        Edit(buffer =>
+        {
+            buffer.Select(start, buffer.Caret);
+            buffer.Insert($"{JsonTextWriter.Quoted(name)}: ");
+        });
+
+    // The name being typed before the caret, with its opening quote, and where it starts
+    private (DiffPosition Start, string Typed) TypedName()
+    {
+        DiffPosition caret = _buffer.Caret;
+        string line = _buffer.Lines[caret.Line];
+        int start = caret.Column;
+
+        while (start > 0 && (char.IsLetterOrDigit(line[start - 1]) || line[start - 1] is '_' or '-' or '$'))
+        {
+            start--;
+        }
+
+        string typed = line[start..caret.Column];
+
+        if (start > 0 && line[start - 1] == '"')
+        {
+            start--;
+        }
+
+        return (caret with { Column = start }, typed);
+    }
+
+    // Where a position is drawn, in the control's pixels
+    private Point PointOf(DiffPosition position)
+    {
+        int column = DiffTextControl.ColumnsOf(_buffer.Lines[position.Line])[position.Column] - _horizontal.Value;
+
+        return new Point(TextLeft + (int)(column * _charWidth), (RowOf(position.Line) - TopRow) * _rowHeight);
+    }
+
+    // The pointer has rested: what the presenter says is there, in a tooltip under it
+    private void Hover()
+    {
+        _hoverTimer.Stop();
+
+        if (!IsHandleCreated || !ClientRectangle.Contains(PointToClient(MousePosition))
+            || _hoverPoint.X < TextLeft || _hoverPoint.Y >= TextArea.Height || _rows.Count == 0)
+        {
+            return;
+        }
+
+        DiffPosition position = PositionAt(_hoverPoint);
+
+        // Past the end of the line there's nothing to say
+        if (position.Column >= _buffer.Lines[position.Line].Length && PointOf(position).X < _hoverPoint.X - _charWidth)
+        {
+            return;
+        }
+
+        var request = new JsonHoverRequestModel(position);
+        HoverRequested?.Invoke(this, request);
+
+        if (request.Text is string text)
+        {
+            _hoverTip.Show(text, this, _hoverPoint.X, _hoverPoint.Y + _rowHeight, 8000);
+        }
+    }
+
     public void CollapseAll()
     {
         // The outermost section stays open, or there would be only its first line
@@ -341,6 +514,7 @@ public sealed class JsonTextControl : Control
     /// <returns>Whether the key did something here.</returns>
     internal bool HandleKey(Keys keyData)
     {
+        _hoverTip.Hide(this);
         Keys key = keyData & Keys.KeyCode;
         bool shift = (keyData & Keys.Shift) != 0;
         bool control = (keyData & Keys.Control) != 0;
@@ -363,6 +537,12 @@ public sealed class JsonTextControl : Control
                 return true;
             case Keys.Oemplus or Keys.Add when control:
                 ExpandSectionAt(_buffer.Caret.Line);
+                return true;
+            case Keys.OemCloseBrackets when control:
+                JumpToPair();
+                return true;
+            case Keys.Space when control:
+                ShowKeys();
                 return true;
             case Keys.Z when control && shift:
             case Keys.Y when control:
@@ -584,6 +764,19 @@ public sealed class JsonTextControl : Control
     protected override void OnMouseMove(MouseEventArgs e)
     {
         base.OnMouseMove(e);
+
+        // The tooltip waits for the pointer to rest; a move of a few pixels away hides it
+        if (Math.Abs(e.X - _hoverPoint.X) + Math.Abs(e.Y - _hoverPoint.Y) > 4)
+        {
+            _hoverPoint = e.Location;
+            _hoverTip.Hide(this);
+            _hoverTimer.Stop();
+
+            if (!_isSelecting && e.Button == MouseButtons.None)
+            {
+                _hoverTimer.Start();
+            }
+        }
         Cursor = e.X < GutterWidth || e.X >= TextArea.Width ? Cursors.Default : Cursors.IBeam;
 
         if (!_isSelecting)
@@ -609,6 +802,13 @@ public sealed class JsonTextControl : Control
     {
         base.OnMouseUp(e);
         _isSelecting = false;
+    }
+
+    protected override void OnMouseLeave(EventArgs e)
+    {
+        base.OnMouseLeave(e);
+        _hoverTimer.Stop();
+        _hoverTip.Hide(this);
     }
 
     protected override void OnPaint(PaintEventArgs e)
@@ -650,6 +850,9 @@ public sealed class JsonTextControl : Control
         {
             _blink.Dispose();
             _menu.Dispose();
+            _hoverTimer.Dispose();
+            _hoverTip.Dispose();
+            _keysMenu.Dispose();
         }
 
         base.Dispose(disposing);
@@ -692,6 +895,14 @@ public sealed class JsonTextControl : Control
         ToolStripMenuItem cut = MenuItem("Cu&t", "Ctrl+X", Cut);
         ToolStripMenuItem copy = MenuItem("&Copy", "Ctrl+C", Copy);
         ToolStripMenuItem paste = MenuItem("&Paste", "Ctrl+V", Paste);
+        ToolStripMenuItem sortHere = MenuItem(
+            "&Sort keys here",
+            string.Empty,
+            () => SortKeysHereRequested?.Invoke(this, EventArgs.Empty));
+        ToolStripMenuItem goToPath = MenuItem(
+            "&Go to path...",
+            "Ctrl+G",
+            () => GoToPathRequested?.Invoke(this, EventArgs.Empty));
         ToolStripMenuItem collapseAll = MenuItem("Collapse &all", "Ctrl+Shift+-", CollapseAll);
         ToolStripMenuItem expandAll = MenuItem("&Expand all", "Ctrl+Shift++", ExpandAll);
         _copyPathItem.Click += (_, _) => CopyText(_menuPath);
@@ -701,6 +912,7 @@ public sealed class JsonTextControl : Control
         _menu.Items.AddRange(
         [
             _copyPathItem, _copyValueItem, _copyNameAndValueItem, new ToolStripSeparator(),
+            sortHere, goToPath, new ToolStripSeparator(),
             _sectionItem, collapseAll, expandAll, new ToolStripSeparator(),
             undo, redo, new ToolStripSeparator(), cut, copy, paste,
         ]);
@@ -1018,7 +1230,9 @@ public sealed class JsonTextControl : Control
 
         PaintMatches(graphics, area, line, columns);
         PaintSelection(graphics, area, line, columns);
+        PaintBrackets(graphics, area, line, columns);
         PaintTokens(graphics, area, line, text, columns);
+        PaintProblemMarks(graphics, area, line, columns);
         PaintError(graphics, area, line, columns);
 
         if (_collapsed.Contains(line) && _folds.TryGetValue(line, out JsonFoldModel? fold))
@@ -1146,6 +1360,70 @@ public sealed class JsonTextControl : Control
         graphics.FillRectangle(brush, from, area.Y, Math.Max(0, to - from), _rowHeight);
     }
 
+    // The bracket at the caret and its pair, each in a box
+    private void PaintBrackets(Graphics graphics, Rectangle area, int line, int[] columns)
+    {
+        if (_bracketPair is not var (open, close))
+        {
+            return;
+        }
+
+        foreach (DiffPosition at in new[] { open, close })
+        {
+            if (at.Line != line || at.Column >= columns.Length - 1)
+            {
+                continue;
+            }
+
+            float from = area.X + (columns[at.Column] - _horizontal.Value) * _charWidth;
+            float to = area.X + (columns[at.Column + 1] - _horizontal.Value) * _charWidth;
+
+            using (var back = new SolidBrush(_bracketBack))
+            {
+                graphics.FillRectangle(back, from, area.Y, to - from, _rowHeight);
+            }
+
+            using var border = new Pen(_bracketBorder);
+            graphics.DrawRectangle(border, from, area.Y, to - from - 1, _rowHeight - 1);
+        }
+    }
+
+    // A wavy line under each value the schema finds wrong: on its first line, to that line's end
+    private void PaintProblemMarks(Graphics graphics, Rectangle area, int line, int[] columns)
+    {
+        int length = columns.Length - 1;
+
+        foreach ((DiffPosition start, DiffPosition end) in _problemMarks)
+        {
+            if (start.Line != line)
+            {
+                continue;
+            }
+
+            int first = Math.Min(start.Column, length);
+            int last = end.Line == line ? Math.Min(end.Column, length) : length;
+            float from = area.X + (columns[first] - _horizontal.Value) * _charWidth;
+            float to = area.X + (columns[Math.Max(first + 1, last)] - _horizontal.Value) * _charWidth;
+            PaintWave(graphics, from, Math.Max(to, from + 3 * _charWidth), area.Y + _rowHeight - 2, _problemColor);
+        }
+    }
+
+    private static void PaintWave(Graphics graphics, float from, float to, float bottom, Color color)
+    {
+        List<PointF> wave = [];
+
+        for (float x = from; x <= to; x += 2)
+        {
+            wave.Add(new PointF(x, bottom - ((int)((x - from) / 2) % 2 == 0 ? 0 : 2)));
+        }
+
+        if (wave.Count > 1)
+        {
+            using var pen = new Pen(color);
+            graphics.DrawLines(pen, [.. wave]);
+        }
+    }
+
     // A wavy line under the first thing wrong, a few characters long
     private void PaintError(Graphics graphics, Rectangle area, int line, int[] columns)
     {
@@ -1158,19 +1436,7 @@ public sealed class JsonTextControl : Control
         int start = Math.Min(at.Column, length);
         float from = area.X + (columns[start] - _horizontal.Value) * _charWidth;
         float to = from + Math.Max(3, Math.Min(4, length - start)) * _charWidth;
-        float bottom = area.Y + _rowHeight - 2;
-        List<PointF> wave = [];
-
-        for (float x = from; x <= to; x += 2)
-        {
-            wave.Add(new PointF(x, bottom - ((int)((x - from) / 2) % 2 == 0 ? 0 : 2)));
-        }
-
-        if (wave.Count > 1)
-        {
-            using var pen = new Pen(_errorColor);
-            graphics.DrawLines(pen, [.. wave]);
-        }
+        PaintWave(graphics, from, to, area.Y + _rowHeight - 2, _errorColor);
     }
 
     private void PaintCaret(Graphics graphics)

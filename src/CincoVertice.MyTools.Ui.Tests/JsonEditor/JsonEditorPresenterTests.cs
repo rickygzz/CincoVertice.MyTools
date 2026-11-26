@@ -15,8 +15,8 @@ public class JsonEditorPresenterTests
     private const string Path = @"C:\data\people.json";
     private const string Json = "{\n  \"people\": [\n    { \"name\": \"Ann\" },\n    { \"name\": \"Bob\" }\n  ]\n}\n";
 
-    private readonly FakeView _view = new();
-    private readonly FakeFiles _files = new();
+    private readonly FakeJsonEditorView _view = new();
+    private readonly FakeJsonFiles _files = new();
     private readonly JsonEditorPresenter _presenter;
 
     public JsonEditorPresenterTests()
@@ -129,8 +129,8 @@ public class JsonEditorPresenterTests
     public void Start_ShowsTheThemeChosenBefore_AndToggling_KeepsTheOther()
     {
         // Arrange
-        var store = new FakeSettings { Settings = new JsonEditorSettingsModel(IsDark: true) };
-        var view = new FakeView();
+        var store = new FakeJsonSettings { Settings = new JsonEditorSettingsModel(IsDark: true) };
+        var view = new FakeJsonEditorView();
         var presenter = new JsonEditorPresenter(view, _files, _files, store);
 
         // Act
@@ -146,10 +146,10 @@ public class JsonEditorPresenterTests
     public void Start_WithNoThemeChosen_LeavesWindowsMode()
     {
         // Arrange
-        var view = new FakeView();
+        var view = new FakeJsonEditorView();
 
         // Act
-        new JsonEditorPresenter(view, _files, _files, new FakeSettings()).Start(Path);
+        new JsonEditorPresenter(view, _files, _files, new FakeJsonSettings()).Start(Path);
 
         // Assert
         Assert.Empty(view.ThemesShown);
@@ -294,197 +294,5 @@ public class JsonEditorPresenterTests
         // Assert
         Assert.Equal(Json, _files.Texts[@"C:\data\copy.json"]);
         Assert.Equal("copy.json - JSON editor", _view.Title);
-    }
-
-    private sealed class FakeFiles : IDiffFileReader, IDiffFileWriter
-    {
-        public Dictionary<string, string> Texts { get; } = [];
-
-        public DiffFileModel Read(string path) =>
-            Texts.TryGetValue(path, out string? text)
-                ? new DiffFileModel(text, DateTime.UtcNow, new UTF8Encoding(false))
-                : throw new FileNotFoundException("Not found", path);
-
-        public DateTime? WrittenUtc(string path) => null;
-
-        public DateTime Write(string path, string text, Encoding encoding)
-        {
-            Texts[path] = text;
-
-            return DateTime.UtcNow;
-        }
-    }
-
-    private sealed class FakeSettings : IJsonEditorSettingsStore
-    {
-        public JsonEditorSettingsModel? Settings { get; set; }
-
-        public JsonEditorSettingsModel? Load() => Settings;
-
-        public void Save(JsonEditorSettingsModel settings) => Settings = settings;
-    }
-
-    private sealed class FakeView : IJsonEditorView
-    {
-        private List<string> _lines = [string.Empty];
-
-        public event EventHandler? TextEdited;
-
-        public event EventHandler<DiffPosition>? CaretMoved;
-
-        public event EventHandler? NewRequested;
-
-        public event EventHandler? OpenRequested;
-
-        public event EventHandler? SaveRequested;
-
-        public event EventHandler? SaveAsRequested;
-
-        public event EventHandler? FormatRequested;
-
-        public event EventHandler? MinifyRequested;
-
-        public event EventHandler<string>? FileDropped;
-
-        public event EventHandler? SearchChanged;
-
-        public event EventHandler<int>? SearchStepRequested;
-
-        public event EventHandler<JsonSuggestionModel>? SuggestionChosen;
-
-        public event EventHandler<JsonPathRequestModel>? PathRequested;
-
-        public event EventHandler<CancelEventArgs>? CloseRequested;
-
-        public event EventHandler? ThemeToggled;
-
-        public IReadOnlyList<string> Lines => _lines;
-
-        public bool IsDark { get; private set; }
-
-        public List<bool> ThemesShown { get; } = [];
-
-        public string SearchText { get; private set; } = string.Empty;
-
-        public JsonSearchMode SearchMode { get; private set; }
-
-        public JsonDocumentModel? Document { get; private set; }
-
-        public string Title { get; private set; } = string.Empty;
-
-        public string Position { get; private set; } = string.Empty;
-
-        public string Path { get; private set; } = string.Empty;
-
-        public string Validity { get; private set; } = string.Empty;
-
-        public IReadOnlyList<JsonMatchModel> Matches { get; private set; } = [];
-
-        public JsonMatchModel? WentTo { get; private set; }
-
-        public string SearchMessage { get; private set; } = string.Empty;
-
-        public bool IsSearchProblem { get; private set; }
-
-        public string? Result { get; private set; }
-
-        public IReadOnlyList<JsonSuggestionModel> Suggestions { get; private set; } = [];
-
-        public bool? SaveAnswer { get; set; }
-
-        public int SaveAsked { get; private set; }
-
-        public void ShowText(IReadOnlyList<string> lines) => _lines = [.. lines];
-
-        public void ReplaceText(string text)
-        {
-            _lines = [.. text.Split('\n')];
-            TextEdited?.Invoke(this, EventArgs.Empty);
-        }
-
-        public void ShowDocument(JsonDocumentModel document) => Document = document;
-
-        public void ShowTitle(string title) => Title = title;
-
-        public void ShowTheme(bool isDark)
-        {
-            IsDark = isDark;
-            ThemesShown.Add(isDark);
-        }
-
-        public void ShowStatus(string position, string path, string validity) =>
-            (Position, Path, Validity) = (position, path, validity);
-
-        public void ShowMatches(IReadOnlyList<JsonMatchModel> matches, int current) => Matches = matches;
-
-        public void GoTo(JsonMatchModel match) => WentTo = match;
-
-        public void ShowSearchMessage(string message, bool isProblem) =>
-            (SearchMessage, IsSearchProblem) = (message, isProblem);
-
-        public void ShowResult(string? json) => Result = json;
-
-        public void ShowSuggestions(IReadOnlyList<JsonSuggestionModel> suggestions) => Suggestions = suggestions;
-
-        public void SetSearchText(string text)
-        {
-            SearchText = text;
-            SearchChanged?.Invoke(this, EventArgs.Empty);
-        }
-
-        public string? OpenPath { get; set; }
-
-        public string? SavePath { get; set; }
-
-        public string? AskOpenPath() => OpenPath;
-
-        public string? AskSavePath(string fileName) => SavePath;
-
-        public bool? AskSaveChanges()
-        {
-            SaveAsked++;
-
-            return SaveAnswer;
-        }
-
-        public void ShowProblem(string message) => throw new InvalidOperationException(message);
-
-        public void Edit(Action<List<string>> change)
-        {
-            change(_lines);
-            TextEdited?.Invoke(this, EventArgs.Empty);
-        }
-
-        public void MoveCaret(DiffPosition caret) => CaretMoved?.Invoke(this, caret);
-
-        public void Search(JsonSearchMode mode, string text)
-        {
-            SearchMode = mode;
-            SetSearchText(text);
-        }
-
-        public void RaiseStep(int step) => SearchStepRequested?.Invoke(this, step);
-
-        public void RaisePathRequested(JsonPathRequestModel request) => PathRequested?.Invoke(this, request);
-
-        public void RaiseSuggestionChosen(JsonSuggestionModel suggestion) => SuggestionChosen?.Invoke(this, suggestion);
-
-        public void RaiseFormat() => FormatRequested?.Invoke(this, EventArgs.Empty);
-
-        public void RaiseMinify() => MinifyRequested?.Invoke(this, EventArgs.Empty);
-
-        public void RaiseSave() => SaveRequested?.Invoke(this, EventArgs.Empty);
-
-        public void RaiseClose(CancelEventArgs e) => CloseRequested?.Invoke(this, e);
-
-        public void RaiseDrop(string path) => FileDropped?.Invoke(this, path);
-
-        public void RaiseNew() => NewRequested?.Invoke(this, EventArgs.Empty);
-
-        public void RaiseOpen() => OpenRequested?.Invoke(this, EventArgs.Empty);
-
-        public void RaiseSaveAs() => SaveAsRequested?.Invoke(this, EventArgs.Empty);
-
-        public void RaiseThemeToggled() => ThemeToggled?.Invoke(this, EventArgs.Empty);
     }
 }

@@ -19,7 +19,7 @@ Everything below is in the `config` folder next to the exe unless noted.
 | `library\` next to the exe, not in `config` | Comes with the app | The diagram editor's shape libraries: flowchart, network, cloud and UML shapes. An update replaces them, so put images of your own in `config\images` instead |
 | `recovery\` | While a diagram editor window has changes that aren't saved | A copy of each window's unsaved diagram, deleted once it's saved or you choose not to save it; offered back the next time the diagram editor opens (see [Getting unsaved changes back](05-diagram-editor.md#getting-unsaved-changes-back)) |
 | `calculator.json` | Each time you enter a line in the calculator | The last 200 lines entered, which **Up** brings back after a restart too. Delete it to forget them |
-| `jsoneditor.json` | When you click **Dark** or **Light** in the JSON editor | Whether the JSON editor is dark or light (see [Dark or light](18-json-editor.md#dark-or-light)) |
+| `jsoneditor.json` | When you click **Dark**, **Light** or **Tree** in the JSON editor | Whether the JSON editor is dark or light, and shows its tree (see [Dark or light](18-json-editor.md#dark-or-light)) |
 | `help.json` | When the help window closes | Where the help window was, the page it showed last, and dark or light if you chose one with its button |
 | `fixers.json` | When you change a choice under **Fix folder for standard** | The fixers that **Fix a folder...** doesn't run, and the line ending and encoding it gives the files |
 | `updates.json` | The first time you click **Check for updates at start** | Whether to look for a newer version at start |

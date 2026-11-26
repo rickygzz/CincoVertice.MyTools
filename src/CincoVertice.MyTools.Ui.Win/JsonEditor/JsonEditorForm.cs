@@ -21,9 +21,17 @@ public partial class JsonEditorForm : Form, IJsonEditorView
     // While the search text or mode is set here, not by the user
     private bool _isSettingSearch;
 
+    // An array or object shows at most this many of its values in the tree, then how many more
+    private const int MaxTreeChildren = 1000;
+
     private bool _isDark;
     private Color _textColor = SystemColors.ControlText;
     private Color _detailColor = SystemColors.GrayText;
+
+    // While the tree's selection is set here, following the caret, not by the user
+    private bool _isSelectingInTree;
+    private readonly List<ToolStripItem> _crumbItems = [];
+    private IReadOnlyList<JsonCrumbModel> _crumbs = [];
 
     public JsonEditorForm()
         : this(DarkMode.IsOn())
@@ -45,6 +53,30 @@ public partial class JsonEditorForm : Form, IJsonEditorView
     }
 
     public event EventHandler? ThemeToggled;
+
+    public event EventHandler? TreeToggled;
+
+    public event EventHandler<JsonNodeModel>? NodeChosen;
+
+    public event EventHandler<JsonHoverRequestModel>? HoverRequested;
+
+    public event EventHandler<JsonKeyRequestModel>? KeysRequested;
+
+    public event EventHandler<bool>? SortKeysRequested;
+
+    public event EventHandler<JsonCompareSource>? CompareRequested;
+
+    public event EventHandler? GoToPathRequested;
+
+    public event EventHandler<bool>? CopyResultRequested;
+
+    public event EventHandler? RepairRequested;
+
+    public event EventHandler<JsonConversionKind>? ConvertRequested;
+
+    public event EventHandler<bool>? SchemaRequested;
+
+    public event EventHandler<int>? ProblemStepRequested;
 
     public event EventHandler? TextEdited;
 
@@ -77,6 +109,26 @@ public partial class JsonEditorForm : Form, IJsonEditorView
     public IReadOnlyList<string> Lines => Editor.Lines;
 
     public bool IsDark => _isDark;
+
+    /// <summary>
+    ///     Shows two texts side by side over this window: Compare files', given by whoever makes the window.
+    /// </summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public Action<string, string, string, string, IWin32Window>? CompareTexts { get; set; }
+
+    internal TreeView Tree => JsonTree;
+
+    internal bool IsTreeShown => !TreeSplit.Panel1Collapsed;
+
+    internal IReadOnlyList<string> CrumbTexts =>
+        [.. _crumbItems.Where(item => item.Tag is not null).Select(item => item.Text!)];
+
+    internal string? SchemaText => SchemaLabel.Available ? SchemaLabel.Text : null;
+
+    /// <summary>A click on a step of the breadcrumb, for tests.</summary>
+    internal void ClickCrumb(int index) =>
+        _crumbItems.Where(item => item.Tag is not null).ElementAt(index).PerformClick();
 
     public string SearchText => SearchBox.Text;
 
@@ -115,7 +167,7 @@ public partial class JsonEditorForm : Form, IJsonEditorView
     public void ShowStatus(string position, string path, string validity)
     {
         PositionLabel.Text = position;
-        PathLabel.Text = path;
+        PathLabel.ToolTipText = path.Length == 0 ? null : $"{path}: right-click a value to copy its path";
         ValidityLabel.Text = validity;
         ValidityLabel.ForeColor = validity is "Valid JSON" or "Empty" ? _textColor : ProblemColor;
     }
@@ -217,6 +269,259 @@ public partial class JsonEditorForm : Form, IJsonEditorView
     public void ShowProblem(string message) =>
         MessageBox.Show(this, message, "JSON editor", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
+    public void ShowMessage(string message) =>
+        MessageBox.Show(this, message, "JSON editor", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+    public void ReplaceRange(DiffPosition start, DiffPosition end, string text) =>
+        Editor.ReplaceRange(start, end, text);
+
+    public void ShowTreePanel(bool isShown)
+    {
+        TreeSplit.Panel1Collapsed = !isShown;
+        TreeButton.Checked = isShown;
+
+        if (!isShown)
+        {
+            JsonTree.Nodes.Clear();
+        }
+    }
+
+    // Built again for each document, keeping open what was open; each value's children are made when it opens
+    public void ShowTree(JsonNodeModel? root)
+    {
+        HashSet<string> open = [.. OpenPaths(JsonTree.Nodes)];
+        JsonTree.BeginUpdate();
+        JsonTree.Nodes.Clear();
+
+        if (root is not null)
+        {
+            TreeNode top = TreeNodeOf(root);
+            JsonTree.Nodes.Add(top);
+            Fill(top);
+            top.Expand();
+            Reopen(top.Nodes, open);
+        }
+
+        JsonTree.EndUpdate();
+    }
+
+    public void SelectInTree(JsonNodeModel? node)
+    {
+        if (node is null || !IsTreeShown || JsonTree.Nodes.Count == 0)
+        {
+            return;
+        }
+
+        TreeNode? found = null;
+        TreeNodeCollection level = JsonTree.Nodes;
+
+        foreach (JsonNodeModel step in Ui.JsonEditor.Services.JsonTree.LineageOf(node))
+        {
+            TreeNode? match = level.Cast<TreeNode>().FirstOrDefault(item => ReferenceEquals(item.Tag, step));
+
+            if (match is null)
+            {
+                break;
+            }
+
+            found = match;
+
+            if (!ReferenceEquals(step, node))
+            {
+                Fill(match);
+                match.Expand();
+                level = match.Nodes;
+            }
+        }
+
+        if (found is not null && found != JsonTree.SelectedNode)
+        {
+            _isSelectingInTree = true;
+            JsonTree.SelectedNode = found;
+            _isSelectingInTree = false;
+        }
+    }
+
+    public void ShowCrumbs(IReadOnlyList<JsonCrumbModel> crumbs)
+    {
+        if (crumbs.Count == _crumbs.Count
+            && crumbs.Zip(_crumbs).All(pair => ReferenceEquals(pair.First.Node, pair.Second.Node)))
+        {
+            return;
+        }
+
+        _crumbs = crumbs;
+        Status.SuspendLayout();
+
+        foreach (ToolStripItem old in _crumbItems)
+        {
+            Status.Items.Remove(old);
+            old.Dispose();
+        }
+
+        _crumbItems.Clear();
+        int at = Status.Items.IndexOf(PathLabel);
+
+        for (int i = 0; i < crumbs.Count; i++)
+        {
+            if (i > 0)
+            {
+                _crumbItems.Add(new ToolStripStatusLabel("›") { Margin = Padding.Empty });
+            }
+
+            var crumb = new ToolStripStatusLabel(crumbs[i].Text)
+            {
+                IsLink = true,
+                LinkBehavior = LinkBehavior.HoverUnderline,
+                Tag = crumbs[i].Node,
+                Margin = Padding.Empty,
+                ToolTipText = $"Go to {Ui.JsonEditor.Services.JsonPathWriter.PathOf(crumbs[i].Node)}",
+            };
+            crumb.Click += Crumb_Click;
+            _crumbItems.Add(crumb);
+        }
+
+        foreach (ToolStripItem item in _crumbItems)
+        {
+            Status.Items.Insert(at++, item);
+        }
+
+        ColorCrumbs();
+        Status.ResumeLayout();
+    }
+
+    public void ShowBracketPair((DiffPosition Open, DiffPosition Close)? pair) => Editor.ShowBracketPair(pair);
+
+    public void ShowSchemaProblems(IReadOnlyList<JsonSchemaProblemModel> problems) =>
+        Editor.ShowProblemMarks([.. problems.Select(problem => (problem.Start, problem.End))]);
+
+    public void ShowSchemaStatus(string? status)
+    {
+        SchemaLabel.Visible = status is not null;
+        SchemaLabel.Text = status ?? string.Empty;
+    }
+
+    public void ShowComparison(string leftName, string leftText, string rightName, string rightText) =>
+        CompareTexts?.Invoke(leftName, leftText, rightName, rightText, this);
+
+    public string? AskPath(string current) =>
+        Scripting.InputDialog.Show(
+            "Go to path",
+            "The JMESPath of the value to go to, such as people[3].name:",
+            current);
+
+    public string? AskSchemaPath() =>
+        AskFile("Choose a JSON Schema", "JSON Schema (*.json)|*.json|All files (*.*)|*.*");
+
+    public string? AskCsvPath() => AskFile("Open CSV as JSON", "CSV files (*.csv)|*.csv|All files (*.*)|*.*");
+
+    public string? AskExportPath(string fileName)
+    {
+        bool isCsv = fileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase);
+        using var dialog = new SaveFileDialog
+        {
+            Title = isCsv ? "Save as CSV" : "Save as YAML",
+            FileName = fileName,
+            AddExtension = true,
+            DefaultExt = isCsv ? ".csv" : ".yaml",
+            Filter = isCsv ? "CSV files (*.csv)|*.csv" : "YAML files (*.yaml;*.yml)|*.yaml;*.yml",
+        };
+
+        return dialog.ShowDialog(this) == DialogResult.OK ? dialog.FileName : null;
+    }
+
+    public string? ReadClipboard() => Clipboard.ContainsText() ? Clipboard.GetText() : null;
+
+    public void WriteClipboard(string text)
+    {
+        if (text.Length > 0)
+        {
+            Clipboard.SetText(text);
+        }
+    }
+
+    private string? AskFile(string title, string filter)
+    {
+        using var dialog = new OpenFileDialog { Title = title, Filter = filter };
+
+        return dialog.ShowDialog(this) == DialogResult.OK ? dialog.FileName : null;
+    }
+
+    private static TreeNode TreeNodeOf(JsonNodeModel node)
+    {
+        var item = new TreeNode(Ui.JsonEditor.Services.JsonTree.LabelOf(node)) { Tag = node };
+
+        // A stand-in child gives it its + until it's opened
+        if (Ui.JsonEditor.Services.JsonTree.ChildrenOf(node).Count > 0)
+        {
+            item.Nodes.Add(new TreeNode("…"));
+        }
+
+        return item;
+    }
+
+    private static void Fill(TreeNode item)
+    {
+        if (item.Tag is not JsonNodeModel node || item.Nodes.Count != 1 || item.Nodes[0].Tag is not null)
+        {
+            return;
+        }
+
+        IReadOnlyList<JsonNodeModel> children = Ui.JsonEditor.Services.JsonTree.ChildrenOf(node);
+        item.Nodes.Clear();
+        item.Nodes.AddRange([.. children.Take(MaxTreeChildren).Select(TreeNodeOf)]);
+
+        if (children.Count > MaxTreeChildren)
+        {
+            item.Nodes.Add(new TreeNode($"… {children.Count - MaxTreeChildren:N0} more: go to them in the text"));
+        }
+    }
+
+    private static IEnumerable<string> OpenPaths(TreeNodeCollection nodes)
+    {
+        foreach (TreeNode item in nodes)
+        {
+            if (item.IsExpanded && item.Tag is JsonNodeModel node)
+            {
+                yield return Ui.JsonEditor.Services.JsonPathWriter.PathOf(node);
+
+                foreach (string path in OpenPaths(item.Nodes))
+                {
+                    yield return path;
+                }
+            }
+        }
+    }
+
+    private static void Reopen(TreeNodeCollection nodes, HashSet<string> open)
+    {
+        foreach (TreeNode item in nodes)
+        {
+            if (item.Tag is JsonNodeModel node && open.Contains(Ui.JsonEditor.Services.JsonPathWriter.PathOf(node)))
+            {
+                Fill(item);
+                item.Expand();
+                Reopen(item.Nodes, open);
+            }
+        }
+    }
+
+    private void ColorCrumbs()
+    {
+        Color link = _isDark ? Color.FromArgb(120, 180, 255) : Color.FromArgb(0, 90, 180);
+
+        foreach (ToolStripStatusLabel crumb in _crumbItems.OfType<ToolStripStatusLabel>())
+        {
+            crumb.LinkColor = link;
+            crumb.ActiveLinkColor = link;
+            crumb.VisitedLinkColor = link;
+        }
+
+        SchemaLabel.LinkColor = _isDark ? Color.FromArgb(230, 180, 60) : Color.FromArgb(170, 100, 0);
+        SchemaLabel.ActiveLinkColor = SchemaLabel.LinkColor;
+        SchemaLabel.VisitedLinkColor = SchemaLabel.LinkColor;
+    }
+
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
         switch (keyData)
@@ -248,6 +553,18 @@ public partial class JsonEditorForm : Form, IJsonEditorView
             case Keys.Shift | Keys.Alt | Keys.F:
                 FormatRequested?.Invoke(this, EventArgs.Empty);
                 return true;
+            case Keys.Control | Keys.T:
+                TreeToggled?.Invoke(this, EventArgs.Empty);
+                return true;
+            case Keys.Control | Keys.G:
+                GoToPathRequested?.Invoke(this, EventArgs.Empty);
+                return true;
+            case Keys.F8:
+                ProblemStepRequested?.Invoke(this, 1);
+                return true;
+            case Keys.Shift | Keys.F8:
+                ProblemStepRequested?.Invoke(this, -1);
+                return true;
 
             // Sections, from anywhere in the window: the search box too
             case Keys.Control | Keys.OemMinus or Keys.Control | Keys.Subtract:
@@ -278,6 +595,7 @@ public partial class JsonEditorForm : Form, IJsonEditorView
         DarkMode.UseDarkTitleBar(Handle, _isDark);
         DarkMode.UseDarkScrollBars(ResultBox.Handle, _isDark);
         DarkMode.UseDarkScrollBars(SuggestionsList.Handle, _isDark);
+        DarkMode.UseDarkScrollBars(JsonTree.Handle, _isDark);
     }
 
     // The toolbar, search, result and status bar; the text draws its own
@@ -295,7 +613,7 @@ public partial class JsonEditorForm : Form, IJsonEditorView
         {
             if (_isDark)
             {
-                strip.Renderer = new ToolStripProfessionalRenderer(new DarkColorTable()) { RoundedEdges = false };
+                strip.Renderer = new DarkToolStripRenderer();
             }
             else
             {
@@ -330,6 +648,27 @@ public partial class JsonEditorForm : Form, IJsonEditorView
 
         SearchMessageLabel.ForeColor = _textColor;
         ValidityLabel.ForeColor = ValidityLabel.Text is "Valid JSON" or "Empty" or "" ? _textColor : ProblemColor;
+        JsonTree.BackColor = box;
+        JsonTree.ForeColor = _textColor;
+        JsonTree.LineColor = _detailColor;
+
+        // Drop-down menus don't take their toolbar's renderer
+        foreach (ToolStripDropDown menu in new ToolStripDropDown[]
+            { CompareButton.DropDown, ConvertButton.DropDown, SchemaButton.DropDown, ResultMenu })
+        {
+            if (_isDark)
+            {
+                menu.Renderer = new DarkToolStripRenderer();
+            }
+            else
+            {
+                menu.RenderMode = ToolStripRenderMode.ManagerRenderMode;
+            }
+
+            menu.ForeColor = _textColor;
+        }
+
+        ColorCrumbs();
         Editor.ShowTheme(_isDark);
     }
 
@@ -375,6 +714,83 @@ public partial class JsonEditorForm : Form, IJsonEditorView
     private void ExpandAllButton_Click(object? sender, EventArgs e) => Editor.ExpandAll();
 
     private void ThemeButton_Click(object? sender, EventArgs e) => ThemeToggled?.Invoke(this, EventArgs.Empty);
+
+    private void TreeButton_Click(object? sender, EventArgs e) => TreeToggled?.Invoke(this, EventArgs.Empty);
+
+    private void SortKeysButton_Click(object? sender, EventArgs e) => SortKeysRequested?.Invoke(this, false);
+
+    private void RepairButton_Click(object? sender, EventArgs e) => RepairRequested?.Invoke(this, EventArgs.Empty);
+
+    private void CompareClipboardItem_Click(object? sender, EventArgs e) =>
+        CompareRequested?.Invoke(this, JsonCompareSource.Clipboard);
+
+    private void CompareFileItem_Click(object? sender, EventArgs e) =>
+        CompareRequested?.Invoke(this, JsonCompareSource.File);
+
+    private void CopyYamlItem_Click(object? sender, EventArgs e) =>
+        ConvertRequested?.Invoke(this, JsonConversionKind.CopyYaml);
+
+    private void CopyCsvItem_Click(object? sender, EventArgs e) =>
+        ConvertRequested?.Invoke(this, JsonConversionKind.CopyCsv);
+
+    private void SaveYamlItem_Click(object? sender, EventArgs e) =>
+        ConvertRequested?.Invoke(this, JsonConversionKind.SaveYaml);
+
+    private void SaveCsvItem_Click(object? sender, EventArgs e) =>
+        ConvertRequested?.Invoke(this, JsonConversionKind.SaveCsv);
+
+    private void OpenCsvItem_Click(object? sender, EventArgs e) =>
+        ConvertRequested?.Invoke(this, JsonConversionKind.OpenCsv);
+
+    private void PasteCsvItem_Click(object? sender, EventArgs e) =>
+        ConvertRequested?.Invoke(this, JsonConversionKind.PasteCsv);
+
+    private void ChooseSchemaItem_Click(object? sender, EventArgs e) => SchemaRequested?.Invoke(this, true);
+
+    private void NoSchemaItem_Click(object? sender, EventArgs e) => SchemaRequested?.Invoke(this, false);
+
+    private void SchemaLabel_Click(object? sender, EventArgs e) => ProblemStepRequested?.Invoke(this, 1);
+
+    private void CopyResultJsonItem_Click(object? sender, EventArgs e) => CopyResultRequested?.Invoke(this, false);
+
+    private void CopyResultLinesItem_Click(object? sender, EventArgs e) => CopyResultRequested?.Invoke(this, true);
+
+    private void Crumb_Click(object? sender, EventArgs e)
+    {
+        if (sender is ToolStripItem { Tag: JsonNodeModel node })
+        {
+            NodeChosen?.Invoke(this, node);
+            Editor.Focus();
+        }
+    }
+
+    private void JsonTree_BeforeExpand(object? sender, TreeViewCancelEventArgs e)
+    {
+        if (e.Node is not null)
+        {
+            Fill(e.Node);
+        }
+    }
+
+    // Only the user's choice goes to the value; one made here follows the caret
+    private void JsonTree_AfterSelect(object? sender, TreeViewEventArgs e)
+    {
+        if (!_isSelectingInTree && e.Node?.Tag is JsonNodeModel node)
+        {
+            NodeChosen?.Invoke(this, node);
+        }
+    }
+
+    private void Editor_HoverRequested(object? sender, JsonHoverRequestModel request) =>
+        HoverRequested?.Invoke(this, request);
+
+    private void Editor_KeysRequested(object? sender, JsonKeyRequestModel request) =>
+        KeysRequested?.Invoke(this, request);
+
+    private void Editor_SortKeysHereRequested(object? sender, EventArgs e) => SortKeysRequested?.Invoke(this, true);
+
+    private void Editor_GoToPathRequested(object? sender, EventArgs e) =>
+        GoToPathRequested?.Invoke(this, EventArgs.Empty);
 
     private void PreviousButton_Click(object? sender, EventArgs e) => SearchStepRequested?.Invoke(this, -1);
 

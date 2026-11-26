@@ -3,6 +3,7 @@ using CincoVertice.MyTools.Ui.Help.Services;
 using CincoVertice.MyTools.Ui.JsonEditor.Presenters;
 using CincoVertice.MyTools.Ui.JsonEditor.Services;
 using CincoVertice.MyTools.Ui.Win.Behaviors;
+using CincoVertice.MyTools.Ui.Win.Diff.Actions;
 using CincoVertice.MyTools.Ui.Win.Help.Services;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Services;
@@ -17,13 +18,15 @@ public sealed class OpenJsonEditorAction : IAppAction
 {
     private readonly AppIconService _appIcon;
     private readonly HelpWindowService _help;
+    private readonly CompareFilesAction _compareFiles;
     private readonly JsonFileJsonEditorSettingsStore _settings =
         new(Path.Combine(AppContext.BaseDirectory, "config", "jsoneditor.json"));
 
-    public OpenJsonEditorAction(AppIconService appIcon, HelpWindowService help)
+    public OpenJsonEditorAction(AppIconService appIcon, HelpWindowService help, CompareFilesAction compareFiles)
     {
         _appIcon = appIcon;
         _help = help;
+        _compareFiles = compareFiles;
     }
 
     public string Name => "OpenJsonEditor";
@@ -40,7 +43,7 @@ public sealed class OpenJsonEditorAction : IAppAction
     /// <summary>Opens a window with this file; null for an empty one.</summary>
     public void Open(string? path)
     {
-        var form = new JsonEditorForm { Icon = _appIcon.Current };
+        var form = new JsonEditorForm { Icon = _appIcon.Current, CompareTexts = _compareFiles.CompareTexts };
         var presenter = new JsonEditorPresenter(form, new DiskDiffFileReader(), new DiskDiffFileWriter(), _settings);
         _help.OpenOnF1(form, () => HelpTopics.JsonEditor);
         presenter.Start(path);

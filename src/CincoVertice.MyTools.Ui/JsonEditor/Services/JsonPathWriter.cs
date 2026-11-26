@@ -107,6 +107,30 @@ public static partial class JsonPathWriter
         node.Start is DiffPosition start && (node.KeyStart ?? start) <= position
         && (node.End is not DiffPosition end || position < end);
 
+    /// <returns>
+    ///     The steps from the document to the value, each with the value it leads to, for the status bar's
+    ///     breadcrumb: people, [3], address. None for the document itself.
+    /// </returns>
+    public static IReadOnlyList<JsonCrumbModel> CrumbsOf(JsonNodeModel node) =>
+    [
+        .. Ancestry(node).Select(step => new JsonCrumbModel(
+            step.Index is int index ? $"[{index}]" : Name(step.Key ?? string.Empty),
+            step)),
+    ];
+
+    /// <returns>What the value is, in a few words: object, 3 keys; string, 5 characters; number.</returns>
+    public static string KindOf(JsonNodeModel node) => node.Kind switch
+    {
+        JsonNodeKind.Object => $"object, {Count(node.Members.Count, "key", "keys")}",
+        JsonNodeKind.Array => $"array, {Count(node.Items.Count, "item", "items")}",
+        JsonNodeKind.String => $"string, {Count(node.Text.Length, "character", "characters")}",
+        JsonNodeKind.Number => "number",
+        JsonNodeKind.True or JsonNodeKind.False => "boolean",
+        _ => "null",
+    };
+
+    private static string Count(int count, string one, string many) => $"{count} {(count == 1 ? one : many)}";
+
     private static IEnumerable<JsonNodeModel> Ancestry(JsonNodeModel node)
     {
         Stack<JsonNodeModel> steps = new();
