@@ -10,7 +10,7 @@
     <!-- Each window at its own monitor's scaling, sharp on every one; ApplicationConfiguration.Initialize sets it -->
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <ApplicationIcon>Resources\RG.ico</ApplicationIcon>
-    <Version>0.0.12</Version>
+    <Version>0.0.13</Version>
     <!-- Where the releases are: the app looks there for a newer version, read from the assembly at run time -->
     <RepositoryUrl>https://github.com/rickygzz/CincoVertice.MyTools</RepositoryUrl>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
