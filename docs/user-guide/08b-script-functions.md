@@ -18,8 +18,10 @@ Functions are grouped in modules: you call one as `module.function(...)`, as in 
 | [`date`](#date) | The date and time | `now` `format` |
 | [`script`](#script) | The running script | `wait` `stop` `argument` `include` |
 | [`global`](#global) | Values kept between runs | `set` `get` `has` `remove` `names` |
-| [`text`](#text) | Working with text | `length` `upper` `lower` `trim` `replace` `contains` `urlencode` |
-| [`list`](#list) | Working with lists | `length` `contains` `range` |
+| [`text`](#text) | Working with text | `length` `upper` `lower` `trim` `replace` `contains` `urlencode` `split` `join` `substring` `indexof` `startswith` `endswith` `match` `regexreplace` |
+| [`list`](#list) | Working with lists | `length` `contains` `range` `sort` `reverse` `slice` `indexof` |
+| [`map`](#map) | Working with maps | `keys` `values` `length` `has` `get` `set` `remove` |
+| [`math`](#math) | Numbers | `round` `floor` `ceiling` `abs` `min` `max` `random` |
 | [Global](#conversions) | Conversions | `number` `text` |
 
 Names are not case-sensitive: `Clipboard.GetText()` works too. A function that expects a text also accepts a number or true/false, which it turns into text: `dialog.message(5)` works. Functions that return nothing can't be stored or used in a calculation.
@@ -482,6 +484,15 @@ Texts go between `"`, lists between `[ ]`, and true/false and numbers as they ar
 | `text.replace(text, old, new)` | The text with every `old` replaced by `new` (case-sensitive; `old` can't be empty) | `text.replace("a-b", "-", "+")` is `"a+b"` |
 | `text.contains(text, part)` | Whether `part` is in the text, ignoring case | `text.contains("Hello", "hell")` is `true` |
 | `text.urlencode(text)` | The text made safe for a web address | `text.urlencode("c# & .net")` is `"c%23%20%26%20.net"` |
+| `text.split(text, separator)` | The parts between the separators, as a list; `"\n"` splits at the end of each line, whatever its line ending. The separator can't be empty. | `text.split("a,b", ",")` is `["a", "b"]` |
+| `text.join(list)`<br>`text.join(list, separator)` | The items as one text, with the separator between them | `text.join(["a", 1], ", ")` is `"a, 1"` |
+| `text.substring(text, start)`<br>`text.substring(text, start, length)` | The part from position `start`, the first is 1, `length` characters long or to the end; `""` past the end | `text.substring("Hello", 2, 3)` is `"ell"` |
+| `text.indexof(text, part)` | Where `part` first is, from 1, ignoring case; `0` when it isn't there | `text.indexof("Hello", "LL")` is `3` |
+| `text.startswith(text, part)`<br>`text.endswith(text, part)` | Whether the text starts, or ends, with `part`, ignoring case | `text.endswith("report.PDF", ".pdf")` is `true` |
+| `text.match(text, pattern)` | The first match of a regular expression, ignoring case, as a list: the whole match, then each group in `( )`; `[]` when there's none | `text.match("DEV-123 done", "([a-z]+)-(\\d+)")` is `["DEV-123", "DEV", "123"]` |
+| `text.regexreplace(text, pattern, new)` | The text with every match of the pattern replaced; in `new`, `$1` is the first group | `text.regexreplace("John Smith", "(\\w+) (\\w+)", "$2, $1")` is `"Smith, John"` |
+
+Patterns are .NET regular expressions. In a script's text a backslash is written twice, so the pattern `\d+` is `"\\d+"`. A pattern that isn't valid is an error that says why, and one that takes more than a second (as `(a+)+b` can) is stopped.
 
 ## list
 
@@ -490,6 +501,38 @@ Texts go between `"`, lists between `[ ]`, and true/false and numbers as they ar
 | `list.length(list)` | The number of items | `list.length(["a", "b"])` is `2` |
 | `list.contains(list, item)` | Whether an item equals `item` (`==` rules: texts are case-sensitive) | `list.contains(["a", "b"], "b")` is `true` |
 | `list.range(from, to)` | The whole numbers from `from` to `to`, both included; empty when `to` is less. At most 100,000. For a `for` that runs a number of times. | `list.range(1, 3)` is `[1, 2, 3]` |
+| `list.sort(list)` | The numbers from the smallest, or the texts in alphabetical order, ignoring case. A list of both, or of other values, is an error. | `list.sort(["b", "A", "c"])` is `["A", "b", "c"]` |
+| `list.reverse(list)` | The items in the other order | `list.reverse([1, 2, 3])` is `[3, 2, 1]` |
+| `list.slice(list, start)`<br>`list.slice(list, start, count)` | The items from position `start`, the first is 1, `count` of them or to the end | `list.slice([1, 2, 3, 4], 2, 2)` is `[2, 3]` |
+| `list.indexof(list, item)` | Where the item first is, from 1 (`==` rules); `0` when it isn't there | `list.indexof(["a", "b"], "b")` is `2` |
+
+Lists are never changed: these give a new list, which you keep in a variable, as in `names = list.sort(names)`.
+
+## map
+
+| Function | Returns | Example |
+|---|---|---|
+| `map.keys(map)` | The names, as a list, in the order they were given | `map.keys({"a": 1, "b": 2})` is `["a", "b"]` |
+| `map.values(map)` | The values, as a list, in the names' order | `map.values({"a": 1, "b": 2})` is `[1, 2]` |
+| `map.length(map)` | How many names it has | `map.length({"a": 1})` is `1` |
+| `map.has(map, name)` | Whether it has the name, ignoring case | `map.has({"a": 1}, "A")` is `true` |
+| `map.get(map, name, value)` | The name's value, or `value` when it doesn't have the name | `map.get({"a": 1}, "b", 0)` is `0` |
+| `map.set(map, name, value)` | A new map with the name set to the value, added at the end when it's new | `map.set({"a": 1}, "b", 2)` is `{"a": 1, "b": 2}` |
+| `map.remove(map, name)` | A new map without the name | `map.remove({"a": 1, "b": 2}, "a")` is `{"b": 2}` |
+
+See [Maps](08a-script-language.md#maps) for writing them and `map[name]`.
+
+## math
+
+| Function | Returns | Example |
+|---|---|---|
+| `math.round(number)`<br>`math.round(number, digits)` | Rounded to whole, or to that many digits after the point (up to 15); halves away from zero, as at school | `math.round(2.5)` is `3`, `math.round(3.14159, 2)` is `3.14` |
+| `math.floor(number)` | The whole number at or below it | `math.floor(-1.5)` is `-2` |
+| `math.ceiling(number)` | The whole number at or above it | `math.ceiling(1.2)` is `2` |
+| `math.abs(number)` | The number without its sign | `math.abs(-4)` is `4` |
+| `math.min(a, b, ...)`<br>`math.min(list)` | The smallest of the numbers, or of a list of numbers | `math.min(3, 1, 2)` is `1` |
+| `math.max(a, b, ...)`<br>`math.max(list)` | The largest | `math.max([3, 10, 2])` is `10` |
+| `math.random(from, to)` | A whole number from `from` to `to`, both included, a different one each time | `math.random(1, 6)`, as a die |
 
 ## Conversions
 

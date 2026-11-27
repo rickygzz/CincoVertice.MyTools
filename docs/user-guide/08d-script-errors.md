@@ -43,6 +43,8 @@ Some examples:
 - `Expected '(' after 'function <name>'`, `Missing ',' or ')' in function <name>(`, `function <name>( has two values named '<p>'`
 - `A function goes at the top of the script, not inside an if, a for or another function`
 - `'return' goes in a function; to end the script, call script.stop()`
+- `'break' goes in a for`, `'continue' goes in a for`
+- `Expected ':' between a name and its value, as in {"name": "Ann"}`, `Missing ',' or '}' in the map`
 - `Compare two values at a time: use 'and', as in a < b and b < c`
 - `A list's items can't be changed: build a new list, e.g. names = [first, second]`
 - `Use == to compare; = only assigns a value at the start of a line`
@@ -57,6 +59,8 @@ Some examples:
 - `<f>() returns no value to store` or `... to use`
 - `The condition must be true or false, not <type>`
 - `There is no item N: the list has M items, and the first is 1`
+- `The map has '<name>' twice: names are matched ignoring case`, `A map's names are texts, in quotes: {"name": "Ann"}`
+- `The map has no '<name>': it has <names>; map.get(m, name, value) gives a value then`, `A map's names are texts, not <type>`
 - `Division by zero`
 - `'for' goes through a list, not <type>`
 - `<f>() is a built-in function: give yours another name`
@@ -89,8 +93,8 @@ Some examples:
 The language is kept small on purpose. It does not have:
 
 - A `while` loop: `for` goes through a list read once, so every script ends. See [for](08a-script-language.md#for).
-- Math functions such as `sqrt` or `round`.
-- Changing a list item in place.
+- Math beyond `math`'s functions, such as `sqrt` or powers.
+- Changing a list item or a map's value in place: `list.slice`, `map.set` and the like give a new one.
 
 Numbers are decimals with up to 28 to 29 significant digits; a result too large for that is an error.
 

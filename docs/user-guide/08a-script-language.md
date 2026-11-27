@@ -1,6 +1,6 @@
 ﻿# Script Language
 
-How scripts are written: lines and comments, values, variables, operators, `if`, lists, `for` and your own functions. For what a script can do with them, see [Script Functions](08b-script-functions.md).
+How scripts are written: lines and comments, values, variables, operators, `if`, lists, maps, `for` and your own functions. For what a script can do with them, see [Script Functions](08b-script-functions.md).
 
 ## Lines and comments
 
@@ -29,6 +29,7 @@ A line either stores a value (`name = ...`) or calls a function (`name(...)`). A
 | Text | `"Hello"`, `""` | Double quotes only. Escapes: `\"` quote, `\\` backslash, `\n` new line, `\t` tab. For several lines, see [Multi-line texts](#multi-line-texts). |
 | True or false | `true`, `false` | The result of comparisons; needed by `if`, `and`, `or`, `not`. |
 | List | `[1, "two", true]`, `[]` | Items of any type, even lists. See [Lists](#lists). |
+| Map | `{"name": "Ann", "age": 30}`, `{}` | Values by name. See [Maps](#maps). |
 
 ## Multi-line texts
 
@@ -67,7 +68,7 @@ From lowest to highest priority:
 | `and` | True if both sides are true. The right side is skipped when the left is false. |
 | `not` | Turns true into false and false into true. |
 | `==` `!=` `<` `<=` `>` `>=` | Compare two values. |
-| `+` `-` | Add, subtract. `+` also joins texts and lists. |
+| `+` `-` | Add, subtract. `+` also joins texts and lists, and two maps. |
 | `*` `/` `%` | Multiply, divide, remainder. Dividing by zero is an error. |
 | `-` (in front) | Negative: `-x`. |
 | `[ ]` | A list item: `list[1]`. |
@@ -99,7 +100,7 @@ end
 
 `elseif` and `else` are optional, and you can use as many `elseif` as you like. An `if` can contain another `if`. Every `if` needs its `end`. The condition must be true or false: `if "yes"` is an error, write `if answer == "yes"`.
 
-Keywords (`if`, `elseif`, `else`, `end`, `for`, `in`, `function`, `return`, `and`, `or`, `not`, `true`, `false`) are not case-sensitive, and can't be the names of variables or functions.
+Keywords (`if`, `elseif`, `else`, `end`, `for`, `in`, `break`, `continue`, `function`, `return`, `and`, `or`, `not`, `true`, `false`) are not case-sensitive, and can't be the names of variables or functions.
 
 ## Lists
 
@@ -115,6 +116,31 @@ dialog.message(sites + ["bing.com"])
 - Items can't be changed: `sites[1] = "x"` is an error. Build a new list instead.
 - `list + list` joins two lists; `list.contains(list, item)` checks for an item.
 - `dialog.message(list)` shows the items, as in `[github.com, google.com]`.
+
+## Maps
+
+A map keeps values by name, as a list keeps them by position:
+
+```mts
+person = {"name": "Ann", "city": "London", "visits": 3}
+
+dialog.message(person["name"])           # Ann
+person = map.set(person, "visits", person["visits"] + 1)
+
+for name in map.keys(person)
+    dialog.message(name + ": " + text(person[name]))
+end
+```
+
+- Names are texts, in quotes, and are matched ignoring case: `person["NAME"]` is `Ann`. A name used twice in a map is an error.
+- `map[name]` is its value; a name the map doesn't have is an error that lists those it has. `map.get(m, name, value)` gives `value` then instead, and `map.has(m, name)` says whether it's there.
+- Like lists, maps are never changed: `map.set` and `map.remove` give a new map, which you keep in the variable.
+- `map + map` joins two maps; for a name in both, the right one's value counts.
+- Values can be anything, even lists and maps: `{"tags": ["a", "b"]}["tags"][1]` is `a`.
+- `dialog.message(map)` shows `{name: Ann, city: London, visits: 3}`, in the order the names were given. Two maps are equal (`==`) with the same names and values, in any order.
+- `global.set` keeps a map between runs too.
+
+The map functions are in [Script Functions](08b-script-functions.md#map).
 
 ## for
 
@@ -134,6 +160,7 @@ end
 - An empty list runs nothing. Anything else than a list is an error: `for c in "abc"` says `'for' goes through a list, not a text`.
 - After the loop, the variable keeps the last item.
 - A `for` can contain `if`s and other `for`s. Every `for` needs its `end`.
+- **`break`** ends the `for` at once, going on after its `end`; **`continue`** skips the rest of this item and goes on with the next one. Either goes on a line of its own, inside a `for` (also inside an `if` in it); in a `for` inside another, it acts on the inner one.
 
 To run a number of times, go through `list.range(from, to)`, the whole numbers from one to the other. There is no `while`: to wait until something happens, try a number of times in a function, and leave with `return`:
 

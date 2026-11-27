@@ -10,7 +10,8 @@ public static class ScriptFunctionHelp
 {
     /// <summary>The script language's keywords; a test checks the lexer knows each.</summary>
     public static IReadOnlyList<string> Keywords { get; } =
-        ["if", "elseif", "else", "end", "for", "in", "function", "return", "and", "or", "not", "true", "false"];
+        ["if", "elseif", "else", "end", "for", "in", "break", "continue", "function", "return", "and", "or", "not",
+            "true", "false"];
 
     public static IReadOnlyList<ScriptFunctionModel> Functions { get; } =
     [
@@ -106,9 +107,35 @@ public static class ScriptFunctionHelp
         Of("text.replace", "text.replace(text, old, new)", "The text with every old replaced by new"),
         Of("text.contains", "text.contains(text, part)", "Whether part is in the text, ignoring case"),
         Of("text.urlencode", "text.urlencode(text)", "The text made safe for a web address"),
+        Of("text.split", "text.split(text, separator)", "The parts between the separators, as a list"),
+        Of("text.join", "text.join(list, separator)", "The items as one text, the separator between them"),
+        Of("text.substring", "text.substring(text, start, length)", "A part of the text, from start; the first is 1"),
+        Of("text.indexof", "text.indexof(text, part)", "Where the part is, from 1, ignoring case; 0 when it isn't"),
+        Of("text.startswith", "text.startswith(text, part)", "Whether the text starts with the part, ignoring case"),
+        Of("text.endswith", "text.endswith(text, part)", "Whether the text ends with the part, ignoring case"),
+        Of("text.match", "text.match(text, pattern)", "[the match, then its groups] for a regex; [] for none"),
+        Of("text.regexreplace", "text.regexreplace(text, pattern, new)", "Every match replaced; $1 is a group"),
+        Of("math.round", "math.round(number, digits)", "Rounded, halves away from zero: 2.5 is 3"),
+        Of("math.floor", "math.floor(number)", "The whole number at or below it"),
+        Of("math.ceiling", "math.ceiling(number)", "The whole number at or above it"),
+        Of("math.abs", "math.abs(number)", "The number without its sign"),
+        Of("math.min", "math.min(a, b, ...)", "The smallest of the numbers, or of a list of them"),
+        Of("math.max", "math.max(a, b, ...)", "The largest of the numbers, or of a list of them"),
+        Of("math.random", "math.random(from, to)", "A whole number from one to the other, both included"),
         Of("list.length", "list.length(list)", "The number of items"),
         Of("list.contains", "list.contains(list, item)", "Whether an item equals item"),
         Of("list.range", "list.range(from, to)", "The whole numbers from one to the other, for a for"),
+        Of("list.sort", "list.sort(list)", "Numbers from the smallest, or texts in alphabetical order"),
+        Of("list.reverse", "list.reverse(list)", "The items in the other order"),
+        Of("list.slice", "list.slice(list, start, count)", "The items from position start; to the end without count"),
+        Of("list.indexof", "list.indexof(list, item)", "Where the item is, from 1; 0 when it isn't"),
+        Of("map.keys", "map.keys(map)", "The names, as a list, in order"),
+        Of("map.values", "map.values(map)", "The values, as a list, in the names' order"),
+        Of("map.length", "map.length(map)", "How many names it has"),
+        Of("map.has", "map.has(map, name)", "Whether it has the name, ignoring case"),
+        Of("map.get", "map.get(map, name, value)", "The name's value, or the value given when it hasn't the name"),
+        Of("map.set", "map.set(map, name, value)", "A new map with the name set to the value"),
+        Of("map.remove", "map.remove(map, name)", "A new map without the name"),
         Of("text", "text(value)", "Any value as text"),
         Of("number", "number(text)", "The text as a number"),
     ];

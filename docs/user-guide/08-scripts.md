@@ -103,9 +103,12 @@ This script is created with the app. It asks what to search for (starting with t
 #   global.set(name, value)  global.get(name, default)  (kept between runs, in config\global.vars)
 #   text.length  text.upper  text.lower  text.trim  text.replace(text, old, new)  text.contains(text, part)
 #   text.urlencode  list.length(list)  list.contains(list, item)  number(value)  text(value)
+#   text.split(text, ",")  text.join(list, ",")  text.substring(text, 1, 3)  text.match(text, pattern)
+#   math.round(x, 2)  math.min(a, b)  math.random(1, 6)  list.sort(list)  list.indexof(list, item)
 # Lists:   [a, b, c]  list[1] is the first item  list + list  list.range(1, 10)
 # Logic:   name = value   if ... elseif ... else ... end   == != < <= > >=   and or not   + - * / %
-# Loops:   for item in list ... end
+# Maps:    m = {"name": "Ann"}  m["name"]  map.set(m, "age", 30)  map.keys(m)  map.get(m, "x", 0)
+# Loops:   for item in list ... end   break   continue
 # Functions: function name(a, b) ... return value ... end   (at the top of the script; call it as name(1, 2))
 #
 # To ask several things in one dialog:
