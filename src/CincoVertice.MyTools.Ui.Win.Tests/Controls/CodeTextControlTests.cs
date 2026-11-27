@@ -255,6 +255,52 @@ public class CodeTextControlTests
         Assert.DoesNotContain(Pixels(image, new Rectangle(control.GutterWidth, 0, 300, top)), IsGreen);
     }
 
+    [Fact]
+    public void Marks_TypingSelectingAndScrolling_PaintAgainOnlyUnderTheMarks()
+    {
+        // Arrange: a mark on the third line, its squiggle under the line's text
+        using TestControl control = Create();
+        control.SetMarks([new CodeMark(3, "m")]);
+        Application.DoEvents();
+        List<Rectangle> painted = [];
+        control.Invalidated += (_, e) => painted.Add(e.InvalidRect);
+        int top = Line(control, 2);
+        int bottom = top + control.Font.Height;
+
+        // Act
+        control.Select(0, 0);
+        control.SelectedText = "x";
+        control.Select(0, 3);
+        SendMessage(control.Handle, 0x0115, 1, 0);
+        Application.DoEvents();
+
+        // Assert: never all of it, and each time the squiggle's strip
+        Assert.NotEmpty(painted);
+        Assert.All(painted, area => Assert.NotEqual(control.ClientRectangle, area));
+        Assert.All(painted, area => Assert.True(area.Height <= 8, $"{area}"));
+        Assert.Contains(painted, area => area.Top <= bottom && area.Bottom >= bottom);
+    }
+
+    [Fact]
+    public void Marks_SetTheSame_PaintNothing_AndOthers_PaintAll()
+    {
+        // Arrange: checked again after each pause in typing, they usually come back the same
+        using TestControl control = Create();
+        control.SetMarks([new CodeMark(3, "m")]);
+        Application.DoEvents();
+        List<Rectangle> painted = [];
+        control.Invalidated += (_, e) => painted.Add(e.InvalidRect);
+
+        // Act
+        control.SetMarks([new CodeMark(3, "m")]);
+        int afterTheSame = painted.Count;
+        control.SetMarks([new CodeMark(4, "m")]);
+
+        // Assert
+        Assert.Equal(0, afterTheSame);
+        Assert.Equal(control.ClientRectangle, Assert.Single(painted));
+    }
+
     [Theory]
     [InlineData(4)]
     [InlineData(6)]
