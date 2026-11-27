@@ -1,5 +1,6 @@
 ﻿using CincoVertice.Common.Ui.Win.Controls.Rtf;
 using CincoVertice.MyTools.Ui.RegexTester.Models;
+using CincoVertice.MyTools.Ui.RegexTester.Services;
 using CincoVertice.MyTools.Ui.RegexTester.Views;
 using CincoVertice.MyTools.Ui.Win.Behaviors;
 
@@ -34,6 +35,7 @@ public partial class RegexTesterForm : Form, IRegexTesterView
     public RegexTesterForm()
     {
         InitializeComponent();
+        FillPieceMenu();
 
         // Nothing is made from the DPI here; this rescales the window once, when it's dropped on another monitor
         DpiFollower.Attach(this, _ => { });
@@ -42,6 +44,8 @@ public partial class RegexTesterForm : Form, IRegexTesterView
     public event EventHandler? InputChanged;
 
     public event EventHandler<RegexRowModel>? RowChosen;
+
+    public event EventHandler<RegexPieceRequestModel>? PieceChosen;
 
     public RegexInputModel Input => new(
         PatternBox.Text,
@@ -56,6 +60,12 @@ public partial class RegexTesterForm : Form, IRegexTesterView
 
     /// <summary>The matches list, for the tests.</summary>
     internal ListView Matches => MatchesList;
+
+    /// <summary>The pattern box, for the tests.</summary>
+    internal TextBox Pattern => PatternBox;
+
+    /// <summary>The Add menu, for the tests.</summary>
+    internal ContextMenuStrip Pieces => PieceMenu;
 
     /// <summary>The color a part is shown in, for the tests.</summary>
     internal static Color ColorOf(RegexHighlightModel highlight) => highlight.Kind switch
@@ -128,10 +138,90 @@ public partial class RegexTesterForm : Form, IRegexTesterView
         ResultLabel.Enabled = text is not null;
     }
 
+    public void ShowPattern(RegexEditModel pattern, bool eachLine)
+    {
+        // A change of the user's: it runs once they pause, as typing does
+        PatternBox.Text = pattern.Text;
+        PatternBox.Select(pattern.SelectionStart, pattern.SelectionLength);
+        PatternBox.Focus();
+
+        if (eachLine)
+        {
+            MultilineCheckBox.Checked = true;
+        }
+    }
+
     public void SelectText(int start, int length)
     {
         SampleBox.Select(start, length);
         SampleBox.ScrollToCaret();
+    }
+
+    // An item per part, in a submenu per group: what it writes beside its title, what it matches as its tooltip.
+    // The items are made here, from the list, so their Click is wired here.
+    private void FillPieceMenu()
+    {
+        var submenus = new Dictionary<string, ToolStripMenuItem>();
+
+        foreach (RegexPieceModel piece in RegexPieces.All)
+        {
+            var item = new ToolStripMenuItem(piece.Title)
+            {
+                ShortcutKeyDisplayString = piece.Example,
+                ToolTipText = piece.Description,
+                Tag = piece,
+            };
+            item.Click += PieceItem_Click;
+
+            if (piece.Group.Length == 0)
+            {
+                PieceMenu.Items.Add(item);
+                continue;
+            }
+
+            if (!submenus.TryGetValue(piece.Group, out ToolStripMenuItem? submenu))
+            {
+                if (submenus.Count == 0)
+                {
+                    PieceMenu.Items.Add(new ToolStripSeparator());
+                }
+
+                submenu = new ToolStripMenuItem(piece.Group);
+                submenu.DropDown.ShowItemToolTips = true;
+                submenus.Add(piece.Group, submenu);
+                PieceMenu.Items.Add(submenu);
+            }
+
+            submenu.DropDownItems.Add(item);
+        }
+    }
+
+    private void AddButton_Click(object? sender, EventArgs e) =>
+        PieceMenu.Show(AddButton, new Point(0, AddButton.Height));
+
+    // The sample's text can be added only while some of it is selected
+    private void PieceMenu_Opening(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        foreach (ToolStripItem item in PieceMenu.Items)
+        {
+            if (item.Tag is RegexPieceModel { IsSampleText: true })
+            {
+                item.Enabled = SampleBox.SelectionLength > 0;
+            }
+        }
+    }
+
+    private void PieceItem_Click(object? sender, EventArgs e)
+    {
+        if (sender is ToolStripItem { Tag: RegexPieceModel piece })
+        {
+            PieceChosen?.Invoke(
+                this,
+                new RegexPieceRequestModel(
+                    piece,
+                    new RegexEditModel(PatternBox.Text, PatternBox.SelectionStart, PatternBox.SelectionLength),
+                    SampleBox.SelectedText));
+        }
     }
 
     private void Input_Changed(object? sender, EventArgs e)

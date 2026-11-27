@@ -25,6 +25,7 @@ public sealed class RegexTesterPresenter
 
         _view.InputChanged += (_, _) => Update(save: true);
         _view.RowChosen += (_, row) => OnRowChosen(row);
+        _view.PieceChosen += (_, request) => OnPieceChosen(request);
     }
 
     public void Start()
@@ -133,6 +134,10 @@ public sealed class RegexTesterPresenter
             _settings.Save(input);
         }
     }
+
+    // The pattern written is run as any change is, once the view tells of it
+    private void OnPieceChosen(RegexPieceRequestModel request) =>
+        _view.ShowPattern(RegexPatternBuilder.Insert(request), request.Piece.IsPerLine);
 
     private void OnRowChosen(RegexRowModel row)
     {

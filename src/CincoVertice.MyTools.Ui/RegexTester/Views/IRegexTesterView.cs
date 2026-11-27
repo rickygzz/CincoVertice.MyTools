@@ -15,6 +15,9 @@ public interface IRegexTesterView
     /// <summary>Raised with a row of the matches list the user chose.</summary>
     event EventHandler<RegexRowModel>? RowChosen;
 
+    /// <summary>Raised with a part the user chose in the Add menu, to write into the pattern.</summary>
+    event EventHandler<RegexPieceRequestModel>? PieceChosen;
+
     /// <summary>What the user wrote and ticked.</summary>
     RegexInputModel Input { get; }
 
@@ -31,6 +34,12 @@ public interface IRegexTesterView
 
     /// <summary>The text with every match replaced; null to show there's no replacement.</summary>
     void ShowReplaced(string? text);
+
+    /// <summary>
+    ///     Writes the pattern with this selection and gives it the focus, so the user types on; ticks ^ and $ at each
+    ///     line when <paramref name="eachLine"/>, and leaves it as it is otherwise.
+    /// </summary>
+    void ShowPattern(RegexEditModel pattern, bool eachLine);
 
     /// <summary>Selects a part of the text and scrolls to it.</summary>
     void SelectText(int start, int length);

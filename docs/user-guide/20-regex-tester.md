@@ -16,6 +16,37 @@ A window to write a regular expression and see at once what it matches in a text
 
 Everything is run again once you pause typing, a quarter of a second after the last key.
 
+## Building a pattern with Add
+
+You don't need to know the syntax to start: **Add**, beside the pattern, writes a part of one for you. Each line of its menu shows what it writes, and pointing at it says what it matches.
+
+- If part of the pattern is selected, the new part goes **around it**: select `error`, choose **Line containing…**, and the pattern becomes `^.*error.*$`.
+- If nothing is selected, the part is written at the caret with a placeholder, as `text`, selected: type over it.
+
+At the top of the menu:
+
+| Choice | Writes | Matches |
+|---|---|---|
+| Starts with… | `^text` | the text, or a line, starting with it |
+| Ends with… | `text$` | the text, or a line, ending with it |
+| Is exactly… | `^text$` | a whole text, or line, that is just it |
+| Line containing… | `^.*text.*$` | each whole line that has it; ticks **^ and $ at each line** |
+| Line not containing… | `^(?!.*text).*$` | each whole line that doesn't; ticks it too |
+| Whole word… | `\bword\b` | it, but not inside a longer word |
+| Text selected in the sample | the text, escaped | exactly the text you selected on the left: `.`, `(`, `$` and the like get a backslash, so they stand for themselves |
+
+**Starts with**, **Ends with** and **Is exactly** go by the whole text, or by each line once **^ and $ at each line** is ticked.
+
+What you type over a placeholder is a pattern too: in `a.b` the `.` is any character. To match a text exactly as it is, select it in the sample and choose **Text selected in the sample**.
+
+The submenus have the smaller parts:
+
+- **Characters**: a digit `\d`, a letter `\p{L}` (accented ones too), a letter, digit or `_` `\w`, a space `\s`, any character `.`, their opposites, and one of (or none of) a set of characters, as `[abc]` or `[a-z]`.
+- **How many times**: one or more `+`, zero or more `*`, optional `?`, exactly `{3}`, between `{2,5}`, at least `{2,}`. These go after what's before the caret, or after the part selected; a selected part longer than one character gets a group around it first, so `ab` becomes `(?:ab)+`, the whole of it repeated, not only the `b`. The number is selected, to type over.
+- **Groups and choices**: a group `(…)` (`$1` in the replacement), a named group `(?<name>…)` (`${name}`), and either…or `(?:this|other)`.
+- **Before or after**: followed by, not followed by, preceded by, not preceded by. These check what's around a match without making it part of it: `\d+(?= kg)` matches `12` in `12 kg`.
+- **Edges**: the start `^` and end `$` of the text (or of each line), and the edge of a word `\b`.
+
 ## Things to know
 
 - Positions in the list count from 0, as .NET does: `at 5, 3 long` is the 6th to 8th characters.

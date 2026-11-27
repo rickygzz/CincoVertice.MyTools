@@ -1,6 +1,7 @@
 ﻿using CincoVertice.MyTools.Ui.RegexTester.Interfaces;
 using CincoVertice.MyTools.Ui.RegexTester.Models;
 using CincoVertice.MyTools.Ui.RegexTester.Presenters;
+using CincoVertice.MyTools.Ui.RegexTester.Services;
 using CincoVertice.MyTools.Ui.RegexTester.Views;
 using Xunit;
 
@@ -158,11 +159,29 @@ public class RegexTesterPresenterTests
         public void Save(RegexInputModel input) => SaveCalls.Add(input);
     }
 
+    [Fact]
+    public void PieceChosen_WritesItIntoThePattern_AndTicksEachLineForALinePiece()
+    {
+        // Arrange
+        Start();
+        RegexPieceModel line = RegexPieces.All.Single(piece => piece.Title == "Line containing…");
+
+        // Act: "error" selected in the pattern
+        _view.RaisePieceChosen(new RegexPieceRequestModel(line, new RegexEditModel("error", 0, 5), ""));
+
+        // Assert
+        Assert.Equal((new RegexEditModel("^.*error.*$", 11, 0), true), _view.ShownPattern);
+    }
+
     private sealed class FakeView : IRegexTesterView
     {
         public event EventHandler? InputChanged;
 
         public event EventHandler<RegexRowModel>? RowChosen;
+
+        public event EventHandler<RegexPieceRequestModel>? PieceChosen;
+
+        public (RegexEditModel Pattern, bool EachLine)? ShownPattern { get; private set; }
 
         public RegexInputModel Input { get; set; } = new("", "");
 
@@ -181,6 +200,10 @@ public class RegexTesterPresenterTests
         public void RaiseInputChanged() => InputChanged?.Invoke(this, EventArgs.Empty);
 
         public void RaiseRowChosen(RegexRowModel row) => RowChosen?.Invoke(this, row);
+
+        public void RaisePieceChosen(RegexPieceRequestModel request) => PieceChosen?.Invoke(this, request);
+
+        public void ShowPattern(RegexEditModel pattern, bool eachLine) => ShownPattern = (pattern, eachLine);
 
         public void ShowInput(RegexInputModel input) => Input = input;
 

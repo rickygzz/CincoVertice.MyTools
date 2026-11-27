@@ -84,6 +84,41 @@ public sealed class RegexTesterFormTests : IDisposable
         Assert.Equal((3, 3), (form.Sample.SelectionStart, form.Sample.SelectionLength));
     }
 
+    [Fact]
+    public void AddMenu_WritesThePartAroundWhatsSelectedInThePattern_AndRunsIt()
+    {
+        // Arrange: "b" selected in the pattern
+        using RegexTesterForm form = Open(new RegexInputModel("ab", "abc ab"));
+        form.Pattern.Select(1, 1);
+        ToolStripItem endsWith = form.Pieces.Items.Cast<ToolStripItem>().Single(item => item.Text == "Ends with…");
+
+        // Act
+        endsWith.PerformClick();
+        Thread.Sleep(400);
+        Application.DoEvents();
+
+        // Assert: only the "ab" at the end matches
+        Assert.Equal("ab$", form.Input.Pattern);
+        Assert.Equal(["Match 1"], form.Matches.Items.Cast<ListViewItem>().Select(item => item.Text));
+        Assert.Equal("at 4, 2 long", form.Matches.Items[0].SubItems[2].Text);
+    }
+
+    [Fact]
+    public void AddMenu_HasEveryPart_InItsSubmenu()
+    {
+        // Arrange
+        using RegexTesterForm form = Open(new RegexInputModel("", ""));
+
+        // Act
+        IEnumerable<string> titles = form.Pieces.Items.OfType<ToolStripMenuItem>()
+            .SelectMany(item => item.HasDropDownItems
+                ? item.DropDownItems.OfType<ToolStripMenuItem>().Select(inner => inner.Text ?? "")
+                : [item.Text ?? ""]);
+
+        // Assert
+        Assert.Equal(RegexPieces.All.Select(piece => piece.Title), titles);
+    }
+
     [Theory]
     [InlineData(1, 6)]
     [InlineData(2, 7)]
