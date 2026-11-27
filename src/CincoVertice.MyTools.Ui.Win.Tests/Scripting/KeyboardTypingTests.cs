@@ -5,6 +5,8 @@ using System.Windows.Forms;
 using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.Common.WinApi.Libs;
 using CincoVertice.Common.WinApi.Libs.Enums;
+using CincoVertice.MyTools.Ui.Hotstrings.Models;
+using CincoVertice.MyTools.Ui.Win.Hotstrings.Services;
 using Xunit;
 
 namespace CincoVertice.MyTools.Ui.Win.Tests.Scripting;
@@ -45,6 +47,22 @@ public class KeyboardTypingTests
 
         // Assert: Enter in a text box of several lines starts one; Tab, where it's accepted, types one
         Assert.Equal("a\tb\r\nc\r\nd", box.Text);
+    }
+
+    [Fact]
+    public void Hotstring_Replace_ErasesTheName_ThenTypesTheText_AndTheEndingKey()
+    {
+        // Arrange: "btw" typed, and its Space kept from the text box by the keyboard hook
+        using Form form = TypingInTheForeground(out TextBox box);
+        box.Text = "So btw";
+        box.SelectionStart = box.TextLength;
+
+        // Act
+        HotstringWatcher.Replace(new HotstringModel("btw", "by the way,\nthanks", 1), " ");
+        Pump();
+
+        // Assert: Backspace erases, so keyboard.press("Backspace") does too
+        Assert.Equal("So by the way,\r\nthanks ", box.Text);
     }
 
     [Fact]

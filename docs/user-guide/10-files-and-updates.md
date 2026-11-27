@@ -10,6 +10,7 @@ Everything below is in the `config` folder next to the exe unless noted.
 | `scripts\GoogleSearch.mts`, `scripts\PasteAsText.mts` | On startup, if the `scripts` folder is missing | Example scripts |
 | `activity.cfg` | The first time you turn the mouse mover on, or open it in the config editor | Mouse mover settings |
 | `startup.cfg` | The first time Windows starts My Tools, or you open the config editor | Actions to run when Windows starts My Tools (see [Startup actions](01-getting-started.md#startup-actions)) |
+| `hotstrings.cfg` | When My Tools starts | Names replaced by texts as you type (see [Hotstrings](19-hotstrings.md)) |
 | `zones.cfg` | The first time you show the zones, or open it in the config editor | Window zones (see [Window Zones](13-window-zones.md)) |
 | `recording.cfg` | The first time you record the screen, or open the config editor | Screen recording settings (see [recording.cfg](04-snipping.md#recordingcfg)) |
 | `global.vars` | The first time a script uses `global.set` | Values scripts keep between runs |

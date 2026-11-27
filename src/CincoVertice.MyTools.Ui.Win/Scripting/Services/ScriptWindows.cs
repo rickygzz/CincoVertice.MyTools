@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.ComponentModel;
+using System.Diagnostics;
 using CincoVertice.Common.Application.Scripting.Models;
 using CincoVertice.Common.WinApi.Helpers;
 using CincoVertice.Common.WinApi.Libs;
@@ -136,6 +137,102 @@ public static class ScriptWindows
         return WindowHelper.SetTopMost(window, on) ? on : throw new ArgumentException(ActiveWindowOnTop.Refused);
     }
 
+    /// <summary>The windows the user can switch to, from the one in front; not those hidden.</summary>
+    public static IReadOnlyList<nint> Shown() => Matching(_ => true, withHidden: false);
+
+    /// <summary>Where the window is and how large, as the user sees it, in physical screen pixels.</summary>
+    /// <returns>Null when it's closed.</returns>
+    public static Rectangle? BoundsOf(nint window)
+    {
+        if (!User32.IsWindow(window))
+        {
+            return null;
+        }
+
+        using (DpiAwarenessScope.PerMonitorV2())
+        {
+            return WindowHelper.GetVisibleBounds(window);
+        }
+    }
+
+    /// <summary>Moves and sizes the window, restored first when maximized or minimized, so what's seen fills the bounds.</summary>
+    /// <exception cref="ArgumentException">The window is closed, or Windows refused; the message says why.</exception>
+    public static void SetBounds(nint window, Rectangle bounds)
+    {
+        if (!User32.IsWindow(window))
+        {
+            throw new ArgumentException(Closed);
+        }
+
+        try
+        {
+            using (DpiAwarenessScope.PerMonitorV2())
+            {
+                WindowHelper.MoveVisibleBounds(window, bounds);
+            }
+        }
+        catch (Win32Exception ex)
+        {
+            throw new ArgumentException(
+                ex.NativeErrorCode == 5
+                    ? "Windows refused: the window's program runs as administrator, and My Tools doesn't."
+                    : $"Windows refused: {ex.Message}");
+        }
+    }
+
+    /// <summary>The name of the window's program, as Task Manager's Details tab shows it without .exe.</summary>
+    /// <returns>Empty when it's closed, or its program can't be read.</returns>
+    public static string ProcessOf(nint window)
+    {
+        if (WinUser.GetWindowThreadProcessId(window, out uint id) == 0)
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            using var process = Process.GetProcessById((int)id);
+
+            return process.ProcessName;
+        }
+        catch (ArgumentException)
+        {
+            // It ended meanwhile
+            return string.Empty;
+        }
+    }
+
+    /// <summary>Ends every program with the name at once, as Task Manager's End task does.</summary>
+    /// <returns>How many ended.</returns>
+    /// <exception cref="ArgumentException">One of them couldn't be ended; the message says why.</exception>
+    public static int EndProcesses(string processName)
+    {
+        Process[] processes = Process.GetProcessesByName(processName);
+        int ended = 0;
+
+        try
+        {
+            foreach (Process process in processes)
+            {
+                process.Kill(entireProcessTree: false);
+                ended++;
+            }
+        }
+        catch (Win32Exception ex)
+        {
+            throw new ArgumentException($"{processName} couldn't be ended: {ex.Message}");
+        }
+        finally
+        {
+            foreach (Process process in processes)
+            {
+                process.Dispose();
+            }
+        }
+
+        return ended;
+    }
+
     private static bool IsDone(nint window, ScriptWindowChange change) => StateOf(window) switch
     {
         ScriptWindowState.Closed => true,
@@ -149,7 +246,7 @@ public static class ScriptWindows
     ///     The top-level windows that match, from the top: first those the user moves around and sees (not cloaked, as
     ///     on another virtual desktop), then hidden ones that would be such a window if shown.
     /// </summary>
-    private static List<nint> Matching(Func<nint, bool> isMatch)
+    private static List<nint> Matching(Func<nint, bool> isMatch, bool withHidden = true)
     {
         List<nint> shown = [];
         List<nint> hidden = [];
@@ -164,7 +261,7 @@ public static class ScriptWindows
                         shown.Add(window);
                     }
                 }
-                else if (IsHiddenAppWindow(window) && isMatch(window))
+                else if (withHidden && IsHiddenAppWindow(window) && isMatch(window))
                 {
                     hidden.Add(window);
                 }

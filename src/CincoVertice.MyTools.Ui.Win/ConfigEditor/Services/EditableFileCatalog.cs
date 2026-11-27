@@ -1,5 +1,6 @@
 ﻿using CincoVertice.MyTools.Ui.ConfigEditor.Interfaces;
 using CincoVertice.MyTools.Ui.ConfigEditor.Models;
+using CincoVertice.MyTools.Ui.Win.Hotstrings.Services;
 using CincoVertice.MyTools.Ui.Win.Scripting.Services;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Services.Config;
@@ -9,8 +10,8 @@ using CincoVertice.MyTools.Ui.Win.Zones.Services;
 namespace CincoVertice.MyTools.Ui.Win.ConfigEditor.Services;
 
 /// <summary>
-///     hotkeys.cfg, activity.cfg, startup.cfg, zones.cfg, recording.cfg and every script. Loading each config file
-///     creates it when it doesn't exist yet.
+///     hotkeys.cfg, activity.cfg, startup.cfg, zones.cfg, recording.cfg, hotstrings.cfg and every script. Loading each
+///     config file creates it when it doesn't exist yet.
 /// </summary>
 public sealed class EditableFileCatalog : IEditableFileCatalog
 {
@@ -19,6 +20,7 @@ public sealed class EditableFileCatalog : IEditableFileCatalog
     private readonly StartupConfigService _startup;
     private readonly ZonesConfigService _zones;
     private readonly RecordingSettingsService _recording;
+    private readonly HotstringsConfigService _hotstrings;
     private readonly Func<IReadOnlyCollection<IAppAction>> _actions;
     private readonly string _scriptsFolderPath;
 
@@ -28,6 +30,7 @@ public sealed class EditableFileCatalog : IEditableFileCatalog
         StartupConfigService startup,
         ZonesConfigService zones,
         RecordingSettingsService recording,
+        HotstringsConfigService hotstrings,
         Func<IReadOnlyCollection<IAppAction>> actions,
         string scriptsFolderPath)
     {
@@ -36,6 +39,7 @@ public sealed class EditableFileCatalog : IEditableFileCatalog
         _startup = startup;
         _zones = zones;
         _recording = recording;
+        _hotstrings = hotstrings;
         _actions = actions;
         _scriptsFolderPath = scriptsFolderPath;
     }
@@ -47,6 +51,7 @@ public sealed class EditableFileCatalog : IEditableFileCatalog
         _startup.Load(_actions());
         _zones.LoadResult();
         _recording.Load();
+        _hotstrings.Load();
 
         List<EditableFileModel> files =
         [
@@ -55,6 +60,7 @@ public sealed class EditableFileCatalog : IEditableFileCatalog
             new(_startup.FilePath, Path.GetFileName(_startup.FilePath), EditableFileKind.StartupActions),
             new(_zones.FilePath, Path.GetFileName(_zones.FilePath), EditableFileKind.WindowZones),
             new(_recording.FilePath, Path.GetFileName(_recording.FilePath), EditableFileKind.RecordingSettings),
+            new(_hotstrings.FilePath, Path.GetFileName(_hotstrings.FilePath), EditableFileKind.Hotstrings),
         ];
 
         files.AddRange(ScriptCatalog.GetScriptFiles(_scriptsFolderPath).Select(ToScript));

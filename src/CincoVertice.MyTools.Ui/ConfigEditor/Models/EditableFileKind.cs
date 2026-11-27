@@ -8,5 +8,6 @@ public enum EditableFileKind
     StartupActions,
     WindowZones,
     RecordingSettings,
+    Hotstrings,
     Script,
 }

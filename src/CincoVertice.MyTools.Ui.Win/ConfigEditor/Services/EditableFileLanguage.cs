@@ -4,6 +4,7 @@ using CincoVertice.Common.Utils.Highlighting;
 using CincoVertice.MyTools.Ui.ConfigEditor.Interfaces;
 using CincoVertice.MyTools.Ui.ConfigEditor.Models;
 using CincoVertice.MyTools.Ui.ConfigEditor.Services;
+using CincoVertice.MyTools.Ui.Hotstrings.Services;
 using CincoVertice.MyTools.Ui.Win.Scripting.Services;
 using CincoVertice.MyTools.Ui.Win.Shell.Models;
 using CincoVertice.MyTools.Ui.Win.Shell.Services;
@@ -52,6 +53,8 @@ public sealed class EditableFileLanguage : IEditableFileLanguage
         EditableFileKind.StartupActions => InLineOrder(StartupConfigReader.Read(text, _actionNames()).LineProblems),
         EditableFileKind.WindowZones => InLineOrder(ZonesConfigReader.Read(text).LineProblems),
         EditableFileKind.RecordingSettings => InLineOrder(RecordingSettingsReader.Read(text).LineProblems),
+        EditableFileKind.Hotstrings => [.. HotstringReader.Read(text).Problems
+            .Select(problem => new EditableFileProblemModel(problem.Line, problem.Message))],
         _ => ScriptEngine.FindSyntaxError(text) is ScriptException error
             ? [new EditableFileProblemModel(error.Line, error.Message, error.Column)]
             : [],

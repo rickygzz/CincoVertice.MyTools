@@ -173,6 +173,93 @@ public sealed class DesktopScriptHost : IScriptHost
 
     public bool SetWindowOnTop(long window, bool? isOnTop) => ScriptWindows.SetOnTop((nint)window, isOnTop);
 
+    public Point GetMousePosition() => ScriptMouse.Position();
+
+    public void MoveMouse(Point point) => ScriptMouse.MoveTo(point);
+
+    public void PressMouseButton(ScriptMouseButton button, bool isDown) => ScriptMouse.Press(button, isDown);
+
+    public void ScrollMouse(int notches) => ScriptMouse.Scroll(notches);
+
+    public Rectangle? GetWindowBounds(long window) => ScriptWindows.BoundsOf((nint)window);
+
+    public void SetWindowBounds(long window, Rectangle bounds) => ScriptWindows.SetBounds((nint)window, bounds);
+
+    public IReadOnlyList<long> GetWindows() => [.. ScriptWindows.Shown().Select(window => (long)window)];
+
+    public string GetWindowProcess(long window) => ScriptWindows.ProcessOf((nint)window);
+
+    public int EndProcesses(string processName) => ScriptWindows.EndProcesses(processName);
+
+    public async Task<int> RunAndWaitAsync(string program, string arguments, int milliseconds)
+    {
+        using var process = Process.Start(new ProcessStartInfo(program, arguments) { UseShellExecute = true })
+            ?? throw new InvalidOperationException("Windows gave no program to wait for: it may have opened in one "
+                + "already running");
+        using var timeout = new CancellationTokenSource(milliseconds);
+
+        try
+        {
+            await process.WaitForExitAsync(timeout.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            throw new TimeoutException();
+        }
+
+        return process.ExitCode;
+    }
+
+    public void CopyFile(string from, string to, bool replace) => File.Copy(FullPath(from), FullPath(to), replace);
+
+    public void MoveFile(string from, string to, bool replace) => File.Move(FullPath(from), FullPath(to), replace);
+
+    public void DeleteFile(string path)
+    {
+        string fullPath = FullPath(path);
+
+        if (!File.Exists(fullPath))
+        {
+            throw new FileNotFoundException($"Could not find file '{fullPath}'.");
+        }
+
+        // To the Recycle Bin, so a script's mistake can be undone
+        Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(
+            fullPath,
+            Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+            Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+    }
+
+    public bool FolderExists(string path) => Directory.Exists(FullPath(path));
+
+    public void CreateFolder(string path) => Directory.CreateDirectory(FullPath(path));
+
+    public IReadOnlyList<string> GetFiles(string folder, string pattern) =>
+        [.. Directory.GetFiles(FullPath(folder), pattern).Order(StringComparer.OrdinalIgnoreCase)];
+
+    public IReadOnlyList<string> GetFolders(string folder) =>
+        [.. Directory.GetDirectories(FullPath(folder)).Order(StringComparer.OrdinalIgnoreCase)];
+
+    public Task<string?> ChoosePathAsync(ScriptPathDialog dialog, string title, string value)
+    {
+        using var owner = CreateTopMostOwner();
+
+        if (dialog == ScriptPathDialog.Folder)
+        {
+            using var folder = new FolderBrowserDialog { Description = title, UseDescriptionForTitle = true };
+
+            return Task.FromResult(folder.ShowDialog(owner) == DialogResult.OK ? folder.SelectedPath : null);
+        }
+
+        using FileDialog file = dialog == ScriptPathDialog.SaveFile
+            ? new SaveFileDialog { FileName = value }
+            : new OpenFileDialog { Filter = $"{value}|{value}" };
+
+        file.Title = title;
+
+        return Task.FromResult(file.ShowDialog(owner) == DialogResult.OK ? file.FileName : null);
+    }
+
     /// <summary>A script's file: %VARIABLES% expanded, and a path that isn't full taken in the scripts folder.</summary>
     public static string FullPath(string path)
     {

@@ -71,6 +71,14 @@ Some examples:
   - `Could not open the performance counters (error 0x<code>).`, when Windows' counters are turned off
   - `the text to replace can't be empty`
   - `from and to must be whole numbers, not <a> and <b>`, `a range has at most 100000 numbers, not <n>`
+  - `the window is closed.`, for `window.position`, `move`, `resize` and the like
+  - `Windows refused: the window's program runs as administrator, and My Tools doesn't.`
+  - `the button must be "left", "right" or "middle", not "<b>"`, `the times must be a whole number from 1 to 10, not <n>`
+  - `the seconds must be from 0 to 600`, for the waits
+  - `<program> still runs after 10 minutes; it's left running`, for `shell.runwait`
+  - `argument 3 must be true or false`, for `file.copy` and `file.move`
+  - `The file '<path>' already exists.`, without `true` to replace it
+  - `<name> couldn't be ended: <reason>`, for `process.end`
   - `there is no global variable '<name>'; global.get("<name>", value) gives a value then`
   - `'<name>' must be the name of a script in the scripts folder`
   - `There is no script <file> in <folder>`

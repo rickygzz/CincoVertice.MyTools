@@ -10,6 +10,7 @@ using CincoVertice.MyTools.Ui.ConfigEditor.Presenters;
 using CincoVertice.MyTools.Ui.ConfigEditor.Services;
 using CincoVertice.MyTools.Ui.Win.ConfigEditor;
 using CincoVertice.MyTools.Ui.Win.ConfigEditor.Services;
+using CincoVertice.MyTools.Ui.Win.Hotstrings.Services;
 using CincoVertice.MyTools.Ui.Win.Setup;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Services;
@@ -41,6 +42,7 @@ public sealed class ConfigEditorTests : IDisposable
         new StartupConfigService(Path.Combine(_folder, "startup.cfg")),
         new ZonesConfigService(Path.Combine(_folder, "zones.cfg"), new TrayNotificationService()),
         new RecordingSettingsService(Path.Combine(_folder, "recording.cfg")),
+        new HotstringsConfigService(Path.Combine(_folder, "hotstrings.cfg")),
         () => [new NamedAction("Known")],
         Path.Combine(_folder, "scripts"));
 
@@ -171,6 +173,16 @@ public sealed class ConfigEditorTests : IDisposable
         Assert.True(File.Exists(files[2].Path));
         Assert.True(File.Exists(files[3].Path));
         Assert.Contains(files, file => file.Kind == EditableFileKind.Script);
+
+        // Created with only comments: nothing is replaced until the user writes a line
+        EditableFileModel hotstrings = Assert.Single(files, file => file.Kind == EditableFileKind.Hotstrings);
+        Assert.Equal("hotstrings.cfg", hotstrings.Name);
+        Assert.Empty(new HotstringsConfigService(hotstrings.Path).Load().Hotstrings);
+        Assert.Empty(new HotstringsConfigService(hotstrings.Path).Load().Problems);
+        Assert.Empty(CreateLanguage().Check(EditableFileKind.Hotstrings, File.ReadAllText(hotstrings.Path)));
+        Assert.Equal(
+            [2],
+            CreateLanguage().Check(EditableFileKind.Hotstrings, "btw = by the way\nmy_sig = x").Select(p => p.Line));
     }
 
     [Theory]

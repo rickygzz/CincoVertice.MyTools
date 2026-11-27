@@ -3,6 +3,7 @@ using CincoVertice.MyTools.Ui.Shell.Presenters;
 using CincoVertice.MyTools.Ui.Win.Setup;
 using CincoVertice.MyTools.Ui.Win.Shell;
 using CincoVertice.MyTools.Ui.Win.Shell.Services;
+using CincoVertice.MyTools.Ui.Win.Hotstrings.Services;
 using CincoVertice.MyTools.Ui.Win.Spotlight.Services;
 using CincoVertice.MyTools.Ui.Win.Zones.Services;
 using CincoVertice.MyTools.Ui.Zones.Presenters;
@@ -58,6 +59,9 @@ public static class Program
 
             // The mouse spotlight: tapping Left Ctrl twice comes through this thread's messages too
             host.Services.GetRequiredService<SpotlightWatcher>().Start();
+
+            // Hotstrings: the keys typed come through this thread's messages too, while hotstrings.cfg has any
+            host.Services.GetRequiredService<HotstringWatcher>().Start();
 
             // Shows its setting; when that's on, looks for a newer version a while later. It never throws
             _ = host.Services.GetRequiredService<UpdatesPresenter>().Start();

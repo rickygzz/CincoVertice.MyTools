@@ -15,6 +15,7 @@ public static class HelpTopics
     public const string WindowZones = "13-window-zones.md";
     public const string CompareFiles = "15-compare-files.md";
     public const string JsonEditor = "18-json-editor.md";
+    public const string Hotstrings = "19-hotstrings.md";
     public const string ColorPicker = Snipping + "#picking-a-color-from-the-screen";
     public const string SettingsBackup = "10-files-and-updates.md#back-up-or-restore-settings";
 
@@ -24,6 +25,7 @@ public static class HelpTopics
         Calculator, Snipping, DiagramEditor, ConfigEditor, Scripts, CodeReview, WindowZones, ColorPicker, CompareFiles,
         JsonEditor, SettingsBackup,
         ForFile("hotkeys.cfg"), ForFile("activity.cfg"), ForFile("recording.cfg"), ForFile("startup.cfg"),
+        ForFile("hotstrings.cfg"),
     ];
 
     /// <returns>
@@ -41,6 +43,7 @@ public static class HelpTopics
             "zones.cfg" => WindowZones,
             "recording.cfg" => Snipping + "#recordingcfg",
             "startup.cfg" => "01-getting-started.md#startup-actions",
+            "hotstrings.cfg" => Hotstrings,
             _ when name.EndsWith(".mts", StringComparison.Ordinal) => Scripts,
             _ => ConfigEditor,
         };

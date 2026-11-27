@@ -114,6 +114,31 @@ public class ScriptWindowsTests
     }
 
     [Fact]
+    public async Task Bounds_AreMovedAndSized_AsSeen_AndTheProgramIsNamed_AndOfAClosedOneThereAreNone()
+    {
+        // Arrange
+        (nint window, Thread thread) = ShowWindow($"Script bounds test {Guid.NewGuid():N}");
+        using Process self = Process.GetCurrentProcess();
+        var bounds = new Rectangle(-2900, -2950, 420, 260);
+
+        // Act
+        ScriptWindows.SetBounds(window, bounds);
+        Rectangle? moved = ScriptWindows.BoundsOf(window);
+        string program = ScriptWindows.ProcessOf(window);
+        await ScriptWindows.ChangeAsync(window, ScriptWindowChange.Close);
+        thread.Join(TimeSpan.FromSeconds(10));
+
+        // Assert: what's seen of it, without the invisible borders
+        Assert.Equal(bounds, moved);
+        Assert.Equal(self.ProcessName, program);
+        Assert.Null(ScriptWindows.BoundsOf(window));
+        Assert.Equal(string.Empty, ScriptWindows.ProcessOf(window));
+        Assert.Equal(
+            ScriptWindows.Closed,
+            Assert.Throws<ArgumentException>(() => ScriptWindows.SetBounds(window, bounds)).Message);
+    }
+
+    [Fact]
     public void Program_NotRunning_HasNoWindows()
     {
         // Act

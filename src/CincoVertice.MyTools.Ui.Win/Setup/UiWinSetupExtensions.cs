@@ -40,6 +40,7 @@ using CincoVertice.MyTools.Ui.Win.Diagramming.Services;
 using CincoVertice.MyTools.Ui.Win.Diff.Actions;
 using CincoVertice.MyTools.Ui.Win.Help.Actions;
 using CincoVertice.MyTools.Ui.Win.Help.Services;
+using CincoVertice.MyTools.Ui.Win.Hotstrings.Services;
 using CincoVertice.MyTools.Ui.Win.JsonEditor.Actions;
 using CincoVertice.MyTools.Ui.Win.Scripting.Actions;
 using CincoVertice.MyTools.Ui.Win.Scripting.Services;
@@ -149,6 +150,7 @@ public static class UiWinSetupExtensions
             sp.GetRequiredService<StartupConfigService>(),
             sp.GetRequiredService<ZonesConfigService>(),
             sp.GetRequiredService<RecordingSettingsService>(),
+            sp.GetRequiredService<HotstringsConfigService>(),
             () => sp.GetRequiredService<AppActionCatalog>().GetActions().ToList(),
             ScriptCatalog.FolderPath));
         services.AddSingleton<IEditableFileLanguage>(sp => new EditableFileLanguage(
@@ -296,6 +298,8 @@ public static class UiWinSetupExtensions
         services.AddSingleton(_ => new HotkeyConfigService(HotkeyConfigService.DefaultFilePath));
         services.AddSingleton(_ => new ActivitySettingsService(ActivitySettingsService.DefaultFilePath));
         services.AddSingleton(_ => new StartupConfigService(StartupConfigService.DefaultFilePath));
+        services.AddSingleton(_ => new HotstringsConfigService(HotstringsConfigService.DefaultFilePath));
+        services.AddSingleton<HotstringWatcher>();
         services.AddSingleton(sp => new StartupActionsService(
             sp.GetRequiredService<StartupConfigService>(),
             () => sp.GetRequiredService<AppActionCatalog>().GetActions().ToList(),

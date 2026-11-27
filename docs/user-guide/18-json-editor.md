@@ -131,4 +131,4 @@ The editor opens in Windows' mode for apps, dark or light. The **Dark** or **Lig
 
 ---
 
-← Previous: [Text Transforms](17-text-transforms.md) | [Contents](README.md)
+← Previous: [Text Transforms](17-text-transforms.md) | [Contents](README.md) | Next: [Hotstrings](19-hotstrings.md) →

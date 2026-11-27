@@ -4,15 +4,17 @@ Functions are grouped in modules: you call one as `module.function(...)`, as in 
 
 | Module | For | Functions |
 |---|---|---|
-| [`dialog`](#dialog) | Asking and showing | `ask` `form` `message` `confirm` |
+| [`dialog`](#dialog) | Asking and showing | `ask` `form` `message` `confirm` `openfile` `savefile` `folder` |
 | [`clipboard`](#clipboard) | The clipboard | `gettext` `settext` `clear` `paste` `pasteastext` |
 | [`keyboard`](#keyboard) | Typing and pressing keys | `type` `press` |
-| [`window`](#window) | Windows | `title` `tozone` `tomouse` `activate` `activateoropen` `ontop` `find` `active` `state` `hide` `show` `minimize` `maximize` `restore` `close` |
-| [`process`](#process) | Programs running | `isrunning` `window` `windows` |
-| [`shell`](#shell) | Web pages, files and programs | `open` `run` |
+| [`window`](#window) | Windows | `title` `tozone` `tomouse` `activate` `activateoropen` `ontop` `find` `active` `state` `hide` `show` `minimize` `maximize` `restore` `close` `position` `move` `resize` `list` `process` `wait` `waitclose` |
+| [`mouse`](#mouse) | The mouse pointer and its buttons | `position` `move` `click` `down` `up` `drag` `scroll` |
+| [`process`](#process) | Programs running | `isrunning` `window` `windows` `end` `waitclose` |
+| [`shell`](#shell) | Web pages, files and programs | `open` `run` `runwait` |
 | [`tray`](#tray) | Notifications | `notify` |
 | [`system`](#system) | The computer | `waitidle` |
-| [`file`](#file) | Text files | `read` `write` `append` `exists` |
+| [`file`](#file) | Files | `read` `write` `append` `exists` `copy` `move` `delete` `name` |
+| [`folder`](#folder) | Folders | `exists` `create` `files` `folders` |
 | [`date`](#date) | The date and time | `now` `format` |
 | [`script`](#script) | The running script | `wait` `stop` `argument` `include` |
 | [`global`](#global) | Values kept between runs | `set` `get` `has` `remove` `names` |
@@ -32,6 +34,9 @@ If a script uses a name from before the modules, the error says the new one, e.g
 | `dialog.form(title, prompts)`<br>`dialog.form(title, prompts, defaults)` | Shows **one** dialog with a box for each text in the list `prompts`, filled with the list `defaults`. Missing defaults start empty; a default that is a list makes a fixed list to pick from. | A list with the answers, in order. **Cancel stops the script.** |
 | `dialog.message(text)` | Shows a message and waits for OK. | Nothing |
 | `dialog.confirm(question)` | Asks a Yes/No question. | `true` for Yes, `false` for No |
+| `dialog.openfile(title)`<br>`dialog.openfile(title, pattern)` | Asks for a file to open, showing only those that match `pattern`, as `"*.txt"` (all of them without one). | Its full path. **Cancel stops the script.** |
+| `dialog.savefile(title)`<br>`dialog.savefile(title, name)` | Asks where to save a file, starting with `name`; it asks before replacing one that's there. | Its full path. **Cancel stops the script.** |
+| `dialog.folder(title)` | Asks for a folder. | Its full path. **Cancel stops the script.** |
 
 Dialogs are titled `My Tools: <script name>` and open on top of the program you are in, with the keyboard focus, so you can type right away.
 
@@ -153,6 +158,15 @@ Typing blocks the app until it finishes. Typing into a program that runs as admi
 | `window.show(window)` | Shows a hidden window again, as it was, without bringing it to the front. |
 | `window.minimize(window)`<br>`window.maximize(window)`<br>`window.restore(window)` | Minimizes the window, maximizes it, or makes it neither. |
 | `window.close(window)` | Closes the window, as its X does: the program may ask to save first. |
+| `window.position(window)` | Where the window is and how large, as a list: `[x, y, width, height]`, in screen pixels, as you see it (without the invisible borders Windows adds around it to resize it). A closed window is an error. |
+| `window.move(window, x, y)` | Puts the window's top left corner there, at the same size. Restored first when maximized or minimized. Nothing. |
+| `window.resize(window, width, height)` | Makes the window that large, with its top left corner where it is. Restored first when maximized or minimized. Nothing. |
+| `window.list()` | The numbers of the windows you can switch to, as a list, from the one in front: not hidden ones, nor those on another virtual desktop. Go through them with `for`. |
+| `window.process(window)` | The name of the window's program, as `process.isrunning` takes it: `"notepad"`, `"chrome"`. `""` when the window is closed. |
+| `window.wait(title, seconds)` | Waits for a window with `title` in its title, as `window.find` finds it. Its number once it shows, or `0` when the seconds run out. |
+| `window.waitclose(window, seconds)` | Waits for the window to close. `true` once it did, `false` when the seconds run out. |
+
+**Screen pixels** are the same on every monitor, whatever its scaling, and count from the main monitor's top left corner: a monitor on its left has negative `x`. A window on a monitor at 150% that you see 800 wide is `1200` wide. `window.move`, `window.resize`, a closed window, or a program run as administrator (which Windows doesn't let My Tools move) are errors. The waits look every tenth of a second, for at most 600 seconds; `0` looks once.
 
 `window.hide`, `show`, `minimize`, `maximize`, `restore` and `close` give `true`, or `false` when the window is closed or Windows didn't let My Tools change it (a program run as administrator). They wait up to a second for the program to do it, so `window.state` says the new state right after.
 
@@ -214,13 +228,53 @@ end
 
 A hidden window is still found by `process.window` and `window.find` (after those shown), so the second script could also look for it again.
 
+To lay out windows, as two side by side on the main monitor:
+
+```mts
+left = process.window("chrome")
+right = process.window("code")
+if left != 0 and right != 0
+    window.move(left, 0, 0)
+    window.resize(left, 960, 1040)
+    window.move(right, 960, 0)
+    window.resize(right, 960, 1040)
+end
+```
+
+## mouse
+
+| Function | What it does |
+|---|---|
+| `mouse.position()` | Where the pointer is: `[x, y]`, in screen pixels. |
+| `mouse.move(x, y)`<br>`mouse.move(x, y, window)` | Puts the pointer there; with a window's number, `x` and `y` count from the window's top left corner, so a button in it is found wherever the window is. |
+| `mouse.click()`<br>`mouse.click(button)`<br>`mouse.click(button, times)` | Clicks where the pointer is: `"left"` (without one), `"right"` or `"middle"`. `mouse.click("left", 2)` is a double click. Up to 10 times. |
+| `mouse.down()`<br>`mouse.down(button)` | Presses the button and holds it, as for a drag of your own. |
+| `mouse.up()`<br>`mouse.up(button)` | Lets go of it. |
+| `mouse.drag(x, y)`<br>`mouse.drag(x, y, window)` | Holds the left button from where the pointer is to there, in small steps, as a hand moves it, then lets go. |
+| `mouse.scroll(steps)` | Turns the wheel under the pointer: up for a positive number, down for a negative one, in the wheel's steps (up to 100). |
+
+They act where the pointer is, in whatever window is there, as your own mouse would: move the pointer first. The places are in [screen pixels](#window). To click something in a window:
+
+```mts
+w = window.find("Settings")
+if w != 0
+    window.activate(w)
+    mouse.move(120, 300, w)
+    mouse.click()
+end
+```
+
+Where a button is in a window changes with its size, scaling and version: a keyboard shortcut (`keyboard.press`) is often steadier, when the program has one.
+
 ## process
 
 | Function | Returns |
 |---|---|
 | `process.isrunning(name)` | `true` when a program with that name is running, as Task Manager's **Details** tab shows it, with or without `.exe`: `process.isrunning("notepad")`. Case doesn't matter. |
 | `process.window(name)` | The number of the program's window you used last; a hidden one when none is shown. `0` when it has none, or isn't running. |
-| `process.windows(name)` | The numbers of all the program's windows, as a list: those shown, the one used last first, then those hidden. `[]` when there's none. Take one with `list[1]`. |
+| `process.windows(name)` | The numbers of all the program's windows, as a list: those shown, the one used last first, then those hidden. `[]` when there's none. Take one with `list[1]`, or go through them with `for`. |
+| `process.end(name)` | Ends every program running with that name at once, as Task Manager's **End task** does: **without asking to save**. How many ended, `0` when none ran. One that can't be ended (a program run as administrator) is an error. To let it save, use `window.close` instead. |
+| `process.waitclose(name, seconds)` | Waits until no program with that name runs. `true` once none does, `false` when the seconds run out (at most 600). |
 
 Store apps, such as Calculator or Settings, show their windows through another program, `ApplicationFrameHost`: find those with `window.find` and a part of their title.
 
@@ -230,6 +284,7 @@ Store apps, such as Calculator or Settings, show their windows through another p
 |---|---|
 | `shell.open(target)` | Opens a web address in the browser, or a file or folder in its default program: `shell.open("https://github.com")`, `shell.open("C:\\notes.txt")`. |
 | `shell.run(program)`<br>`shell.run(program, arguments)` | Starts a program, without waiting for it: `shell.run("notepad.exe", "C:\\notes.txt")`. |
+| `shell.runwait(program)`<br>`shell.runwait(program, arguments)` | Starts a program and waits for it to end, up to 10 minutes; gives its exit code, as a number, often `0` when it went well. Still running after 10 minutes is an error, and it's left running. A program that hands its work to one already open (as some editors do) gives no program to wait for, which is an error. |
 
 In texts, a backslash is written `\\`, so the path `C:\notes.txt` is `"C:\\notes.txt"`.
 
@@ -265,6 +320,10 @@ end
 | `file.write(path, text)` | Writes the text to the file, as UTF-8, replacing what it had. Its folder must exist. Nothing. |
 | `file.append(path, text)` | Adds the text at the end of the file, as UTF-8; a file that isn't there yet is created. Its folder must exist. Nothing. |
 | `file.exists(path)` | `true` when there's a file at the path, `false` when not (a folder isn't a file). |
+| `file.copy(from, to)`<br>`file.copy(from, to, true)` | Copies the file to the path `to`, whose folder must exist. A file already at `to` is an error, unless `true` is given to replace it. Nothing. |
+| `file.move(from, to)`<br>`file.move(from, to, true)` | Moves or renames the file, as `file.copy` copies it. Nothing. |
+| `file.delete(path)` | Moves the file to the **Recycle Bin**, where you can still get it back. A file that isn't there is an error. Nothing. |
+| `file.name(path)` | The path's last part, the file's name: `file.name("C:\\in\\report.pdf")` is `"report.pdf"`; a folder's name for a folder's path. |
 
 A path that isn't full, such as `"notes.txt"` or `"data\\list.txt"`, is in the scripts folder (`config\scripts`). Variables such as `%USERPROFILE%` are filled in: `file.read("%USERPROFILE%\\Documents\\todo.txt")`. Remember to write `\\` for each `\` inside a text.
 
@@ -279,6 +338,24 @@ To read a file only when it's there:
 ```mts
 if file.exists("todo.txt")
     dialog.message(file.read("todo.txt"))
+end
+```
+
+## folder
+
+| Function | Returns |
+|---|---|
+| `folder.exists(path)` | `true` when there's a folder at the path. |
+| `folder.create(path)` | Creates the folder, and the folders it's in; nothing when it's there already. Nothing. |
+| `folder.files(path)`<br>`folder.files(path, pattern)` | The full paths of the files in the folder, as a list, in name order; with a pattern, only those that match it, as `"*.txt"` or `"report-*.pdf"`. Not those of the folders in it. A folder that isn't there is an error. |
+| `folder.folders(path)` | The full paths of the folders in the folder, as a list, in name order. |
+
+Paths are as for [`file`](#file). To move the PDFs of the Downloads folder somewhere else, asking where:
+
+```mts
+to = dialog.folder("Move the PDFs to:")
+for pdf in folder.files("%USERPROFILE%\\Downloads", "*.pdf")
+    file.move(pdf, to + "\\" + file.name(pdf))
 end
 ```
 

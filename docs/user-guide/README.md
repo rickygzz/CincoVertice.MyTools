@@ -44,3 +44,4 @@ picture, record a how-to, compare notes, draw a plan, arrange windows, calculate
 - [Try MyTools: Eight Short Tutorials](16-tutorials.md)
 - [Text Transforms](17-text-transforms.md)
 - [JSON Editor](18-json-editor.md)
+- [Hotstrings](19-hotstrings.md)

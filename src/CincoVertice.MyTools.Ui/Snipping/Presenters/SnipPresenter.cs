@@ -110,7 +110,9 @@ public sealed class SnipPresenter
 
         if (_selection is Rectangle selection)
         {
-            if (AnnotationGeometry.HandleAt(AnnotationGeometry.FrameOf(selection), start, HandleReachZoom) is int handle)
+            SnipSelectionModel frame = AnnotationGeometry.FrameOf(selection);
+
+            if (AnnotationGeometry.HandleAt(frame, start, HandleReachZoom) is int handle)
             {
                 _drag = Drag.Resize;
                 _handle = handle;
