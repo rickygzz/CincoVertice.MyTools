@@ -37,6 +37,7 @@ public partial class RegexTesterForm : Form, IRegexTesterView
         InitializeComponent();
         FillPieceMenu();
         FillExampleMenu();
+        FillReference();
 
         // Nothing is made from the DPI here; this rescales the window once, when it's dropped on another monitor
         DpiFollower.Attach(this, _ => { });
@@ -72,6 +73,9 @@ public partial class RegexTesterForm : Form, IRegexTesterView
 
     /// <summary>The Examples menu, for the tests.</summary>
     internal ContextMenuStrip Examples => ExampleMenu;
+
+    /// <summary>The quick reference and its button, for the tests.</summary>
+    internal (CheckBox Button, ListView List) Reference => (ReferenceButton, ReferenceList);
 
     /// <summary>The color a part is shown in, for the tests.</summary>
     internal static Color ColorOf(RegexHighlightModel highlight) => highlight.Kind switch
@@ -224,6 +228,32 @@ public partial class RegexTesterForm : Form, IRegexTesterView
             ExampleMenu.Items.Add(submenu);
         }
     }
+
+    // A row per part, under its heading
+    private void FillReference()
+    {
+        var groups = new Dictionary<string, ListViewGroup>();
+        ReferenceList.BeginUpdate();
+
+        foreach (RegexReferenceModel row in RegexReference.All)
+        {
+            if (!groups.TryGetValue(row.Group, out ListViewGroup? group))
+            {
+                group = new ListViewGroup(row.Group);
+                groups.Add(row.Group, group);
+                ReferenceList.Groups.Add(group);
+            }
+
+            // The tooltip shows a description the column cuts
+            ReferenceList.Items.Add(
+                new ListViewItem([row.Pattern, row.Description], group) { ToolTipText = row.Description });
+        }
+
+        ReferenceList.EndUpdate();
+    }
+
+    private void ReferenceButton_CheckedChanged(object? sender, EventArgs e) =>
+        ReferenceList.Visible = ReferenceButton.Checked;
 
     private void ExamplesButton_Click(object? sender, EventArgs e) =>
         ExampleMenu.Show(ExamplesButton, new Point(0, ExamplesButton.Height));

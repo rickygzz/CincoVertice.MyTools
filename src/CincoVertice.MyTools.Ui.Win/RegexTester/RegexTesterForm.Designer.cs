@@ -35,6 +35,10 @@ partial class RegexTesterForm
         PatternBox = new TextBox();
         AddButton = new Button();
         ExamplesButton = new Button();
+        ReferenceButton = new CheckBox();
+        ReferenceList = new ListView();
+        ReferencePatternColumn = new ColumnHeader();
+        ReferenceDescriptionColumn = new ColumnHeader();
         ExampleMenu = new ContextMenuStrip(components);
         PieceMenu = new ContextMenuStrip(components);
         OptionsPanel = new FlowLayoutPanel();
@@ -69,17 +73,19 @@ partial class RegexTesterForm
         //
         // PatternPanel
         //
-        PatternPanel.ColumnCount = 4;
+        PatternPanel.ColumnCount = 5;
         PatternPanel.ColumnStyles.Add(new ColumnStyle());
         PatternPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        PatternPanel.ColumnStyles.Add(new ColumnStyle());
         PatternPanel.ColumnStyles.Add(new ColumnStyle());
         PatternPanel.ColumnStyles.Add(new ColumnStyle());
         PatternPanel.Controls.Add(PatternLabel, 0, 0);
         PatternPanel.Controls.Add(PatternBox, 1, 0);
         PatternPanel.Controls.Add(AddButton, 2, 0);
         PatternPanel.Controls.Add(ExamplesButton, 3, 0);
+        PatternPanel.Controls.Add(ReferenceButton, 4, 0);
         PatternPanel.Controls.Add(OptionsPanel, 1, 1);
-        PatternPanel.SetColumnSpan(OptionsPanel, 3);
+        PatternPanel.SetColumnSpan(OptionsPanel, 4);
         PatternPanel.Dock = DockStyle.Top;
         PatternPanel.Name = "PatternPanel";
         PatternPanel.Padding = new Padding(6, 6, 6, 0);
@@ -137,6 +143,42 @@ partial class RegexTesterForm
         ExampleMenu.Name = "ExampleMenu";
         ExampleMenu.ShowItemToolTips = true;
         //
+        // ReferenceButton
+        //
+        ReferenceButton.Anchor = AnchorStyles.Left;
+        ReferenceButton.Appearance = Appearance.Button;
+        ReferenceButton.AutoSize = true;
+        ReferenceButton.Name = "ReferenceButton";
+        ReferenceButton.TabIndex = 4;
+        ReferenceButton.Text = "Quick re&ference";
+        ReferenceButton.UseVisualStyleBackColor = true;
+        ReferenceButton.CheckedChanged += ReferenceButton_CheckedChanged;
+        //
+        // ReferenceList
+        //
+        ReferenceList.Columns.AddRange(new ColumnHeader[] { ReferencePatternColumn, ReferenceDescriptionColumn });
+        ReferenceList.Dock = DockStyle.Right;
+        ReferenceList.FullRowSelect = true;
+        ReferenceList.HeaderStyle = ColumnHeaderStyle.None;
+        ReferenceList.MultiSelect = false;
+        ReferenceList.ShowItemToolTips = true;
+        ReferenceList.Name = "ReferenceList";
+        ReferenceList.Size = new Size(380, 380);
+        ReferenceList.TabIndex = 5;
+        ReferenceList.UseCompatibleStateImageBehavior = false;
+        ReferenceList.View = View.Details;
+        ReferenceList.Visible = false;
+        //
+        // ReferencePatternColumn
+        //
+        ReferencePatternColumn.Text = "Pattern";
+        ReferencePatternColumn.Width = 110;
+        //
+        // ReferenceDescriptionColumn
+        //
+        ReferenceDescriptionColumn.Text = "Description";
+        ReferenceDescriptionColumn.Width = 245;
+        //
         // OptionsPanel
         //
         OptionsPanel.AutoSize = true;
@@ -145,7 +187,7 @@ partial class RegexTesterForm
         OptionsPanel.Controls.Add(DotAllCheckBox);
         OptionsPanel.Dock = DockStyle.Fill;
         OptionsPanel.Name = "OptionsPanel";
-        OptionsPanel.TabIndex = 4;
+        OptionsPanel.TabIndex = 5;
         //
         // IgnoreCaseCheckBox
         //
@@ -316,6 +358,7 @@ partial class RegexTesterForm
         AutoScaleMode = AutoScaleMode.Dpi;
         ClientSize = new Size(900, 620);
         Controls.Add(MainSplit);
+        Controls.Add(ReferenceList);
         Controls.Add(ReplacePanel);
         Controls.Add(PatternPanel);
         Controls.Add(StatusBar);
@@ -349,6 +392,10 @@ partial class RegexTesterForm
     private ContextMenuStrip PieceMenu;
     private Button ExamplesButton;
     private ContextMenuStrip ExampleMenu;
+    private CheckBox ReferenceButton;
+    private ListView ReferenceList;
+    private ColumnHeader ReferencePatternColumn;
+    private ColumnHeader ReferenceDescriptionColumn;
     private FlowLayoutPanel OptionsPanel;
     private CheckBox IgnoreCaseCheckBox;
     private CheckBox MultilineCheckBox;

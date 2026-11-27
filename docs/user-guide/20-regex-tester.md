@@ -16,6 +16,10 @@ A window to write a regular expression and see at once what it matches in a text
 
 Everything is run again once you pause typing, a quarter of a second after the last key.
 
+## Quick reference
+
+**Quick reference**, at the right of the pattern, shows or hides a list beside the matches: the parts of a pattern and what each means. **Basics** has the ones used most (`.`, `\d`, `\w`, `\s`, `[abc]`, `^` and `$`, `*` `+` `?`, `{n,m}`, groups and `a|b`); **More** has their opposites, ranges, word boundaries, escaping, lazy counts, named groups and back references, lookarounds, and `$1`, `${name}` and `$0` for the replacement. Point at a row to read the whole of a description the column cuts.
+
 ## Examples
 
 **Examples**, beside **Add**, has ready-made patterns to use as they are or start from; pointing at one says what it matches. Choosing one writes its pattern, its options and, for some, a replacement, and runs it on your text. If the text box is empty, the example's own sample goes in too, so you see it work, including what it doesn't match.

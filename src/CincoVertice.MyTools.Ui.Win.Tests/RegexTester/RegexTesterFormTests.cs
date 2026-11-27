@@ -138,6 +138,26 @@ public sealed class RegexTesterFormTests : IDisposable
         Assert.Equal(["Match 1", "Match 2"], form.Matches.Items.Cast<ListViewItem>().Select(item => item.Text));
     }
 
+    [Fact]
+    public void QuickReference_IsHiddenAtFirst_AndItsButtonShowsAndHidesIt_WithEveryRow()
+    {
+        // Arrange
+        using RegexTesterForm form = Open(new RegexInputModel("", ""));
+        (CheckBox button, ListView list) = form.Reference;
+        Assert.False(list.Visible);
+
+        // Act
+        button.Checked = true;
+
+        // Assert
+        Assert.True(list.Visible);
+        Assert.Equal(
+            RegexReference.All.Select(row => (row.Pattern, row.Description)),
+            list.Items.Cast<ListViewItem>().Select(item => (item.Text, item.SubItems[1].Text)));
+        button.Checked = false;
+        Assert.False(list.Visible);
+    }
+
     [Theory]
     [InlineData(1, 6)]
     [InlineData(2, 7)]
