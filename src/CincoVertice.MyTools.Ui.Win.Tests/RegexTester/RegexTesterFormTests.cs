@@ -119,6 +119,25 @@ public sealed class RegexTesterFormTests : IDisposable
         Assert.Equal(RegexPieces.All.Select(piece => piece.Title), titles);
     }
 
+    [Fact]
+    public void ExamplesMenu_OnAnEmptyText_ShowsTheExampleWithItsSample()
+    {
+        // Arrange
+        using RegexTesterForm form = Open(new RegexInputModel("", ""));
+        ToolStripMenuItem email = form.Examples.Items.OfType<ToolStripMenuItem>()
+            .SelectMany(group => group.DropDownItems.OfType<ToolStripMenuItem>())
+            .Single(item => item.Text == "Email address");
+
+        // Act
+        email.PerformClick();
+        Application.DoEvents();
+
+        // Assert
+        RegexExampleModel example = RegexExamples.All.Single(e => e.Title == "Email address");
+        Assert.Equal((example.Pattern, example.Sample), (form.Input.Pattern, form.Sample.Text));
+        Assert.Equal(["Match 1", "Match 2"], form.Matches.Items.Cast<ListViewItem>().Select(item => item.Text));
+    }
+
     [Theory]
     [InlineData(1, 6)]
     [InlineData(2, 7)]

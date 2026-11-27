@@ -34,6 +34,8 @@ partial class RegexTesterForm
         PatternLabel = new Label();
         PatternBox = new TextBox();
         AddButton = new Button();
+        ExamplesButton = new Button();
+        ExampleMenu = new ContextMenuStrip(components);
         PieceMenu = new ContextMenuStrip(components);
         OptionsPanel = new FlowLayoutPanel();
         IgnoreCaseCheckBox = new CheckBox();
@@ -67,15 +69,17 @@ partial class RegexTesterForm
         //
         // PatternPanel
         //
-        PatternPanel.ColumnCount = 3;
+        PatternPanel.ColumnCount = 4;
         PatternPanel.ColumnStyles.Add(new ColumnStyle());
         PatternPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        PatternPanel.ColumnStyles.Add(new ColumnStyle());
         PatternPanel.ColumnStyles.Add(new ColumnStyle());
         PatternPanel.Controls.Add(PatternLabel, 0, 0);
         PatternPanel.Controls.Add(PatternBox, 1, 0);
         PatternPanel.Controls.Add(AddButton, 2, 0);
+        PatternPanel.Controls.Add(ExamplesButton, 3, 0);
         PatternPanel.Controls.Add(OptionsPanel, 1, 1);
-        PatternPanel.SetColumnSpan(OptionsPanel, 2);
+        PatternPanel.SetColumnSpan(OptionsPanel, 3);
         PatternPanel.Dock = DockStyle.Top;
         PatternPanel.Name = "PatternPanel";
         PatternPanel.Padding = new Padding(6, 6, 6, 0);
@@ -118,6 +122,21 @@ partial class RegexTesterForm
         PieceMenu.ShowItemToolTips = true;
         PieceMenu.Opening += PieceMenu_Opening;
         //
+        // ExamplesButton
+        //
+        ExamplesButton.Anchor = AnchorStyles.Left;
+        ExamplesButton.AutoSize = true;
+        ExamplesButton.Name = "ExamplesButton";
+        ExamplesButton.TabIndex = 3;
+        ExamplesButton.Text = "&Examples ▾";
+        ExamplesButton.UseVisualStyleBackColor = true;
+        ExamplesButton.Click += ExamplesButton_Click;
+        //
+        // ExampleMenu
+        //
+        ExampleMenu.Name = "ExampleMenu";
+        ExampleMenu.ShowItemToolTips = true;
+        //
         // OptionsPanel
         //
         OptionsPanel.AutoSize = true;
@@ -126,7 +145,7 @@ partial class RegexTesterForm
         OptionsPanel.Controls.Add(DotAllCheckBox);
         OptionsPanel.Dock = DockStyle.Fill;
         OptionsPanel.Name = "OptionsPanel";
-        OptionsPanel.TabIndex = 3;
+        OptionsPanel.TabIndex = 4;
         //
         // IgnoreCaseCheckBox
         //
@@ -328,6 +347,8 @@ partial class RegexTesterForm
     private TextBox PatternBox;
     private Button AddButton;
     private ContextMenuStrip PieceMenu;
+    private Button ExamplesButton;
+    private ContextMenuStrip ExampleMenu;
     private FlowLayoutPanel OptionsPanel;
     private CheckBox IgnoreCaseCheckBox;
     private CheckBox MultilineCheckBox;

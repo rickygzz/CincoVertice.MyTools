@@ -16,6 +16,19 @@ A window to write a regular expression and see at once what it matches in a text
 
 Everything is run again once you pause typing, a quarter of a second after the last key.
 
+## Examples
+
+**Examples**, beside **Add**, has ready-made patterns to use as they are or start from; pointing at one says what it matches. Choosing one writes its pattern, its options and, for some, a replacement, and runs it on your text. If the text box is empty, the example's own sample goes in too, so you see it work, including what it doesn't match.
+
+| Submenu | Examples |
+|---|---|
+| Contacts and the web | email address, web address (URL), phone number |
+| Dates, times and numbers | date year first (`2026-11-26`, replaced as `26/11/2026`), date day first (`21/09/2015`), time (`17:30`, `23:59:59`), number, amount of money (`$3,332,000.00`, replaced by the digits), percentage |
+| Codes | IP address, GUID, color (`#fff`, `#1E90FF`), HTML tag with its content |
+| Text and lines | repeated word (`is is`, replaced by one), text in quotes, `name = value` lines (as the app's config files), spaces at the end of lines, blank lines, a line starting with ERROR or WARNING |
+
+Most of them name their groups, so the matches list shows what each part is (`year`, `amount`, `name`...), and the replacement shows how to use them.
+
 ## Building a pattern with Add
 
 You don't need to know the syntax to start: **Add**, beside the pattern, writes a part of one for you. Each line of its menu shows what it writes, and pointing at it says what it matches.

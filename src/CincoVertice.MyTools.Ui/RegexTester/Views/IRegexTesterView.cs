@@ -18,10 +18,16 @@ public interface IRegexTesterView
     /// <summary>Raised with a part the user chose in the Add menu, to write into the pattern.</summary>
     event EventHandler<RegexPieceRequestModel>? PieceChosen;
 
+    /// <summary>Raised with an example the user chose in the Examples menu.</summary>
+    event EventHandler<RegexExampleModel>? ExampleChosen;
+
     /// <summary>What the user wrote and ticked.</summary>
     RegexInputModel Input { get; }
 
-    /// <summary>Fills the boxes and the ticks, as the window opens.</summary>
+    /// <summary>
+    ///     Fills the boxes and the ticks, as the window opens or for an example; the text keeps its undo when it's the
+    ///     same. Raises no <see cref="InputChanged"/>.
+    /// </summary>
     void ShowInput(RegexInputModel input);
 
     /// <summary>Colors these parts of the text, a later one over an earlier one, and nothing else.</summary>

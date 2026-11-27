@@ -36,6 +36,7 @@ public partial class RegexTesterForm : Form, IRegexTesterView
     {
         InitializeComponent();
         FillPieceMenu();
+        FillExampleMenu();
 
         // Nothing is made from the DPI here; this rescales the window once, when it's dropped on another monitor
         DpiFollower.Attach(this, _ => { });
@@ -46,6 +47,8 @@ public partial class RegexTesterForm : Form, IRegexTesterView
     public event EventHandler<RegexRowModel>? RowChosen;
 
     public event EventHandler<RegexPieceRequestModel>? PieceChosen;
+
+    public event EventHandler<RegexExampleModel>? ExampleChosen;
 
     public RegexInputModel Input => new(
         PatternBox.Text,
@@ -67,6 +70,9 @@ public partial class RegexTesterForm : Form, IRegexTesterView
     /// <summary>The Add menu, for the tests.</summary>
     internal ContextMenuStrip Pieces => PieceMenu;
 
+    /// <summary>The Examples menu, for the tests.</summary>
+    internal ContextMenuStrip Examples => ExampleMenu;
+
     /// <summary>The color a part is shown in, for the tests.</summary>
     internal static Color ColorOf(RegexHighlightModel highlight) => highlight.Kind switch
     {
@@ -87,8 +93,11 @@ public partial class RegexTesterForm : Form, IRegexTesterView
             MultilineCheckBox.Checked = input.Multiline;
             DotAllCheckBox.Checked = input.DotAll;
 
-            // A new text: undo starts here
-            SampleBox.SetCode(input.Text);
+            // A new text: undo starts here. The same text (an example on the user's) keeps its undo.
+            if (SampleBox.Text != input.Text)
+            {
+                SampleBox.SetCode(input.Text);
+            }
         }
         finally
         {
@@ -193,6 +202,38 @@ public partial class RegexTesterForm : Form, IRegexTesterView
             }
 
             submenu.DropDownItems.Add(item);
+        }
+    }
+
+    // A submenu per group, an item per example with what it matches as its tooltip. Made here, from the list, so
+    // their Click is wired here.
+    private void FillExampleMenu()
+    {
+        foreach (IGrouping<string, RegexExampleModel> group in RegexExamples.All.GroupBy(example => example.Group))
+        {
+            var submenu = new ToolStripMenuItem(group.Key);
+            submenu.DropDown.ShowItemToolTips = true;
+
+            foreach (RegexExampleModel example in group)
+            {
+                var item = new ToolStripMenuItem(example.Title) { ToolTipText = example.Description, Tag = example };
+                item.Click += ExampleItem_Click;
+                submenu.DropDownItems.Add(item);
+            }
+
+            ExampleMenu.Items.Add(submenu);
+        }
+    }
+
+    private void ExamplesButton_Click(object? sender, EventArgs e) =>
+        ExampleMenu.Show(ExamplesButton, new Point(0, ExamplesButton.Height));
+
+    private void ExampleItem_Click(object? sender, EventArgs e)
+    {
+        if (sender is ToolStripItem { Tag: RegexExampleModel example })
+        {
+            InputTimer.Stop();
+            ExampleChosen?.Invoke(this, example);
         }
     }
 

@@ -173,6 +173,40 @@ public class RegexTesterPresenterTests
         Assert.Equal((new RegexEditModel("^.*error.*$", 11, 0), true), _view.ShownPattern);
     }
 
+    [Fact]
+    public void ExampleChosen_OnAnEmptyText_ShowsItWithItsSample_RunsIt_AndSavesIt()
+    {
+        // Arrange
+        Start();
+        RegexExampleModel date = RegexExamples.All.Single(example => example.Title.StartsWith("Date, year first"));
+
+        // Act
+        _view.RaiseExampleChosen(date);
+
+        // Assert
+        Assert.Equal(new RegexInputModel(date.Pattern, date.Sample, date.Replacement), _view.Input);
+        Assert.Equal("2 matches", _view.Status);
+        Assert.Equal("Due 26/11/2026, paid 03/12/2026. Not a date: 2026-13-40", _view.Replaced);
+        Assert.Equal(_view.Input, Assert.Single(_store.SaveCalls));
+    }
+
+    [Fact]
+    public void ExampleChosen_KeepsTheUsersText_AndSetsItsOptions()
+    {
+        // Arrange: a text of the user's, with ignore case on
+        Start(new RegexInputModel("x", "My my words", "y", IgnoreCase: false, Multiline: true));
+        RegexExampleModel repeated = RegexExamples.All.Single(example => example.Title == "Repeated word");
+
+        // Act
+        _view.RaiseExampleChosen(repeated);
+
+        // Assert
+        Assert.Equal(
+            new RegexInputModel(repeated.Pattern, "My my words", "$1", IgnoreCase: true, Multiline: false),
+            _view.Input);
+        Assert.Equal("My words", _view.Replaced);
+    }
+
     private sealed class FakeView : IRegexTesterView
     {
         public event EventHandler? InputChanged;
@@ -180,6 +214,10 @@ public class RegexTesterPresenterTests
         public event EventHandler<RegexRowModel>? RowChosen;
 
         public event EventHandler<RegexPieceRequestModel>? PieceChosen;
+
+        public event EventHandler<RegexExampleModel>? ExampleChosen;
+
+        public void RaiseExampleChosen(RegexExampleModel example) => ExampleChosen?.Invoke(this, example);
 
         public (RegexEditModel Pattern, bool EachLine)? ShownPattern { get; private set; }
 

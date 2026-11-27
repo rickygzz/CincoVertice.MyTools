@@ -26,6 +26,7 @@ public sealed class RegexTesterPresenter
         _view.InputChanged += (_, _) => Update(save: true);
         _view.RowChosen += (_, row) => OnRowChosen(row);
         _view.PieceChosen += (_, request) => OnPieceChosen(request);
+        _view.ExampleChosen += (_, example) => OnExampleChosen(example);
     }
 
     public void Start()
@@ -138,6 +139,24 @@ public sealed class RegexTesterPresenter
     // The pattern written is run as any change is, once the view tells of it
     private void OnPieceChosen(RegexPieceRequestModel request) =>
         _view.ShowPattern(RegexPatternBuilder.Insert(request), request.Piece.IsPerLine);
+
+    /// <summary>
+    ///     What an example writes: its pattern, options and replacement, on the user's own text, or on the example's when
+    ///     there's none.
+    /// </summary>
+    public static RegexInputModel WithExample(RegexInputModel input, RegexExampleModel example) => new(
+        example.Pattern,
+        input.Text.Length == 0 ? example.Sample : input.Text,
+        example.Replacement,
+        example.IgnoreCase,
+        example.Multiline,
+        example.DotAll);
+
+    private void OnExampleChosen(RegexExampleModel example)
+    {
+        _view.ShowInput(WithExample(_view.Input, example));
+        Update(save: true);
+    }
 
     private void OnRowChosen(RegexRowModel row)
     {
