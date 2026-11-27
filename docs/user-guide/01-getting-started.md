@@ -58,6 +58,8 @@ Only one copy runs at a time. If you start the exe while it is already running, 
 | **Open** (bold) | Shows the main window |
 | **Diagram editor** | Opens a new diagram editor window |
 | **Compare files...** | Opens a new window comparing two files, or pasted texts, side by side. See [Compare Files](15-compare-files.md). |
+| **JSON editor** | Opens a new JSON editor window. See [JSON Editor](18-json-editor.md). |
+| **Regex tester** | Opens a new window to try a regular expression on a text of yours. See [Regex Tester](20-regex-tester.md). |
 | **Check folder for standard...** | Checks a folder of C# and JavaScript files |
 | **Fix folder for standard** | Submenu: **Fix a folder...** rewrites a folder of C# and JavaScript files to match the standard, with the fixers ticked below it. Click a fixer to turn it on or off. **Line endings** and **Encoding** convert every file to CRLF, LF or CR, and to UTF-8 with or without a BOM. See [Choosing the fixers](09-code-review.md#choosing-the-fixers). |
 | (separator) | |

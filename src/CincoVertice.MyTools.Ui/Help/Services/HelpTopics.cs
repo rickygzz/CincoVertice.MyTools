@@ -16,6 +16,7 @@ public static class HelpTopics
     public const string CompareFiles = "15-compare-files.md";
     public const string JsonEditor = "18-json-editor.md";
     public const string Hotstrings = "19-hotstrings.md";
+    public const string RegexTester = "20-regex-tester.md";
     public const string ColorPicker = Snipping + "#picking-a-color-from-the-screen";
     public const string SettingsBackup = "10-files-and-updates.md#back-up-or-restore-settings";
 
@@ -23,7 +24,7 @@ public static class HelpTopics
     public static IReadOnlyList<string> All { get; } =
     [
         Calculator, Snipping, DiagramEditor, ConfigEditor, Scripts, CodeReview, WindowZones, ColorPicker, CompareFiles,
-        JsonEditor, SettingsBackup,
+        JsonEditor, SettingsBackup, RegexTester,
         ForFile("hotkeys.cfg"), ForFile("activity.cfg"), ForFile("recording.cfg"), ForFile("startup.cfg"),
         ForFile("hotstrings.cfg"),
     ];

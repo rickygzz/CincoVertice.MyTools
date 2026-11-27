@@ -42,6 +42,7 @@ using CincoVertice.MyTools.Ui.Win.Help.Actions;
 using CincoVertice.MyTools.Ui.Win.Help.Services;
 using CincoVertice.MyTools.Ui.Win.Hotstrings.Services;
 using CincoVertice.MyTools.Ui.Win.JsonEditor.Actions;
+using CincoVertice.MyTools.Ui.Win.RegexTester.Actions;
 using CincoVertice.MyTools.Ui.Win.Scripting.Actions;
 using CincoVertice.MyTools.Ui.Win.Scripting.Services;
 using CincoVertice.MyTools.Ui.Win.SettingsBackup.Actions;
@@ -221,6 +222,7 @@ public static class UiWinSetupExtensions
         // Compare files: a new window each time
         services.AddSingleton<CompareFilesAction>();
         services.AddSingleton<OpenJsonEditorAction>();
+        services.AddSingleton<OpenRegexTesterAction>();
 
         // Settings backup: the config folder to a zip and back; before a restore, the settings go to backups
         services.AddSingleton(_ => new SettingsBackupService(
@@ -279,6 +281,7 @@ public static class UiWinSetupExtensions
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<ShowAppSpotlightAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<CompareFilesAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<OpenJsonEditorAction>());
+        services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<OpenRegexTesterAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<BackUpSettingsAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<RestoreSettingsAction>());
         services.AddSingleton<IAppAction>(sp => sp.GetRequiredService<OpenDiagramEditorAction>());

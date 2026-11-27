@@ -282,6 +282,40 @@ public class CodeTextControlTests
     }
 
     [Fact]
+    public void Backgrounds_ColorOnlyTheirParts_ALaterOneOverAnEarlier_AndAreNoStepOfUndo()
+    {
+        // Arrange: "yz" typed after the text was shown
+        using TestControl control = Create();
+        control.SetCode("x");
+        control.Select(1, 0);
+        control.SelectedText = "yz";
+        control.Select(3, 0);
+
+        // Act
+        control.SetBackgrounds([new CodeBackground(0, 3, Color.Yellow), new CodeBackground(1, 1, Color.LightBlue)]);
+        int caret = control.SelectionStart;
+        Color[] colors = [.. Enumerable.Range(0, 3).Select(i => BackColorAt(control, i))];
+        string textBefore = control.Text;
+        control.SetBackgrounds([new CodeBackground(2, 1, Color.Pink)]);
+        Color firstAfter = BackColorAt(control, 0);
+        control.UndoEdit();
+
+        // Assert
+        Assert.Equal([Color.Yellow.ToArgb(), Color.LightBlue.ToArgb(), Color.Yellow.ToArgb()], colors.Select(c => c.ToArgb()));
+        Assert.Equal(3, caret);
+        Assert.Equal("xyz", textBefore);
+        Assert.Equal(control.BackColor.ToArgb(), firstAfter.ToArgb());
+        Assert.Equal("x", control.Text);
+    }
+
+    private static Color BackColorAt(CodeTextControl control, int index)
+    {
+        control.Select(index, 1);
+
+        return control.SelectionBackColor;
+    }
+
+    [Fact]
     public void Marks_SetTheSame_PaintNothing_AndOthers_PaintAll()
     {
         // Arrange: checked again after each pause in typing, they usually come back the same

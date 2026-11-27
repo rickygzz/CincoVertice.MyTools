@@ -13,6 +13,7 @@ using CincoVertice.MyTools.Ui.Win.Diagramming.Actions;
 using CincoVertice.MyTools.Ui.Win.Diff.Actions;
 using CincoVertice.MyTools.Ui.Win.Help.Actions;
 using CincoVertice.MyTools.Ui.Win.JsonEditor.Actions;
+using CincoVertice.MyTools.Ui.Win.RegexTester.Actions;
 using CincoVertice.MyTools.Ui.Win.Scripting.Actions;
 using CincoVertice.MyTools.Ui.Win.SettingsBackup.Actions;
 using CincoVertice.MyTools.Ui.Win.Shell.Actions;
@@ -73,6 +74,7 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
         OpenDiagramEditorAction openDiagramEditorAction,
         CompareFilesAction compareFilesAction,
         OpenJsonEditorAction openJsonEditorAction,
+        OpenRegexTesterAction openRegexTesterAction,
         ShowHelpAction showHelpAction,
         FixerSelection fixerSelection,
         BackUpSettingsAction backUpSettingsAction,
@@ -97,6 +99,7 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
         AddAction(menu.Items, "&Diagram editor", openDiagramEditorAction);
         AddAction(menu.Items, "&Compare files...", compareFilesAction);
         AddAction(menu.Items, "&JSON editor", openJsonEditorAction);
+        AddAction(menu.Items, "Rege&x tester", openRegexTesterAction);
         AddAction(menu.Items, "Check folder for &standard...", checkFolderAction);
         menu.Items.Add(CreateFixMenu(fixFolderAction, fixerSelection));
         menu.Items.Add(new ToolStripSeparator());

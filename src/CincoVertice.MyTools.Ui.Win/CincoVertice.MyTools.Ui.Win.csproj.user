@@ -47,6 +47,9 @@
     <Compile Update="JsonEditor\JsonTextControl.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Update="RegexTester\RegexTesterForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="SettingsBackup\SettingsRestoreForm.cs">
       <SubType>Form</SubType>
     </Compile>

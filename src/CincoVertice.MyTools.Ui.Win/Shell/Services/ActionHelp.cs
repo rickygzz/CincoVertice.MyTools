@@ -20,6 +20,7 @@ public static class ActionHelp
         ["DiagramEditor"] = "Opens a new diagram editor window",
         ["CompareFiles"] = "Opens a new Compare files window",
         ["OpenJsonEditor"] = "Opens a JSON editor: sections that collapse, colors, JMESPath search and paths",
+        ["OpenRegexTester"] = "Opens a regex tester: a pattern, a text with its matches colored, groups and replacing",
         ["CheckFolder"] = "Picks a folder and checks the C# standard",
         ["FixFolder"] = "Picks a folder and fixes it in place, with the fixers ticked in the tray menu",
         ["EditHotkeys"] = "Opens hotkeys.cfg in the config editor",

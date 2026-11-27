@@ -43,4 +43,4 @@ To type the name itself without it being replaced, type it with any other charac
 
 ---
 
-← Previous: [JSON Editor](18-json-editor.md) | [Contents](README.md)
+← Previous: [JSON Editor](18-json-editor.md) | [Contents](README.md) | Next: [Regex Tester](20-regex-tester.md) →
