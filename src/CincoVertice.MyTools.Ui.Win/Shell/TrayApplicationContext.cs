@@ -149,6 +149,9 @@ public sealed class TrayApplicationContext : ApplicationContext, ITrayView, IUpd
             Visible = true,
         };
         _notifyIcon.DoubleClick += (_, _) => ShowMainForm();
+
+        // At the pointer even when it opens on a monitor with other scaling than it had last
+        TrayMenuAnchor.Attach(_notifyIcon, menu);
         _notifyIcon.BalloonTipClicked += NotifyIcon_BalloonTipClicked;
 
         ShowScripts([]);
