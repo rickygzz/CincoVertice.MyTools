@@ -73,7 +73,9 @@ partial class JsonEditorForm
         NextButton = new Button();
         SearchMessageLabel = new Label();
         Split = new SplitContainer();
-        Editor = new JsonTextControl();
+        FirstEditor = new JsonTextControl();
+        TabStrip = new ToolStrip();
+        CloseTabButton = new ToolStripButton();
         ResultBox = new TextBox();
         ResultLabel = new Label();
         Status = new StatusStrip();
@@ -83,6 +85,7 @@ partial class JsonEditorForm
         SuggestionsList = new ListBox();
         Tips = new ToolTip(components);
         Tools.SuspendLayout();
+        TabStrip.SuspendLayout();
         SearchLayout.SuspendLayout();
         ((System.ComponentModel.ISupportInitialize)Split).BeginInit();
         Split.Panel1.SuspendLayout();
@@ -396,7 +399,8 @@ partial class JsonEditorForm
         //
         // TreeSplit.Panel2
         //
-        TreeSplit.Panel2.Controls.Add(Editor);
+        TreeSplit.Panel2.Controls.Add(FirstEditor);
+        TreeSplit.Panel2.Controls.Add(TabStrip);
         //
         // JsonTree
         //
@@ -413,18 +417,35 @@ partial class JsonEditorForm
         Split.Panel2.Controls.Add(ResultBox);
         Split.Panel2.Controls.Add(ResultLabel);
         //
-        // Editor
+        // TabStrip
         //
-        Editor.Dock = DockStyle.Fill;
-        Editor.Name = "Editor";
-        Editor.TabIndex = 0;
-        Editor.TextEdited += Editor_TextEdited;
-        Editor.CaretMoved += Editor_CaretMoved;
-        Editor.PathRequested += Editor_PathRequested;
-        Editor.HoverRequested += Editor_HoverRequested;
-        Editor.KeysRequested += Editor_KeysRequested;
-        Editor.SortKeysHereRequested += Editor_SortKeysHereRequested;
-        Editor.GoToPathRequested += Editor_GoToPathRequested;
+        TabStrip.GripStyle = ToolStripGripStyle.Hidden;
+        TabStrip.Items.AddRange(new ToolStripItem[] { CloseTabButton });
+        TabStrip.Name = "TabStrip";
+        TabStrip.ShowItemToolTips = true;
+        TabStrip.TabIndex = 1;
+        //
+        // CloseTabButton
+        //
+        CloseTabButton.Alignment = ToolStripItemAlignment.Right;
+        CloseTabButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
+        CloseTabButton.Name = "CloseTabButton";
+        CloseTabButton.Text = "×";
+        CloseTabButton.ToolTipText = "Close this tab (Ctrl+W)";
+        CloseTabButton.Click += CloseTabButton_Click;
+        //
+        // FirstEditor
+        //
+        FirstEditor.Dock = DockStyle.Fill;
+        FirstEditor.Name = "FirstEditor";
+        FirstEditor.TabIndex = 0;
+        FirstEditor.TextEdited += Editor_TextEdited;
+        FirstEditor.CaretMoved += Editor_CaretMoved;
+        FirstEditor.PathRequested += Editor_PathRequested;
+        FirstEditor.HoverRequested += Editor_HoverRequested;
+        FirstEditor.KeysRequested += Editor_KeysRequested;
+        FirstEditor.SortKeysHereRequested += Editor_SortKeysHereRequested;
+        FirstEditor.GoToPathRequested += Editor_GoToPathRequested;
         //
         // ResultBox
         //
@@ -524,6 +545,8 @@ partial class JsonEditorForm
         FormClosing += JsonEditorForm_FormClosing;
         DragEnter += JsonEditorForm_DragEnter;
         DragDrop += JsonEditorForm_DragDrop;
+        TabStrip.ResumeLayout(false);
+        TabStrip.PerformLayout();
         Tools.ResumeLayout(false);
         Tools.PerformLayout();
         SearchLayout.ResumeLayout(false);
@@ -589,7 +612,9 @@ partial class JsonEditorForm
     private Button NextButton;
     private Label SearchMessageLabel;
     private SplitContainer Split;
-    private JsonTextControl Editor;
+    private JsonTextControl FirstEditor;
+    private ToolStrip TabStrip;
+    private ToolStripButton CloseTabButton;
     private TextBox ResultBox;
     private Label ResultLabel;
     private StatusStrip Status;

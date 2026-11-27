@@ -4,9 +4,18 @@ using CincoVertice.MyTools.Ui.JsonEditor.Models;
 
 namespace CincoVertice.MyTools.Ui.JsonEditor.Views;
 
-/// <summary>The JSON editor's window: the text, its search box, and what the presenter says about them.</summary>
+/// <summary>
+///     The JSON editor's window: the text, its search box, and what the presenter says about them. It has tabs, each
+///     with a text of its own (and its own undo); it starts with one. Everything about the text is about the tab shown.
+/// </summary>
 public interface IJsonEditorView
 {
+    /// <summary>The user chose another tab, by its index.</summary>
+    event EventHandler<int>? TabChosen;
+
+    /// <summary>The user asked to close a tab, by its index; the presenter asks about its changes first.</summary>
+    event EventHandler<int>? TabCloseRequested;
+
     /// <summary>The user changed the text; <see cref="Lines"/> has it.</summary>
     event EventHandler? TextEdited;
 
@@ -77,7 +86,22 @@ public interface IJsonEditorView
     /// <summary>To the next schema problem after the caret (F8), or the one before (Shift+F8, -1).</summary>
     event EventHandler<int>? ProblemStepRequested;
 
+    /// <summary>The text of the tab shown.</summary>
     IReadOnlyList<string> Lines { get; }
+
+    /// <summary>The text of any tab.</summary>
+    IReadOnlyList<string> LinesOf(int tab);
+
+    /// <summary>A tab after the others, with an empty text, shown. Raises no <see cref="TabChosen"/>.</summary>
+    void AddTab(string title);
+
+    /// <summary>Shows a tab. Raises no <see cref="TabChosen"/>.</summary>
+    void SelectTab(int index);
+
+    /// <summary>Removes a tab and its text; the presenter then says which to show.</summary>
+    void RemoveTab(int index);
+
+    void ShowTabTitle(int index, string title);
 
     /// <summary>Whether it's shown dark: as Windows' mode when it opens, until a theme is chosen.</summary>
     bool IsDark { get; }

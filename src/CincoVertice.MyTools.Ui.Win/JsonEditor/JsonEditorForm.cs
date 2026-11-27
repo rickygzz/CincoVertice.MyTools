@@ -33,6 +33,11 @@ public partial class JsonEditorForm : Form, IJsonEditorView
     private readonly List<ToolStripItem> _crumbItems = [];
     private IReadOnlyList<JsonCrumbModel> _crumbs = [];
 
+    // A text per tab, each with its own undo, sections and scroll, and the tab's button; only the shown one is visible
+    private readonly List<JsonTextControl> _editors = [];
+    private readonly List<ToolStripButton> _tabButtons = [];
+    private int _shown;
+
     public JsonEditorForm()
         : this(DarkMode.IsOn())
     {
@@ -42,6 +47,9 @@ public partial class JsonEditorForm : Form, IJsonEditorView
     internal JsonEditorForm(bool isDark)
     {
         InitializeComponent();
+        _editors.Add(FirstEditor);
+        _tabButtons.Add(TabButtonOf("Untitled"));
+        _tabButtons[0].Checked = true;
         _isDark = isDark;
         ApplyColors();
         _isSettingSearch = true;
@@ -106,7 +114,126 @@ public partial class JsonEditorForm : Form, IJsonEditorView
 
     public event EventHandler<CancelEventArgs>? CloseRequested;
 
+    public event EventHandler<int>? TabChosen;
+
+    public event EventHandler<int>? TabCloseRequested;
+
     public IReadOnlyList<string> Lines => Editor.Lines;
+
+    /// <summary>The text of the tab shown.</summary>
+    private JsonTextControl Editor => _editors[_shown];
+
+    /// <summary>The tabs' titles, for tests.</summary>
+    internal IReadOnlyList<string> TabTitles => [.. _tabButtons.Select(button => button.Text ?? string.Empty)];
+
+    /// <summary>A click on a tab, for tests.</summary>
+    internal void ClickTab(int index) => _tabButtons[index].PerformClick();
+
+    /// <summary>A shortcut pressed in the window, for tests: whether the window took it.</summary>
+    internal bool PressKey(Keys keys)
+    {
+        var message = default(Message);
+
+        return ProcessCmdKey(ref message, keys);
+    }
+
+    public IReadOnlyList<string> LinesOf(int tab) => _editors[tab].Lines;
+
+    public void AddTab(string title)
+    {
+        var editor = new JsonTextControl { Dock = DockStyle.Fill, Visible = false };
+        editor.TextEdited += Editor_TextEdited;
+        editor.CaretMoved += Editor_CaretMoved;
+        editor.PathRequested += Editor_PathRequested;
+        editor.HoverRequested += Editor_HoverRequested;
+        editor.KeysRequested += Editor_KeysRequested;
+        editor.SortKeysHereRequested += Editor_SortKeysHereRequested;
+        editor.GoToPathRequested += Editor_GoToPathRequested;
+        editor.ShowTheme(_isDark);
+
+        // In front, so it's laid out after the tab bar, in what's left
+        TreeSplit.Panel2.Controls.Add(editor);
+        editor.BringToFront();
+        _editors.Add(editor);
+        _tabButtons.Add(TabButtonOf(title));
+        SelectTab(_editors.Count - 1);
+    }
+
+    public void SelectTab(int index)
+    {
+        if (index < 0 || index >= _editors.Count)
+        {
+            return;
+        }
+
+        bool hadFocus = Editor.ContainsFocus;
+        _shown = index;
+
+        for (int i = 0; i < _editors.Count; i++)
+        {
+            _tabButtons[i].Checked = i == index;
+        }
+
+        // The new one shown before the old one hides, so the area never shows empty
+        Editor.Visible = true;
+
+        foreach (JsonTextControl other in _editors.Where(editor => editor != Editor))
+        {
+            other.Visible = false;
+        }
+
+        if (hadFocus || !SearchBox.Focused)
+        {
+            Editor.Focus();
+        }
+    }
+
+    public void RemoveTab(int index)
+    {
+        if (index < 0 || index >= _editors.Count || _editors.Count == 1)
+        {
+            return;
+        }
+
+        JsonTextControl editor = _editors[index];
+        ToolStripButton button = _tabButtons[index];
+        _editors.RemoveAt(index);
+        _tabButtons.RemoveAt(index);
+        TabStrip.Items.Remove(button);
+        button.Dispose();
+        TreeSplit.Panel2.Controls.Remove(editor);
+        editor.Dispose();
+
+        if (_shown >= index && _shown > 0)
+        {
+            _shown--;
+        }
+
+        SelectTab(_shown);
+    }
+
+    public void ShowTabTitle(int index, string title)
+    {
+        if (index >= 0 && index < _tabButtons.Count && _tabButtons[index].Text != title)
+        {
+            _tabButtons[index].Text = title;
+        }
+    }
+
+    // A tab's button, after the others; a click shows it, a middle click closes it
+    private ToolStripButton TabButtonOf(string title)
+    {
+        var button = new ToolStripButton(title)
+        {
+            DisplayStyle = ToolStripItemDisplayStyle.Text,
+            ToolTipText = "Middle-click or Ctrl+W to close; Ctrl+Tab for the next tab",
+        };
+        button.Click += TabButton_Click;
+        button.MouseUp += TabButton_MouseUp;
+        TabStrip.Items.Add(button);
+
+        return button;
+    }
 
     public bool IsDark => _isDark;
 
@@ -529,6 +656,15 @@ public partial class JsonEditorForm : Form, IJsonEditorView
             case Keys.Control | Keys.N:
                 NewRequested?.Invoke(this, EventArgs.Empty);
                 return true;
+            case Keys.Control | Keys.W or Keys.Control | Keys.F4:
+                TabCloseRequested?.Invoke(this, _shown);
+                return true;
+            case Keys.Control | Keys.Tab or Keys.Control | Keys.PageDown:
+                ChooseTab((_shown + 1) % _editors.Count);
+                return true;
+            case Keys.Control | Keys.Shift | Keys.Tab or Keys.Control | Keys.PageUp:
+                ChooseTab((_shown + _editors.Count - 1) % _editors.Count);
+                return true;
             case Keys.Control | Keys.O:
                 OpenRequested?.Invoke(this, EventArgs.Empty);
                 return true;
@@ -609,7 +745,7 @@ public partial class JsonEditorForm : Form, IJsonEditorView
         BackColor = back;
         ForeColor = _textColor;
 
-        foreach (ToolStrip strip in new ToolStrip[] { Tools, Status })
+        foreach (ToolStrip strip in new ToolStrip[] { Tools, TabStrip, Status })
         {
             if (_isDark)
             {
@@ -669,7 +805,10 @@ public partial class JsonEditorForm : Form, IJsonEditorView
         }
 
         ColorCrumbs();
-        Editor.ShowTheme(_isDark);
+        foreach (JsonTextControl editor in _editors)
+        {
+            editor.ShowTheme(_isDark);
+        }
     }
 
     private void FocusSearch(JsonSearchMode mode)
@@ -696,6 +835,34 @@ public partial class JsonEditorForm : Form, IJsonEditorView
             SuggestionChosen?.Invoke(this, suggestion);
         }
     }
+
+    // The user's choice of a tab: shown here, then the presenter shows its document
+    private void ChooseTab(int index)
+    {
+        if (index != _shown)
+        {
+            SelectTab(index);
+            TabChosen?.Invoke(this, index);
+        }
+    }
+
+    private void TabButton_Click(object? sender, EventArgs e)
+    {
+        if (sender is ToolStripButton button)
+        {
+            ChooseTab(_tabButtons.IndexOf(button));
+        }
+    }
+
+    private void TabButton_MouseUp(object? sender, MouseEventArgs e)
+    {
+        if (e.Button == MouseButtons.Middle && sender is ToolStripButton button)
+        {
+            TabCloseRequested?.Invoke(this, _tabButtons.IndexOf(button));
+        }
+    }
+
+    private void CloseTabButton_Click(object? sender, EventArgs e) => TabCloseRequested?.Invoke(this, _shown);
 
     private void NewButton_Click(object? sender, EventArgs e) => NewRequested?.Invoke(this, EventArgs.Empty);
 
@@ -880,9 +1047,22 @@ public partial class JsonEditorForm : Form, IJsonEditorView
         TextRenderer.DrawText(e.Graphics, suggestion.Detail, font, bounds, detail, Flags | TextFormatFlags.Right);
     }
 
-    private void Editor_TextEdited(object? sender, EventArgs e) => TextEdited?.Invoke(this, EventArgs.Empty);
+    // Only the shown text is the presenter's; a hidden one says nothing
+    private void Editor_TextEdited(object? sender, EventArgs e)
+    {
+        if (sender == Editor)
+        {
+            TextEdited?.Invoke(this, EventArgs.Empty);
+        }
+    }
 
-    private void Editor_CaretMoved(object? sender, DiffPosition caret) => CaretMoved?.Invoke(this, caret);
+    private void Editor_CaretMoved(object? sender, DiffPosition caret)
+    {
+        if (sender == Editor)
+        {
+            CaretMoved?.Invoke(this, caret);
+        }
+    }
 
     private void Editor_PathRequested(object? sender, JsonPathRequestModel request) =>
         PathRequested?.Invoke(this, request);

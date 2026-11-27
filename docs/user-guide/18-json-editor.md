@@ -4,6 +4,16 @@ An editor for JSON files: colors, line numbers, sections that collapse, a tree o
 
 Open it from the tray menu's **JSON editor**, or with **Ctrl+Alt+J**. Each time opens another window. Open a file with **Open...** (Ctrl+O), by dropping it on the window, or paste JSON into a new one.
 
+## Tabs
+
+A window holds several documents, a tab each, in the bar above the text.
+
+- **New** (Ctrl+N), **Open...**, a file dropped on the window, and **Open CSV as JSON...** or **Paste CSV as JSON** each open a new tab. The tab shown is used instead when it's an empty **Untitled** with nothing typed in it, and a file open already goes back to its tab.
+- Click a tab to show it, or use **Ctrl+Tab** and **Ctrl+Shift+Tab** (or Ctrl+Page Down and Ctrl+Page Up) for the next and the one before.
+- Close a tab with **×** at the right of the bar, **Ctrl+W** (or Ctrl+F4), or a middle click on it. A tab with changes not saved asks first. Closing the last tab leaves an empty **Untitled**, so the window keeps a tab.
+- Each tab keeps its own text, undo, collapsed sections, place, caret and schema. The search, the result, the tree and the status bar are those of the tab shown: switching tabs searches the new one.
+- A tab's name shows `*` while it has changes not saved. Closing the window asks about each such tab, showing it.
+
 ## The text
 
 - **Colors:** names are blue, strings red, numbers green, `true`, `false` and `null` blue, comments green, and anything JSON doesn't allow is red.
@@ -78,7 +88,7 @@ The functions are JMESPath's: `abs`, `avg`, `ceil`, `contains`, `ends_with`, `fl
 
 - **Format** (Shift+Alt+F) lays the JSON out on lines, indented by two spaces; **Minify** puts it on one line. Both need valid JSON, leave comments out, and are one step for Undo.
 - **Save** (Ctrl+S) writes the file with the encoding and line breaks it had; **Save as...** (Ctrl+Shift+S) under another name. A new document is saved as UTF-8 with Windows line breaks.
-- The title shows `*` while there are changes not saved, and closing the window, opening another file or **New** asks first.
+- The title and the tab show `*` while there are changes not saved, and closing the tab or the window asks first.
 - **Sort keys** sorts the keys of every object, ignoring case, and formats the document. To sort only one object, right-click in it and choose **Sort keys here**: the rest stays as written. Both are one step for Undo and leave out the comments in what they sort.
 - **Repair** turns almost-JSON into JSON, as logs, JavaScript and Python print it:
   - strings in single quotes, and names without quotes;
@@ -98,7 +108,7 @@ The functions are JMESPath's: `abs`, `avg`, `ceil`, `contains`, `ends_with`, `fl
 
 - **Copy as YAML** and **Save as YAML...** write YAML in blocks. Strings YAML would read as something else are quoted: `"yes"`, `"01234"`, `"a: b"`.
 - **Copy as CSV** and **Save as CSV...** need an array. An array of objects becomes a table: a column for each name, and an object or array inside goes in its cell as JSON. Other arrays become one column. The file is UTF-8 with a BOM, so Excel shows accents right.
-- **Open CSV as JSON...** and **Paste CSV as JSON** make a new document from CSV: an array with an object per row, named by the first row. Commas, semicolons or tabs can separate the values. Numbers, `true`, `false` and `null` become those values; anything else is a string.
+- **Open CSV as JSON...** and **Paste CSV as JSON** make a new document from CSV, in a tab of its own: an array with an object per row, named by the first row. Commas, semicolons or tabs can separate the values. Numbers, `true`, `false` and `null` become those values; anything else is a string.
 
 ## Checking a schema
 
@@ -116,7 +126,9 @@ The editor opens in Windows' mode for apps, dark or light. The **Dark** or **Lig
 
 | Key | Does |
 |---|---|
-| Ctrl+N / Ctrl+O / Ctrl+S / Ctrl+Shift+S | New, open, save, save as |
+| Ctrl+N / Ctrl+O / Ctrl+S / Ctrl+Shift+S | New tab, open, save, save as |
+| Ctrl+W or Ctrl+F4 | Close the tab |
+| Ctrl+Tab / Ctrl+Shift+Tab | Next / previous tab (also Ctrl+Page Down / Ctrl+Page Up) |
 | Ctrl+F / Ctrl+J | Search text / search JMESPath |
 | Enter, F3 / Shift+Enter, Shift+F3 | Next / previous match |
 | Shift+Alt+F | Format |

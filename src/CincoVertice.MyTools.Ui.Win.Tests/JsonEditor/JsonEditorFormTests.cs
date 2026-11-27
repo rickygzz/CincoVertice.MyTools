@@ -26,6 +26,69 @@ public class JsonEditorFormTests
         [.. nodes.Cast<TreeNode>().Select(node => node.Text)];
 
     [Fact]
+    public void Tabs_EachKeepTheirText_AndTheirOwnUndo()
+    {
+        string folder = Path.Combine(Path.GetTempPath(), "JsonEditorTabs_" + Guid.NewGuid());
+        Directory.CreateDirectory(folder);
+
+        try
+        {
+            // Arrange: two files, the second opened in a tab of its own, then changed
+            string first = Path.Combine(folder, "first.json");
+            string second = Path.Combine(folder, "second.json");
+            File.WriteAllText(first, "[1]");
+            File.WriteAllText(second, "[2]");
+            using var form = new JsonEditorForm(isDark: false);
+            var presenter = new Ui.JsonEditor.Presenters.JsonEditorPresenter(
+                form,
+                new Ui.Diff.Services.DiskDiffFileReader(),
+                new Ui.Diff.Services.DiskDiffFileWriter());
+            presenter.Start(first);
+            presenter.Open(second);
+            form.TextControl.ReplaceAll("[2, 3]");
+            JsonTextControl secondText = form.TextControl;
+
+            // Act / Assert: the first tab shows its own text, unchanged
+            Assert.Equal(["first.json", "second.json *"], form.TabTitles);
+            form.ClickTab(0);
+            Assert.Equal(["[1]"], form.TextControl.Lines);
+            Assert.NotSame(secondText, form.TextControl);
+            Assert.Equal("first.json - JSON editor", form.Text);
+
+            // Back to the second: its undo takes back its change
+            form.ClickTab(1);
+            form.TextControl.HandleKey(Keys.Control | Keys.Z);
+            Assert.Equal(["[2]"], form.TextControl.Lines);
+            Assert.Equal(["first.json", "second.json"], form.TabTitles);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Tabs_RemoveTab_ShowsTheOneBefore_AndCtrlWAsksToCloseTheShownOne()
+    {
+        // Arrange: three tabs, the last shown
+        using var form = new JsonEditorForm(isDark: false);
+        form.AddTab("b");
+        form.ShowText(["b"]);
+        form.AddTab("c");
+        List<int> closing = [];
+        form.TabCloseRequested += (_, index) => closing.Add(index);
+
+        // Act
+        form.RemoveTab(2);
+
+        // Assert
+        Assert.Equal(["Untitled", "b"], form.TabTitles);
+        Assert.Equal(["b"], form.TextControl.Lines);
+        Assert.True(form.PressKey(Keys.Control | Keys.W));
+        Assert.Equal([1], closing);
+    }
+
+    [Fact]
     public void Tree_ShowsTheDocument_OpeningEachValueWhenAsked()
     {
         // Arrange

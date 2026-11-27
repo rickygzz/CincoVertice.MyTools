@@ -7,7 +7,51 @@ namespace CincoVertice.MyTools.Ui.Tests.JsonEditor;
 
 internal sealed class FakeJsonEditorView : IJsonEditorView
 {
-    private List<string> _lines = [string.Empty];
+    private readonly List<List<string>> _tabs = [[string.Empty]];
+
+    private int _shown;
+
+    private List<string> _lines
+    {
+        get => _tabs[_shown];
+        set => _tabs[_shown] = value;
+    }
+
+    public event EventHandler<int>? TabChosen;
+
+    public event EventHandler<int>? TabCloseRequested;
+
+    public List<string> TabTitles { get; } = [string.Empty];
+
+    public int ShownTab => _shown;
+
+    public IReadOnlyList<string> LinesOf(int tab) => _tabs[tab];
+
+    public void AddTab(string title)
+    {
+        _tabs.Add([string.Empty]);
+        TabTitles.Add(title);
+        _shown = _tabs.Count - 1;
+    }
+
+    public void SelectTab(int index) => _shown = index;
+
+    public void RemoveTab(int index)
+    {
+        _tabs.RemoveAt(index);
+        TabTitles.RemoveAt(index);
+        _shown = Math.Min(_shown, _tabs.Count - 1);
+    }
+
+    public void ShowTabTitle(int index, string title) => TabTitles[index] = title;
+
+    public void RaiseTabChosen(int index)
+    {
+        _shown = index;
+        TabChosen?.Invoke(this, index);
+    }
+
+    public void RaiseTabClose(int index) => TabCloseRequested?.Invoke(this, index);
 
     public event EventHandler? TextEdited;
 

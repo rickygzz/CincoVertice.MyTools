@@ -14,7 +14,8 @@ namespace CincoVertice.MyTools.Ui.JsonEditor.Presenters;
 ///     thread for a large one; says the path of the value at the caret, at a right click and under the pointer; keeps
 ///     the tree panel, the breadcrumb and the bracket pair in step with the caret; searches text or JMESPath with
 ///     suggestions; checks a schema; formats, sorts, repairs, compares and converts; and opens and saves files as they
-///     were written (encoding, line breaks).
+///     were written (encoding, line breaks). Each document is a tab (<see cref="JsonEditorTab"/>): New, Open, a drop
+///     and a CSV opened go to a tab of their own, and all of it is about the tab shown.
 /// </summary>
 public sealed class JsonEditorPresenter
 {
@@ -28,29 +29,13 @@ public sealed class JsonEditorPresenter
     private readonly IDiffFileWriter _writer;
     private readonly IJsonEditorSettingsStore? _settings;
 
-    private string? _path;
-    private DiffTextFormatModel _format = DiffTextFormatModel.Default;
-    private IReadOnlyList<string> _savedLines = [string.Empty];
-    private JsonDocumentModel _document = JsonDocumentReader.Read([string.Empty]);
+    // The tabs, in the order the view shows them, and the one shown; the search and the result are of that one
+    private readonly List<JsonEditorTab> _tabs = [new()];
+    private JsonEditorTab _tab;
     private IReadOnlyList<JsonMatchModel> _matches = [];
     private JsonNodeModel? _result;
     private int _current = -1;
-    private DiffPosition _caret;
     private JsonEditorSettingsModel _shownSettings = new(IsDark: null);
-
-    // The schema: one chosen, or else the one the document names in $schema, unless turned off
-    private string? _chosenSchema;
-    private bool _isSchemaOff;
-    private string? _schemaPath;
-    private JsonSchemaValidator? _validator;
-    private string? _schemaProblem;
-    private IReadOnlyList<JsonSchemaProblemModel> _problems = [];
-
-    // A large text: read on another thread, once more if it changed meanwhile; _document is behind it until then
-    private bool _isStale;
-    private bool _isReading;
-    private bool _readAgain;
-    private Task _reading = Task.CompletedTask;
 
     /// <param name="settings">Where dark or light and the tree panel are kept; none keeps them for the window.</param>
     public JsonEditorPresenter(
@@ -63,7 +48,10 @@ public sealed class JsonEditorPresenter
         _reader = reader;
         _writer = writer;
         _settings = settings;
+        _tab = _tabs[0];
 
+        _view.TabChosen += (_, index) => Activate(index);
+        _view.TabCloseRequested += (_, index) => CloseTab(index);
         _view.TextEdited += (_, _) => Changed();
         _view.CaretMoved += (_, caret) => ShowCaret(caret);
         _view.NewRequested += (_, _) => New();
@@ -77,7 +65,7 @@ public sealed class JsonEditorPresenter
         _view.SearchStepRequested += (_, step) => Step(step);
         _view.SuggestionChosen += (_, suggestion) => Choose(suggestion);
         _view.PathRequested += (_, request) => AnswerPath(request);
-        _view.CloseRequested += (_, e) => e.Cancel = !MayDiscard();
+        _view.CloseRequested += (_, e) => e.Cancel = !MayDiscardAll();
         _view.ThemeToggled += (_, _) => ToggleTheme();
         _view.TreeToggled += (_, _) => ToggleTree();
         _view.NodeChosen += (_, node) => GoToNode(node);
@@ -93,12 +81,16 @@ public sealed class JsonEditorPresenter
         _view.ProblemStepRequested += (_, step) => StepProblem(step);
     }
 
-    public bool IsModified => !_view.Lines.SequenceEqual(_savedLines);
+    /// <summary>Whether the tab shown has changes not saved.</summary>
+    public bool IsModified => !_view.Lines.SequenceEqual(_tab.SavedLines);
 
-    /// <summary>The read of a large text going on, for tests: done once the document is shown.</summary>
-    public Task Reading => _reading;
+    /// <summary>The read of a large text going on in the tab shown, for tests: done once it's shown.</summary>
+    public Task Reading => _tab.Reading;
 
-    /// <summary>Shows a file, or an empty text for null.</summary>
+    /// <summary>How many tabs there are, for tests.</summary>
+    public int TabCount => _tabs.Count;
+
+    /// <summary>Shows a file in the window's first tab, or an empty text for null.</summary>
     public void Start(string? path)
     {
         _shownSettings = _settings?.Load() ?? _shownSettings;
@@ -116,29 +108,131 @@ public sealed class JsonEditorPresenter
         }
     }
 
-    /// <summary>Opens a file, asking first about changes not saved.</summary>
+    /// <summary>
+    ///     Opens a file in a tab: the tab it's open in already, the tab shown when that one is an empty Untitled, or a
+    ///     new tab.
+    /// </summary>
     public void Open(string path)
     {
-        if (MayDiscard())
+        int open = _tabs.FindIndex(tab => tab.Path is string other && SamePath(other, path));
+
+        if (open >= 0)
         {
-            Load(path);
+            Activate(open);
+        }
+        else if (ReadFile(path) is DiffFileModel file)
+        {
+            ToFreeTab();
+            ShowFile(path, file);
         }
     }
 
+    private static bool SamePath(string one, string other) =>
+        string.Equals(Path.GetFullPath(one), Path.GetFullPath(other), StringComparison.OrdinalIgnoreCase);
+
     private void New()
     {
-        if (MayDiscard())
-        {
-            Show(null, [string.Empty], DiffTextFormatModel.Default);
-        }
+        AddTab();
+        Show(null, [string.Empty], DiffTextFormatModel.Default);
     }
 
     private void OpenAsked()
     {
-        if (MayDiscard() && _view.AskOpenPath() is string path)
+        if (_view.AskOpenPath() is string path)
         {
-            Load(path);
+            Open(path);
         }
+    }
+
+    // The tab shown when it's an empty Untitled with nothing to lose, or else a new one
+    private void ToFreeTab()
+    {
+        bool isFree = _tab.Path is null && !IsModified && _view.Lines is [""];
+
+        if (!isFree)
+        {
+            AddTab();
+        }
+    }
+
+    private void AddTab()
+    {
+        _tab = new JsonEditorTab();
+        _tabs.Add(_tab);
+        _view.AddTab(_tab.Name);
+    }
+
+    /// <summary>Shows a tab and what's known of its document.</summary>
+    private void Activate(int index)
+    {
+        if (index < 0 || index >= _tabs.Count)
+        {
+            return;
+        }
+
+        _tab = _tabs[index];
+        _view.SelectTab(index);
+        ShowTitle();
+
+        // A large text left while it was read, or before: read again now that it shows
+        if (_tab.IsStale)
+        {
+            ReadInBackground();
+            ShowCaret(_tab.Caret);
+            Search(suggest: false);
+        }
+        else
+        {
+            ShowRead();
+        }
+    }
+
+    // Asks about its changes first; the last tab closed leaves an empty Untitled, so the window keeps a tab
+    private void CloseTab(int index)
+    {
+        if (index < 0 || index >= _tabs.Count)
+        {
+            return;
+        }
+
+        Activate(index);
+
+        if (!MayDiscard())
+        {
+            return;
+        }
+
+        if (_tabs.Count == 1)
+        {
+            New();
+        }
+
+        _tabs.RemoveAt(index);
+        _view.RemoveTab(index);
+        Activate(Math.Min(index, _tabs.Count - 1));
+    }
+
+    // Each tab with changes, shown in turn to ask about it; one cancelled keeps the window open
+    private bool MayDiscardAll()
+    {
+        int shown = _tabs.IndexOf(_tab);
+
+        for (int i = 0; i < _tabs.Count; i++)
+        {
+            int index = (shown + i) % _tabs.Count;
+
+            if (!_view.LinesOf(index).SequenceEqual(_tabs[index].SavedLines))
+            {
+                Activate(index);
+
+                if (!MayDiscard())
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     private bool Load(string path)
@@ -148,6 +242,13 @@ public sealed class JsonEditorPresenter
             return false;
         }
 
+        ShowFile(path, file);
+
+        return true;
+    }
+
+    private void ShowFile(string path, DiffFileModel file)
+    {
         DiffTextFormatModel format = DiffTextFormatModel.Of(file.Text, file.Encoding);
         List<string> lines = LinesOf(file.Text);
 
@@ -157,8 +258,6 @@ public sealed class JsonEditorPresenter
         }
 
         Show(path, lines, format);
-
-        return true;
     }
 
     private DiffFileModel? ReadFile(string path)
@@ -179,27 +278,28 @@ public sealed class JsonEditorPresenter
 
     private void Show(string? path, IReadOnlyList<string> lines, DiffTextFormatModel format)
     {
-        _path = path;
-        _format = format;
-        _savedLines = [.. lines];
+        _tab.Path = path;
+        _tab.Format = format;
+        _tab.SavedLines = [.. lines];
         _view.ShowText(lines);
         Changed();
     }
 
-    private bool Save() => _path is null ? SaveAs() : SaveTo(_path);
+    private bool Save() => _tab.Path is null ? SaveAs() : SaveTo(_tab.Path);
 
     private bool SaveAs() =>
-        _view.AskSavePath(_path is null ? "document.json" : Path.GetFileName(_path)) is string path && SaveTo(path);
+        _view.AskSavePath(_tab.Path is null ? "document.json" : _tab.Name) is string path && SaveTo(path);
 
     private bool SaveTo(string path)
     {
-        string text = _format.Join(_view.Lines) + (_format.EndsWithLineBreak ? _format.LineBreak : string.Empty);
+        DiffTextFormatModel format = _tab.Format;
+        string text = format.Join(_view.Lines) + (format.EndsWithLineBreak ? format.LineBreak : string.Empty);
 
         try
         {
-            _writer.Write(path, text, _format.Encoding);
-            _path = path;
-            _savedLines = [.. _view.Lines];
+            _writer.Write(path, text, _tab.Format.Encoding);
+            _tab.Path = path;
+            _tab.SavedLines = [.. _view.Lines];
             ShowTitle();
 
             return true;
@@ -248,21 +348,21 @@ public sealed class JsonEditorPresenter
     {
         EnsureCurrent();
 
-        if (_document.Root is null)
+        if (_tab.Document.Root is null)
         {
             _view.ShowProblem("There's no JSON here.");
 
             return null;
         }
 
-        if (_document.Error is string error)
+        if (_tab.Document.Error is string error)
         {
-            _view.ShowProblem($"The JSON isn't valid: {Where(_document.ErrorAt)}, {error}.");
+            _view.ShowProblem($"The JSON isn't valid: {Where(_tab.Document.ErrorAt)}, {error}.");
 
             return null;
         }
 
-        return _document.Root;
+        return _tab.Document.Root;
     }
 
     private void Changed()
@@ -271,9 +371,9 @@ public sealed class JsonEditorPresenter
 
         if (_view.Lines.Sum(line => line.Length + 1) > LargeTextLength)
         {
-            _isStale = true;
+            _tab.IsStale = true;
             ReadInBackground();
-            ShowCaret(_caret);
+            ShowCaret(_tab.Caret);
         }
         else
         {
@@ -283,55 +383,68 @@ public sealed class JsonEditorPresenter
 
     private void ReadInBackground()
     {
-        if (_isReading)
+        if (_tab.IsReading)
         {
-            _readAgain = true;
+            _tab.ReadAgain = true;
 
             return;
         }
 
-        _isReading = true;
-        _reading = ReadUntilCurrentAsync();
+        _tab.IsReading = true;
+        _tab.Reading = ReadUntilCurrentAsync(_tab);
     }
 
-    // Back on the window's thread after each read; a read the text has gone past is read again, not shown
-    private async Task ReadUntilCurrentAsync()
+    // Back on the window's thread after each read; a read the text has gone past is read again, not shown. The
+    // view's text is the tab shown: once another tab is, this one stays stale and is read when it shows again
+    private async Task ReadUntilCurrentAsync(JsonEditorTab tab)
     {
         try
         {
             do
             {
-                _readAgain = false;
-                string[] lines = [.. _view.Lines];
-                (JsonDocumentModel, IReadOnlyList<JsonSchemaProblemModel>) read = await Task.Run(() => Analyze(lines));
+                tab.ReadAgain = false;
 
-                if (!_readAgain && _isStale)
+                if (tab != _tab)
+                {
+                    return;
+                }
+
+                string[] lines = [.. _view.Lines];
+                JsonSchemaValidator? validator = tab.Validator;
+                (JsonDocumentModel, IReadOnlyList<JsonSchemaProblemModel>) read =
+                    await Task.Run(() => Analyze(lines, validator));
+
+                if (!tab.ReadAgain && tab.IsStale && tab == _tab)
                 {
                     Apply(read);
                 }
             }
-            while (_readAgain);
+            while (tab.ReadAgain);
         }
         finally
         {
-            _isReading = false;
+            tab.IsReading = false;
         }
     }
 
     // Before what needs the document as the text is now: a large one is read here and now
     private void EnsureCurrent()
     {
-        if (_isStale)
+        if (_tab.IsStale)
         {
             Apply(Analyze(_view.Lines));
         }
     }
 
     private (JsonDocumentModel Document, IReadOnlyList<JsonSchemaProblemModel> Problems) Analyze(
-        IReadOnlyList<string> lines)
+        IReadOnlyList<string> lines) =>
+        Analyze(lines, _tab.Validator);
+
+    private static (JsonDocumentModel Document, IReadOnlyList<JsonSchemaProblemModel> Problems) Analyze(
+        IReadOnlyList<string> lines,
+        JsonSchemaValidator? validator)
     {
         JsonDocumentModel document = JsonDocumentReader.Read(lines);
-        JsonSchemaValidator? validator = _validator;
 
         // A broken document's values stop at the error, so what's missing after it isn't missing
         IReadOnlyList<JsonSchemaProblemModel> problems = validator is not null && document.Root is not null
@@ -344,43 +457,50 @@ public sealed class JsonEditorPresenter
 
     private void Apply((JsonDocumentModel Document, IReadOnlyList<JsonSchemaProblemModel> Problems) read)
     {
-        _isStale = false;
-        _document = read.Document;
-        _view.ShowDocument(_document);
+        _tab.IsStale = false;
+        _tab.Document = read.Document;
 
         // The document may name another schema now
         if (UpdateSchema())
         {
             read = Analyze(_view.Lines);
-            _document = read.Document;
+            _tab.Document = read.Document;
         }
 
-        _problems = read.Problems;
-        _view.ShowSchemaProblems(_problems);
+        _tab.Problems = read.Problems;
+        ShowRead();
+    }
+
+    // The tab's document as last read: its colors, schema problems, tree, caret and the search in it
+    private void ShowRead()
+    {
+        _view.ShowDocument(_tab.Document);
+        _view.ShowSchemaProblems(_tab.Problems);
         ShowSchemaStatus();
 
         if (_shownSettings.IsTreeShown)
         {
-            _view.ShowTree(_document.Root);
+            _view.ShowTree(_tab.Document.Root);
         }
 
-        ShowCaret(_caret);
+        ShowCaret(_tab.Caret);
         Search(suggest: false);
     }
 
     private void ShowTitle()
     {
-        string name = _path is null ? "Untitled" : Path.GetFileName(_path);
-        _view.ShowTitle($"{name}{(IsModified ? " *" : string.Empty)} - {BaseTitle}");
+        string name = _tab.Name + (IsModified ? " *" : string.Empty);
+        _view.ShowTitle($"{name} - {BaseTitle}");
+        _view.ShowTabTitle(_tabs.IndexOf(_tab), name);
     }
 
     private void ShowCaret(DiffPosition caret)
     {
-        _caret = caret;
-        JsonNodeModel? node = _isStale ? null : JsonPathWriter.NodeAt(_document.Root, caret);
-        string validity = _isStale ? "Reading…"
-            : _document.Root is null && _document.Error is null ? "Empty"
-            : _document.Error is string error ? $"L{Where(_document.ErrorAt)[1..]}: {error}"
+        _tab.Caret = caret;
+        JsonNodeModel? node = _tab.IsStale ? null : JsonPathWriter.NodeAt(_tab.Document.Root, caret);
+        string validity = _tab.IsStale ? "Reading…"
+            : _tab.Document.Root is null && _tab.Document.Error is null ? "Empty"
+            : _tab.Document.Error is string error ? $"L{Where(_tab.Document.ErrorAt)[1..]}: {error}"
             : "Valid JSON";
 
         _view.ShowStatus(
@@ -388,7 +508,7 @@ public sealed class JsonEditorPresenter
             node is null ? string.Empty : JsonPathWriter.PathOf(node),
             validity);
         _view.ShowCrumbs(node is null ? [] : JsonPathWriter.CrumbsOf(node));
-        _view.ShowBracketPair(_isStale ? null : JsonBrackets.PairAt(_document.Tokens, _view.Lines, caret));
+        _view.ShowBracketPair(_tab.IsStale ? null : JsonBrackets.PairAt(_tab.Document.Tokens, _view.Lines, caret));
 
         if (_shownSettings.IsTreeShown)
         {
@@ -411,8 +531,8 @@ public sealed class JsonEditorPresenter
         if (_shownSettings.IsTreeShown)
         {
             EnsureCurrent();
-            _view.ShowTree(_document.Root);
-            ShowCaret(_caret);
+            _view.ShowTree(_tab.Document.Root);
+            ShowCaret(_tab.Caret);
         }
     }
 
@@ -434,9 +554,9 @@ public sealed class JsonEditorPresenter
     private void AnswerPath(JsonPathRequestModel request)
     {
         EnsureCurrent();
-        JsonNodeModel? clicked = JsonPathWriter.NodeAt(_document.Root, request.Position);
+        JsonNodeModel? clicked = JsonPathWriter.NodeAt(_tab.Document.Root, request.Position);
         IReadOnlyList<JsonNodeModel> values = request.Selection is var (start, end)
-            ? JsonPathWriter.NodesIn(_document.Root, start, end)
+            ? JsonPathWriter.NodesIn(_tab.Document.Root, start, end)
             : [];
 
         if (values.Count == 0 && clicked is not null)
@@ -462,7 +582,7 @@ public sealed class JsonEditorPresenter
     // What's under the pointer: its path, what it is, and what the schema finds wrong with it
     private void AnswerHover(JsonHoverRequestModel request)
     {
-        if (_isStale || JsonPathWriter.NodeAt(_document.Root, request.Position) is not JsonNodeModel node)
+        if (_tab.IsStale || JsonPathWriter.NodeAt(_tab.Document.Root, request.Position) is not JsonNodeModel node)
         {
             return;
         }
@@ -470,7 +590,7 @@ public sealed class JsonEditorPresenter
         var text = new StringBuilder();
         text.Append(JsonPathWriter.PathOf(node)).Append('\n').Append(JsonPathWriter.KindOf(node));
 
-        foreach (JsonSchemaProblemModel problem in _problems.Where(
+        foreach (JsonSchemaProblemModel problem in _tab.Problems.Where(
             problem => problem.Start <= request.Position && request.Position < problem.End))
         {
             text.Append('\n').Append(problem.Message);
@@ -483,10 +603,10 @@ public sealed class JsonEditorPresenter
     {
         EnsureCurrent();
 
-        if (_document.Root is JsonNodeModel root
+        if (_tab.Document.Root is JsonNodeModel root
             && JsonKeySuggester.ObjectAt(root, request.Position) is JsonNodeModel target)
         {
-            request.Names = JsonKeySuggester.NamesFor(target, root, _validator);
+            request.Names = JsonKeySuggester.NamesFor(target, root, _tab.Validator);
         }
     }
 
@@ -505,7 +625,7 @@ public sealed class JsonEditorPresenter
 
         EnsureCurrent();
 
-        if (JsonKeySuggester.ObjectAt(_document.Root, _caret) is not
+        if (JsonKeySuggester.ObjectAt(_tab.Document.Root, _tab.Caret) is not
             { Start: DiffPosition start, End: DiffPosition end } target)
         {
             _view.ShowProblem("The caret isn't in an object to sort.");
@@ -577,7 +697,7 @@ public sealed class JsonEditorPresenter
             otherText = file.Text;
         }
 
-        string name = _path is null ? "Untitled" : Path.GetFileName(_path);
+        string name = _tab.Name;
         _view.ShowComparison(name, Formatted(_view.Lines), otherName, Formatted(LinesOf(otherText)));
     }
 
@@ -593,7 +713,7 @@ public sealed class JsonEditorPresenter
     private void GoToPath()
     {
         EnsureCurrent();
-        JsonNodeModel? here = JsonPathWriter.NodeAt(_document.Root, _caret);
+        JsonNodeModel? here = JsonPathWriter.NodeAt(_tab.Document.Root, _tab.Caret);
 
         if (_view.AskPath(here is null ? string.Empty : JsonPathWriter.PathOf(here)) is not string path
             || path.Trim().Length == 0)
@@ -601,7 +721,7 @@ public sealed class JsonEditorPresenter
             return;
         }
 
-        (JsonNodeModel? result, string? error, int errorAt) = JsonSearch.Run(path, _document.Root);
+        (JsonNodeModel? result, string? error, int errorAt) = JsonSearch.Run(path, _tab.Document.Root);
 
         if (result is null)
         {
@@ -643,8 +763,8 @@ public sealed class JsonEditorPresenter
 
         EnsureCurrent();
         string done = fixes.Count == 0 ? "Nothing to repair." : $"Repaired: {string.Join(", ", fixes)}.";
-        string still = _document.Error is string error
-            ? $" It still isn't valid JSON: {Where(_document.ErrorAt)}, {error}."
+        string still = _tab.Document.Error is string error
+            ? $" It still isn't valid JSON: {Where(_tab.Document.ErrorAt)}, {error}."
             : string.Empty;
         _view.ShowMessage(done + still);
     }
@@ -685,7 +805,7 @@ public sealed class JsonEditorPresenter
             return;
         }
 
-        string baseName = _path is null ? "document" : Path.GetFileNameWithoutExtension(_path);
+        string baseName = _tab.Path is null ? "document" : Path.GetFileNameWithoutExtension(_tab.Path);
         string name = $"{baseName}.{(isCsv ? "csv" : "yaml")}";
 
         if (_view.AskExportPath(name) is not string path)
@@ -733,28 +853,26 @@ public sealed class JsonEditorPresenter
             return;
         }
 
-        if (MayDiscard())
-        {
-            Show(null, LinesOf(JsonTextWriter.Write(table, indented: true)), DiffTextFormatModel.Default);
+        ToFreeTab();
+        Show(null, LinesOf(JsonTextWriter.Write(table, indented: true)), DiffTextFormatModel.Default);
 
-            // Not saved anywhere yet: closing asks
-            _savedLines = [string.Empty];
-            ShowTitle();
-        }
+        // Not saved anywhere yet: closing asks
+        _tab.SavedLines = [string.Empty];
+        ShowTitle();
     }
 
     private void ChooseSchema(bool choose)
     {
         if (!choose)
         {
-            _isSchemaOff = true;
-            _chosenSchema = null;
+            _tab.IsSchemaOff = true;
+            _tab.ChosenSchema = null;
         }
         else if (_view.AskSchemaPath() is string path)
         {
-            _isSchemaOff = false;
-            _chosenSchema = path;
-            _schemaPath = null;
+            _tab.IsSchemaOff = false;
+            _tab.ChosenSchema = path;
+            _tab.SchemaPath = null;
         }
         else
         {
@@ -764,7 +882,7 @@ public sealed class JsonEditorPresenter
         UpdateSchema();
         Apply(Analyze(_view.Lines));
 
-        if (_schemaProblem is string problem && choose)
+        if (_tab.SchemaProblem is string problem && choose)
         {
             _view.ShowProblem(problem);
         }
@@ -773,16 +891,16 @@ public sealed class JsonEditorPresenter
     // The schema the document should be checked against now; true when it changed
     private bool UpdateSchema()
     {
-        string? path = _isSchemaOff ? null : _chosenSchema ?? NamedSchema();
+        string? path = _tab.IsSchemaOff ? null : _tab.ChosenSchema ?? NamedSchema();
 
-        if (path == _schemaPath)
+        if (path == _tab.SchemaPath)
         {
             return false;
         }
 
-        _schemaPath = path;
-        _validator = null;
-        _schemaProblem = null;
+        _tab.SchemaPath = path;
+        _tab.Validator = null;
+        _tab.SchemaProblem = null;
 
         if (path is null)
         {
@@ -796,16 +914,16 @@ public sealed class JsonEditorPresenter
 
             if (schema.Root is null || schema.Error is not null)
             {
-                _schemaProblem = $"The schema {Path.GetFileName(path)} isn't valid JSON: {schema.Error}.";
+                _tab.SchemaProblem = $"The schema {Path.GetFileName(path)} isn't valid JSON: {schema.Error}.";
             }
             else
             {
-                _validator = new JsonSchemaValidator(schema.Root);
+                _tab.Validator = new JsonSchemaValidator(schema.Root);
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            _schemaProblem = $"Could not read the schema {path}: {ex.Message}";
+            _tab.SchemaProblem = $"Could not read the schema {path}: {ex.Message}";
         }
 
         return true;
@@ -815,7 +933,7 @@ public sealed class JsonEditorPresenter
     // isn't fetched: the app goes on the internet only to look for updates
     private string? NamedSchema()
     {
-        if (_document.Root?.Member("$schema") is not { Kind: JsonNodeKind.String } named
+        if (_tab.Document.Root?.Member("$schema") is not { Kind: JsonNodeKind.String } named
             || named.Text.Contains("://", StringComparison.Ordinal)
             || named.Text.StartsWith("urn:", StringComparison.Ordinal))
         {
@@ -827,43 +945,43 @@ public sealed class JsonEditorPresenter
                 ? uri.LocalPath
                 : named.Text;
 
-        return Path.IsPathRooted(location) || _path is null
+        return Path.IsPathRooted(location) || _tab.Path is null
             ? location
-            : Path.GetFullPath(Path.Combine(Path.GetDirectoryName(_path)!, location));
+            : Path.GetFullPath(Path.Combine(Path.GetDirectoryName(_tab.Path)!, location));
     }
 
     private void ShowSchemaStatus()
     {
-        string? web = _document.Root?.Member("$schema") is { Kind: JsonNodeKind.String } named
-            && named.Text.Contains("://", StringComparison.Ordinal) && _chosenSchema is null && !_isSchemaOff
+        string? web = _tab.Document.Root?.Member("$schema") is { Kind: JsonNodeKind.String } named
+            && named.Text.Contains("://", StringComparison.Ordinal) && _tab.ChosenSchema is null && !_tab.IsSchemaOff
                 ? "Schema on the web: not checked"
                 : null;
-        string? status = _schemaPath is null ? web
-            : _schemaProblem is not null ? $"Schema {Path.GetFileName(_schemaPath)}: can't be read"
-            : _problems.Count == 0 ? $"Schema {Path.GetFileName(_schemaPath)}: valid"
-            : $"Schema {Path.GetFileName(_schemaPath)}: {Count(_problems.Count, "problem", "problems")}";
+        string? status = _tab.SchemaPath is null ? web
+            : _tab.SchemaProblem is not null ? $"Schema {Path.GetFileName(_tab.SchemaPath)}: can't be read"
+            : _tab.Problems.Count == 0 ? $"Schema {Path.GetFileName(_tab.SchemaPath)}: valid"
+            : $"Schema {Path.GetFileName(_tab.SchemaPath)}: {Count(_tab.Problems.Count, "problem", "problems")}";
         _view.ShowSchemaStatus(status);
     }
 
     private void StepProblem(int step)
     {
-        if (_problems.Count == 0)
+        if (_tab.Problems.Count == 0)
         {
             return;
         }
 
         int index = step > 0
-            ? _problems.ToList().FindIndex(problem => problem.Start > _caret)
-            : _problems.ToList().FindLastIndex(problem => problem.Start < _caret);
+            ? _tab.Problems.ToList().FindIndex(problem => problem.Start > _tab.Caret)
+            : _tab.Problems.ToList().FindLastIndex(problem => problem.Start < _tab.Caret);
 
         if (index < 0)
         {
-            index = step > 0 ? 0 : _problems.Count - 1;
+            index = step > 0 ? 0 : _tab.Problems.Count - 1;
         }
 
-        JsonSchemaProblemModel found = _problems[index];
+        JsonSchemaProblemModel found = _tab.Problems[index];
         _view.GoTo(new JsonMatchModel(found.Start, found.End));
-        _view.ShowSchemaStatus($"{index + 1} of {_problems.Count}: {found.Message}");
+        _view.ShowSchemaStatus($"{index + 1} of {_tab.Problems.Count}: {found.Message}");
     }
 
     private void Search(bool suggest)
@@ -873,7 +991,7 @@ public sealed class JsonEditorPresenter
         if (suggest)
         {
             EnsureCurrent();
-            _view.ShowSuggestions(JsonSuggester.Suggest(_view.SearchMode, query, _document.Root));
+            _view.ShowSuggestions(JsonSuggester.Suggest(_view.SearchMode, query, _tab.Document.Root));
         }
 
         _current = -1;
@@ -893,7 +1011,7 @@ public sealed class JsonEditorPresenter
         }
         else
         {
-            (JsonNodeModel? result, string? error, int errorAt) = JsonSearch.Run(query, _document.Root);
+            (JsonNodeModel? result, string? error, int errorAt) = JsonSearch.Run(query, _tab.Document.Root);
 
             if (result is null)
             {
@@ -925,7 +1043,7 @@ public sealed class JsonEditorPresenter
 
         if (_current < 0)
         {
-            int after = _matches.ToList().FindIndex(match => match.Start >= _caret);
+            int after = _matches.ToList().FindIndex(match => match.Start >= _tab.Caret);
             _current = step > 0 ? (after < 0 ? 0 : after) : (after <= 0 ? _matches.Count - 1 : after - 1);
         }
         else

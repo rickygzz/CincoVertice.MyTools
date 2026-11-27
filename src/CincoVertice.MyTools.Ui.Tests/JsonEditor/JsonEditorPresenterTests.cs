@@ -286,12 +286,13 @@ public class JsonEditorPresenterTests
     }
 
     [Fact]
-    public void DropOpenAndNew_ShowAnotherText_WithNoChangesToAskAbout()
+    public void DropOpenAndNew_EachOpenATab_KeepingTheOthersAsTheyWere_WithNothingToAsk()
     {
-        // Arrange
+        // Arrange: a change not saved in the first tab
         _files.Texts[@"C:\data\other.json"] = "[1, 2]";
         _files.Texts[@"C:\data\third.json"] = "true";
         _view.OpenPath = @"C:\data\third.json";
+        _view.Edit(lines => lines[0] = "{ ");
 
         // Act / Assert
         _view.RaiseDrop(@"C:\data\other.json");
@@ -300,7 +301,96 @@ public class JsonEditorPresenterTests
         Assert.Equal(("third.json - JSON editor", "true"), (_view.Title, _view.Lines[0]));
         _view.RaiseNew();
         Assert.Equal(("Untitled - JSON editor", "Empty"), (_view.Title, _view.Validity));
+        Assert.Equal(["people.json *", "other.json", "third.json", "Untitled"], _view.TabTitles);
+        Assert.Equal("{ ", _view.LinesOf(0)[0]);
         Assert.Equal(0, _view.SaveAsked);
+    }
+
+    [Fact]
+    public void Open_AFileOpenAlready_GoesToItsTab_AndAnEmptyUntitledTabTakesTheNextFile()
+    {
+        // Arrange: a new tab, left empty
+        _files.Texts[@"C:\data\other.json"] = "[1, 2]";
+        _view.RaiseNew();
+
+        // Act / Assert: the empty tab takes the file, and opening the first file again goes back to its tab
+        _view.RaiseDrop(@"C:\data\other.json");
+        Assert.Equal(["people.json", "other.json"], _view.TabTitles);
+        _view.RaiseDrop(@"c:\DATA\people.json");
+        Assert.Equal((0, 2, "people.json - JSON editor"), (_view.ShownTab, _presenter.TabCount, _view.Title));
+    }
+
+    [Fact]
+    public void TabChosen_ShowsItsDocument_ItsCaretAndTheSearchInIt()
+    {
+        // Arrange: "Ann" looked for, a second tab with none
+        _files.Texts[@"C:\data\other.json"] = "{ \"x\": 1 }";
+        _view.Search(JsonSearchMode.Text, "Ann");
+        _view.MoveCaret(new DiffPosition(3, 15));
+        _view.RaiseDrop(@"C:\data\other.json");
+        Assert.Equal("No matches", _view.SearchMessage);
+
+        // Act
+        _view.RaiseTabChosen(0);
+
+        // Assert
+        Assert.Equal("people.json - JSON editor", _view.Title);
+        Assert.Equal(2, _view.Document!.Folds.Count);
+        Assert.Equal(("Ln 4, Col 16", "people[1].name"), (_view.Position, _view.Path));
+        Assert.Equal("1 match", _view.SearchMessage);
+    }
+
+    [Theory]
+    [InlineData(null, 2)]
+    [InlineData(false, 1)]
+    public void TabClose_WithChanges_Asks_AndCancelKeepsIt(bool? answer, int tabsLeft)
+    {
+        // Arrange: a second tab, and a change in the first
+        _files.Texts[@"C:\data\other.json"] = "[1, 2]";
+        _view.Edit(lines => lines[0] = "{ ");
+        _view.RaiseDrop(@"C:\data\other.json");
+        _view.SaveAnswer = answer;
+
+        // Act
+        _view.RaiseTabClose(0);
+
+        // Assert
+        Assert.Equal(1, _view.SaveAsked);
+        Assert.Equal(tabsLeft, _presenter.TabCount);
+        Assert.Equal(tabsLeft == 1 ? ["other.json"] : ["people.json *", "other.json"], _view.TabTitles);
+    }
+
+    [Fact]
+    public void TabClose_OfTheLastTab_LeavesAnEmptyUntitledOne()
+    {
+        // Act
+        _view.RaiseTabClose(0);
+
+        // Assert
+        Assert.Equal(["Untitled"], _view.TabTitles);
+        Assert.Equal(("Untitled - JSON editor", "Empty"), (_view.Title, _view.Validity));
+        Assert.Equal(0, _view.SaveAsked);
+    }
+
+    [Fact]
+    public void Close_AsksAboutEachTabWithChanges_ShowingIt()
+    {
+        // Arrange: changes in the first tab and in the third, none in the second
+        _files.Texts[@"C:\data\other.json"] = "[1, 2]";
+        _files.Texts[@"C:\data\third.json"] = "true";
+        _view.Edit(lines => lines[0] = "{ ");
+        _view.RaiseDrop(@"C:\data\other.json");
+        _view.RaiseDrop(@"C:\data\third.json");
+        _view.Edit(lines => lines[0] = "false");
+        _view.SaveAnswer = false;
+
+        // Act
+        var closing = new CancelEventArgs();
+        _view.RaiseClose(closing);
+
+        // Assert
+        Assert.False(closing.Cancel);
+        Assert.Equal(2, _view.SaveAsked);
     }
 
     [Fact]
